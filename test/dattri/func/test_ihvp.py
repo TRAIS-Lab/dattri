@@ -4,8 +4,6 @@
 unit test for ihvp calculator
 '''
 
-import sys
-sys.path.append("..\\dattri")
 
 from dattri.func.ihvp import ExactIHVP
 import torch
