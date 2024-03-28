@@ -102,7 +102,7 @@ class ExactIHVP(AbstractIHVP):
         :param vec: A tensor to product on the inverse hessian.
         '''
         if self.inverse_hessian_tensor is None:
-            raise IHVPUsageError("You need to call `cache` before `product`")
+            raise IHVPUsageError("You need to call `cache` before `product`.")
         return self.inverse_hessian_tensor @ vec
 
 
