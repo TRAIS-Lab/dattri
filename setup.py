@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from setuptools import setup
+from setuptools import setup, find_packages
 
 long_description = '''
 DAttri
@@ -18,7 +18,7 @@ def setup_package():
         long_description_content_type="text/markdown",
         author='TARIS-lab',
         url='https://github.com/TRAIS-Lab/dattri',
-        packages=['dattri'],
+        packages=find_packages(),
         install_requires=[],
         include_package_data=True,
         classifiers=[
