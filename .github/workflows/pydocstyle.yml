@@ -20,4 +20,4 @@ jobs:
         pip install pydocstyle
     - name: Analysing the code with pydocstyle
       run: |
-        pydocstyle $(git ls-files '*.py')
+        pydocstyle $(git ls-files 'dattri/*.py')

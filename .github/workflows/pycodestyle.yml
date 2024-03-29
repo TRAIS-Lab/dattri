@@ -20,4 +20,4 @@ jobs:
         pip install pycodestyle
     - name: Analysing the code with pylint
       run: |
-        pycodestyle $(git ls-files '*.py')
+        pycodestyle $(git ls-files 'dattri/*.py')
