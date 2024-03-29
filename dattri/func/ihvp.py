@@ -32,6 +32,7 @@ def ihvp_direct(func: Callable, *args, argnums: int = 0):
     """
     hessian_tensor = hessian(func, argnums=argnums)(*args)
 
-    def ihvp_direct_func(vec: Tensor):
+    def _ihvp_direct_func(vec: Tensor):
         return torch.linalg.solve(hessian_tensor, vec.T).T
-    return ihvp_direct_func
+
+    return _ihvp_direct_func
