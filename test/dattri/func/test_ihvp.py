@@ -5,24 +5,20 @@ unit test for ihvp calculator
 '''
 
 
-from dattri.func.ihvp import ExactIHVP
+from dattri.func.ihvp import ihvp_direct
 import torch
-import torch.nn as nn
-from torch.func import functional_call
 
 
 class Test_IVP:
 
     def test_ihvp_easy_cache(self):
-        # a easy target which we can easily
-        # calculate the hessian in closed form
+
         def target(x):
             return torch.sin(x).sum()
-        ihvp = ExactIHVP(func=target, arg_num=0)
 
         x = torch.randn(2)
-        vec = torch.randn(2)
-        ihvp.cache(x)
-        ihvp_result = ihvp.product(vec)
+        vec = torch.randn(5, 2)
+        ihvp = ihvp_direct(target, x, argnums=0)
 
-        assert torch.allclose(ihvp_result, torch.diag(-1 / x.sin()) @ vec)
+        assert torch.allclose(ihvp(vec), (torch.diag(-1 / x.sin()) @ vec.T).T)
+        assert ihvp(vec).shape == (5, 2)
