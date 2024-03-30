@@ -28,11 +28,6 @@
 
 <!-- If no new dependency is introduced, remove this section -->
 
-- [ ] New Python dependencies
-       - Dependency1 
-       - Dependency2
-       - ...
-- [ ] New Java/Scala dependencies and their license
-       - Dependency1 and license1
-       - Dependency2 and license2
-       - ...
+- Dependency1 
+- Dependency2
+- ...
