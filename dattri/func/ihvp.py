@@ -1,34 +1,55 @@
-"""ihvp (inverse hessian-vector product) calculation for an arbitrary function.
+"""IHVP (inverse hessian-vector product) calculation.
 
 This module contains:
-- `ihvp_direct`: Direct algorithm for ihvp.
+- `ihvp_direct`: IHVP via explicit Hessian calculation.
 """
 
-from collections.abc import Callable
+from collections.abc import Callable, Tuple, Union
 
 import torch
 from torch import Tensor
 from torch.func import hessian
 
 
-def ihvp_direct(func: Callable, *args, argnums: int = 0) -> Callable:
-    """Direct ihvp algorithm function.
+def ihvp_explicit(func: Callable,
+                  *args,
+                  argnums: Union[int, Tuple(int)] = 0) -> Callable:
+    """IHVP via explicit Hessian calculation.
 
-    Standing for the inverse-hessian-vector product, returns a function that,
-    when given vectors, computes the product of inverse-hessian and vector.
+    IHVP stands for inverse-hessian-vector product. For a given function
+    `func`, this method first calculates the Hessian matrix explicitly
+    and then wraps the Hessian in a function that uses `torch.linalg.solve` to
+    calculate the IHVP for any given vector.
 
-    Direct algorithm calcualte the hessian matrix explicitly and then use
-    `torch.linagl.solve` for each vector production.
+    Args:
+        func (Callable): A function taking one or more arguments and returning
+            a single-element Tensor. The Hessian will be calculated based on
+            this function.
+        *args: List of arguments for `func`.
+        argnums (int or Tuple[int], optional): An integer or a tuple of integers
+            deciding which arguments in `*args` to get the Hessian with respect
+            to. Default: 0.
 
-    :param func: A Python function that takes one or more arguments.
-           Must return a single-element Tensor. The hessian will
-           be calculated on this function.
-    :param argnums: An integer default to 0. Specifies arguments to compute
-           gradients with respect to.
+    Returns:
+        A function that takes a vector `vec` and returns the IHVP of the Hessian
+        of `func` and `vec`.
+
+    Note:
+        This method stores the Hessian matrix explicitly and is not computationally
+        efficient.
     """
     hessian_tensor = hessian(func, argnums=argnums)(*args)
 
     def _ihvp_direct_func(vec: Tensor) -> Tensor:
+        """The IHVP function based on `hessian_tensor`.
+
+        Args:
+            vec (Tensor): A vector with the same dimension as the first dim of
+                `hessian_tensor`.
+
+        Returns:
+            The IHVP value, i.e., inverse of `hessian_tensor` times `vec`.
+        """
         return torch.linalg.solve(hessian_tensor, vec.T).T
 
     return _ihvp_direct_func
