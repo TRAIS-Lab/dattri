@@ -5,6 +5,7 @@ This module contains:
 """
 
 from collections.abc import Callable
+from typing import Union
 
 import torch
 from torch import Tensor
@@ -13,7 +14,7 @@ from torch.func import hessian
 
 def ihvp_explicit(func: Callable,
                   *args,
-                  argnums: int | tuple[int, ...] = 0) -> Callable:
+                  argnums: Union[int, tuple[int, ...]] = 0) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function

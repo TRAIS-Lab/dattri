@@ -23,6 +23,6 @@ jobs:
 
         python setup.py sdist bdist_wheel
         pip install dist/*.whl
-    - name: Analysing the code with pylint
+    - name: Analysing the code with pytest
       run: |
         pytest -v test
