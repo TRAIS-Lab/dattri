@@ -1,0 +1,15 @@
+[project]
+name = "dattri"
+requires-python = ">=3.10"
+
+[tool.ruff.lint]
+select = ["ALL"]
+ignore = ["ANN002", "D203", "D213", "D407"]  # ignores: ANN002 (unnecessarily strict rule), D203 (conflict with D211), D213 (conflict with D212), D407 (supporting Google style docstrings)
+
+[tool.ruff.lint.extend-per-file-ignores]
+"__init__.py" = ["E401", "E402"]
+"setup.py" = ["ANN"]
+"**/test/**/*.py" = ["S101", "INP001", "ANN"] # ignores: S101 (assert is fine in tests), INP001 (no need for __init__.py in test), ANN (don't need type annotation for tests)
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
