@@ -3,9 +3,13 @@
 This module contains:
 - `ihvp_explicit`: IHVP via explicit Hessian calculation.
 """
+from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Union
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import Tuple, Union
 
 import torch
 from torch import Tensor
@@ -14,7 +18,7 @@ from torch.func import hessian
 
 def ihvp_explicit(func: Callable,
                   *args,
-                  argnums: Union[int, tuple[int, ...]] = 0) -> Callable:
+                  argnums: Union[int, Tuple[int, ...]] = 0) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function

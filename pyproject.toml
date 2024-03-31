@@ -1,10 +1,10 @@
 [project]
 name = "dattri"
-requires-python = ">=3.10"
+requires-python = ">=3.8"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["ANN002", "D203", "D213", "D407", "UP007"]  # ignores: ANN002 (unnecessarily strict rule), D203 (conflict with D211), D213 (conflict with D212), D407 (supporting Google style docstrings), UP007 (compatibility with Python 3.8)
+ignore = ["ANN002", "D203", "D213", "D407", "UP"]  # ignores: ANN002 (unnecessarily strict rule), D203 (conflict with D211), D213 (conflict with D212), D407 (supporting Google style docstrings), UP (compatibility with Python 3.8)
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["E401", "E402"]
