@@ -1,22 +1,18 @@
-#!/usr/bin/env python
-
-"""
-ihvp (inverse hessian-vector product) calculation for an arbitrary function.
+"""ihvp (inverse hessian-vector product) calculation for an arbitrary function.
 
 This module contains:
 - `ihvp_direct`: Direct algorithm for ihvp.
 """
 
-from typing import Callable
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
 from torch.func import hessian
 
 
-def ihvp_direct(func: Callable, *args, argnums: int = 0):
-    """
-    Direct ihvp algorithm function.
+def ihvp_direct(func: Callable, *args, argnums: int = 0) -> Callable:
+    """Direct ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -32,7 +28,7 @@ def ihvp_direct(func: Callable, *args, argnums: int = 0):
     """
     hessian_tensor = hessian(func, argnums=argnums)(*args)
 
-    def _ihvp_direct_func(vec: Tensor):
+    def _ihvp_direct_func(vec: Tensor) -> Tensor:
         return torch.linalg.solve(hessian_tensor, vec.T).T
 
     return _ihvp_direct_func
