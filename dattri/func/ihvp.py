@@ -1,10 +1,10 @@
 """IHVP (inverse hessian-vector product) calculation.
 
 This module contains:
-- `ihvp_direct`: IHVP via explicit Hessian calculation.
+- `ihvp_explicit`: IHVP via explicit Hessian calculation.
 """
 
-from collections.abc import Callable, Union
+from collections.abc import Callable
 
 import torch
 from torch import Tensor
@@ -13,7 +13,7 @@ from torch.func import hessian
 
 def ihvp_explicit(func: Callable,
                   *args,
-                  argnums: Union[int, tuple[int, ...]] = 0) -> Callable:
+                  argnums: int | tuple[int, ...] = 0) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function
