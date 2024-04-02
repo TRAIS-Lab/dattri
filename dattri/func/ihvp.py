@@ -13,12 +13,12 @@ if TYPE_CHECKING:
 
 import torch
 from torch import Tensor
-from torch.func import hessian, grad, vjp, jvp
+from torch.func import grad, hessian, jvp, vjp
 
 
 def hvp(func: Callable,
         argnums: int = 0,
-        mode: str = "rev-rev"):
+        mode: str = "rev-rev") -> Callable:
     """Hessian Vector Product(HVP) calculation function.
 
     This function takes the func where hessian is carried out and return a
@@ -68,7 +68,7 @@ def hvp(func: Callable,
 def hvp_at_x(func: Callable,
              x: Tuple[torch.Tensor, ...],
              argnums: int = 0,
-             mode: str = "rev-rev"):
+             mode: str = "rev-rev") -> Callable:
     """Hessian Vector Product(HVP) calculation function (with fixed x).
 
     This function returns a function that takes a vector `v` and calculate
@@ -99,15 +99,15 @@ def hvp_at_x(func: Callable,
         This method does fix the x to avoid some additional computation. If you have
         multiple x and want to use vmap to accelerate the computation, please consider
         using `hvp`.
-    
+
     Raises:
-        IHVPUsageException: If mode is not one of "rev-rev" and "rev-fwd".
+        IHVPUsageError: If mode is not one of "rev-rev" and "rev-fwd".
     """
-    # TODO: support tuple of int for argnums
+    # support tuple of int for argnums
 
     if mode not in ["rev-rev", "rev-fwd"]:
-        raise IHVPUsageException("`mode` should be either"
-                                 "'rev-rev' or 'rev-fwd'.")
+        error_msg = "`mode` should be either 'rev-rev' or 'rev-fwd'."
+        raise IHVPUsageError(error_msg)
 
     if mode == "rev-rev":
         # pylint: disable=unbalanced-tuple-unpacking
@@ -123,7 +123,6 @@ def hvp_at_x(func: Callable,
                 (Tensor) The hessian vector production.
             """
             return vjp_fn(v)[argnums]
-        return _hvp_at_x_func
     else:
         # patch the v, make zero for other input
         # e.g.,
@@ -153,7 +152,8 @@ def hvp_at_x(func: Callable,
                 v_patched = (v,)
 
             return jvp(grad(func, argnums=argnums), x, v_patched)[1]
-        return _hvp_at_x_func
+
+    return _hvp_at_x_func
 
 
 def ihvp_at_x_explicit(func: Callable,
@@ -204,7 +204,7 @@ def ihvp_cg(func: Callable,
             argnums: int = 0,
             max_iter: int = 100,
             tol: float = 1e-7,
-            mode: str = "rev-rev"):
+            mode: str = "rev-rev") -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -247,7 +247,8 @@ def ihvp_cg(func: Callable,
         Returns:
             The IHVP value.
         """
-        return ihvp_at_x_cg(func, *x, argnums=argnums, max_iter=max_iter, tol=tol, mode=mode)(v)
+        return ihvp_at_x_cg(func, *x, argnums=argnums,
+                            max_iter=max_iter, tol=tol, mode=mode)(v)
 
     return _ihvp_cg_func
 
@@ -257,7 +258,7 @@ def ihvp_at_x_cg(func: Callable,
                  argnums: int = 0,
                  max_iter: int = 100,
                  tol: float = 1e-7,
-                 mode: str = "rev-rev"):
+                 mode: str = "rev-rev") -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function (with fixed x).
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -303,7 +304,7 @@ def ihvp_at_x_cg(func: Callable,
         # algorithm refer to
         # https://www.cs.cmu.edu/~pradeepr/convexopt/Lecture_Slides/conjugate_direction_methods.pdf
 
-        if v.ndim < 2:
+        if v.ndim == 1:
             v = v.unsqueeze(0)
         batch_ihvp_cg = []
 
@@ -332,7 +333,6 @@ def ihvp_at_x_cg(func: Callable,
     return _ihvp_cg_func
 
 
-class IHVPUsageException(Exception):
+class IHVPUsageError(Exception):
     """The usage exception class for ihvp module."""
 
-    pass
