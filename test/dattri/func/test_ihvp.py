@@ -1,27 +1,30 @@
 """Unit test for ihvp calculator."""
 import torch
 
-from dattri.func.ihvp import ihvp_explicit, hvp, ihvp_cg
+import sys
+sys.path.append("../dattri")
+
+from dattri.func.ihvp import ihvp_at_x_explicit, hvp_at_x, hvp, ihvp_at_x_cg
 
 
 class TestIHVP:
     """Test ihvp functions."""
 
-    def test_ihvp_explicit(self):
-        """Test ihvp_explicit."""
+    def test_ihvp_at_x_explicit(self):
+        """Test ihvp_at_x_explicit."""
 
         def _target(x):
             return torch.sin(x).sum()
 
         x = torch.randn(2)
         vec = torch.randn(5, 2)
-        ihvp = ihvp_explicit(_target, x, argnums=0)
+        ihvp = ihvp_at_x_explicit(_target, x, argnums=0)
 
         assert torch.allclose(ihvp(vec), (torch.diag(-1 / x.sin()) @ vec.T).T)
         assert ihvp(vec).shape == (5, 2)
 
-    def test_ihvp_explicit_argnums(self):
-        """Test argnums of ihvp_explicit."""
+    def test_ihvp_at_x_explicit_argnums(self):
+        """Test argnums of ihvp_at_x_explicit."""
 
         def _target(x, y):
             return torch.sin(x + y).sum()
@@ -29,12 +32,12 @@ class TestIHVP:
         x = 2
         y = torch.randn(2)
         vec = torch.randn(5, 2)
-        ihvp = ihvp_explicit(_target, x, y, argnums=1)
+        ihvp = ihvp_at_x_explicit(_target, x, y, argnums=1)
 
         assert torch.allclose(ihvp(vec), (torch.diag(-1 / (2+y).sin()) @ vec.T).T)
         assert ihvp(vec).shape == (5, 2)
     
-    def test_hvp_rev_only(self):
+    def test_hvp_at_x(self):
 
         def target(x):
             return torch.sin(x).sum()
@@ -42,21 +45,12 @@ class TestIHVP:
         x = torch.randn(2)
         vec = torch.randn(2)
 
-        assert torch.allclose(hvp(target, (x,), vec, argnums=0, mode="rev-only"),
+        assert torch.allclose(hvp_at_x(target, (x,), argnums=0, mode="rev-rev")(vec),
+                             (torch.diag(-x.sin()) @ vec.T).T)
+        assert torch.allclose(hvp_at_x(target, (x,), argnums=0, mode="rev-fwd")(vec),
                              (torch.diag(-x.sin()) @ vec.T).T)
 
-    def test_hvp_rev_fwd(self):
-
-        def target(x):
-            return torch.sin(x).sum()
-        
-        x = torch.randn(2)
-        vec = torch.randn(2)
-
-        assert torch.allclose(hvp(target, (x,), vec, argnums=0, mode="rev-fwd"),
-                             (torch.diag(-x.sin()) @ vec.T).T)
-
-    def test_hvp_rev_only_argnums(self):
+    def test_hvp_at_x_argnums(self):
 
         def target(x, y):
             return torch.sin(x + y).sum()
@@ -65,10 +59,12 @@ class TestIHVP:
         y = torch.randn(2)
         vec = torch.randn(2)
 
-        assert torch.allclose(hvp(target, (x, y), vec, argnums=1, mode="rev-only"),
+        assert torch.allclose(hvp_at_x(target, (x, y), argnums=1, mode="rev-rev")(vec),
+                              (torch.diag(-(2+y).sin()) @ vec.T).T)
+        assert torch.allclose(hvp_at_x(target, (x, y), argnums=1, mode="rev-rev")(vec),
                               (torch.diag(-(2+y).sin()) @ vec.T).T)
 
-    def test_hvp_rev_only_argnums(self):
+    def test_hvp_at_x_vmap(self):
 
         def target(x, y):
             return torch.sin(x + y).sum()
@@ -77,38 +73,54 @@ class TestIHVP:
         y = torch.randn(2)
         vec = torch.randn(2)
 
-        assert torch.allclose(hvp(target, (x, y), vec, argnums=1, mode="rev-fwd"),
-                              (torch.diag(-(2+y).sin()) @ vec.T).T)
-        
-    def test_hvp_vmap(self):
-
-        def target(x, y):
-            return torch.sin(x + y).sum()
-
-        x = torch.Tensor([2])
-        y = torch.randn(2)
-        vec = torch.randn(2)
-
-        from functools import partial
         from torch.func import vmap
 
-        vmap_hvp = partial(hvp, target, (x, y), argnums=1, mode="rev-only")
+        hvp_at_x_func = hvp_at_x(target, (x, y), argnums=1, mode="rev-rev")
 
-        assert torch.allclose(vmap(vmap_hvp)(torch.stack([vec for _ in range(5)])),
+        assert torch.allclose(vmap(hvp_at_x_func)(torch.stack([vec for _ in range(5)])),
                               torch.stack([(torch.diag(-(2+y).sin()) @ vec.T).T for _ in range(5)]))
+
+    def test_hvp(self):
+
+        def target(x):
+            return torch.sin(x).sum()
+        
+        x = torch.randn(2)
+        vec = torch.randn(2)
+
+        assert torch.allclose(hvp(target, argnums=0, mode="rev-rev")((x,), vec),
+                             (torch.diag(-x.sin()) @ vec.T).T)
+        assert torch.allclose(hvp(target, argnums=0, mode="rev-fwd")((x,), vec),
+                             (torch.diag(-x.sin()) @ vec.T).T)
     
-    def test_ihvp_cg(self):
+    def test_hvp_vmap(self):
+
+        def target(x):
+            return torch.sin(x).sum()
+
+        x = torch.randn(5, 2)
+        vec = torch.randn(2)
+
+        from torch.func import vmap
+
+        def vmap_on_x(x):
+            return hvp(target, argnums=0, mode="rev-rev")((x,), vec)
+
+        torch.allclose(vmap(vmap_on_x)(x), torch.stack([vmap_on_x(x[i]) for i in range(5)]))
+
+
+    def test_ihvp_at_x_cg(self):
         def target(x):
             return torch.sin(x).sum()
 
         x = torch.randn(2)
         vec = torch.randn(5, 2)
-        ihvp = ihvp_cg(target, x, argnums=0)
+        ihvp = ihvp_at_x_cg(target, x, argnums=0)
 
         assert torch.allclose(ihvp(vec), (torch.diag(-1 / x.sin()) @ vec.T).T)
         assert ihvp(vec).shape == (5, 2)
 
-    def test_ihvp_cg_argnum(self):
+    def test_ihvp_at_x_cg_argnum(self):
 
         def target(x, y):
             return torch.sin(x + y).sum()
@@ -116,7 +128,7 @@ class TestIHVP:
         x = torch.Tensor([1])
         y = torch.randn(2)
         vec = torch.randn(5, 2)
-        ihvp = ihvp_cg(target, x, y, argnums=1)
+        ihvp = ihvp_at_x_cg(target, x, y, argnums=1)
 
         assert torch.allclose(ihvp(vec), (torch.diag(-1 / (1+y).sin()) @ vec.T).T)
         assert ihvp(vec).shape == (5, 2)
