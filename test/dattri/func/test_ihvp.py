@@ -4,7 +4,7 @@ import torch
 import sys
 sys.path.append("../dattri")
 
-from dattri.func.ihvp import ihvp_at_x_explicit, hvp_at_x, hvp, ihvp_at_x_cg
+from dattri.func.ihvp import ihvp_at_x_explicit, hvp_at_x, hvp, ihvp_at_x_cg, ihvp_cg
 
 
 class TestIHVP:
@@ -109,7 +109,7 @@ class TestIHVP:
         torch.allclose(vmap(vmap_on_x)(x), torch.stack([vmap_on_x(x[i]) for i in range(5)]))
 
 
-    def test_ihvp_at_x_cg(self):
+    def test_ihvp_cg(self):
         def target(x):
             return torch.sin(x).sum()
 
@@ -117,10 +117,13 @@ class TestIHVP:
         vec = torch.randn(5, 2)
         ihvp = ihvp_at_x_cg(target, x, argnums=0)
 
-        assert torch.allclose(ihvp(vec), (torch.diag(-1 / x.sin()) @ vec.T).T)
+        assert torch.allclose(ihvp(vec),
+                              (torch.diag(-1 / x.sin()) @ vec.T).T)
+        assert torch.allclose(ihvp_cg(target, argnums=0)((x,), vec),
+                              (torch.diag(-1 / x.sin()) @ vec.T).T)
         assert ihvp(vec).shape == (5, 2)
 
-    def test_ihvp_at_x_cg_argnum(self):
+    def test_ihvp_cg_argnum(self):
 
         def target(x, y):
             return torch.sin(x + y).sum()
@@ -130,5 +133,8 @@ class TestIHVP:
         vec = torch.randn(5, 2)
         ihvp = ihvp_at_x_cg(target, x, y, argnums=1)
 
-        assert torch.allclose(ihvp(vec), (torch.diag(-1 / (1+y).sin()) @ vec.T).T)
+        assert torch.allclose(ihvp(vec),
+                              (torch.diag(-1 / (1+y).sin()) @ vec.T).T)
+        assert torch.allclose(ihvp_cg(target, argnums=1)((x, y), vec),
+                              (torch.diag(-1 / (1+y).sin()) @ vec.T).T)
         assert ihvp(vec).shape == (5, 2)

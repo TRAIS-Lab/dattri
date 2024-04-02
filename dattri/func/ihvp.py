@@ -11,8 +11,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Tuple, Union
 
-from functools import partial
-
 import torch
 from torch import Tensor
 from torch.func import hessian, grad, vjp, jvp
@@ -21,34 +19,48 @@ from torch.func import hessian, grad, vjp, jvp
 def hvp(func: Callable,
         argnums: int = 0,
         mode: str = "rev-rev"):
-    """
-    Hessian Vector Product(HVP) calculation function (with fixed x).
+    """Hessian Vector Product(HVP) calculation function.
 
-    This function returns a function that takes a vector and calculate
-    the hessian-vector production.
+    This function takes the func where hessian is carried out and return a
+    function takes x (the argument of func) and a vector v to calculate the
+    hessian-vector production.
 
     Args:
-
         func (Callable): A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
             be calculated on this function. The positional arguments to func
             must all be Tensors.
-        argnums (int): An integer default to 0. Specifies arguments to compute
-            gradients with respect to.
-        mode (str): A string default to `rev-rev`. Specifies how to calculate
-            hvp function. Either `rev-rev` or `rev-fwd` should be put here.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute hessian with respect to.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
 
     Returns:
-        A function that takes a tuple of Tensor `x` and a vector `vec` and returns
-        the HVP of the Hessian of `func` and `vec`.
+        A function that takes a tuple of Tensor `x` as the arguments of func and
+        a vector `vec` and returns the HVP of the Hessian of `func` and `vec`.
 
     Note:
-        This method does not fix the x to ease the vmap usage. If you have a
-        fixed x please consider using `hvp_at_x`.
+        This method does not fix the x. It's suitable if you have multiple `x` for
+        the hvp calculation. If you have a fixed x please consider using `hvp_at_x`.
     """
 
     def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
-        return partial(hvp_at_x, func, argnums=argnums, mode=mode)(x)(v)
+        """The HVP function based on func.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                hessian matrix with respect to these arguments.
+            v (Tensor): A vector with the same dimension as the first dim of
+                `hessian_tensor`.
+
+        Returns:
+            (Tensor) The hessian vector production.
+        """
+        return hvp_at_x(func, x, argnums=argnums, mode=mode)(v)
 
     return _hvp_func
 
@@ -57,33 +69,39 @@ def hvp_at_x(func: Callable,
              x: Tuple[torch.Tensor, ...],
              argnums: int = 0,
              mode: str = "rev-rev"):
-    """
-    Hessian Vector Product(HVP) calculation function (with fixed x).
+    """Hessian Vector Product(HVP) calculation function (with fixed x).
 
-    This function returns a function that takes a vector and calculate
+    This function returns a function that takes a vector `v` and calculate
     the hessian-vector production.
 
     Args:
-
         func (Callable): A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
             be calculated on this function. The positional arguments to func
             must all be Tensors.
-        x (Tuple[torch.Tensor, ...]): The returned function will also be
-            computing the derivative with respect to these arguments.
-        argnums (int): An integer default to 0. Specifies arguments to compute
-            gradients with respect to.
-        mode (str): A string default to `rev-rev`. Specifies how to calculate
-            hvp function. Either `rev-rev` or `rev-fwd` should be put here.
+        x (Tuple[torch.Tensor, ...]): The returned function will computed the
+            hessian matrix with respect to these arguments. `argnums` indicate
+            which of the input `x` is used as primal.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute hessian with respect to.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
 
     Returns:
-        A function that takes a vector `vec` and returns the HVP of the Hessian
-        of `func` and `vec`.
+        A function that takes a vector `v` and returns the HVP of the Hessian
+        of `func` and `v`.
 
     Note:
         This method does fix the x to avoid some additional computation. If you have
         multiple x and want to use vmap to accelerate the computation, please consider
         using `hvp`.
+    
+    Raises:
+        IHVPUsageException: If mode is not one of "rev-rev" and "rev-fwd".
     """
     # TODO: support tuple of int for argnums
 
@@ -95,6 +113,15 @@ def hvp_at_x(func: Callable,
         # pylint: disable=unbalanced-tuple-unpacking
         _, vjp_fn = vjp(grad(func, argnums=argnums), *x)
         def _hvp_at_x_func(v: Tensor) -> Tensor:
+            """The HVP function based on func.
+
+            Args:
+                v (Tensor): A vector with the same dimension as the first dim of
+                    `hessian_tensor`.
+
+            Returns:
+                (Tensor) The hessian vector production.
+            """
             return vjp_fn(v)[argnums]
         return _hvp_at_x_func
     else:
@@ -105,6 +132,15 @@ def hvp_at_x(func: Callable,
         # v,
         # torch.zeros(*x[2].shape)]
         def _hvp_at_x_func(v: Tensor) -> Tensor:
+            """The HVP function based on func.
+
+            Args:
+                v (Tensor): A vector with the same dimension as the first dim of
+                    `hessian_tensor`.
+
+            Returns:
+                (Tensor) The hessian vector production.
+            """
             if len(x) > 1:
                 v_patched = []
                 for i in range(len(x)):
@@ -153,7 +189,7 @@ def ihvp_at_x_explicit(func: Callable,
         """The IHVP function based on `hessian_tensor`.
 
         Args:
-            vec (Tensor): A vector with the same dimension as the first dim of
+            v (Tensor): A vector with the same dimension as the first dim of
                 `hessian_tensor`.
 
         Returns:
@@ -164,12 +200,11 @@ def ihvp_at_x_explicit(func: Callable,
     return _ihvp_at_x_explicit_func
 
 
-def ihvp_at_x_cg(func: Callable,
-                 *x,
-                 argnums: int = 0,
-                 max_iter: int = 100,
-                 tol: float = 1e-7,
-                 mode: str = "rev-rev"):
+def ihvp_cg(func: Callable,
+            argnums: int = 0,
+            max_iter: int = 100,
+            tol: float = 1e-7,
+            mode: str = "rev-rev"):
     """Conjugate Gradient Descent ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -182,34 +217,100 @@ def ihvp_at_x_cg(func: Callable,
         func (Callable): A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
             be calculated on this function.
-        *args: List of arguments for `func`.
-        argnums (int): An integer default to 0. Specifies arguments to compute
-            gradients with respect to.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
         max_iter (int): An integer default 100. Specifies the maximum iteration
-            to calculate the ihvp.
+            to calculate the ihvp through Conjugate Gradient Descent.
         tol (float): A float default to 1e-7. Specifies the break condition that
-            decide if the algorithm has converged.
-        mode (str): A string default to `rev-rev`. Specifies how to calculate
-            hvp function. Either `rev-rev` or `rev-fwd` should be put here.
-    
+            decide if the algorithm has converged. If the torch.norm of residual
+            is less than tol, then the algorithm is truncated.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
     Returns:
-        A function that takes a vector `vec` and returns the IHVP of the Hessian
-        of `func` and `vec`.
+        A function that takes a tuple of Tensor `x` and a vector `c` and returns
+        the IHVP of the Hessian of `func` and `v`.
+    """
+
+    def _ihvp_cg_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+        """The IHVP function using CG.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse hessian matrix with respect to these arguments.
+            v (Tensor): The vector to be producted on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        return ihvp_at_x_cg(func, *x, argnums=argnums, max_iter=max_iter, tol=tol, mode=mode)(v)
+
+    return _ihvp_cg_func
+
+
+def ihvp_at_x_cg(func: Callable,
+                 *x,
+                 argnums: int = 0,
+                 max_iter: int = 100,
+                 tol: float = 1e-7,
+                 mode: str = "rev-rev"):
+    """Conjugate Gradient Descent ihvp algorithm function (with fixed x).
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    Conjugate Gradient Descent algorithm calcualte the hvp function and use
+    it iteratively through Conjugate Gradient.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be calculated on this function.
+        *x: List of arguments for `func`.
+        argnums (int): An integer default to 0. SSpecifies which argument of func
+            to compute inverse hessian with respect to.
+        max_iter (int): An integer default 100. Specifies the maximum iteration
+            to calculate the ihvp through Conjugate Gradient Descent.
+        tol (float): A float default to 1e-7. Specifies the break condition that
+            decide if the algorithm has converged. If the torch.norm of residual
+            is less than tol, then the algorithm is truncated.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
+    Returns:
+        A function that takes a vector `v` and returns the IHVP of the Hessian
+        of `func` and `v`.
     """
     hvp_helper_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode)
 
-    def _ihvp_cg_func(vec: Tensor) -> Tensor:
+    def _ihvp_cg_func(v: Tensor) -> Tensor:
+        """The IHVP function using CG.
+
+        Args:
+            v (Tensor): The vector to be producted on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
         # algorithm refer to
         # https://www.cs.cmu.edu/~pradeepr/convexopt/Lecture_Slides/conjugate_direction_methods.pdf
 
-        if vec.ndim < 2:
-            vec = vec.unsqueeze(0)
+        if v.ndim < 2:
+            v = v.unsqueeze(0)
         batch_ihvp_cg = []
 
-        for i in range(vec.shape[0]):
-            x_pre = torch.clone(vec[i, :])
+        for i in range(v.shape[0]):
+            x_pre = torch.clone(v[i, :])
             x = x_pre
-            g_pre = vec[i, :] - hvp_helper_func(x)
+            g_pre = v[i, :] - hvp_helper_func(x)
             d = d_pre = g_pre
 
             for _ in range(max_iter):
