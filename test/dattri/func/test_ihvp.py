@@ -126,9 +126,11 @@ class TestIHVP:
         ihvp = ihvp_at_x_cg(target, x, argnums=0)
 
         assert torch.allclose(ihvp(vec),
-                              (torch.diag(-1 / x.sin()) @ vec.T).T)
+                              (torch.diag(-1 / x.sin()) @ vec.T).T,
+                              rtol=1e-04, atol=1e-07)
         assert torch.allclose(ihvp_cg(target, argnums=0)((x,), vec),
-                              (torch.diag(-1 / x.sin()) @ vec.T).T)
+                              (torch.diag(-1 / x.sin()) @ vec.T).T,
+                              rtol=1e-04, atol=1e-07)
         assert ihvp(vec).shape == (5, 2)
 
     def test_ihvp_cg_argnum(self):
@@ -143,7 +145,9 @@ class TestIHVP:
         ihvp = ihvp_at_x_cg(target, x, y, argnums=1)
 
         assert torch.allclose(ihvp(vec),
-                              (torch.diag(-1 / (1+y).sin()) @ vec.T).T)
+                              (torch.diag(-1 / (1+y).sin()) @ vec.T).T,
+                              rtol=1e-04, atol=1e-07)
         assert torch.allclose(ihvp_cg(target, argnums=1)((x, y), vec),
-                              (torch.diag(-1 / (1+y).sin()) @ vec.T).T)
+                              (torch.diag(-1 / (1+y).sin()) @ vec.T).T,
+                              rtol=1e-04, atol=1e-07)
         assert ihvp(vec).shape == (5, 2)

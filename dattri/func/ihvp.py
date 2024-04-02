@@ -41,7 +41,7 @@ def hvp(func: Callable,
 
     Returns:
         A function that takes a tuple of Tensor `x` as the arguments of func and
-        a vector `vec` and returns the HVP of the Hessian of `func` and `vec`.
+        a vector `v` and returns the HVP of the Hessian of `func` and `v`.
 
     Note:
         This method does not fix the x. It's suitable if you have multiple `x` for
@@ -210,7 +210,7 @@ def ihvp_cg(func: Callable,
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
 
-    Conjugate Gradient Descent algorithm calcualte the hvp function and use
+    Conjugate Gradient Descent algorithm calculate the hvp function and use
     it iteratively through Conjugate Gradient.
 
     Args:
@@ -242,7 +242,7 @@ def ihvp_cg(func: Callable,
         Args:
             x (Tuple[torch.Tensor, ...]): The function will computed the
                 inverse hessian matrix with respect to these arguments.
-            v (Tensor): The vector to be producted on the inverse hessian matrix.
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
 
         Returns:
             The IHVP value.
@@ -264,7 +264,7 @@ def ihvp_at_x_cg(func: Callable,
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
 
-    Conjugate Gradient Descent algorithm calcualte the hvp function and use
+    Conjugate Gradient Descent algorithm calculated the hvp function and use
     it iteratively through Conjugate Gradient.
 
     Args:
@@ -296,7 +296,7 @@ def ihvp_at_x_cg(func: Callable,
         """The IHVP function using CG.
 
         Args:
-            v (Tensor): The vector to be producted on the inverse hessian matrix.
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
 
         Returns:
             The IHVP value.
