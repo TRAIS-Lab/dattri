@@ -296,7 +296,7 @@ class CudaProjector(AbstractProjector):
             err = "You should make sure to install the CUDA projector \
             for traker (called fast_jl). \
             See the installation FAQs for more details."
-            raise ModuleNotFoundError(err)
+            raise err from ModuleNotFoundError
 
     def project(
         self,
@@ -309,10 +309,11 @@ class CudaProjector(AbstractProjector):
         batch_size = grads.shape[0]
 
         effective_batch_size = 32
-        if batch_size <= 8:
-            effective_batch_size = 8
-        elif batch_size <= 16:
-            effective_batch_size = 16
+        min_proj_batch_size = 8
+        if batch_size <= min_proj_batch_size:
+            effective_batch_size = min_proj_batch_size
+        elif batch_size <= min_proj_batch_size * 2:
+            effective_batch_size = min_proj_batch_size * 2
 
         effective_batch_size = min(self.max_batch_size, effective_batch_size)
 
@@ -331,9 +332,8 @@ class CudaProjector(AbstractProjector):
                 msg = "The batch size of the CudaProjector is too large for your GPU. \
                     Reduce it by using the proj_max_batch_size argument of the TRAKer.\
                     \nOriginal error:"
-                raise RuntimeError(msg)
-            else:
-                raise e
+                raise msg from RuntimeError
+            raise e
 
         return result
 
