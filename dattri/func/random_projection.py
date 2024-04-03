@@ -7,7 +7,7 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, Optional, Union
+from typing import Dict, List, Optional, Union
 
 import torch
 from torch import Tensor
@@ -15,7 +15,7 @@ from torch import Tensor
 ch = torch
 
 def vectorize(g: Dict[str, torch.Tensor], arr: Optional[torch.Tensor] = None,
-              device: str = "cuda") -> Tensor:
+              device: Optional[str] = "cuda") -> Tensor:
     """Vectorize gradient result (g) into arr.
 
     This function takes a dictionary of gradient and returns a flattened tensor
@@ -155,9 +155,7 @@ class BasicProjector(AbstractProjector):
         device: torch.device,
         block_size: int = 100,
         dtype: torch.dtype = ch.float32,
-        model_id=0,
-        *args,
-        **kwargs,
+        model_id: int = 0,
     ) -> None:
         super().__init__(grad_dim, proj_dim, seed, proj_type, device)
 
@@ -193,7 +191,7 @@ class BasicProjector(AbstractProjector):
             self.generator = self.generator.manual_seed(s)
             self.generator_states.append(self.generator.get_state())
 
-    def generate_sketch_matrix(self, generator_state) -> None:
+    def generate_sketch_matrix(self, generator_state: List) -> None:
         if not self.proj_matrix_available:
             self.proj_matrix = ch.empty(
                 self.grad_dim, self.block_size, dtype=self.dtype, device=self.device,
@@ -201,17 +199,16 @@ class BasicProjector(AbstractProjector):
             self.proj_matrix_available = True
 
         self.generator.set_state(generator_state)
-        if self.proj_type == ProjectionType.normal or self.proj_type == "normal":
+
+        if self.proj_type in {ProjectionType.normal, "normal"}:
             self.proj_matrix.normal_(generator=self.generator)
-        elif (
-            self.proj_type == ProjectionType.rademacher
-            or self.proj_type == "rademacher"
-        ):
+        elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
             self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
             self.proj_matrix *= 2.0
             self.proj_matrix -= 1.0
         else:
-            raise KeyError(f"Projection type {self.proj_type} not recognized.")
+            msg = f"Projection type {self.proj_type} not recognized."
+            raise KeyError(msg)
 
     def project(self, grads: Tensor, model_id: int) -> Tensor:
         if isinstance(grads, dict):
@@ -243,8 +240,10 @@ class BasicProjector(AbstractProjector):
 
 
 class CudaProjector(AbstractProjector):
-    """A performant implementation of the projection for CUDA with compute
-    capability >= 7.0.
+    """Projector implemented using CUDA.
+
+    A performant implementation of the projection
+    for CUDA with compute capability >= 7.0.
     """
 
     def __init__(
@@ -253,33 +252,24 @@ class CudaProjector(AbstractProjector):
         proj_dim: int,
         seed: int,
         proj_type: ProjectionType,
-        device,
+        device: str,
         max_batch_size: int,
-        *args,
-        **kwargs,
     ) -> None:
         """Args:
-            grad_dim (int):
-                Number of parameters
-            proj_dim (int):
-                Dimension we project *to* during the projection step
-            seed (int):
-                Random seed
-            proj_type (ProjectionType):
-                Type of randomness to use for projection matrix (rademacher or normal)
-            device:
-                CUDA device
-            max_batch_size (int):
-                Explicitly constraints the batch size the CudaProjector is going
-                to use for projection. Set this if you get a 'The batch size of
-                the CudaProjector is too large for your GPU' error. Must be
-                either 8, 16, or 32.
+            grad_dim (int): Number of parameters
+            proj_dim (int): Dimension we project *to* during the projection step
+            seed (int): Random seed
+            proj_type (ProjectionType): Type of randomness to use for
+                                        projection matrix (rademacher or normal)
+            device: CUDA device
+            max_batch_size (int): Explicitly constraints the batch size of
+                the CudaProjector is going to use for projection.
+                Set this if you get a 'The batch size of the CudaProjector is
+                too large for your GPU' error. Must be either 8, 16, or 32.
 
         Raises:
-            ValueError:
-                When attempting to use this on a non-CUDA device
-            ModuleNotFoundError:
-                When fast_jl is not installed
+            ValueError: When attempting to use this on a non-CUDA device
+            ModuleNotFoundError: When fast_jl is not installed
 
         """
         super().__init__(grad_dim, proj_dim, seed, proj_type, device)
