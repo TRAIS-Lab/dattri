@@ -4,9 +4,9 @@
 
 from __future__ import annotations
 
+import math
 from abc import ABC, abstractmethod
 from enum import Enum
-import math
 from typing import Dict, Optional, Union
 
 import torch
@@ -45,13 +45,15 @@ def vectorize(g: Dict[str, torch.Tensor], arr: Optional[torch.Tensor] = None,
         num_params = 0
         for param in g.values():
             if  param.shape[0] != batch_size:
-                raise ValueError("Parameter row num doesn't match batch size.")
+                msg = "Parameter row num doesn't match batch size."
+                raise ValueError(msg)
             num_params += int(param.numel() / batch_size)
         arr = ch.empty(size=(batch_size, num_params), dtype=g_elt.dtype, device=device)
 
     pointer = 0
+    vector_dim = 1
     for param in g.values():
-        if len(param.shape) < 2:
+        if len(param.shape) <=  vector_dim:
             num_param = 1
             p = param.data.reshape(-1, 1)
         else:
@@ -111,10 +113,11 @@ class AbstractProjector(ABC):
 
     @abstractmethod
     def project(self, grads: Tensor, model_id: int) -> Tensor:
-        """Performs the random projection.
-        Model ID is included
-        so that we generate different projection matrices for every
-        model ID.
+        """Performs the random projection on gradient matrix.
+
+        This function will take grads and a model ID, which allows us
+        to generate different projection matrices, and output the projected
+        matrix.
 
         Args:
             grads (Tensor): a batch of gradients to be projected
@@ -124,14 +127,17 @@ class AbstractProjector(ABC):
             Tensor: the projected gradients
         """
 
-    def free_memory(self):
+    @abstractmethod
+    def free_memory(self) -> None:
         """Frees up memory used by the projector."""
 
 
+
 class BasicProjector(AbstractProjector):
-    """A simple block-wise implementation of the projection. The projection matrix
-    is generated on-device in blocks. The accumulated result across blocks is
-    returned.
+    """A simple block-wise implementation of the projection.
+
+    The projection matrix is generated on-device in blocks.
+    The accumulated result across blocks is returned.
 
     Note: This class will be significantly slower and have a larger memory
     footprint than the CudaProjector. It is recommended that you use this method
@@ -172,11 +178,11 @@ class BasicProjector(AbstractProjector):
         self.get_generator_states()
         self.generate_sketch_matrix(self.generator_states[0])
 
-    def free_memory(self):
+    def free_memory(self) -> None:
         del self.proj_matrix
         self.proj_matrix_available = False
 
-    def get_generator_states(self):
+    def get_generator_states(self) -> None:
         self.generator_states = []
         self.seeds = []
         self.jl_size = self.grad_dim * self.block_size
@@ -187,7 +193,7 @@ class BasicProjector(AbstractProjector):
             self.generator = self.generator.manual_seed(s)
             self.generator_states.append(self.generator.get_state())
 
-    def generate_sketch_matrix(self, generator_state):
+    def generate_sketch_matrix(self, generator_state) -> None:
         if not self.proj_matrix_available:
             self.proj_matrix = ch.empty(
                 self.grad_dim, self.block_size, dtype=self.dtype, device=self.device,
@@ -283,7 +289,8 @@ class CudaProjector(AbstractProjector):
             device = ch.device(device)
 
         if device.type != "cuda":
-            err = "CudaProjector only works on a CUDA device; Either switch to a CUDA device, or use the BasicProjector"
+            err = "CudaProjector only works on a CUDA device; \
+            Either switch to a CUDA device, or use the BasicProjector"
             raise ValueError(err)
 
         self.num_sms = ch.cuda.get_device_properties(device.index).multi_processor_count
@@ -296,8 +303,9 @@ class CudaProjector(AbstractProjector):
                 ch.zeros(8, 1_000, device="cuda"), 512, 0, self.num_sms,
             )
         except ImportError:
-            err = "You should make sure to install the CUDA projector for traker (called fast_jl).\
-                  See the installation FAQs for more details."
+            err = "You should make sure to install the CUDA projector \
+            for traker (called fast_jl). \
+            See the installation FAQs for more details."
             raise ModuleNotFoundError(err)
 
     def project(
@@ -330,18 +338,16 @@ class CudaProjector(AbstractProjector):
         except RuntimeError as e:
             if "CUDA error: too many resources requested for launch" in str(e):
                 # provide a more helpful error message
-                raise RuntimeError(
-                    (
-                        "The batch size of the CudaProjector is too large for your GPU. "
-                        "Reduce it by using the proj_max_batch_size argument of the TRAKer.\nOriginal error:"
-                    ),
-                )
+                msg = "The batch size of the CudaProjector is too large for your GPU. \
+                    Reduce it by using the proj_max_batch_size argument of the TRAKer.\
+                    \nOriginal error:"
+                raise RuntimeError(msg)
             else:
                 raise e
 
         return result
 
-    def free_memory(self):
+    def free_memory(self) -> None:
         """A no-op method."""
 
 
@@ -366,7 +372,7 @@ class ChunkedCudaProjector:
         self.dtype = dtype
         self.input_allocated = False
 
-    def allocate_input(self):
+    def allocate_input(self) -> None:
         if self.input_allocated:
             return
 
@@ -378,14 +384,14 @@ class ChunkedCudaProjector:
 
         self.input_allocated = True
 
-    def free_memory(self):
+    def free_memory(self) -> None:
         if not self.input_allocated:
             return
 
         del self.ch_input
         self.input_allocated = False
 
-    def project(self, grads, model_id):
+    def project(self, grads: Tensor, model_id: int) -> Tensor:
         self.allocate_input()
         ch_output = ch.zeros(
             size=(self.feat_bs, self.proj_dim), device=self.device, dtype=self.dtype,
@@ -394,8 +400,9 @@ class ChunkedCudaProjector:
         # iterate over params, keep a counter of params so far, and when prev
         # chunk reaches max_chunk_size, project and accumulate
         projector_index = 0
-        for i, p in enumerate(grads.values()):
-            if len(p.shape) < 2:
+        vector_dim = 1
+        for _, p in enumerate(grads.values()):
+            if len(p.shape) <= vector_dim:
                 p_flat = p.data.unsqueeze(-1)
             else:
                 p_flat = p.data.flatten(start_dim=1)
@@ -403,7 +410,9 @@ class ChunkedCudaProjector:
             param_size = p_flat.size(1)
             if pointer + param_size > self.max_chunk_size:
                 # fill remaining entries with 0
-                assert pointer == self.params_per_chunk[projector_index]
+                if pointer != self.params_per_chunk[projector_index]:
+                    msg = "Current projector index inconsistency."
+                    raise ValueError(msg)
                 # project and accumulate
                 ch_output.add_(
                     self.projector_per_chunk[projector_index].project(
@@ -423,7 +432,10 @@ class ChunkedCudaProjector:
 
         # at the end, we need to project remaining items
         # fill remaining entries with 0
-        assert pointer == self.params_per_chunk[projector_index]
+        if pointer != self.params_per_chunk[projector_index]:
+            msg = "Current projector index inconsistency."
+            raise ValueError(msg)
+
         # project and accumulate
         ch_output[:actual_bs].add_(
             self.projector_per_chunk[projector_index].project(
