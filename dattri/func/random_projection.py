@@ -6,6 +6,7 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from enum import Enum
+import math
 from typing import Dict, Optional, Union
 
 import torch
@@ -15,7 +16,10 @@ ch = torch
 
 def vectorize(g: Dict[str, torch.Tensor], arr: Optional[torch.Tensor] = None,
               device: str = "cuda") -> Tensor:
-    """This function will vectorize gradient result (g) into arr.
+    """Vectorize gradient result (g) into arr.
+
+    This function takes a dictionary of gradient and returns a flattened tensor
+    of shape [batch_size, num_params].
 
     Args:
         g (dict of Tensors): A dictionary containing gradient tensors to be vectorized.
@@ -61,15 +65,13 @@ def vectorize(g: Dict[str, torch.Tensor], arr: Optional[torch.Tensor] = None,
 
 
 class ProjectionType(str, Enum):
+    """Projection type used for projectors."""
     normal: str = "normal"
     rademacher: str = "rademacher"
 
 
 class AbstractProjector(ABC):
-    """Implementations of the Projector class must implement the
-    :meth:`AbstractProjector.project` method, which takes in model gradients and
-    returns
-    """
+    """Base Class for projectors."""
 
     @abstractmethod
     def __init__(
@@ -109,7 +111,8 @@ class AbstractProjector(ABC):
 
     @abstractmethod
     def project(self, grads: Tensor, model_id: int) -> Tensor:
-        """Performs the random projection. Model ID is included
+        """Performs the random projection.
+        Model ID is included
         so that we generate different projection matrices for every
         model ID.
 
@@ -123,6 +126,114 @@ class AbstractProjector(ABC):
 
     def free_memory(self):
         """Frees up memory used by the projector."""
+
+
+class BasicProjector(AbstractProjector):
+    """A simple block-wise implementation of the projection. The projection matrix
+    is generated on-device in blocks. The accumulated result across blocks is
+    returned.
+
+    Note: This class will be significantly slower and have a larger memory
+    footprint than the CudaProjector. It is recommended that you use this method
+    only if the CudaProjector is not available to you -- e.g. if you don't have
+    a CUDA-enabled device with compute capability >=7.0 (see
+    https://developer.nvidia.com/cuda-gpus).
+    """
+
+    def __init__(
+        self,
+        grad_dim: int,
+        proj_dim: int,
+        seed: int,
+        proj_type: ProjectionType,
+        device: torch.device,
+        block_size: int = 100,
+        dtype: torch.dtype = ch.float32,
+        model_id=0,
+        *args,
+        **kwargs,
+    ) -> None:
+        super().__init__(grad_dim, proj_dim, seed, proj_type, device)
+
+        self.block_size = min(self.proj_dim, block_size)
+        self.num_blocks = math.ceil(self.proj_dim / self.block_size)
+        self.dtype = dtype
+        self.proj_type = proj_type
+        self.model_id = model_id
+
+        self.proj_matrix = ch.empty(
+            self.grad_dim, self.block_size, dtype=self.dtype, device=self.device,
+        )
+
+        self.proj_matrix_available = True
+
+        self.generator = ch.Generator(device=self.device)
+
+        self.get_generator_states()
+        self.generate_sketch_matrix(self.generator_states[0])
+
+    def free_memory(self):
+        del self.proj_matrix
+        self.proj_matrix_available = False
+
+    def get_generator_states(self):
+        self.generator_states = []
+        self.seeds = []
+        self.jl_size = self.grad_dim * self.block_size
+
+        for i in range(self.num_blocks):
+            s = self.seed + int(1e3) * i + int(1e5) * self.model_id
+            self.seeds.append(s)
+            self.generator = self.generator.manual_seed(s)
+            self.generator_states.append(self.generator.get_state())
+
+    def generate_sketch_matrix(self, generator_state):
+        if not self.proj_matrix_available:
+            self.proj_matrix = ch.empty(
+                self.grad_dim, self.block_size, dtype=self.dtype, device=self.device,
+            )
+            self.proj_matrix_available = True
+
+        self.generator.set_state(generator_state)
+        if self.proj_type == ProjectionType.normal or self.proj_type == "normal":
+            self.proj_matrix.normal_(generator=self.generator)
+        elif (
+            self.proj_type == ProjectionType.rademacher
+            or self.proj_type == "rademacher"
+        ):
+            self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
+            self.proj_matrix *= 2.0
+            self.proj_matrix -= 1.0
+        else:
+            raise KeyError(f"Projection type {self.proj_type} not recognized.")
+
+    def project(self, grads: Tensor, model_id: int) -> Tensor:
+        if isinstance(grads, dict):
+            grads = vectorize(grads, device=self.device)
+        grads = grads.to(dtype=self.dtype)
+        sketch = ch.zeros(
+            size=(grads.size(0), self.proj_dim), dtype=self.dtype, device=self.device,
+        )
+
+        if model_id != self.model_id:
+            self.model_id = model_id
+            self.get_generator_states()  # regenerate random seeds for new model_id
+            if self.num_blocks == 1:
+                self.generate_sketch_matrix(self.generator_states[0])
+
+        if self.num_blocks == 1:
+            ch.matmul(grads.data, self.proj_matrix, out=sketch)
+        else:
+            for ind in range(self.num_blocks):
+                self.generate_sketch_matrix(self.generator_states[ind])
+
+                st = ind * self.block_size
+                ed = min((ind + 1) * self.block_size, self.proj_dim)
+                sketch[:, st:ed] = (
+                    grads.type(self.dtype) @ self.proj_matrix[:, : (ed - st)]
+                )
+        return sketch.type(grads.dtype)
+
 
 
 class CudaProjector(AbstractProjector):
