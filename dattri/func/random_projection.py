@@ -253,8 +253,7 @@ class CudaProjector(AbstractProjector):
         seed: int,
         proj_type: ProjectionType,
         device: str,
-        max_batch_size: int,
-    ) -> None:
+        max_batch_size: int) -> None:
         """Args:
             grad_dim (int): Number of parameters
             proj_dim (int): Dimension we project *to* during the projection step
@@ -269,6 +268,7 @@ class CudaProjector(AbstractProjector):
 
         Raises:
             ValueError: When attempting to use this on a non-CUDA device
+            ImportError: When fast_jl is not installed
             ModuleNotFoundError: When fast_jl is not installed
 
         """
