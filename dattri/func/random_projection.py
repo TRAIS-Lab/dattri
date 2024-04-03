@@ -2,30 +2,46 @@
 # Code adapted from https://github.com/MadryLab/trak/blob/main/trak/projectors.py
 # Code adapted from https://github.com/MadryLab/trak/blob/main/trak/utils.py
 
+from __future__ import annotations
+
 from abc import ABC, abstractmethod
-from typing import Union
 from enum import Enum
-import math
-from torch import Tensor
+from typing import Dict, Optional, Union
+
 import torch
+from torch import Tensor
 
 ch = torch
 
-def vectorize(g, arr=None, device="cuda") -> Tensor:
-    """
-    records result into arr
+def vectorize(g: Dict[str, torch.Tensor], arr: Optional[torch.Tensor] = None,
+              device: str = "cuda") -> Tensor:
+    """This function will vectorize gradient result (g) into arr.
 
-    gradients are given as a dict :code:`(name_w0: grad_w0, ... name_wp:
-    grad_wp)` where :code:`p` is the number of weight matrices. each
-    :code:`grad_wi` has shape :code:`[batch_size, ...]` this function flattens
-    :code:`g` to have shape :code:`[batch_size, num_params]`.
+    Args:
+        g (dict of Tensors): A dictionary containing gradient tensors to be vectorized.
+        arr (Tensor, optional): An optional pre-allocated tensor to store the
+                                vectorized gradients. If provided, it must have the
+                                shape `[batch_size, num_params]`, where `num_params`
+                                is the total number of scalar parameters in all
+                                gradient tensors combined. If `None`, a new tensor
+                                is created. Defaults to None.
+        device (str, optional): "cuda" or "cpu". Defaults to "cuda".
+
+    Returns:
+        Tensor: A 2D tensor of shape `[batch_size, num_params]`,
+                where each row contains all the vectorized gradients
+                for a single batch element.
+
+    Raises:
+        ValueError: Parameter size in g doesn't match batch size.
     """
     if arr is None:
-        g_elt = g[list(g.keys())[0]]
+        g_elt = g[next(iter(g.keys()))[0]]
         batch_size = g_elt.shape[0]
         num_params = 0
         for param in g.values():
-            assert param.shape[0] == batch_size
+            if  param.shape[0] != batch_size:
+                raise ValueError("Parameter row num doesn't match batch size.")
             num_params += int(param.numel() / batch_size)
         arr = ch.empty(size=(batch_size, num_params), dtype=g_elt.dtype, device=device)
 
@@ -82,7 +98,7 @@ class AbstractProjector(ABC):
                 we provide an implementation for matrices with iid Gaussian
                 entries and iid Rademacher entries.
             device (Union[str, torch.device]):
-                CUDA device to use
+                CUDA device to use.
 
         """
         self.grad_dim = grad_dim
@@ -110,8 +126,7 @@ class AbstractProjector(ABC):
 
 
 class CudaProjector(AbstractProjector):
-    """
-    A performant implementation of the projection for CUDA with compute
+    """A performant implementation of the projection for CUDA with compute
     capability >= 7.0.
     """
 
@@ -126,9 +141,7 @@ class CudaProjector(AbstractProjector):
         *args,
         **kwargs,
     ) -> None:
-        """
-
-        Args:
+        """Args:
             grad_dim (int):
                 Number of parameters
             proj_dim (int):
@@ -169,7 +182,7 @@ class CudaProjector(AbstractProjector):
 
             # test run to catch at init time if projection goes through
             fast_jl.project_rademacher_8(
-                ch.zeros(8, 1_000, device="cuda"), 512, 0, self.num_sms
+                ch.zeros(8, 1_000, device="cuda"), 512, 0, self.num_sms,
             )
         except ImportError:
             err = "You should make sure to install the CUDA projector for traker (called fast_jl).\
@@ -201,7 +214,7 @@ class CudaProjector(AbstractProjector):
 
         try:
             result = fn(
-                grads, self.proj_dim, self.seed + int(1e4) * model_id, self.num_sms
+                grads, self.proj_dim, self.seed + int(1e4) * model_id, self.num_sms,
             )
         except RuntimeError as e:
             if "CUDA error: too many resources requested for launch" in str(e):
@@ -210,7 +223,7 @@ class CudaProjector(AbstractProjector):
                     (
                         "The batch size of the CudaProjector is too large for your GPU. "
                         "Reduce it by using the proj_max_batch_size argument of the TRAKer.\nOriginal error:"
-                    )
+                    ),
                 )
             else:
                 raise e
@@ -219,7 +232,6 @@ class CudaProjector(AbstractProjector):
 
     def free_memory(self):
         """A no-op method."""
-        pass
 
 
 class ChunkedCudaProjector:
@@ -265,7 +277,7 @@ class ChunkedCudaProjector:
     def project(self, grads, model_id):
         self.allocate_input()
         ch_output = ch.zeros(
-            size=(self.feat_bs, self.proj_dim), device=self.device, dtype=self.dtype
+            size=(self.feat_bs, self.proj_dim), device=self.device, dtype=self.dtype,
         )
         pointer = 0
         # iterate over params, keep a counter of params so far, and when prev
@@ -287,7 +299,7 @@ class ChunkedCudaProjector:
                         self.ch_input[:, :pointer].contiguous(),
                         model_id=model_id,
                         is_grads_dict=False,
-                    )
+                    ),
                 )
                 # reset counter
                 pointer = 0
@@ -307,7 +319,7 @@ class ChunkedCudaProjector:
                 self.ch_input[:actual_bs, :pointer].contiguous(),
                 model_id=model_id,
                 is_grads_dict=False,
-            )
+            ),
         )
 
         return ch_output[:actual_bs]
