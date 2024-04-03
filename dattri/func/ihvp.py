@@ -46,21 +46,55 @@ def hvp(func: Callable,
     Note:
         This method does not fix the x. It's suitable if you have multiple `x` for
         the hvp calculation. If you have a fixed x please consider using `hvp_at_x`.
+
+    Raises:
+        IHVPUsageError: If mode is not one of "rev-rev" and "rev-fwd".
     """
+    if mode not in ["rev-rev", "rev-fwd"]:
+        error_msg = "`mode` should be either 'rev-rev' or 'rev-fwd'."
+        raise IHVPUsageError(error_msg)
 
-    def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
-        """The HVP function based on func.
+    grad_func = grad(func, argnums=argnums)
+    if mode == "rev-rev":
+        def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+            """The HVP function based on func.
 
-        Args:
-            x (Tuple[torch.Tensor, ...]): The function will computed the
-                hessian matrix with respect to these arguments.
-            v (Tensor): A vector with the same dimension as the first dim of
-                `hessian_tensor`.
+            Args:
+                x (Tuple[torch.Tensor, ...]): The function will computed the
+                    hessian matrix with respect to these arguments.
+                v (Tensor): A vector with the same dimension as the first dim of
+                    `hessian_tensor`.
 
-        Returns:
-            (Tensor) The hessian vector production.
-        """
-        return hvp_at_x(func, x, argnums=argnums, mode=mode)(v)
+            Returns:
+                (Tensor) The hessian vector production.
+            """
+            _, vjp_fn = vjp(grad_func, *x)
+            return vjp_fn(v)[argnums]
+    else:
+        def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+            """The HVP function based on func.
+
+            Args:
+                x (Tuple[torch.Tensor, ...]): The function will computed the
+                    hessian matrix with respect to these arguments.
+                v (Tensor): A vector with the same dimension as the first dim of
+                    `hessian_tensor`.
+
+            Returns:
+                (Tensor) The hessian vector production.
+            """
+            if len(x) > 1:
+                v_patched = []
+                for i in range(len(x)):
+                    if i != argnums:
+                        v_patched.append(torch.zeros(*x[i].shape))
+                    else:
+                        v_patched.append(v)
+                v_patched = tuple(v_patched)
+            else:
+                v_patched = (v,)
+
+            return jvp(grad_func, x, v_patched)[1]
 
     return _hvp_func
 
@@ -109,9 +143,10 @@ def hvp_at_x(func: Callable,
         error_msg = "`mode` should be either 'rev-rev' or 'rev-fwd'."
         raise IHVPUsageError(error_msg)
 
+    grad_func = grad(func, argnums=argnums)
     if mode == "rev-rev":
         # pylint: disable=unbalanced-tuple-unpacking
-        _, vjp_fn = vjp(grad(func, argnums=argnums), *x)
+        _, vjp_fn = vjp(grad_func, *x)
         def _hvp_at_x_func(v: Tensor) -> Tensor:
             """The HVP function based on func.
 
@@ -151,7 +186,7 @@ def hvp_at_x(func: Callable,
             else:
                 v_patched = (v,)
 
-            return jvp(grad(func, argnums=argnums), x, v_patched)[1]
+            return jvp(grad_func, x, v_patched)[1]
 
     return _hvp_at_x_func
 
@@ -290,7 +325,7 @@ def ihvp_at_x_cg(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    hvp_helper_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode)
+    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode)
 
     def _ihvp_cg_func(v: Tensor) -> Tensor:
         """The IHVP function using CG.
@@ -311,13 +346,13 @@ def ihvp_at_x_cg(func: Callable,
         for i in range(v.shape[0]):
             x_pre = torch.clone(v[i, :])
             x = x_pre
-            g_pre = v[i, :] - hvp_helper_func(x)
+            g_pre = v[i, :] - hvp_at_x_func(x)
             d = d_pre = g_pre
 
             for _ in range(max_iter):
                 if torch.norm(g_pre) < tol:
                     break
-                ad = hvp_helper_func(d)
+                ad = hvp_at_x_func(d)
                 alpha = torch.dot(g_pre, d_pre) / torch.dot(d, ad)
                 x += alpha * d
                 g = g_pre - alpha * ad
