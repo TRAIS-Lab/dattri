@@ -10,6 +10,9 @@ Welcome to dattri's documentation!
    :maxdepth: 2
    :caption: Contents:
 
+Example
+=======
+.. autofunction:: dattri.func.ihvp.ihvp_explicit
 
 
 Indices and tables
