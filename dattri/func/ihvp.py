@@ -176,8 +176,8 @@ def ihvp_at_x_explicit(func: Callable,
             to. Default: 0.
 
     Returns:
-        A function that takes a vector `vec` and returns the IHVP of the Hessian
-        of `func` and `vec`.
+        A function that takes a vector `v` and returns the IHVP of the Hessian
+        of `func` and `v`.
 
     Note:
         This method stores the Hessian matrix explicitly and is not computationally
@@ -232,7 +232,7 @@ def ihvp_cg(func: Callable,
                        by some operator.
 
     Returns:
-        A function that takes a tuple of Tensor `x` and a vector `c` and returns
+        A function that takes a tuple of Tensor `x` and a vector `v` and returns
         the IHVP of the Hessian of `func` and `v`.
     """
 
