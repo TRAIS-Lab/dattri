@@ -151,12 +151,38 @@ class BasicProjector(AbstractProjector):
         grad_dim: int,
         proj_dim: int,
         seed: int,
-        proj_type: ProjectionType,
+        proj_type: Union[str, ProjectionType],
         device: torch.device,
         block_size: int = 100,
         dtype: torch.dtype = ch.float32,
         model_id: int = 0,
-    ) -> None:
+        ) -> None:
+        """Initializes hyperparameters for BasicProjector.
+
+        Args:
+            grad_dim (int):
+                number of parameters in the model (dimension of the gradient
+                vectors).
+            proj_dim (int):
+                dimension after the projection
+            seed (int):
+                random seed for the generation of the sketching (projection)
+                matrix.
+            proj_type (Union[str, ProjectionType]):
+                the random projection (JL transform) guearantees that distances
+                will be approximately preserved for a variety of choices of the
+                random matrix (see e.g. https://arxiv.org/abs/1411.2404). Here,
+                we provide an implementation for matrices with iid Gaussian
+                entries and iid Rademacher entries.
+            device (Union[str, torch.device]):
+                CUDA device to use.
+            block_size (int):
+                min(block_size, proj_dim) will be used as the true projection
+                dimension.
+            dtype (torch.dtype): the dtype of the projected matrix.
+            model_id (int): a unique ID for a checkpoint.
+
+        """
         super().__init__(grad_dim, proj_dim, seed, proj_type, device)
 
         self.block_size = min(self.proj_dim, block_size)
@@ -177,10 +203,12 @@ class BasicProjector(AbstractProjector):
         self.generate_sketch_matrix(self.generator_states[0])
 
     def free_memory(self) -> None:
+        """Delete the projection matrix."""
         del self.proj_matrix
         self.proj_matrix_available = False
 
     def get_generator_states(self) -> None:
+        """Set generator seeds for each block."""
         self.generator_states = []
         self.seeds = []
         self.jl_size = self.grad_dim * self.block_size
@@ -192,6 +220,14 @@ class BasicProjector(AbstractProjector):
             self.generator_states.append(self.generator.get_state())
 
     def generate_sketch_matrix(self, generator_state: List) -> None:
+        """Set generator states and generate sketch matrices.
+
+        Args:
+            generator_state (List): list of generator states.
+
+        Raises:
+            KeyError: Projection type is not recognized.
+        """
         if not self.proj_matrix_available:
             self.proj_matrix = ch.empty(
                 self.grad_dim, self.block_size, dtype=self.dtype, device=self.device,
@@ -211,6 +247,15 @@ class BasicProjector(AbstractProjector):
             raise KeyError(msg)
 
     def project(self, grads: Tensor, model_id: int) -> Tensor:
+        """Performs the random projection on gradient matrix.
+
+        Args:
+            grads (Tensor): a batch of gradients to be projected
+            model_id (int): a unique ID for a checkpoint
+
+        Returns:
+            Tensor: the projected gradients
+        """
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
         grads = grads.to(dtype=self.dtype)
@@ -253,8 +298,11 @@ class CudaProjector(AbstractProjector):
         seed: int,
         proj_type: ProjectionType,
         device: str,
-        max_batch_size: int) -> None:
-        """Args:
+        max_batch_size: int,
+        ) -> None:
+        """Initializes hyperparameters for CudaProjector.
+
+        Args:
             grad_dim (int): Number of parameters
             proj_dim (int): Dimension we project *to* during the projection step
             seed (int): Random seed
@@ -268,8 +316,7 @@ class CudaProjector(AbstractProjector):
 
         Raises:
             ValueError: When attempting to use this on a non-CUDA device
-            ImportError: When fast_jl is not installed
-            ModuleNotFoundError: When fast_jl is not installed
+            msg: When fast_jl is not installed
 
         """
         super().__init__(grad_dim, proj_dim, seed, proj_type, device)
@@ -293,18 +340,30 @@ class CudaProjector(AbstractProjector):
                 ch.zeros(8, 1_000, device="cuda"), 512, 0, self.num_sms,
             )
         except ImportError:
-            err = "You should make sure to install the CUDA projector \
-            for traker (called fast_jl). \
-            See the installation FAQs for more details."
-            raise err from ModuleNotFoundError
+            msg = "You should make sure to install the CUDA projector \
+            (the fast_jl library)."
+            raise msg from ModuleNotFoundError
 
     def project(
         self,
         grads: Union[dict, Tensor],
         model_id: int,
-        is_grads_dict: bool = True,
-    ) -> Tensor:
-        if is_grads_dict:
+        ) -> Tensor:
+        """Performs the random projection on gradient matrix.
+
+        Args:
+            grads (Union[dict, Tensor]): a batch of gradients or a dictionary
+            of batch of gradients.
+            model_id (int): a unique ID for a checkpoint.
+
+        Raises:
+            msg: The batch size of the CudaProjector need to be reduced.
+            RuntimeError: Too many resources requested for launch CUDA.
+
+        Returns:
+            Tensor: the projected gradients
+        """
+        if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
         batch_size = grads.shape[0]
 
@@ -330,10 +389,10 @@ class CudaProjector(AbstractProjector):
             if "CUDA error: too many resources requested for launch" in str(e):
                 # provide a more helpful error message
                 msg = "The batch size of the CudaProjector is too large for your GPU. \
-                    Reduce it by using the proj_max_batch_size argument of the TRAKer.\
+                    Reduce it by using the proj_max_batch_size argument.\
                     \nOriginal error:"
                 raise msg from RuntimeError
-            raise e
+            raise e from None
 
         return result
 
@@ -342,6 +401,10 @@ class CudaProjector(AbstractProjector):
 
 
 class ChunkedCudaProjector:
+    """Chunked CudaProjector implemented using CUDA.
+
+    This projector is used when (#params) * (#proj dims) is too large.
+    """
     def __init__(
         self,
         projector_per_chunk: list,
@@ -350,7 +413,17 @@ class ChunkedCudaProjector:
         feat_bs: int,
         device: torch.device,
         dtype: torch.dtype,
-    ):
+    ) -> None:
+        """Initializes hyperparameters for ChunkedCudaProjector.
+
+        Args:
+            projector_per_chunk (list): a list of projectors per chunk
+            max_chunk_size (int): maximum of the chunk size
+            params_per_chunk (list): number of parameters per chunk
+            feat_bs (int): _description_
+            device (torch.device): _description_
+            dtype (torch.dtype): _description_
+        """
         self.projector_per_chunk = projector_per_chunk
         self.proj_dim = self.projector_per_chunk[0].proj_dim
         self.proj_type = self.projector_per_chunk[0].proj_type
@@ -363,6 +436,7 @@ class ChunkedCudaProjector:
         self.input_allocated = False
 
     def allocate_input(self) -> None:
+        """Allocate zero tensor for input."""
         if self.input_allocated:
             return
 
@@ -375,6 +449,7 @@ class ChunkedCudaProjector:
         self.input_allocated = True
 
     def free_memory(self) -> None:
+        """Frees up memory used by the projector."""
         if not self.input_allocated:
             return
 
@@ -382,6 +457,19 @@ class ChunkedCudaProjector:
         self.input_allocated = False
 
     def project(self, grads: Tensor, model_id: int) -> Tensor:
+        """Performs the random projection on gradient matrix.
+
+        Args:
+            grads (Tensor): a batch of gradients to be projected
+            model_id (int): a unique ID for a checkpoint
+
+        Raises:
+            ValueError: projector index inconsist with current pointer.
+            ValueError: projector index inconsist with current pointer.
+
+        Returns:
+            Tensor: the projected gradients
+        """
         self.allocate_input()
         ch_output = ch.zeros(
             size=(self.feat_bs, self.proj_dim), device=self.device, dtype=self.dtype,
@@ -408,7 +496,6 @@ class ChunkedCudaProjector:
                     self.projector_per_chunk[projector_index].project(
                         self.ch_input[:, :pointer].contiguous(),
                         model_id=model_id,
-                        is_grads_dict=False,
                     ),
                 )
                 # reset counter
@@ -431,7 +518,6 @@ class ChunkedCudaProjector:
             self.projector_per_chunk[projector_index].project(
                 self.ch_input[:actual_bs, :pointer].contiguous(),
                 model_id=model_id,
-                is_grads_dict=False,
             ),
         )
 
