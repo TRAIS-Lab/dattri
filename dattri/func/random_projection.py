@@ -225,7 +225,7 @@ class BasicProjector(AbstractProjector):
 
         Args:
             generator_state (List): A list of generator states. Usually each
-            block will be given a unique generator states.
+                block will be given a unique generator states.
 
         Raises:
             KeyError: Projection type is not recognized.
@@ -355,7 +355,7 @@ class CudaProjector(AbstractProjector):
 
         Args:
             grads (Union[dict, Tensor]): A batch of gradients or a dictionary
-            of batch of gradients.
+                of batch of gradients.
             model_id (int): A unique ID for a checkpoint.
 
         Raises:
@@ -420,7 +420,7 @@ class ChunkedCudaProjector:
 
         Args:
             projector_per_chunk (list): A list of projectors. Specifying
-            the projector used by each chunk.
+                the projector used by each chunk.
             max_chunk_size (int): The maximum size of each chunk.
             params_per_chunk (list): The number of parameters per chunk.
             proj_max_batch_size (int): The maximum batch size or each projector.
@@ -468,9 +468,9 @@ class ChunkedCudaProjector:
 
         Raises:
             ValueError: The number of accumulated params does not match
-            params_per_chunk.
+                params_per_chunk.
             ValueError: The number of accumulated params does not match
-            params_per_chunk.
+                params_per_chunk.
 
         Returns:
             Tensor: The projected gradients.
