@@ -88,15 +88,15 @@ class AbstractProjector(ABC):
 
         Args:
             grad_dim (int):
-                number of parameters in the model (dimension of the gradient
-                vectors)
+                Number of parameters in the model (dimension of the gradient
+                vectors).
             proj_dim (int):
-                dimension after the projection
+                Dimension after the projection.
             seed (int):
-                random seed for the generation of the sketching (projection)
-                matrix
+                Random seed for the generation of the sketching (projection)
+                matrix.
             proj_type (Union[str, ProjectionType]):
-                the random projection (JL transform) guearantees that distances
+                The random projection (JL transform) guarantees that distances
                 will be approximately preserved for a variety of choices of the
                 random matrix (see e.g. https://arxiv.org/abs/1411.2404). Here,
                 we provide an implementation for matrices with iid Gaussian
@@ -120,11 +120,11 @@ class AbstractProjector(ABC):
         matrix.
 
         Args:
-            grads (Tensor): a batch of gradients to be projected
-            model_id (int): a unique ID for a checkpoint
+            grads (Tensor): A batch of gradients to be projected.
+            model_id (int): A unique ID for a checkpoint.
 
         Returns:
-            Tensor: the projected gradients
+            Tensor: The projected gradients.
         """
 
     @abstractmethod
@@ -161,15 +161,15 @@ class BasicProjector(AbstractProjector):
 
         Args:
             grad_dim (int):
-                number of parameters in the model (dimension of the gradient
+                Number of parameters in the model (dimension of the gradient
                 vectors).
             proj_dim (int):
-                dimension after the projection
+                Dimension after the projection.
             seed (int):
-                random seed for the generation of the sketching (projection)
+                Random seed for the generation of the sketching (projection)
                 matrix.
             proj_type (Union[str, ProjectionType]):
-                the random projection (JL transform) guearantees that distances
+                The random projection (JL transform) guarantees that distances
                 will be approximately preserved for a variety of choices of the
                 random matrix (see e.g. https://arxiv.org/abs/1411.2404). Here,
                 we provide an implementation for matrices with iid Gaussian
@@ -177,10 +177,11 @@ class BasicProjector(AbstractProjector):
             device (Union[str, torch.device]):
                 CUDA device to use.
             block_size (int):
+                Maximum number of projection dimension allowed. Thus,
                 min(block_size, proj_dim) will be used as the true projection
                 dimension.
-            dtype (torch.dtype): the dtype of the projected matrix.
-            model_id (int): a unique ID for a checkpoint.
+            dtype (torch.dtype): The dtype of the projected matrix.
+            model_id (int): A unique ID for a checkpoint.
 
         """
         super().__init__(grad_dim, proj_dim, seed, proj_type, device)
@@ -223,7 +224,8 @@ class BasicProjector(AbstractProjector):
         """Set generator states and generate sketch matrices.
 
         Args:
-            generator_state (List): list of generator states.
+            generator_state (List): A list of generator states. Usually each
+            block will be given a unique generator states.
 
         Raises:
             KeyError: Projection type is not recognized.
@@ -250,11 +252,11 @@ class BasicProjector(AbstractProjector):
         """Performs the random projection on gradient matrix.
 
         Args:
-            grads (Tensor): a batch of gradients to be projected
-            model_id (int): a unique ID for a checkpoint
+            grads (Tensor): A batch of gradients to be projected.
+            model_id (int): A unique ID for a checkpoint.
 
         Returns:
-            Tensor: the projected gradients
+            Tensor: The projected gradients.
         """
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
@@ -303,12 +305,12 @@ class CudaProjector(AbstractProjector):
         """Initializes hyperparameters for CudaProjector.
 
         Args:
-            grad_dim (int): Number of parameters
+            grad_dim (int): Number of parameters.
             proj_dim (int): Dimension we project *to* during the projection step
-            seed (int): Random seed
+            seed (int): Random seed.
             proj_type (ProjectionType): Type of randomness to use for
-                                        projection matrix (rademacher or normal)
-            device: CUDA device
+                                        projection matrix (rademacher or normal).
+            device: CUDA device to use.
             max_batch_size (int): Explicitly constraints the batch size of
                 the CudaProjector is going to use for projection.
                 Set this if you get a 'The batch size of the CudaProjector is
@@ -352,16 +354,16 @@ class CudaProjector(AbstractProjector):
         """Performs the random projection on gradient matrix.
 
         Args:
-            grads (Union[dict, Tensor]): a batch of gradients or a dictionary
+            grads (Union[dict, Tensor]): A batch of gradients or a dictionary
             of batch of gradients.
-            model_id (int): a unique ID for a checkpoint.
+            model_id (int): A unique ID for a checkpoint.
 
         Raises:
             msg: The batch size of the CudaProjector need to be reduced.
             RuntimeError: Too many resources requested for launch CUDA.
 
         Returns:
-            Tensor: the projected gradients
+            Tensor: The projected gradients.
         """
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
@@ -403,26 +405,27 @@ class CudaProjector(AbstractProjector):
 class ChunkedCudaProjector:
     """Chunked CudaProjector implemented using CUDA.
 
-    This projector is used when (#params) * (#proj dims) is too large.
+    This projector is used when (# params) * (# proj_dim) is too large.
     """
     def __init__(
         self,
         projector_per_chunk: list,
         max_chunk_size: int,
         params_per_chunk: list,
-        feat_bs: int,
+        proj_max_batch_size: int,
         device: torch.device,
         dtype: torch.dtype,
     ) -> None:
         """Initializes hyperparameters for ChunkedCudaProjector.
 
         Args:
-            projector_per_chunk (list): a list of projectors per chunk
-            max_chunk_size (int): maximum of the chunk size
-            params_per_chunk (list): number of parameters per chunk
-            feat_bs (int): _description_
-            device (torch.device): _description_
-            dtype (torch.dtype): _description_
+            projector_per_chunk (list): A list of projectors. Specifying
+            the projector used by each chunk.
+            max_chunk_size (int): The maximum size of each chunk.
+            params_per_chunk (list): The number of parameters per chunk.
+            proj_max_batch_size (int): The maximum batch size or each projector.
+            device (torch.device): Device to use. Will be "cuda" or "cpu".
+            dtype (torch.dtype): The dtype of the projected matrix.
         """
         self.projector_per_chunk = projector_per_chunk
         self.proj_dim = self.projector_per_chunk[0].proj_dim
@@ -430,7 +433,7 @@ class ChunkedCudaProjector:
         self.params_per_chunk = params_per_chunk
 
         self.max_chunk_size = max_chunk_size
-        self.feat_bs = feat_bs
+        self.proj_max_batch_size = proj_max_batch_size
         self.device = device
         self.dtype = dtype
         self.input_allocated = False
@@ -441,7 +444,7 @@ class ChunkedCudaProjector:
             return
 
         self.ch_input = ch.zeros(
-            size=(self.feat_bs, self.max_chunk_size),
+            size=(self.proj_max_batch_size, self.max_chunk_size),
             device=self.device,
             dtype=self.dtype,
         )
@@ -460,36 +463,43 @@ class ChunkedCudaProjector:
         """Performs the random projection on gradient matrix.
 
         Args:
-            grads (Tensor): a batch of gradients to be projected
-            model_id (int): a unique ID for a checkpoint
+            grads (Tensor): A batch of gradients to be projected.
+            model_id (int): A unique ID for a checkpoint.
 
         Raises:
-            ValueError: projector index inconsist with current pointer.
-            ValueError: projector index inconsist with current pointer.
+            ValueError: The number of accumulated params does not match
+            params_per_chunk.
+            ValueError: The number of accumulated params does not match
+            params_per_chunk.
 
         Returns:
-            Tensor: the projected gradients
+            Tensor: The projected gradients.
         """
         self.allocate_input()
         ch_output = ch.zeros(
-            size=(self.feat_bs, self.proj_dim), device=self.device, dtype=self.dtype,
+            size=(self.proj_max_batch_size, self.proj_dim), device=self.device,
+            dtype=self.dtype,
         )
         pointer = 0
         # iterate over params, keep a counter of params so far, and when prev
-        # chunk reaches max_chunk_size, project and accumulate
+        # chunk reaches max_chunk_size, project and accumulate.
         projector_index = 0
         vector_dim = 1
         for _, p in enumerate(grads.values()):
+            # check the shape of p, if vector then unsqueeze.
             if len(p.shape) <= vector_dim:
                 p_flat = p.data.unsqueeze(-1)
             else:
                 p_flat = p.data.flatten(start_dim=1)
 
             param_size = p_flat.size(1)
+            # if current accumulated params exceed max_chunk_size,
+            # then stop accumulation.
             if pointer + param_size > self.max_chunk_size:
                 # fill remaining entries with 0
                 if pointer != self.params_per_chunk[projector_index]:
-                    msg = "Current projector index inconsistency."
+                    msg = "Current number of accumulated params does not match \
+                    the param number of current chunk."
                     raise ValueError(msg)
                 # project and accumulate
                 ch_output.add_(
@@ -510,7 +520,8 @@ class ChunkedCudaProjector:
         # at the end, we need to project remaining items
         # fill remaining entries with 0
         if pointer != self.params_per_chunk[projector_index]:
-            msg = "Current projector index inconsistency."
+            msg = "Current number of accumulated params does not match \
+                    the param number of current chunk."
             raise ValueError(msg)
 
         # project and accumulate
