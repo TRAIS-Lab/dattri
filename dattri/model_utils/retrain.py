@@ -1,5 +1,9 @@
 """This module contains functions that retrain model for LOO/LDS/PBRF metrics."""
 
+# ruff: noqa: ARG001, TCH002
+# TODO: Remove the above line after finishing the implementation of the functions.
+
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -8,14 +12,14 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
 
-    import torch
+import torch
 
 
-def retrain_loo(train_func: Callable, # noqa: ARG001
-                dataloader: torch.utils.data.DataLoader, # noqa: ARG001
-                path: str, # noqa: ARG001
-                indices: Optional[List[int]] = None, # noqa: ARG001
-                seed: Optional[int] = None) -> None: # noqa: ARG001
+def retrain_loo(train_func: Callable,
+                dataloader: torch.utils.data.DataLoader,
+                path: str,
+                indices: Optional[List[int]] = None,
+                seed: Optional[int] = None) -> None:
     """Retrain the model for Leave-One-Out (LOO) metric.
 
     The retrained model checkpoints and the removed index metadata are saved
@@ -76,13 +80,13 @@ def retrain_loo(train_func: Callable, # noqa: ARG001
     """
     return
 
-def retrain_lds(train_func: Callable, # noqa: ARG001, PLR0913
-                dataloader: torch.utils.data.DataLoader, # noqa: ARG001
-                path: str, # noqa: ARG001
-                subset_number: int = 100, # noqa: ARG001
-                subset_ratio: float = 0.1, # noqa: ARG001
-                subset_average_run: int = 1, # noqa: ARG001
-                seed: Optional[int] = None) -> None: # noqa: ARG001
+def retrain_lds(train_func: Callable,  # noqa: PLR0913
+                dataloader: torch.utils.data.DataLoader,
+                path: str,
+                subset_number: int = 100,
+                subset_ratio: float = 0.1,
+                subset_average_run: int = 1,
+                seed: Optional[int] = None) -> None:
     """Retrain the model for Linear Datamodeling Score (LDS) metric.
 
     The retrained model checkpoints and the subset index metadata are saved

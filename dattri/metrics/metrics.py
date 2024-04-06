@@ -1,5 +1,9 @@
 """This module evaluate the performance of the data attribution."""
 
+# ruff: noqa: ARG001, TCH002
+# TODO: Remove the above line after finishing the implementation of the functions.
+
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -7,12 +11,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Tuple
 
-    import torch
+import torch
 
 
-def lds(score: torch.Tensor, # noqa: ARG001
-        ground_truth: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor: # noqa: ARG001
+def lds(score: torch.Tensor,
+        ground_truth: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
     """Calculate the Linear Datamodeling Score (LDS) metric.
+
+    TODO: Add the LDS metric description.
 
     Args:
         score (torch.Tensor): The score tensor with the shape
@@ -31,12 +37,14 @@ def lds(score: torch.Tensor, # noqa: ARG001
     return None
 
 
-def loo_corr(score: torch.Tensor, # noqa: ARG001
-             ground_truth: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor: # noqa: ARG001
+def loo_corr(score: torch.Tensor,
+             ground_truth: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
     """Calculate the Leave-One-Out (LOO) correlation metric.
 
     The LOO correlation is calculated by pearson correlation between the score
     tensor and the groundtruth.
+
+    TODO: more detailed description.
 
     Args:
         score (torch.Tensor): The score tensor with the shape (num_train_samples,
@@ -54,10 +62,12 @@ def loo_corr(score: torch.Tensor, # noqa: ARG001
     return None
 
 
-def mislabel_detection_auc(score: torch.Tensor, # noqa: ARG001
-                           ground_truth: Tuple[torch.Tensor, torch.Tensor], # noqa: ARG001
+def mislabel_detection_auc(score: torch.Tensor,
+                           ground_truth: Tuple[torch.Tensor, torch.Tensor],
                            ) -> Tuple[float, Tuple[float, ...]]:
     """Calculate the AUC using sorting algorithm.
+
+    TODO: more detailed description.
 
     Args:
         score (torch.Tensor): The self-attribution scores of shape (num_train_samples,).

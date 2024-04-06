@@ -1,4 +1,7 @@
-"""This module calculate the groundtruth values for the metrics."""
+"""This module provides helper functions to calculate ground truth values."""
+
+# ruff: noqa: ARG001, TCH002
+# TODO: Remove the above line after finishing the implementation of the functions.
 
 from __future__ import annotations
 
@@ -8,18 +11,18 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Tuple
 
-    import torch
+import torch
 
 
-def calculate_loo_groundtruth(target_func: Callable, # noqa: ARG001
-                              retrain_dir: str, # noqa: ARG001
-                              test_dataloader: torch.utils.data.DataLoader, # noqa: ARG001
+def calculate_loo_groundtruth(target_func: Callable,
+                              retrain_dir: str,
+                              test_dataloader: torch.utils.data.DataLoader,
                               ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Calculate the groundtruth values for the Leave-One-Out (LOO) metric.
 
-    The LOO groundtruth is directly calculated by calculate the target value difference
-    for each sample in the test dataloader on each model in the retrain directory.
-    The target value is calculated by the target function.
+    The LOO groundtruth is directly calculated by calculating the target value
+    difference for each sample in the test dataloader on each model in the
+    retrain directory. The target value is calculated by the target function.
 
     Args:
         target_func (Callable): The target function that takes a model and a dataloader
@@ -49,13 +52,13 @@ def calculate_loo_groundtruth(target_func: Callable, # noqa: ARG001
     return None
 
 
-def calculate_lds_groundtruth(target_func: Callable, # noqa: ARG001
-                              retrain_dir: str, # noqa: ARG001
-                              test_dataloader: torch.utils.data.DataLoader, # noqa: ARG001
+def calculate_lds_groundtruth(target_func: Callable,
+                              retrain_dir: str,
+                              test_dataloader: torch.utils.data.DataLoader,
                               ) -> Tuple[torch.Tensor, torch.Tensor]:
     """Calculate the groundtruth values for the Linear Datamodeling Score (LDS) metric.
 
-    The LDS groundtruth is directly calculated by calculate the target value for each
+    The LDS groundtruth is directly calculated by calculating the target value for each
     sample in the test dataloader on each model in the retrain directory. The target
     value is calculated by the target function.
 
