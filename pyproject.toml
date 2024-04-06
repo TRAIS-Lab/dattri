@@ -4,7 +4,7 @@ requires-python = ">=3.8"
 
 [tool.ruff.lint]
 select = ["ALL"]
-ignore = ["ANN002", "D203", "D213", "D407", "UP"]  # ignores: ANN002 (unnecessarily strict rule), D203 (conflict with D211), D213 (conflict with D212), D407 (supporting Google style docstrings), UP (compatibility with Python 3.8)
+ignore = ["ANN002", "D203", "D213", "D407", "UP", "TD002", "TD003", "FIX002"]  # ignores: ANN002 (unnecessarily strict rule), D203 (conflict with D211), D213 (conflict with D212), D407 (supporting Google style docstrings), UP (compatibility with Python 3.8), TD002 (Missing author in TODO), TD003 (Missing issue link), FIX002 (TODO needs to be fixed)
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = ["E401", "E402"]
