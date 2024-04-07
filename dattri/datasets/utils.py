@@ -26,7 +26,7 @@ def _random_flip(label: any, label_space: set, seed: int = 42) -> any:
         any: The randomly selected label to replace the original one
     """
     label_space.discard(label)
-    rng = np.random.default_rng(1337)
+    rng = np.random.default_rng(seed)
     target_label = rng.choice(list(label_space))
     label_space.add(label)
     return target_label
