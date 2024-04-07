@@ -12,7 +12,7 @@ import numpy as np
 import torch
 
 
-def _random_flip(label: any, label_space: set, seed: int = 42) -> any:
+def _random_flip(label: any, label_space: set, rng: np.random.default_rng) -> any:
     """Helper function for flip_label.
 
     The function performs a random selection of label from the label space.
@@ -20,13 +20,12 @@ def _random_flip(label: any, label_space: set, seed: int = 42) -> any:
     Args:
         label (any): The label tensor to be flipped.
         label_space (set): The valid range of labels given in a set
-        seed (int): Random seed.
+        rng (np.random.default_rng): Random number generator.
 
     Returns:
         any: The randomly selected label to replace the original one
     """
     label_space.discard(label)
-    rng = np.random.default_rng(seed)
     target_label = rng.choice(list(label_space))
     label_space.add(label)
     return target_label
