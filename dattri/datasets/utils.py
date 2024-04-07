@@ -15,11 +15,21 @@ import torch
 import copy
 
 
-def _random_flip(l, range):
-    """Helper function for flip_label"""
-    range.discard(l)
-    target_label = np.random.choice(list(range))
-    range.add(l)
+def _random_flip(label: any, label_space: set) -> any:
+    """Helper function for flip_label.
+    
+    The function performs a random selection of label from the label space.
+
+    Args:
+        label (any): The label tensor to be flipped.
+        label_space (set): The valid range of labels given in a set
+
+    Returns:
+        any: The randomly selected label to replace the original one
+    """
+    range.discard(label)
+    target_label = np.random.choice(list(label_space))
+    range.add(label)
     return target_label
 
 
@@ -44,7 +54,8 @@ def flip_label(label: Union[np.ndarray, torch.Tensor],
             the flipped indices.
     """
     if p <= 0.0 or p >= 1:
-        raise ValueError('Noise ratio must be a float number between 0 and 1')
+        message = "Noise ratio must be a float number between 0 and 1"
+        raise ValueError(message)
     
     if label_space is None:
         label_space = np.unique(label)
@@ -55,7 +66,7 @@ def flip_label(label: Union[np.ndarray, torch.Tensor],
     noise_index = np.random.choice(n_train, 
                                    size=int(p * n_train),
                                    replace=False)
-   
+
     # Deep copy to avoid in-place modification
     flipped_label = copy.deepcopy(label)
 
