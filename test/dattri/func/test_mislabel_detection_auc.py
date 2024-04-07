@@ -2,8 +2,8 @@
 
 import torch
 
-from sklearn import metrics
 from dattri.metrics.metrics import mislabel_detection_auc
+from sklearn import metrics
 
 
 class TestMislabelDetection:
@@ -30,4 +30,3 @@ class TestMislabelDetection:
 
         assert torch.allclose(auc, torch.tensor(8 / 9))
         assert metrics.auc(fpr, tpr) == auc
-    

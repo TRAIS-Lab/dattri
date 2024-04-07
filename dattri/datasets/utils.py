@@ -81,4 +81,4 @@ def flip_label(label: Union[np.ndarray, torch.Tensor],
     # Flip the labels
     flipped_label[noise_index] = noisy_data
 
-    return flipped_label, noise_index
+    return flipped_label, list(noise_index)
