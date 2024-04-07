@@ -1,8 +1,5 @@
 """This module contains some utils functions to process datasets."""
 
-# ruff: noqa: ARG001, TCH002
-# TODO: Remove the above line after finishing the implementation of the functions.
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -10,14 +7,14 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Tuple, Union
 
+import copy
 import numpy as np
 import torch
-import copy
 
 
 def _random_flip(label: any, label_space: set) -> any:
     """Helper function for flip_label.
-    
+
     The function performs a random selection of label from the label space.
 
     Args:
@@ -27,9 +24,10 @@ def _random_flip(label: any, label_space: set) -> any:
     Returns:
         any: The randomly selected label to replace the original one
     """
-    range.discard(label)
-    target_label = np.random.choice(list(label_space))
-    range.add(label)
+    label_space.discard(label)
+    rng = np.random.default_rng(1337)
+    target_label = rng.choice(list(label_space))
+    label_space.add(label)
     return target_label
 
 
@@ -56,28 +54,29 @@ def flip_label(label: Union[np.ndarray, torch.Tensor],
     if p <= 0.0 or p >= 1:
         message = "Noise ratio must be a float number between 0 and 1"
         raise ValueError(message)
-    
+
     if label_space is None:
         label_space = np.unique(label)
 
     label_space = set(label_space)
 
     n_train = len(label)
-    noise_index = np.random.choice(n_train, 
-                                   size=int(p * n_train),
-                                   replace=False)
+    rng = np.random.default_rng(1337)
+    noise_index = rng.choice(n_train,
+                            size=int(p * n_train),
+                            replace=False)
 
     # Deep copy to avoid in-place modification
     flipped_label = copy.deepcopy(label)
 
     # Generate a list of randomly sampled noisy (flipped) data from label space
     noisy_data = np.vectorize(
-        lambda x: _random_flip(x, label_space)
+        lambda x: _random_flip(x, label_space),
     )(flipped_label[noise_index])
 
     if isinstance(flipped_label, torch.Tensor):
         noisy_data = torch.tensor(noisy_data)
-    
+
     # Flip the labels
     flipped_label[noise_index] = noisy_data
 

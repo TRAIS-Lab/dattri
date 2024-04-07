@@ -68,7 +68,7 @@ def mislabel_detection_auc(score: torch.Tensor,
     """Calculate the AUC using sorting algorithm.
 
     The function will calculate the false positive rates and true positive rates
-    under different thresholds (number of data inspected), and return them with 
+    under different thresholds (number of data inspected), and return them with
     the calculated auc (Area Under Curve).
 
     Args:
@@ -94,11 +94,11 @@ def mislabel_detection_auc(score: torch.Tensor,
 
     for ind in thresholds:
         detected_samples = set(
-            low_quality_to_high_quality[:ind].numpy()
+            low_quality_to_high_quality[:ind].numpy(),
             ).intersection(noise_index)
         true_positive_cnt = len(detected_samples)
         false_positive_cnt = ind - true_positive_cnt
- 
+
         tpr = true_positive_cnt / num_noise
         fpr = false_positive_cnt / num_clean
         tpr_list.append(tpr)
