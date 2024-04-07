@@ -63,11 +63,13 @@ def loo_corr(score: torch.Tensor,
 
 
 def mislabel_detection_auc(score: torch.Tensor,
-                           ground_truth: Tuple[torch.Tensor, torch.Tensor],
-                           ) -> Tuple[float, Tuple[float, ...]]:
+                           ground_truth: torch.Tensor,
+                           ) -> Tuple[float, Tuple[torch.Tensor, ...]]:
     """Calculate the AUC using sorting algorithm.
 
-    TODO: more detailed description.
+    The function will calculate the false positive rates and true positive rates
+    under different thresholds (number of data inspected), and return them with 
+    the calculated auc (Area Under Curve).
 
     Args:
         score (torch.Tensor): The self-attribution scores of shape (num_train_samples,).
