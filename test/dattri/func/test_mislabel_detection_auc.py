@@ -1,15 +1,16 @@
-"""Unit test for mislabel detection and auc calculation"""
+"""Unit test for mislabel detection and auc calculation."""
 
 import torch
-import sklearn.metrics as metrics
 
+from sklearn import metrics
 from dattri.metrics.metrics import mislabel_detection_auc
 
 
 class TestMislabelDetection:
-    """Test mislabel detection function"""
+    """Test mislabel detection function."""
 
     def test_mislabel_detection_small_1(self):
+        """The first small test for mislabel_detection_auc function."""
         scores = torch.arange(100)
         noise_index = torch.zeros(100)
         noise_index[90:] = 1
@@ -20,6 +21,7 @@ class TestMislabelDetection:
         assert metrics.auc(fpr, tpr) == auc
 
     def test_mislabel_detection_small_2(self):
+        """The second small test for mislabel_detection_auc function."""
         scores = torch.arange(100)
         noise_index = torch.zeros(100)
         noise_index[80: 90] = 1
