@@ -21,7 +21,7 @@ jobs:
         pip install pytest
         pip install torch
         pip install numpy
-        pip install sklearn
+        pip install scikit-learn
 
         python setup.py sdist bdist_wheel
         pip install dist/*.whl
