@@ -1,7 +1,6 @@
 """Unit test for mislabel detection and auc calculation"""
 
 import torch
-import numpy as np
 import sklearn.metrics as metrics
 
 from dattri.metrics.metrics import mislabel_detection_auc
