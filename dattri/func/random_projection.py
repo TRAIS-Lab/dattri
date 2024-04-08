@@ -382,7 +382,7 @@ class CudaProjector(AbstractProjector):
 
         effective_batch_size = min(self.max_batch_size, effective_batch_size)
 
-        function_name = f"project_{self.proj_type.value}_{effective_batch_size}"
+        function_name = f"project_{self.proj_type}_{effective_batch_size}"
         import fast_jl
 
         fn = getattr(fast_jl, function_name)
@@ -409,7 +409,7 @@ class CudaProjector(AbstractProjector):
 class ChunkedCudaProjector:
     """Chunked CudaProjector implemented using CUDA.
 
-    This projector is used when (# params) * (# proj_dim) is too large.
+    This projector is used when (# params)*(# batch size) is too large.
     """
     def __init__(
         self,
