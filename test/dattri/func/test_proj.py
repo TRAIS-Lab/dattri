@@ -1,9 +1,7 @@
 """Unit test for random projection."""
-import sys
 import unittest
 
 import torch
-
 
 from dattri.func.random_projection import (
     BasicProjector,
