@@ -121,7 +121,6 @@ def retrain_loo(train_func: Callable,
         # Update the metadata.
         metadata['map_index_dir'][excluded_index] = model_dir
         torch.save(model,weights_dir)
-
     metadata_file = os.path.join(path, 'metadata.yml')
     with open(metadata_file, 'w') as file:
         yaml.dump(metadata, file)
