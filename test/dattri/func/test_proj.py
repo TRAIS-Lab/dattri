@@ -4,7 +4,7 @@ import unittest
 
 import torch
 
-sys.path.append("/u/tli3/dattri_test/dattri")
+
 from dattri.func.random_projection import (
     BasicProjector,
     ChunkedCudaProjector,
