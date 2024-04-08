@@ -14,6 +14,9 @@ if TYPE_CHECKING:
 
 import torch
 
+import os
+
+from torch.utils.data import DataLoader, Subset
 
 def retrain_loo(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
@@ -78,6 +81,38 @@ def retrain_loo(train_func: Callable,
     Returns:
         None
     """
+    if not os.path.exists(path):
+        # Create the path if not exists
+        os.makedirs(path)
+    if seed is not None:
+        # Manually set the seed
+        torch.manual_seed(seed)
+    excluded_indices = None
+    if indices is not None:
+        allIndices = list(range(len(dataloader.dataset)))
+        # Generate a list of tuples where the excluded index and remaining indices are recorded.
+        excluded_indices = [(exclude, [idx for idx in allIndices if idx != exclude]) for exclude in indices]
+        # Create a subset of the original dataset
+    else:
+        allIndices = list(range(len(dataloader.dataset)))
+        # If indices are not provided default to LOO on all the data in the dataloader
+        excluded_indices = [(exclude, [idx for idx in allIndices if idx != exclude]) for exclude in allIndices]
+
+    assert isinstance(excluded_indices,list)
+
+    for excluded_index, remaining_indices in excluded_indices:
+        # Saving directory
+        print(remaining_indices)
+        fileName = f"model_remove_index_{excluded_index}.pth"
+        full_path = os.path.join(path,fileName)
+        assert isinstance(remaining_indices,list)
+        # Create a subset of the dataset
+        dataset_subset = Subset(dataloader.dataset, remaining_indices)
+        # Create a new DataLoader with this subset
+        modified_dataloader = DataLoader(dataset_subset, batch_size=dataloader.batch_size)
+        # Call the user specified train_func
+        model = train_func(modified_dataloader)
+        torch.save(model,full_path)
     return
 
 def retrain_lds(train_func: Callable,  # noqa: PLR0913
