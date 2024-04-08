@@ -15,6 +15,11 @@ import torch
 
 import os
 
+def sort_index(dirName):
+    '''Help function for calculate_loo_groundtruth'''
+    prefix_len = len('index_')
+    return int(dirName[prefix_len:])
+
 def calculate_loo_groundtruth(target_func: Callable,
                               retrain_dir: str,
                               test_dataloader: torch.utils.data.DataLoader,
@@ -50,16 +55,16 @@ def calculate_loo_groundtruth(target_func: Callable,
             Second is the tensor indicating the removed index. The returned tensor has
             the shape (num_models,).
     """
-        # Get all model file paths.
-    model_files = [f for f in os.listdir(retrain_dir) if f.endswith('.pth') or f.endswith(".pt")]
-    N = len(model_files)
+    # Get all model file paths.
+    model_dirs = [d for d in os.listdir(retrain_dir) if d.startswith('index_')]
+    model_dirs_sorted = sorted(model_dirs, key=sort_index)
+    N = len(model_dirs)
     K = len(test_dataloader.dataset)
     # List of all predictions.
     loo_results = torch.zeros(N,K)
     model_indices = torch.empty(N)
-    for i,model_file in enumerate(model_files):
-
-        model_path = os.path.join(retrain_dir,model_file)
+    for i,model_file in enumerate(model_dirs_sorted):
+        model_path = os.path.join(retrain_dir,model_file,"model_weights.pt")
         #print(model_path)
         model = torch.load(model_path)
         model.eval()
@@ -68,7 +73,7 @@ def calculate_loo_groundtruth(target_func: Callable,
 
         loo_results[i,:] = values
         # Find excluded data index from the saved path, please refer to retrain_loo in dattri/model_utils/retrain.py for details
-        index = model_file.split("_")[-1].replace(".pth","").replace(".pt","")
+        index = model_file.split("_")[-1]
 
         model_indices[i] = int(index)
     return loo_results, model_indices
