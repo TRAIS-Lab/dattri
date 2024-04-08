@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 
 import torch
 
+import os
 
 def calculate_loo_groundtruth(target_func: Callable,
                               retrain_dir: str,
@@ -49,7 +50,28 @@ def calculate_loo_groundtruth(target_func: Callable,
             Second is the tensor indicating the removed index. The returned tensor has
             the shape (num_models,).
     """
-    return None
+        # Get all model file paths.
+    model_files = [f for f in os.listdir(retrain_dir) if f.endswith('.pth') or f.endswith(".pt")]
+    N = len(model_files)
+    K = len(test_dataloader.dataset)
+    # List of all predictions.
+    loo_results = torch.zeros(N,K)
+    model_indices = torch.empty(N)
+    for i,model_file in enumerate(model_files):
+
+        model_path = os.path.join(retrain_dir,model_file)
+        #print(model_path)
+        model = torch.load(model_path)
+        model.eval()
+        #calculate target function values
+        values = target_func(model, test_dataloader)
+
+        loo_results[i,:] = values
+        # Find excluded data index from the saved path, please refer to retrain_loo in dattri/model_utils/retrain.py for details
+        index = model_file.split("_")[-1].replace(".pth","").replace(".pt","")
+
+        model_indices[i] = int(index)
+    return loo_results, model_indices
 
 
 def calculate_lds_groundtruth(target_func: Callable,
