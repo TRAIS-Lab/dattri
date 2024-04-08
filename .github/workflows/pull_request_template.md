@@ -3,31 +3,18 @@
 <!-- For small changes (<=3 files and <=50 lines of codes in the source folder), -->
 <!-- you may remove Sections 1-4 below and just provide a simple description here -->
 
-### 1. Why the change?
+### 1. Motivation and Context
 
-<!-- Provide the related github issue link if available -->
+<!-- Provide the purpose of the change; link to relevant issues or PRs if applicable -->
 
-### 2. User API changes
-
-<!-- Describe API changes (i.e., how users will use the feature) if any; -->
-<!-- alternatively, provide a link to the github issue for the design -->
-
-### 3. Summary of the change 
+### 2. Summary of the change 
 
 <!-- Provide the design for the implementation; -->
 <!-- alternatively, provide a link to the github issue for the design -->
 
-### 4. How to test?
-- [ ] N/A
-- [ ] Unit test
-- [ ] Application test
-- [ ] Document test
+### 3. What tests have been added/updated for the change?
+- [ ] N/A: No test will be added (please justify)
+- [ ] Unit test: Typically, this should be included if you implemented a new function/fixed a bug.
+- [ ] Application test: If you wrote an example for the toolkit, this test should be added.
+- [ ] Document test: If you added an external API, then you should check if the document is correctly generated.
 - [ ] ...
-
-### 5. New dependencies
-
-<!-- If no new dependency is introduced, remove this section -->
-
-- Dependency1 
-- Dependency2
-- ...
