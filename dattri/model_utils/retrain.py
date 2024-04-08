@@ -16,6 +16,8 @@ import torch
 
 import os
 
+import yaml 
+
 from torch.utils.data import DataLoader, Subset
 
 def retrain_loo(train_func: Callable,
@@ -88,31 +90,41 @@ def retrain_loo(train_func: Callable,
         # Manually set the seed
         torch.manual_seed(seed)
     excluded_indices = None
-    if indices is not None:
-        allIndices = list(range(len(dataloader.dataset)))
-        # Generate a list of tuples where the excluded index and remaining indices are recorded.
-        excluded_indices = [(exclude, [idx for idx in allIndices if idx != exclude]) for exclude in indices]
-        # Create a subset of the original dataset
-    else:
-        allIndices = list(range(len(dataloader.dataset)))
-        # If indices are not provided default to LOO on all the data in the dataloader
-        excluded_indices = [(exclude, [idx for idx in allIndices if idx != exclude]) for exclude in allIndices]
+    all_indices = list(range(len(dataloader.dataset)))
+    if indices is None:
+        # If indices are not provided default to retrain with every data point in the training data
+        indices = all_indices
 
-    assert isinstance(excluded_indices,list)
+    excluded_indices = [(exclude, [idx for idx in all_indices if idx != exclude]) for exclude in indices]
+
+    metadata = {
+        'mode': 'loo',
+        'data_length': len(dataloader),
+        'train_func': train_func.__name__,
+        'indices': indices,
+        'map_index_dir': {}
+    }
 
     for excluded_index, remaining_indices in excluded_indices:
         # Saving directory
-        print(remaining_indices)
-        fileName = f"model_remove_index_{excluded_index}.pth"
-        full_path = os.path.join(path,fileName)
-        assert isinstance(remaining_indices,list)
+        #print(remaining_indices)
+        model_dir = os.path.join(path,f'index_{excluded_index}')
+        if not os.path.exists(model_dir):
+            os.makedirs(model_dir)
         # Create a subset of the dataset
+        weights_dir = os.path.join(model_dir,"model_weights.pt")
         dataset_subset = Subset(dataloader.dataset, remaining_indices)
-        # Create a new DataLoader with this subset
+        # Create a new DataLoader with this subset.
         modified_dataloader = DataLoader(dataset_subset, batch_size=dataloader.batch_size)
-        # Call the user specified train_func
+        # Call the user specified train_func.
         model = train_func(modified_dataloader)
-        torch.save(model,full_path)
+        # Update the metadata.
+        metadata['map_index_dir'][excluded_index] = model_dir
+        torch.save(model,weights_dir)
+
+    metadata_file = os.path.join(path, 'metadata.yml')
+    with open(metadata_file, 'w') as file:
+        yaml.dump(metadata, file)
     return
 
 def retrain_lds(train_func: Callable,  # noqa: PLR0913
