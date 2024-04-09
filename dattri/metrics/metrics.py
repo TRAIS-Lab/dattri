@@ -11,6 +11,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Tuple
 
+import sklearn
 import torch
 
 
@@ -82,33 +83,8 @@ def mislabel_detection_auc(score: torch.Tensor,
         the second is a Tuple with `fpr, tpr, thresholds` just like
         https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_curve.html.
     """
-    fpr_list, tpr_list = [0.0], [0.0]
+    fpr, tpr, thresholds = sklearn.metrics.roc_curve(ground_truth, score)
+    fpr, tpr = torch.tensor(fpr), torch.tensor(tpr)
+    auc = sklearn.metrics.auc(fpr, tpr)
 
-    noise_index = set(torch.where(ground_truth)[0].numpy())
-    num_noise = len(noise_index)
-    num_clean = len(score) - num_noise
-
-    # argsort the indices from low quality to high quality (scores hight to low)
-    low_quality_to_high_quality = torch.argsort(score).flip(0)
-    thresholds = list(range(1, len(low_quality_to_high_quality) + 1))
-
-    for ind in thresholds:
-        detected_samples = set(
-            low_quality_to_high_quality[:ind].numpy(),
-            ).intersection(noise_index)
-        true_positive_cnt = len(detected_samples)
-        false_positive_cnt = ind - true_positive_cnt
-
-        tpr = true_positive_cnt / num_noise
-        fpr = false_positive_cnt / num_clean
-        tpr_list.append(tpr)
-        fpr_list.append(fpr)
-
-    direction = 1
-    tpr_list, fpr_list = torch.tensor(tpr_list), torch.tensor(fpr_list)
-    auc =  direction * torch.trapz(tpr_list, fpr_list) # metrics.auc(fpr_list, tpr_list)
-
-    # Add -np.inf to the list of thresholds, refer to sklearn.metrics.roc_curve
-    thresholds = [-torch.inf, *thresholds]
-
-    return auc, (fpr_list, tpr_list, thresholds)
+    return auc, (fpr, tpr, thresholds)
