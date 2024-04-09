@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Tuple, Union, Optional
+    from typing import Tuple, Union
 
 import torch
 from torch import Tensor
