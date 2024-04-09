@@ -6,13 +6,13 @@ import copy
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Tuple, Union
+    from typing import Tuple, Union, List, Set
 
 import numpy as np
 import torch
 
 
-def _random_flip(label: any, label_space: set, rng: np.random.default_rng) -> any:
+def _random_flip(label: int, label_space: Set[int], rng: np.random.default_rng) -> int:
     """Helper function for flip_label.
 
     The function performs a random selection of label from the label space.
@@ -32,8 +32,8 @@ def _random_flip(label: any, label_space: set, rng: np.random.default_rng) -> an
 
 
 def flip_label(label: Union[np.ndarray, torch.Tensor],
-               label_space: Union[list, np.ndarray, torch.Tensor] = None,
-               p: float = 0.1) -> Tuple[Union[np.ndarray, torch.Tensor], list]:
+               label_space: Union[List, np.ndarray, torch.Tensor] = None,
+               p: float = 0.1) -> Tuple[Union[np.ndarray, torch.Tensor], List]:
     """Flip the label of the input label tensor with the probability `p`.
 
     The function will randomly select a new label from the `label_space` to replace
