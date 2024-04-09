@@ -17,7 +17,7 @@ class TestMislabelDetection:
 
         auc, (fpr, tpr, thresholds) = mislabel_detection_auc(scores, noise_index)
 
-        assert torch.allclose(torch.tensor(auc, dtype=torch.float32), 
+        assert torch.allclose(torch.tensor(auc, dtype=torch.float32),
                               torch.tensor(1.0))
         assert metrics.auc(fpr, tpr) == auc
 
@@ -29,6 +29,6 @@ class TestMislabelDetection:
 
         auc, (fpr, tpr, thresholds) = mislabel_detection_auc(scores, noise_index)
 
-        assert torch.allclose(torch.tensor(auc, dtype=torch.float32), 
+        assert torch.allclose(torch.tensor(auc, dtype=torch.float32),
                               torch.tensor(8 / 9))
         assert metrics.auc(fpr, tpr) == auc
