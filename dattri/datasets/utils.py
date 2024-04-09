@@ -6,7 +6,7 @@ import copy
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Tuple, Union, List, Set
+    from typing import List, Set, Tuple, Union 
 
 import numpy as np
 import torch
