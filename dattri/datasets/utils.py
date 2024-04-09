@@ -6,7 +6,7 @@ import copy
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List, Set, Tuple, Union 
+    from typing import List, Set, Tuple, Union
 
 import numpy as np
 import torch
@@ -26,7 +26,7 @@ def _random_flip(label: int, label_space: Set[int], rng: np.random.default_rng) 
         any: The randomly selected label to replace the original one
     """
     label_space.discard(label)
-    target_label = rng.choice(list(label_space))
+    target_label = int(rng.choice(list(label_space)))
     label_space.add(label)
     return target_label
 
