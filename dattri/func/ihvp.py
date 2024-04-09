@@ -1,7 +1,11 @@
 """IHVP (inverse hessian-vector product) calculation.
 
 This module contains:
-- `ihvp_explicit`: IHVP via explicit Hessian calculation.
+- `hvp`: Calculate the Hessian Vector Product (HVP) of a function.
+- `hvp_at_x`: Calculate the Hessian Vector Product (HVP) of a function with fixed x.
+- `ihvp_at_x_explicit`: IHVP via explicit Hessian calculation.
+- `ihvp_cg`: Conjugate Gradient Descent ihvp algorithm function.
+- `ihvp_at_x_cg`: Conjugate Gradient Descent ihvp algorithm function with fixed x.
 """
 from __future__ import annotations
 
@@ -9,7 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Tuple, Union
+    from typing import Tuple, Union, Optional
 
 import torch
 from torch import Tensor
@@ -18,7 +22,8 @@ from torch.func import grad, hessian, jvp, vjp
 
 def hvp(func: Callable,
         argnums: int = 0,
-        mode: str = "rev-rev") -> Callable:
+        mode: str = "rev-rev",
+        regularization: float = 0.0) -> Callable:
     """Hessian Vector Product(HVP) calculation function.
 
     This function takes the func where hessian is carried out and return a
@@ -38,6 +43,11 @@ def hvp(func: Callable,
             - rev-fwd: calculate the hessian with the composing of reverse-mode and
                        forward-mode. It's more memory-efficient but may not be supported
                        by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
 
     Returns:
         A function that takes a tuple of Tensor `x` as the arguments of func and
@@ -69,7 +79,7 @@ def hvp(func: Callable,
                 (Tensor) The hessian vector production.
             """
             _, vjp_fn = vjp(grad_func, *x)
-            return vjp_fn(v)[argnums]
+            return vjp_fn(v)[argnums] + regularization * v
     else:
         def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
             """The HVP function based on func.
@@ -94,7 +104,7 @@ def hvp(func: Callable,
             else:
                 v_patched = (v,)
 
-            return jvp(grad_func, x, v_patched)[1]
+            return jvp(grad_func, x, v_patched)[1] + regularization * v
 
     return _hvp_func
 
@@ -102,7 +112,8 @@ def hvp(func: Callable,
 def hvp_at_x(func: Callable,
              x: Tuple[torch.Tensor, ...],
              argnums: int = 0,
-             mode: str = "rev-rev") -> Callable:
+             mode: str = "rev-rev",
+             regularization: float = 0.0) -> Callable:
     """Hessian Vector Product(HVP) calculation function (with fixed x).
 
     This function returns a function that takes a vector `v` and calculate
@@ -124,6 +135,11 @@ def hvp_at_x(func: Callable,
             - rev-fwd: calculate the hessian with the composing of reverse-mode and
                        forward-mode. It's more memory-efficient but may not be supported
                        by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
 
     Returns:
         A function that takes a vector `v` and returns the HVP of the Hessian
@@ -158,7 +174,7 @@ def hvp_at_x(func: Callable,
             Returns:
                 (Tensor) The hessian vector production.
             """
-            return vjp_fn(v)[argnums]
+            return vjp_fn(v)[argnums] + regularization * v
     else:
         # patch the v, make zero for other input
         # e.g.,
@@ -187,14 +203,15 @@ def hvp_at_x(func: Callable,
             else:
                 v_patched = (v,)
 
-            return jvp(grad_func, x, v_patched)[1]
+            return jvp(grad_func, x, v_patched)[1] + regularization * v
 
     return _hvp_at_x_func
 
 
 def ihvp_at_x_explicit(func: Callable,
                        *x,
-                       argnums: Union[int, Tuple[int, ...]] = 0) -> Callable:
+                       argnums: Union[int, Tuple[int, ...]] = 0,
+                       regularization: float = 0.0) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function
@@ -210,6 +227,11 @@ def ihvp_at_x_explicit(func: Callable,
         argnums (int or Tuple[int], optional): An integer or a tuple of integers
             deciding which arguments in `*x` to get the Hessian with respect
             to. Default: 0.
+        regularization (float): A float default to 0.0. Specifies the
+            regularization term to be added to the Hessian matrix. This is useful
+            when the Hessian matrix is singular or ill-conditioned. The regularization
+            term is `regularization * I`, where `I` is the identity matrix directly
+            added to the Hessian matrix.
 
     Returns:
         A function that takes a vector `v` and returns the IHVP of the Hessian
@@ -231,7 +253,8 @@ def ihvp_at_x_explicit(func: Callable,
         Returns:
             The IHVP value, i.e., inverse of `hessian_tensor` times `vec`.
         """
-        return torch.linalg.solve(hessian_tensor, v.T).T
+        return torch.linalg.solve(hessian_tensor +\
+                torch.eye(hessian_tensor.shape[0]) * regularization, v.T).T
 
     return _ihvp_at_x_explicit_func
 
@@ -240,7 +263,8 @@ def ihvp_cg(func: Callable,
             argnums: int = 0,
             max_iter: int = 100,
             tol: float = 1e-7,
-            mode: str = "rev-rev") -> Callable:
+            mode: str = "rev-rev",
+            regularization: float = 0.0) -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -266,6 +290,11 @@ def ihvp_cg(func: Callable,
             - rev-fwd: calculate the hessian with the composing of reverse-mode and
                        forward-mode. It's more memory-efficient but may not be supported
                        by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
 
     Returns:
         A function that takes a tuple of Tensor `x` and a vector `v` and returns
@@ -284,7 +313,8 @@ def ihvp_cg(func: Callable,
             The IHVP value.
         """
         return ihvp_at_x_cg(func, *x, argnums=argnums,
-                            max_iter=max_iter, tol=tol, mode=mode)(v)
+                            max_iter=max_iter, tol=tol,
+                            mode=mode, regularization=regularization)(v)
 
     return _ihvp_cg_func
 
@@ -294,7 +324,8 @@ def ihvp_at_x_cg(func: Callable,
                  argnums: int = 0,
                  max_iter: int = 100,
                  tol: float = 1e-7,
-                 mode: str = "rev-rev") -> Callable:
+                 mode: str = "rev-rev",
+                 regularization: float = 0.0) -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function (with fixed x).
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -321,12 +352,18 @@ def ihvp_at_x_cg(func: Callable,
             - rev-fwd: calculate the hessian with the composing of reverse-mode and
                        forward-mode. It's more memory-efficient but may not be supported
                        by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
 
     Returns:
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode)
+    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums,
+                             mode=mode, regularization=regularization)
 
     def _ihvp_cg_func(v: Tensor) -> Tensor:
         """The IHVP function using CG.
