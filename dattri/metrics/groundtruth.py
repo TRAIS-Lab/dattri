@@ -19,15 +19,18 @@ import torch
 
 def _sort_index(dir_name: str) -> int:
     """Help function for calculate_loo_groundtruth.
-    This function is useful because python reads in directories by alphabetical sequence by default.
-    Agrs: 
+
+    This function sorts the model directory by index
+    instead of by alphabet as default.
+
+    Agrs:
         dir_name (str): Directory name of saved checkpoints.
-    Returns: 
+    
+    Returns:
         sorted_index (int): Index of the directory, for example index_12 should return 12.
     """
     prefix_len = len("index_")
-    sorted_index = int(dir_name[prefix_len:])
-    return sorted_index
+    return int(dir_name[prefix_len:])
 
 def calculate_loo_groundtruth(target_func: Callable,
                               retrain_dir: str,
@@ -78,7 +81,7 @@ def calculate_loo_groundtruth(target_func: Callable,
         # Calculate target function values.
         values = target_func(model, test_dataloader)
         loo_results[i,:] = values
-        # Find excluded data index from the saved path, 
+        # Find excluded data index from the saved path,
         # please refer to retrain_loo in dattri/model_utils/retrain.py for details.
         index = model_file.split("_")[-1]
         model_indices[i] = int(index)

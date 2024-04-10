@@ -83,26 +83,27 @@ def retrain_loo(train_func: Callable,
     Returns:
         None
     """
-    if not os.path.exists(path):
+    if not Path(path).exists():
         # Create the path if not exists.
-        os.makedirs(path)
+        Path(path).mkdir(parents=True)
     if seed is not None:
         # Manually set the seed.
         torch.manual_seed(seed)
     excluded_indices = None
     all_indices = list(range(len(dataloader.dataset)))
     if indices is None:
-        # If indices are not provided default to retrain with every data point in the training data.
+        # If indices are not provided default to retrain with every data.
         indices = all_indices
 
-    excluded_indices = [(exclude, [idx for idx in all_indices if idx != exclude]) for exclude in indices]
+    excluded_indices = [(exclude, [idx for idx in all_indices if idx != exclude])
+                         for exclude in indices]
 
     metadata = {
         "mode": "loo",
         "data_length": len(dataloader),
         "train_func": train_func.__name__,
         "indices": indices,
-        "map_index_dir": {}
+        "map_index_dir": {},
     }
 
     for excluded_index, remaining_indices in excluded_indices:
@@ -113,7 +114,8 @@ def retrain_loo(train_func: Callable,
         weights_dir = Path(model_dir) / "model_weights.pt"
         dataset_subset = Subset(dataloader.dataset, remaining_indices)
         # Create a new DataLoader with this subset.
-        modified_dataloader = DataLoader(dataset_subset, batch_size=dataloader.batch_size)
+        modified_dataloader = DataLoader(dataset_subset, 
+                                         batch_size=dataloader.batch_size)
         # Call the user specified train_func.
         model = train_func(modified_dataloader)
         # Update the metadata.
