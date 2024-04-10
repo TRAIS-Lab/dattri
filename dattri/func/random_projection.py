@@ -12,12 +12,15 @@ from abc import ABC, abstractmethod
 from enum import Enum
 from typing import Dict, List, Optional, Union
 
+import numpy as np
 import torch
 from torch import Tensor
 
 
-def vectorize(g: Dict[str, torch.Tensor], arr: Optional[torch.Tensor] = None,
-              device: Optional[str] = "cuda") -> Tensor:
+def vectorize(g: Dict[str, torch.Tensor],
+              arr: Optional[torch.Tensor] = None,
+              device: Optional[str] = "cuda",
+    ) -> Tensor:
     """Vectorize gradient result (g) into arr.
 
     This function takes a dictionary of gradient and returns a flattened tensor
@@ -537,3 +540,133 @@ class ChunkedCudaProjector:
         )
 
         return ch_output[:actual_bs]
+
+def get_parameter_chunk_sizes(
+    model: torch.nn.Module,
+    batch_size: int,
+    ) -> tuple[int, int]:
+    """Compute chunk size information from model and batch size.
+
+    Get a tuple containing max chunk size and a list of the number of
+    parameters in each chunk.
+
+    Args:
+        model (torch.nn.Module): The model used to compute gradient.
+        batch_size (int): The batch size used during training.
+
+    Returns:
+        tuple[int, int]: Maximum number of parameter per chunk and a list of
+            number of parameters in each chunk.
+    """
+    param_shapes = [p.numel() for p in model.parameters()]
+    param_shapes = np.array(param_shapes)
+
+    chunk_sum = 0
+    max_chunk_size = np.iinfo(np.uint32).max // batch_size
+    params_per_chunk = []
+
+    for ps in param_shapes:
+        if chunk_sum + ps >= max_chunk_size:
+            params_per_chunk.append(chunk_sum)
+            chunk_sum = 0
+
+        chunk_sum += ps
+
+    if param_shapes.sum() - np.sum(params_per_chunk) > 0:
+        params_per_chunk.append(param_shapes.sum() - np.sum(params_per_chunk))
+
+    return max_chunk_size, params_per_chunk
+
+
+def get_projection(
+        model: torch.nn.Module,
+        model_id: int,
+        feature: Tensor,
+        device: str,
+        proj_dim: int,
+        proj_max_batch_size: int,
+        proj_seed: int = 0,
+        *,
+        use_half_precision: bool = True,
+    ) -> Tensor:
+    """Get the projectored gradient automatically.
+
+    Args:
+        model (torch.nn.Module): The model used to compute gradient.
+        model_id (int): The unique id for this model.
+        feature (Tensor): The data feature need to be projected. Normally,
+            it can be gradients and with shape shape [batch_size, num_params].
+        device (str): "cuda" or "cpu".
+        proj_dim (int): Dimension of the projected feature.
+        proj_max_batch_size (int): The maximum batch size used by fast_jl if the
+            CudaProjector is used. Must be a multiple of 8. The maximum
+            batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
+        proj_seed (int): Random seed used by the projector. Defaults to 0.
+        use_half_precision (bool): If True, torch.float16 will be used for all
+            computations and arrays will be stored in torch.float16.
+
+    Returns:
+        Tensor: The projected data feature with shape [batch_size, proj_dim].
+    """
+    using_cuda_projector = False
+    dtype = torch.float16 if use_half_precision else torch.float32
+    if device == "cpu":
+        projector = BasicProjector
+        # Sampling from bernoulli distribution is not supported for
+        # dtype float16 on CPU; playing it safe here by defaulting to
+        # normal projection, rather than rademacher
+        proj_type = ProjectionType.normal
+    else:
+        try:
+            import fast_jl
+
+            test_gradient = torch.ones(1, feature.shape[1]).cuda()
+            num_sms = torch.cuda.get_device_properties(
+                "cuda",
+            ).multi_processor_count
+            fast_jl.project_rademacher_8(
+                test_gradient, proj_dim, 0, num_sms,
+            )
+            projector = CudaProjector
+            using_cuda_projector = True
+
+        except (ImportError, RuntimeError, AttributeError):
+            projector = BasicProjector
+        proj_type = ProjectionType.rademacher
+
+    if using_cuda_projector:
+        max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
+            model, proj_max_batch_size,
+        )
+
+        if (
+            len(param_chunk_sizes) > 1
+        ):  # we have to use the ChunkedCudaProjector
+            rng = np.random.default_rng(proj_seed)
+            seeds = rng.integers(
+                low=0,
+                high=500,
+                size=len(param_chunk_sizes),
+            )
+            projector_per_chunk = [
+                projector(
+                    grad_dim=chunk_size,
+                    proj_dim=proj_dim,
+                    seed=seeds[i],
+                    proj_type=proj_type,
+                    max_batch_size=proj_max_batch_size,
+                    dtype=dtype,
+                    device=device,
+                )
+                for i, chunk_size in enumerate(param_chunk_sizes)
+            ]
+            projector = ChunkedCudaProjector(
+                projector_per_chunk,
+                max_chunk_size,
+                param_chunk_sizes,
+                proj_max_batch_size,
+                device,
+                dtype,
+            )
+
+    return projector.project(feature, model_id=model_id)
