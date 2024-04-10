@@ -27,7 +27,7 @@ def _sort_index(dir_name: str) -> int:
         dir_name (str): Directory name of saved checkpoints.
 
     Returns:
-        sorted_index (int): Index of the directory, 
+        sorted_index (int): Index of the directory,
             for example index_12 should return 12.
     """
     prefix_len = len("index_")
