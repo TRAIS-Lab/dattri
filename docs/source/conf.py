@@ -10,9 +10,9 @@ import dattri
 # -- Project information -----------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#project-information
 
-project = 'dattri'
-copyright = '2024, dattri team'
-author = 'dattri team'
+project = 'Dattri'
+copyright = '2024, Dattri Team'
+author = 'Dattri Team'
 
 # -- General configuration ---------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#general-configuration
