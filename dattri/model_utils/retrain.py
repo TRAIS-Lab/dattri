@@ -12,7 +12,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
 
-import os
 from pathlib import Path
 
 import torch
@@ -114,14 +113,14 @@ def retrain_loo(train_func: Callable,
         weights_dir = Path(model_dir) / "model_weights.pt"
         dataset_subset = Subset(dataloader.dataset, remaining_indices)
         # Create a new DataLoader with this subset.
-        modified_dataloader = DataLoader(dataset_subset, 
+        modified_dataloader = DataLoader(dataset_subset,
                                          batch_size=dataloader.batch_size)
         # Call the user specified train_func.
         model = train_func(modified_dataloader)
         # Update the metadata.
         metadata["map_index_dir"][excluded_index] = model_dir
         torch.save(model,weights_dir)
-        
+
     metadata_file = Path(path) / "metadata.yml"
     with Path(metadata_file).open("w") as file:
         yaml.dump(metadata, file)
