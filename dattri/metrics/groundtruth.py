@@ -11,14 +11,22 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Tuple
 
-import torch
-
 import os
 
-def sort_index(dirName):
-    '''Help function for calculate_loo_groundtruth'''
-    prefix_len = len('index_')
-    return int(dirName[prefix_len:])
+import torch
+
+
+def _sort_index(dir_name: str) -> int:
+    """Help function for calculate_loo_groundtruth.
+    This function is useful because python reads in directories by alphabetical sequence by default.
+    Agrs: 
+        dir_name (str): Directory name of saved checkpoints.
+    Returns: 
+        sorted_index (int): Index of the directory, for example index_12 should return 12.
+    """
+    prefix_len = len("index_")
+    sorted_index = int(dir_name[prefix_len:])
+    return sorted_index
 
 def calculate_loo_groundtruth(target_func: Callable,
                               retrain_dir: str,
@@ -56,21 +64,21 @@ def calculate_loo_groundtruth(target_func: Callable,
             the shape (num_models,).
     """
     # Get all model file paths.
-    model_dirs = [d for d in os.listdir(retrain_dir) if d.startswith('index_')]
-    model_dirs_sorted = sorted(model_dirs, key=sort_index)
-    N = len(model_dirs)
-    K = len(test_dataloader.dataset)
+    model_dirs = [d for d in os.listdir(retrain_dir) if d.startswith("index_")]
+    model_dirs_sorted = sorted(model_dirs, key=_sort_index)
+    len_dir = len(model_dirs)
+    len_testdata = len(test_dataloader.dataset)
     # List of all predictions.
-    loo_results = torch.zeros(N,K)
-    model_indices = torch.empty(N)
+    loo_results = torch.zeros(len_dir,len_testdata)
+    model_indices = torch.empty(len_dir)
     for i,model_file in enumerate(model_dirs_sorted):
         model_path = os.path.join(retrain_dir,model_file,"model_weights.pt")
         model = torch.load(model_path)
-        model.eval()
         # Calculate target function values.
         values = target_func(model, test_dataloader)
         loo_results[i,:] = values
-        # Find excluded data index from the saved path, please refer to retrain_loo in dattri/model_utils/retrain.py for details.
+        # Find excluded data index from the saved path, 
+        # please refer to retrain_loo in dattri/model_utils/retrain.py for details.
         index = model_file.split("_")[-1]
         model_indices[i] = int(index)
     return loo_results, model_indices
