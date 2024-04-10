@@ -80,7 +80,6 @@ def retrain_loo(train_func: Callable,
             ```.
 
     Returns:
-        None
     """
     if not Path(path).exists():
         # Create the path if not exists.
