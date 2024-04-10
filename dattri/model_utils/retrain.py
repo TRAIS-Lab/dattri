@@ -13,10 +13,12 @@ if TYPE_CHECKING:
     from typing import List, Optional
 
 import os
+from pathlib import Path
 
 import torch
 import yaml
 from torch.utils.data import DataLoader, Subset
+
 
 def retrain_loo(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
@@ -96,32 +98,31 @@ def retrain_loo(train_func: Callable,
     excluded_indices = [(exclude, [idx for idx in all_indices if idx != exclude]) for exclude in indices]
 
     metadata = {
-        'mode': 'loo',
-        'data_length': len(dataloader),
-        'train_func': train_func.__name__,
-        'indices': indices,
-        'map_index_dir': {}
+        "mode": "loo",
+        "data_length": len(dataloader),
+        "train_func": train_func.__name__,
+        "indices": indices,
+        "map_index_dir": {}
     }
 
     for excluded_index, remaining_indices in excluded_indices:
-        model_dir = os.path.join(path,f'index_{excluded_index}')
-        if not os.path.exists(model_dir):
-            os.makedirs(model_dir)
+        model_dir = Path(path) / f"index_{excluded_index}"
+        if not Path(model_dir).exists():
+            Path(model_dir).mkdir(parents=True)
         # Create a subset of the dataset.
-        weights_dir = os.path.join(model_dir,"model_weights.pt")
+        weights_dir = Path(model_dir) / "model_weights.pt"
         dataset_subset = Subset(dataloader.dataset, remaining_indices)
         # Create a new DataLoader with this subset.
         modified_dataloader = DataLoader(dataset_subset, batch_size=dataloader.batch_size)
         # Call the user specified train_func.
         model = train_func(modified_dataloader)
         # Update the metadata.
-        metadata['map_index_dir'][excluded_index] = model_dir
+        metadata["map_index_dir"][excluded_index] = model_dir
         torch.save(model,weights_dir)
         
-    metadata_file = os.path.join(path, 'metadata.yml')
-    with open(metadata_file, 'w') as file:
+    metadata_file = Path(path) / "metadata.yml"
+    with Path(metadata_file).open("w") as file:
         yaml.dump(metadata, file)
-    return
 
 def retrain_lds(train_func: Callable,  # noqa: PLR0913
                 dataloader: torch.utils.data.DataLoader,

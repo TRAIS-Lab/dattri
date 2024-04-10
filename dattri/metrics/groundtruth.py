@@ -12,6 +12,7 @@ if TYPE_CHECKING:
     from typing import Tuple
 
 import os
+from pathlib import Path
 
 import torch
 
@@ -72,7 +73,7 @@ def calculate_loo_groundtruth(target_func: Callable,
     loo_results = torch.zeros(len_dir,len_testdata)
     model_indices = torch.empty(len_dir)
     for i,model_file in enumerate(model_dirs_sorted):
-        model_path = os.path.join(retrain_dir,model_file,"model_weights.pt")
+        model_path = Path(retrain_dir) / model_file / "model_weights.pt"
         model = torch.load(model_path)
         # Calculate target function values.
         values = target_func(model, test_dataloader)
