@@ -51,10 +51,6 @@ def flip_label(label: Union[np.ndarray, torch.Tensor],
             The first element is the flipped label tensor. The second element is
             the flipped indices.
     """
-    if p <= 0.0 or p >= 1:
-        message = "Noise ratio must be a float number between 0 and 1"
-        raise ValueError(message)
-
     if label_space is None:
         label_space = np.unique(label)
 
