@@ -18,12 +18,12 @@ def _random_flip(label: int, label_space: Set[int], rng: np.random.default_rng) 
     The function performs a random selection of label from the label space.
 
     Args:
-        label (any): The label tensor to be flipped.
+        label (int): The label tensor to be flipped.
         label_space (set): The valid range of labels given in a set
         rng (np.random.default_rng): Random number generator.
 
     Returns:
-        any: The randomly selected label to replace the original one
+        int: The randomly selected label to replace the original one
     """
     label_space.discard(label)
     target_label = int(rng.choice(list(label_space)))
