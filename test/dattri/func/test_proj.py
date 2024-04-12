@@ -330,6 +330,7 @@ class EncoderLayer(nn.Module):
         linear_output = self.linear2(torch.relu(self.linear1(x)))
         return x + self.dropout(self.norm2(linear_output))
 
+@unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
 class TestGetProjection(unittest.TestCase):
     """Test the get_projection function."""
     def setUp(self):
