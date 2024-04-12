@@ -19,6 +19,70 @@ from torch import Tensor
 
 from .utils import _vectorize as vectorize
 
+def get_parameter_chunk_sizes(
+    model: torch.nn.Module,
+    batch_size: int,
+    ) -> tuple[int, int]:
+    """Compute chunk size information from model and batch size.
+
+    Get a tuple containing max chunk size and a list of the number of
+    parameters in each chunk.
+
+    Args:
+        model (torch.nn.Module): The model used to compute gradient.
+        batch_size (int): The batch size used during training.
+
+    Returns:
+        tuple[int, int]: Maximum number of parameter per chunk and a list of
+            number of parameters in each chunk.
+    """
+    param_shapes = [p.numel() for p in model.parameters()]
+    param_shapes = np.array(param_shapes)
+
+    chunk_sum = 0
+    max_chunk_size = np.iinfo(np.uint32).max // batch_size
+    params_per_chunk = []
+
+    for ps in param_shapes:
+        if chunk_sum + ps >= max_chunk_size:
+            params_per_chunk.append(chunk_sum)
+            chunk_sum = 0
+
+        chunk_sum += ps
+
+    if param_shapes.sum() - np.sum(params_per_chunk) > 0:
+        params_per_chunk.append(param_shapes.sum() - np.sum(params_per_chunk))
+
+    return max_chunk_size, params_per_chunk
+
+def parameters_to_vector(parameters: Dict[str, torch.Tensor]) -> Tensor:
+    """Transform Dict of parameters to 1-D tensor.
+
+    Same as https://pytorch.org/docs/stable/generated/torch.nn.utils.parameters_to_vector.html
+    but with :code:`reshape` instead of :code:`view` to avoid a pesky error.
+
+    Args:
+        parameters (Dict[str, torch.Tensor]): Dictionary of tensor parameters.
+
+    Returns:
+        Tensor: flattened parameters as a 1-D tensor.
+    """
+    vec = [param.reshape(-1) for param in parameters]
+    return torch.cat(vec)
+
+
+def get_num_params(model: torch.nn.Module) -> int:
+    """Compute the total number of parameters in a model.
+
+    Args:
+        model (torch.nn.Module): The model used.
+
+    Returns:
+        int: Total number of params.
+    """
+    return parameters_to_vector(model.parameters()).numel()
+
+
 
 def get_parameter_chunk_sizes(
     model: torch.nn.Module,
@@ -554,47 +618,12 @@ class ChunkedCudaProjector:
 
         return ch_output[:actual_bs]
 
-def get_parameter_chunk_sizes(
-    model: torch.nn.Module,
-    batch_size: int,
-    ) -> tuple[int, int]:
-    """Compute chunk size information from model and batch size.
-
-    Get a tuple containing max chunk size and a list of the number of
-    parameters in each chunk.
-
-    Args:
-        model (torch.nn.Module): The model used to compute gradient.
-        batch_size (int): The batch size used during training.
-
-    Returns:
-        tuple[int, int]: Maximum number of parameter per chunk and a list of
-            number of parameters in each chunk.
-    """
-    param_shapes = [p.numel() for p in model.parameters()]
-    param_shapes = np.array(param_shapes)
-
-    chunk_sum = 0
-    max_chunk_size = np.iinfo(np.uint32).max // batch_size
-    params_per_chunk = []
-
-    for ps in param_shapes:
-        if chunk_sum + ps >= max_chunk_size:
-            params_per_chunk.append(chunk_sum)
-            chunk_sum = 0
-
-        chunk_sum += ps
-
-    if param_shapes.sum() - np.sum(params_per_chunk) > 0:
-        params_per_chunk.append(param_shapes.sum() - np.sum(params_per_chunk))
-
-    return max_chunk_size, params_per_chunk
-
 
 def get_projection(
         model: torch.nn.Module,
         model_id: int,
-        feature: Tensor,
+        feature: Dict[str, torch.Tensor],
+        feature_batch_size: int,
         device: str,
         proj_dim: int,
         proj_max_batch_size: int,
@@ -607,8 +636,9 @@ def get_projection(
     Args:
         model (torch.nn.Module): The model used to compute gradient.
         model_id (int): The unique id for this model.
-        feature (Tensor): The data feature need to be projected. Normally,
-            it can be gradients and with shape shape [batch_size, num_params].
+        feature (Dict[str, torch.Tensor]): A dictionary containing gradient tensors.
+            Normally, each tensor will have shape [batch_size, num_params].
+        feature_batch_size (int): The batch size of each tensor in feature.
         device (str): "cuda" or "cpu".
         proj_dim (int): Dimension of the projected feature.
         proj_max_batch_size (int): The maximum batch size used by fast_jl if the
@@ -620,20 +650,28 @@ def get_projection(
 
     Returns:
         Tensor: The projected data feature with shape [batch_size, proj_dim].
+
+    Raises:
+        AttributeError: possible attribute error when initializing CudaProjector.
+        ImportError: fast_jl is not installed.
+        RuntimeError: Too many resources requested for launch CUDA. Try reduce
+            proj_max_batch_size.
     """
     using_cuda_projector = False
     dtype = torch.float16 if use_half_precision else torch.float32
+    grad_dim = get_num_params(model)
+
     if device == "cpu":
         projector = BasicProjector
         # Sampling from bernoulli distribution is not supported for
         # dtype float16 on CPU; playing it safe here by defaulting to
-        # normal projection, rather than rademacher
+        # normal projection, rather than rademacher.
         proj_type = ProjectionType.normal
     else:
         try:
             import fast_jl
 
-            test_gradient = torch.ones(1, feature.shape[1]).cuda()
+            test_gradient = torch.ones(1, grad_dim).cuda()
             num_sms = torch.cuda.get_device_properties(
                 "cuda",
             ).multi_processor_count
@@ -645,6 +683,7 @@ def get_projection(
 
         except (ImportError, RuntimeError, AttributeError):
             projector = BasicProjector
+            raise
         proj_type = ProjectionType.rademacher
 
     if using_cuda_projector:
@@ -656,6 +695,7 @@ def get_projection(
             len(param_chunk_sizes) > 1
         ):  # we have to use the ChunkedCudaProjector
             rng = np.random.default_rng(proj_seed)
+            # different seeds for each chunk
             seeds = rng.integers(
                 low=0,
                 high=500,
@@ -668,18 +708,38 @@ def get_projection(
                     seed=seeds[i],
                     proj_type=proj_type,
                     max_batch_size=proj_max_batch_size,
-                    dtype=dtype,
                     device=device,
                 )
                 for i, chunk_size in enumerate(param_chunk_sizes)
             ]
-            projector = ChunkedCudaProjector(
+            assigned_projector = ChunkedCudaProjector(
                 projector_per_chunk,
                 max_chunk_size,
                 param_chunk_sizes,
+                feature_batch_size,
                 proj_max_batch_size,
                 device,
                 dtype,
             )
+            return assigned_projector.project(grads=feature, model_id=model_id)
 
-    return projector.project(feature, model_id=model_id)
+    if projector == CudaProjector:
+        assigned_projector = projector(
+            grad_dim=grad_dim,
+            proj_dim=proj_dim,
+            seed=proj_seed,
+            proj_type=proj_type,
+            max_batch_size=proj_max_batch_size,
+            device=device,
+        )
+    elif projector == BasicProjector:
+        assigned_projector = projector(
+            grad_dim=grad_dim,
+            proj_dim=proj_dim,
+            seed=proj_seed,
+            proj_type=proj_type,
+            dtype=dtype,
+            device=device,
+        )
+
+    return assigned_projector.project(grads=feature, model_id=model_id)
