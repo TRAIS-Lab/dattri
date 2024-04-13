@@ -78,8 +78,9 @@ def retrain_loo(train_func: Callable,
                     }
                 }
             ```.
-
+    
     Returns:
+
     """
     if not Path(path).exists():
         # Create the path if not exists.
@@ -87,14 +88,11 @@ def retrain_loo(train_func: Callable,
     if seed is not None:
         # Manually set the seed.
         torch.manual_seed(seed)
-    excluded_indices = None
+
     all_indices = list(range(len(dataloader.dataset)))
     if indices is None:
         # If indices are not provided default to retrain with every data.
         indices = all_indices
-
-    excluded_indices = [(exclude, [idx for idx in all_indices if idx != exclude])
-                         for exclude in indices]
 
     metadata = {
         "mode": "loo",
@@ -104,10 +102,11 @@ def retrain_loo(train_func: Callable,
         "map_index_dir": {},
     }
 
-    for excluded_index, remaining_indices in excluded_indices:
-        model_dir = Path(path) / f"index_{excluded_index}"
-        if not Path(model_dir).exists():
-            Path(model_dir).mkdir(parents=True)
+    for index in indices:
+        remaining_indices = [idx for idx in all_indices if idx != index]
+        model_dir = Path(path) / f"index_{index}"
+        if not model_dir.exists():
+            model_dir.mkdir(parents=True)
         # Create a subset of the dataset.
         weights_dir = Path(model_dir) / "model_weights.pt"
         dataset_subset = Subset(dataloader.dataset, remaining_indices)
@@ -117,8 +116,8 @@ def retrain_loo(train_func: Callable,
         # Call the user specified train_func.
         model = train_func(modified_dataloader)
         # Update the metadata.
-        metadata["map_index_dir"][excluded_index] = model_dir
-        torch.save(model,weights_dir)
+        metadata["map_index_dir"][index] = model_dir
+        torch.save(model, weights_dir)
 
     metadata_file = Path(path) / "metadata.yml"
     with Path(metadata_file).open("w") as file:
