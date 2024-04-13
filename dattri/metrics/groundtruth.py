@@ -127,7 +127,10 @@ def calculate_lds_groundtruth(target_func: Callable,
             Second is the tensor indicating the sampled index.
             The returned tensor has the shape (num_models, sampled_num).
     """
-    model_paths = [os.path.join(retrain_dir, model_name) for model_name in os.listdir(retrain_dir)]
+    model_paths = [
+    os.path.join(retrain_dir, model_name) 
+    for model_name in os.listdir(retrain_dir)
+    ]
     num_models = len(model_paths)
     num_test_samples = len(test_dataloader.dataset)
     lds_groundtruth = torch.zeros(num_models, num_test_samples)

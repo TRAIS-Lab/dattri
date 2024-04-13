@@ -5,8 +5,8 @@
 
 
 from __future__ import annotations
-
 from typing import TYPE_CHECKING
+from pathlib import Path 
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -191,26 +191,28 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
     Returns:
         (None) None
     """
+    path = Path(path) 
+    
     # initialize random seed and create directory
     if seed is not None:
         torch.manual_seed(seed)
         np.random.seed(seed)
 
-    if not os.path.exists(path):
-        os.makedirs(path)
+    if not path.exists():
+        path.mkdir(parents=True) 
 
     total_data_length = len(dataloader)
     subset_length = int(total_data_length * subset_ratio)
 
     # Create metadata to save
     metadata = {
-        'mode': 'lds',
-        'data_length': total_data_length,
-        'train_func': train_func.__name__,
-        'subset_number': subset_number,
-        'subset_ratio': subset_ratio,
-        'subset_average_run': subset_average_run,
-        'map_subset_dir': {}
+        "mode": "lds",
+        "data_length": total_data_length,
+        "train_func": train_func.__name__,
+        "subset_number": subset_number,
+        "subset_ratio": subset_ratio,
+        "subset_average_run": subset_average_run,
+        "map_subset_dir": {},
     }
 
     # Retrain the model for each subset
@@ -219,20 +221,19 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
         subset_dataloader = torch.utils.data.DataLoader(
             dataset=torch.utils.data.Subset(dataloader.dataset, indices),
             batch_size=dataloader.batch_size,
-            shuffle=True
+            shuffle=True,
         )
 
         for run in range(subset_average_run):
             model = train_func(subset_dataloader)
-            # model_path = os.path.join(path, str(i), f'model_weights_{run}.pt')
-            model_path = os.path.join(path, str(i), f'model_weights.pt')
-            os.makedirs(os.path.dirname(model_path), exist_ok=True)
+            model_path = path / str(i) / 'model_weights.pt'
+            model_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(model.state_dict(), model_path)
 
-        metadata['map_subset_dir'][i] = os.path.join(path, str(i))
+        metadata['map_subset_dir'][i] = str(path / str(i))
 
     # Save metadata
-    with open(os.path.join(path, 'metadata.yml'), 'w') as f:
+    with (path / 'metadata.yml').open('w') as f:
         yaml.dump(metadata, f)
 
     return

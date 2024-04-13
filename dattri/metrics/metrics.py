@@ -36,17 +36,13 @@ def lds(score: torch.Tensor,
             (num_test_samples,).
     """
     gt_values, _ = ground_truth
-    
-    #assert score.shape == gt_values.shape, "Score and ground truth tensors must have the same shape."
     num_test_samples = score.shape[1]
     lds_values = torch.zeros(num_test_samples)
-    
     for i in range(num_test_samples):
         scores_sample = score[:, i].cpu().numpy()
         gt_values_sample = gt_values[:, i].cpu().numpy()
         correlation, _ = spearmanr(scores_sample, gt_values_sample)
         lds_values[i] = correlation
-    
     return lds_values
 
 
