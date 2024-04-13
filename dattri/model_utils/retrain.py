@@ -6,7 +6,7 @@
 
 from __future__ import annotations
 from typing import TYPE_CHECKING
-from pathlib import Path 
+from pathlib import Path
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -191,15 +191,15 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
     Returns:
         (None) None
     """
-    path = Path(path) 
-    
+    path = Path(path)
+
     # initialize random seed and create directory
     if seed is not None:
         torch.manual_seed(seed)
         np.random.seed(seed)
 
     if not path.exists():
-        path.mkdir(parents=True) 
+        path.mkdir(parents=True)
 
     total_data_length = len(dataloader)
     subset_length = int(total_data_length * subset_ratio)
@@ -224,16 +224,16 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
             shuffle=True,
         )
 
-        for run in range(subset_average_run):
+        for _ in range(subset_average_run):
             model = train_func(subset_dataloader)
-            model_path = path / str(i) / 'model_weights.pt'
+            model_path = path / str(i) / "model_weights.pt"
             model_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(model.state_dict(), model_path)
 
-        metadata['map_subset_dir'][i] = str(path / str(i))
+        metadata["map_subset_dir"][i] = str(path / str(i))
 
     # Save metadata
-    with (path / 'metadata.yml').open('w') as f:
+    with (path / "metadata.yml").open("w") as f:
         yaml.dump(metadata, f)
 
     return
