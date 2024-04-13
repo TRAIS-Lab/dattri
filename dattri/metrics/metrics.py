@@ -1,17 +1,15 @@
 """This module evaluate the performance of the data attribution."""
 
-# ruff: noqa: ARG001, TCH002
-# TODO: Remove the above line after finishing the implementation of the functions.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+import torch
+from typing import TYPE_CHECKING, Tuple
+from scipy.stats import spearmanr
+from pathlib import Path
 
 if TYPE_CHECKING:
-    from typing import Tuple
-
-import torch
-from scipy.stats import spearmanr
+    pass
 
 
 def lds(score: torch.Tensor,

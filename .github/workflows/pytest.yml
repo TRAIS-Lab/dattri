@@ -23,7 +23,7 @@ jobs:
         pip install numpy
         pip install scikit-learn
         pip install scipy
-        pip install yaml
+        pip install PyYAMl
 
         python setup.py sdist bdist_wheel
         pip install dist/*.whl
