@@ -13,7 +13,7 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install dependencies
         run: |
-          pip install sphinx
+          pip install sphinx furo
           python setup.py install
       - name: Sphinx build
         run: |
