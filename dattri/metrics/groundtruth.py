@@ -76,16 +76,16 @@ def calculate_loo_groundtruth(target_func: Callable,
     # List of all predictions.
     loo_results = torch.zeros(length_dir,length_test)
     model_indices = torch.empty(length_dir)
-    for dir,model_file in enumerate(model_dirs_sorted):
+    for dir_cnt,model_file in enumerate(model_dirs_sorted):
         model_path = Path(retrain_dir) / model_file / "model_weights.pt"
         model = torch.load(model_path)
         # Calculate target function values.
         values = target_func(model, test_dataloader)
-        loo_results[dir,:] = values
+        loo_results[dir_cnt,:] = values
         # Find excluded data index from the saved path,
         # please refer to retrain_loo in dattri/model_utils/retrain.py for details.
         index = _dir_to_index(model_file)
-        model_indices[dir] = int(index)
+        model_indices[dir_cnt] = int(index)
     return loo_results, model_indices
 
 
