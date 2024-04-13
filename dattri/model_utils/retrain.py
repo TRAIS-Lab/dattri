@@ -5,8 +5,8 @@
 
 
 from __future__ import annotations
-from typing import TYPE_CHECKING
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -194,9 +194,10 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
     path = Path(path)
 
     # initialize random seed and create directory
-    if seed is not None:
-        torch.manual_seed(seed)
-        np.random.seed(seed)
+    if seed is None:
+       np.random.default_rng(seed)
+
+    torch.manual_seed(seed)
 
     if not path.exists():
         path.mkdir(parents=True)
@@ -217,7 +218,7 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
 
     # Retrain the model for each subset
     for i in range(subset_number):
-        indices = np.random.choice(total_data_length, subset_length, replace=False)
+        indices = np.random.default_rng(seed).choice(total_data_length, subset_length, replace=False)
         subset_dataloader = torch.utils.data.DataLoader(
             dataset=torch.utils.data.Subset(dataloader.dataset, indices),
             batch_size=dataloader.batch_size,
@@ -236,4 +237,3 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
     with (path / "metadata.yml").open("w") as f:
         yaml.dump(metadata, f)
 
-    return

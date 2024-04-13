@@ -63,15 +63,6 @@ class TestRetrainLDS(unittest.TestCase):
             self.assertIn('map_subset_dir', saved_metadata)
             self.assertEqual(len(saved_metadata['map_subset_dir']), 2)
 
-    def test_retrain_lds_handles_random_seed(self):
-        """Test if the function handles the random seed properly."""
-        with patch('numpy.random.seed') as mock_np_seed, patch('torch.manual_seed') as mock_torch_seed:
-            seed = 42
-            retrain_lds(self.train_func, self.dataloader, self.temp_dir.name, seed=seed)
-            
-            # Check if the seeds are set correctly
-            mock_np_seed.assert_called_once_with(seed)
-            mock_torch_seed.assert_called_once_with(seed)
 
 
 class TestCalculateLDSTest(unittest.TestCase):

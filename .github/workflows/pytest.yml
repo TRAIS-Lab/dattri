@@ -22,6 +22,8 @@ jobs:
         pip install torch
         pip install numpy
         pip install scikit-learn
+        pip install scipy
+        pip install ymal
 
         python setup.py sdist bdist_wheel
         pip install dist/*.whl
