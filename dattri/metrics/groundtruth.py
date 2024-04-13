@@ -15,6 +15,9 @@ import os
 from pathlib import Path
 
 import torch
+import os
+import torch.nn as nn
+from torch.utils.data import DataLoader, TensorDataset
 
 
 def _dir_to_index(dir_name: str) -> int:
@@ -125,4 +128,21 @@ def calculate_lds_groundtruth(target_func: Callable,
             Second is the tensor indicating the sampled index.
             The returned tensor has the shape (num_models, sampled_num).
     """
-    return None
+    model_paths = [os.path.join(retrain_dir, model_name) for model_name in os.listdir(retrain_dir)]
+    num_models = len(model_paths)
+    num_test_samples = len(test_dataloader.dataset)
+    
+    lds_groundtruth = torch.zeros(num_models, num_test_samples)
+    
+    model_indices = torch.arange(num_models)
+    
+    for i, model_path in enumerate(model_paths):
+        model = torch.load(model_path)
+        
+        target_value = target_func(model, test_dataloader)
+        
+        lds_groundtruth[i] = target_value
+    
+    sampled_num = torch.tensor([num_test_samples] * model_indices.size(0))
+    
+    return lds_groundtruth, sampled_num
