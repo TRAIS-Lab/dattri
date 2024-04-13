@@ -23,7 +23,7 @@ def _dir_to_index(dir_name: str) -> int:
     This function returns the directory index to sort directories
     by index instead of by alphabets.
 
-    Agrs:
+    Args:
         dir_name (str): Directory name of saved checkpoints.
 
     Returns:
