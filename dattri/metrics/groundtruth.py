@@ -15,8 +15,6 @@ import os
 from pathlib import Path
 
 import torch
-import os
-import torch
 
 
 def _dir_to_index(dir_name: str) -> int:
@@ -128,7 +126,7 @@ def calculate_lds_groundtruth(target_func: Callable,
             The returned tensor has the shape (num_models, sampled_num).
     """
     model_paths = [
-    os.path.join(retrain_dir, model_name) 
+    os.path.join(retrain_dir, model_name)
     for model_name in os.listdir(retrain_dir)
     ]
     num_models = len(model_paths)

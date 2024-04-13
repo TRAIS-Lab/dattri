@@ -218,7 +218,8 @@ def retrain_lds(train_func: Callable,  # noqa: PLR0913
 
     # Retrain the model for each subset
     for i in range(subset_number):
-        indices = np.random.default_rng(seed).choice(total_data_length, subset_length, replace=False)
+        rng = np.random.default_rng(seed)
+        indices = rng.choice(total_data_length, subset_length, replace=False)
         subset_dataloader = torch.utils.data.DataLoader(
             dataset=torch.utils.data.Subset(dataloader.dataset, indices),
             batch_size=dataloader.batch_size,
