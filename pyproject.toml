@@ -30,9 +30,10 @@ ignore = [
     "ANN", # don't need type annotation for setup
 ]
 "**/test/**/*.py" = [
-    "S101",   # assert is fine in tests
-    "INP001", # no need for __init__.py in test
-    "ANN",    # don't need type annotation for tests
+    "S101",    # assert is fine in tests
+    "INP001",  # no need for __init__.py in test
+    "ANN",     # don't need type annotation for tests
+    "PLR6301", # Checks for the presence of unused self parameter
 ]
 
 [tool.ruff.lint.pydocstyle]
