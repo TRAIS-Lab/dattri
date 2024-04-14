@@ -1,17 +1,17 @@
 """Unit tests for data attribution functions related to LDS."""
 
 import sys
+sys.path.append("/Users/jackhuang/Desktop/Jiaqi/dattri_jack")
+
 import unittest
 from tempfile import TemporaryDirectory
 from unittest.mock import patch, MagicMock
 
 import torch
 
-sys.path.append("/Users/jackhuang/Desktop/Jiaqi/dattri_jack")
 from dattri.metrics.groundtruth import calculate_lds_groundtruth
 from dattri.metrics.metrics import lds
 from dattri.model_utils.retrain import retrain_lds
-
 
 class TestRetrainLDS(unittest.TestCase):
     """Unit tests for the retrain_lds function."""
@@ -84,7 +84,7 @@ class TestCalculateLDSTest(unittest.TestCase):
         self.mock_models = [MagicMock(spec=torch.nn.Module) for _ in range(3)]
 
     @patch("os.listdir", return_value=["0", "1", "2"])
-    @patch("os.path.join", side_effect=lambda dirc, subdir: f"{dirc}/{subdir}/weight.pt")
+    @patch("os.path.join", side_effect=lambda dirc, subdir: f"{dirc}/{subdir}/w.pt")
     def test_calculate_lds_groundtruth(self, mock_listdir, mock_join):
         """Test the LDS groundtruth calculation."""
         if mock_listdir.call_count != 1 or mock_join.call_count != 1:
@@ -92,7 +92,7 @@ class TestCalculateLDSTest(unittest.TestCase):
 
         def mock_load(path):
             if path is None:
-                return
+                return self.mock_models.pop(0)
             return self.mock_models.pop(0)
 
         with patch("torch.load", side_effect=mock_load):
@@ -132,7 +132,7 @@ class TestLDS(unittest.TestCase):
         expected_lds_values = torch.tensor([-1.0, -1.0, -1.0])
 
         t = 3
-        assert torch.allclose(lds_values, expected_lds_values, atol=1e-6), "Incorrect LDS"
+        assert torch.allclose(lds_values, expected_lds_values, atol=1e-6), "Inc LDS"
         assert mock_spearmanr.call_count == t, "Spearmanr call count is incorrect"
 
     @patch("dattri.metrics.metrics.spearmanr", return_value=(float("nan"), 0.0))
