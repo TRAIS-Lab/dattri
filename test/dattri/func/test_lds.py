@@ -1,8 +1,5 @@
 """Unit tests for data attribution functions related to LDS."""
 
-import sys
-sys.path.append("/Users/jackhuang/Desktop/Jiaqi/dattri_jack")
-
 import unittest
 from tempfile import TemporaryDirectory
 from unittest.mock import patch, MagicMock
