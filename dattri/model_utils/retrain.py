@@ -233,3 +233,4 @@ def retrain_lds(train_func: Callable,
     with (path / "metadata.yml").open("w") as f:
         yaml.dump(metadata, f)
 
+    return None
