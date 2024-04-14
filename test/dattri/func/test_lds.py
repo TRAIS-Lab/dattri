@@ -1,7 +1,7 @@
 """Unit tests for data attribution functions related to LDS."""
 from tempfile import TemporaryDirectory
-import unittest
 from unittest.mock import patch, MagicMock
+import unittest
 
 import torch
 
