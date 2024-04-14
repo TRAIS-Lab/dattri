@@ -81,8 +81,8 @@ class TestCalculateLDSTest(unittest.TestCase):
         # Create a list of mock models to simulate saved models
         self.mock_models = [MagicMock(spec=torch.nn.Module) for _ in range(3)]  # Simulate 3 models
 
-    @patch('os.listdir', return_value=['model1.pt', 'model2.pt', 'model3.pt'])
-    @patch('os.path.join', side_effect=lambda a, b: f"{a}/{b}")
+    @patch('os.listdir', return_value=['0', '1', '2'])
+    @patch('os.path.join', side_effect=lambda dir, subdir: f"{dir}/{subdir}/weight.pt")
     def test_calculate_lds_groundtruth(self, mock_join, mock_listdir):
         """Test the LDS groundtruth calculation."""
         def mock_load(path):

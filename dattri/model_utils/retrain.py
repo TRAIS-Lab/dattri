@@ -1,5 +1,7 @@
 """This module contains functions that retrain model for LOO/LDS/PBRF metrics."""
 
+# ruff: noqa: ARG001, TCH002
+# TODO: Remove the above line after finishing the implementation of the functions.
 
 from __future__ import annotations
 from pathlib import Path
@@ -12,9 +14,6 @@ import yaml
 from torch.utils.data import DataLoader, Subset
 import os
 import numpy as np
-
-if TYPE_CHECKING:
-    pass
 
 
 def retrain_loo(train_func: Callable,
@@ -185,15 +184,13 @@ def retrain_lds(train_func: Callable,
             ```
 
     Returns:
-        (None) None
     """
     path = Path(path)
 
     # initialize random seed and create directory
     if seed is not None:
-       np.random.default_rng(seed)
-       torch.manual_seed(seed)
-
+        torch.manual_seed(seed)
+        rng = np.random.default_rng(seed)    
     if not path.exists():
         path.mkdir(parents=True)
 
@@ -232,5 +229,3 @@ def retrain_lds(train_func: Callable,
     # Save metadata
     with (path / "metadata.yml").open("w") as f:
         yaml.dump(metadata, f)
-
-    return None

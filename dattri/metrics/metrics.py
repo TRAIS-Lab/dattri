@@ -8,10 +8,6 @@ from __future__ import annotations
 import torch
 from typing import TYPE_CHECKING, Tuple
 from scipy.stats import spearmanr
-from pathlib import Path
-
-if TYPE_CHECKING:
-    pass
 
 
 def lds(score: torch.Tensor,
