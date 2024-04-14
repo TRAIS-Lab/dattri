@@ -6,8 +6,8 @@
 from __future__ import annotations
 
 import torch
-from typing import TYPE_CHECKING, Tuple
 from scipy.stats import spearmanr
+from typing import Tuple
 
 
 def lds(score: torch.Tensor,

@@ -4,8 +4,9 @@
 # TODO: Remove the above line after finishing the implementation of the functions.
 
 from __future__ import annotations
+
 from pathlib import Path
-from typing import TYPE_CHECKING, Callable, List, Optional
+from typing import TYPE_CHECKING
 
 from pathlib import Path
 
@@ -15,6 +16,9 @@ from torch.utils.data import DataLoader, Subset
 import os
 import numpy as np
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import List, Optional
 
 def retrain_loo(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
@@ -184,13 +188,14 @@ def retrain_lds(train_func: Callable,
             ```
 
     Returns:
+        None
     """
     path = Path(path)
 
     # initialize random seed and create directory
     if seed is not None:
         torch.manual_seed(seed)
-        rng = np.random.default_rng(seed)    
+        rng = np.random.default_rng(seed)
     if not path.exists():
         path.mkdir(parents=True)
 
