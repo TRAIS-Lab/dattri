@@ -147,6 +147,7 @@ def hvp_at_x(func: Callable,
     if mode == "rev-rev":
         # pylint: disable=unbalanced-tuple-unpacking
         _, vjp_fn = vjp(grad_func, *x)
+
         def _hvp_at_x_func(v: Tensor) -> Tensor:
             """The HVP function based on func.
 
@@ -370,4 +371,3 @@ def ihvp_at_x_cg(func: Callable,
 
 class IHVPUsageError(Exception):
     """The usage exception class for ihvp module."""
-
