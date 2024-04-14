@@ -1,11 +1,11 @@
 """Unit tests for data attribution functions related to LDS."""
+import unittest
 from tempfile import TemporaryDirectory
 from unittest.mock import (
     MagicMock,
     patch,
 )
 
-import unittest
 import torch
 
 from dattri.metrics.groundtruth import calculate_lds_groundtruth
