@@ -1,4 +1,7 @@
 """Unit tests for data attribution functions related to LDS."""
+import unittest
+from tempfile import TemporaryDirectory
+
 import torch
 
 from dattri.metrics.groundtruth import calculate_lds_groundtruth
@@ -15,19 +18,19 @@ class TestRetrainLDS(unittest.TestCase):
             torch.utils.data.TensorDataset(torch.randn(100, 10),
                                            torch.randint(0, 2, (100,))),
                                            batch_size=10)
-        self.train_func = MagicMock(return_value=MagicMock(spec=torch.nn.Module))
+        self.train_func = unittest.mock.MagicMock(return_value=unittest.mock.MagicMock(spec=torch.nn.Module))
         self.train_func.__name__ = "mock_train_func"
 
-        patcher_exists = patch("os.path.exists", return_value=False)
-        patcher_makedirs = patch("os.makedirs")
-        self.addCleanup(patcher_exists.stop)
-        self.addCleanup(patcher_makedirs.stop)
-        self.mock_exists = patcher_exists.start()
-        self.mock_makedirs = patcher_makedirs.start()
+        unittest.mock.patcher_exists = unittest.mock.patch("os.path.exists", return_value=False)
+        unittest.mock.patcher_makedirs = unittest.mock.patch("os.makedirs")
+        self.addCleanup(unittest.mock.patcher_exists.stop)
+        self.addCleanup(unittest.mock.patcher_makedirs.stop)
+        self.mock_exists = unittest.mock.patcher_exists.start()
+        self.mock_makedirs = unittest.mock.patcher_makedirs.start()
 
-        self.patcher_torch_save = patch("torch.save")
-        self.mock_torch_save = self.patcher_torch_save.start()
-        self.addCleanup(patch.stopall)
+        self.unittest.mock.patcher_torch_save = unittest.mock.patch("torch.save")
+        self.mock_torch_save = self.unittest.mock.patcher_torch_save.start()
+        self.addCleanup(unittest.mock.patch.stopall)
 
     def tearDown(self):
         """Clean up after each test."""
@@ -45,7 +48,7 @@ class TestRetrainLDS(unittest.TestCase):
 
     def test_retrain_lds_saves_metadata_correctly(self):
         """Test if metadata is saved correctly."""
-        with patch("yaml.dump") as mock_yaml_dump:
+        with unittest.mock.patch("yaml.dump") as mock_yaml_dump:
             retrain_lds(self.train_func,
                         self.dataloader,
                         self.temp_dir.name,
@@ -68,15 +71,15 @@ class TestCalculateLDSTest(unittest.TestCase):
 
     def setUp(self):
         """Set up mocks for testing."""
-        self.test_dataloader = MagicMock(spec=torch.utils.data.DataLoader)
-        self.test_dataloader.dataset = MagicMock()
+        self.test_dataloader = unittest.mock.MagicMock(spec=torch.utils.data.DataLoader)
+        self.test_dataloader.dataset = unittest.mock.MagicMock()
         self.test_dataloader.dataset.__len__.return_value = 10
 
-        self.target_func = MagicMock(return_value=torch.rand(10))
-        self.mock_models = [MagicMock(spec=torch.nn.Module) for _ in range(3)]
+        self.target_func = unittest.mock.MagicMock(return_value=torch.rand(10))
+        self.mock_models = [unittest.mock.MagicMock(spec=torch.nn.Module) for _ in range(3)]
 
-    @patch("os.listdir", return_value=["0", "1", "2"])
-    @patch("os.path.join", side_effect=lambda dirc, subdir: f"{dirc}/{subdir}/w.pt")
+    @unittest.mock.patch("os.listdir", return_value=["0", "1", "2"])
+    @unittest.mock.patch("os.path.join", side_effect=lambda dirc, subdir: f"{dirc}/{subdir}/w.pt")
     def test_calculate_lds_groundtruth(self, mock_listdir, mock_join):
         """Test the LDS groundtruth calculation."""
         if mock_listdir.call_count != 1 or mock_join.call_count != 1:
@@ -87,7 +90,7 @@ class TestCalculateLDSTest(unittest.TestCase):
                 return self.mock_models.pop(0)
             return self.mock_models.pop(0)
 
-        with patch("torch.load", side_effect=mock_load):
+        with unittest.mock.patch("torch.load", side_effect=mock_load):
             retrain_dir = "path/to/retrained/models"
             lds_groundtruth, sampled_num = calculate_lds_groundtruth(self.target_func,
                                                                      retrain_dir,
@@ -100,7 +103,7 @@ class TestCalculateLDSTest(unittest.TestCase):
 class TestLDS(unittest.TestCase):
     """Unit tests for the lds function."""
 
-    @patch("dattri.metrics.metrics.spearmanr", return_value=(-1.0, 0.0))
+    @unittest.mock.patch("dattri.metrics.metrics.spearmanr", return_value=(-1.0, 0.0))
     def test_lds_computation(self, mock_spearmanr):
         """Test the LDS computation for correctness."""
         score = torch.tensor([
@@ -127,7 +130,7 @@ class TestLDS(unittest.TestCase):
         assert torch.allclose(lds_values, expected_lds_values, atol=1e-6), "Inc LDS"
         assert mock_spearmanr.call_count == t, "Spearmanr call count is incorrect"
 
-    @patch("dattri.metrics.metrics.spearmanr", return_value=(float("nan"), 0.0))
+    @unittest.mock.patch("dattri.metrics.metrics.spearmanr", return_value=(float("nan"), 0.0))
     def test_lds_identical_scores(self, mock_spearmanr):
         """Test LDS computation when all scores are identical."""
         if mock_spearmanr.call_count != 1:
