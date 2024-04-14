@@ -8,7 +8,7 @@ from dattri.datasets.utils import flip_label
 class TestFlipLabel:
     """Test flip_label function."""
 
-    def test_flip_label_medium(self):
+    def test_flip_label(self):
         """Medium test for flip_label function."""
         label_range, test_size = 10, 100000
         label = torch.randint(low=0, high=label_range, size=(test_size,))

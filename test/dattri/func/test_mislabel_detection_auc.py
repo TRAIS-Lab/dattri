@@ -9,7 +9,7 @@ from dattri.metrics.metrics import mislabel_detection_auc
 class TestMislabelDetection:
     """Test mislabel detection function."""
 
-    def test_mislabel_detection_small_1(self):
+    def test_mislabel_detection_case_1(self):
         """The first small test for mislabel_detection_auc function."""
         scores = torch.arange(100)
         noise_index = torch.zeros(100)
@@ -21,7 +21,7 @@ class TestMislabelDetection:
                               torch.tensor(1.0))
         assert metrics.auc(fpr, tpr) == auc
 
-    def test_mislabel_detection_small_2(self):
+    def test_mislabel_detection_case_2(self):
         """The second small test for mislabel_detection_auc function."""
         scores = torch.arange(100)
         noise_index = torch.zeros(100)
