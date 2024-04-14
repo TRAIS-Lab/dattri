@@ -1,14 +1,17 @@
 """Unit tests for data attribution functions related to LDS."""
 
-import unittest
-import torch
-from unittest.mock import patch, MagicMock
-from tempfile import TemporaryDirectory
 import sys
+import unittest
+from tempfile import TemporaryDirectory
+from unittest.mock import patch, MagicMock
+
+import torch
+
 sys.path.append("/Users/jackhuang/Desktop/Jiaqi/dattri_jack")
-from dattri.model_utils.retrain import retrain_lds
 from dattri.metrics.groundtruth import calculate_lds_groundtruth
 from dattri.metrics.metrics import lds
+from dattri.model_utils.retrain import retrain_lds
+
 
 class TestRetrainLDS(unittest.TestCase):
     """Unit tests for the retrain_lds function."""
@@ -45,8 +48,8 @@ class TestRetrainLDS(unittest.TestCase):
                     self.dataloader,
                     self.temp_dir.name,
                     subset_number=subset_number)
-        
-        assert self.train_func.call_count == subset_number, "Incorrect number of subsets trained"
+
+        assert self.train_func.call_count == subset_number, "Incorrect"
 
     def test_retrain_lds_saves_metadata_correctly(self):
         """Test if metadata is saved correctly."""
@@ -63,9 +66,9 @@ class TestRetrainLDS(unittest.TestCase):
             saved_metadata = mock_yaml_dump.call_args[0][0]
             assert "mode" in saved_metadata, "Mode is missing in metadata"
             assert saved_metadata["mode"] == "lds", "Incorrect mode in metadata"
-            assert "subset_number" in saved_metadata, "Subset number is missing in metadata"
-            assert saved_metadata["subset_number"] == t, "Incorrect subset number in metadata"
-            assert len(saved_metadata["map_subset_dir"]) == t, "Incorrect map subset directory count"
+            assert "subset_number" in saved_metadata, "Subset number missing"
+            assert saved_metadata["subset_number"] == t, "Incorrect metadata"
+            assert len(saved_metadata["map_subset_dir"]) == t, "Inc map count"
 
 
 class TestCalculateLDSTest(unittest.TestCase):
@@ -84,12 +87,12 @@ class TestCalculateLDSTest(unittest.TestCase):
     @patch("os.path.join", side_effect=lambda dirc, subdir: f"{dirc}/{subdir}/weight.pt")
     def test_calculate_lds_groundtruth(self, mock_listdir, mock_join):
         """Test the LDS groundtruth calculation."""
-        if mock_listdir.call_count == 1 or mock_join.call_count == 1:
-            print("")
+        if mock_listdir.call_count != 1 or mock_join.call_count != 1:
+            return
 
         def mock_load(path):
             if path is None:
-                print("path is None")
+                return
             return self.mock_models.pop(0)
 
         with patch("torch.load", side_effect=mock_load):
@@ -99,8 +102,8 @@ class TestCalculateLDSTest(unittest.TestCase):
                                                                      self.test_dataloader)
         t = 3
         assert lds_groundtruth.shape == (3, 10), "Incorrect shape for LDS groundtruth"
-        assert torch.all(sampled_num == torch.tensor([10, 10, 10])), "Incorrect sampled number"
-        assert self.target_func.call_count == t, "Not called the expected number of times"
+        assert torch.all(sampled_num == torch.tensor([10, 10, 10])), "Incorrect"
+        assert self.target_func.call_count == t, "Wrong times"
 
 class TestLDS(unittest.TestCase):
     """Unit tests for the lds function."""
@@ -134,10 +137,10 @@ class TestLDS(unittest.TestCase):
 
     @patch("dattri.metrics.metrics.spearmanr", return_value=(float("nan"), 0.0))
     def test_lds_identical_scores(self, mock_spearmanr):
-        if mock_spearmanr.call_count == 1:
-            print("")
-
         """Test LDS computation when all scores are identical."""
+        if mock_spearmanr.call_count != 1:
+            return
+
         score = torch.full((3, 3), 0.5)
         ground_truth_values = torch.tensor([
             [0.9, 0.8, 0.7],
@@ -155,5 +158,5 @@ class TestLDS(unittest.TestCase):
 
         assert torch.isnan(lds_values).all(), "should be NAN"
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     unittest.main()
