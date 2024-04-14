@@ -5,9 +5,10 @@
 
 from __future__ import annotations
 
+from typing import Tuple
+
 import torch
 from scipy.stats import spearmanr
-from typing import Tuple
 
 
 def lds(score: torch.Tensor,

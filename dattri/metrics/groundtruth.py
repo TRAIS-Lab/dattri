@@ -128,7 +128,7 @@ def calculate_lds_groundtruth(target_func: Callable,
             The returned tensor has the shape (num_models, sampled_num).
     """
     retrain_dir = Path(retrain_dir)
-    model_paths = list(path for path in retrain_dir.iterdir())
+    model_paths = list(retrain_dir.iterdir())
     num_models = len(model_paths)
     num_test_samples = len(test_dataloader.dataset)
     lds_groundtruth = torch.zeros(num_models, num_test_samples)
