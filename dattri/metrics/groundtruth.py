@@ -74,9 +74,9 @@ def calculate_loo_groundtruth(target_func: Callable,
     length_dir = len(model_dirs)
     length_test = len(test_dataloader.dataset)
     # List of all predictions.
-    loo_results = torch.zeros(length_dir,length_test)
+    loo_results = torch.zeros(length_dir, length_test)
     model_indices = torch.empty(length_dir)
-    for dir_cnt,model_file in enumerate(model_dirs_sorted):
+    for dir_cnt, model_file in enumerate(model_dirs_sorted):
         model_path = Path(retrain_dir) / model_file / "model_weights.pt"
         model = torch.load(model_path)
         # Calculate target function values.
