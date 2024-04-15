@@ -185,9 +185,7 @@ def retrain_lds(train_func: Callable,
                         ...
                     }
                 }
-            ```
-
-    Returns:
+            ```.
     """
     path = Path(path)
 
