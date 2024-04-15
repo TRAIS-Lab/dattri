@@ -3,7 +3,6 @@
 # ruff: noqa: ARG001, TCH002
 # TODO: Remove the above line after finishing the implementation of the functions.
 
-
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -63,11 +62,13 @@ def loo_corr(score: torch.Tensor,
 
 
 def mislabel_detection_auc(score: torch.Tensor,
-                           ground_truth: Tuple[torch.Tensor, torch.Tensor],
-                           ) -> Tuple[float, Tuple[float, ...]]:
+                           ground_truth: torch.Tensor,
+                           ) -> Tuple[float, Tuple[torch.Tensor, ...]]:
     """Calculate the AUC using sorting algorithm.
 
-    TODO: more detailed description.
+    The function will calculate the false positive rates and true positive rates
+    under different thresholds (number of data inspected), and return them with
+    the calculated auc (Area Under Curve).
 
     Args:
         score (torch.Tensor): The self-attribution scores of shape (num_train_samples,).
@@ -80,4 +81,33 @@ def mislabel_detection_auc(score: torch.Tensor,
         the second is a Tuple with `fpr, tpr, thresholds` just like
         https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_curve.html.
     """
-    return None
+    fpr_list, tpr_list = [0.0], [0.0]
+
+    noise_index = set(torch.where(ground_truth)[0].numpy())
+    num_noise = len(noise_index)
+    num_clean = len(score) - num_noise
+
+    # argsort the indices from low quality to high quality (scores hight to low)
+    low_quality_to_high_quality = torch.argsort(score).flip(0)
+    thresholds = list(range(1, len(low_quality_to_high_quality) + 1))
+
+    for ind in thresholds:
+        detected_samples = set(
+            low_quality_to_high_quality[:ind].numpy(),
+            ).intersection(noise_index)
+        true_positive_cnt = len(detected_samples)
+        false_positive_cnt = ind - true_positive_cnt
+
+        tpr = true_positive_cnt / num_noise
+        fpr = false_positive_cnt / num_clean
+        tpr_list.append(tpr)
+        fpr_list.append(fpr)
+
+    direction = 1
+    tpr_list, fpr_list = torch.tensor(tpr_list), torch.tensor(fpr_list)
+    auc =  direction * torch.trapz(tpr_list, fpr_list) # metrics.auc(fpr_list, tpr_list)
+
+    # Add -np.inf to the list of thresholds, refer to sklearn.metrics.roc_curve
+    thresholds = [-torch.inf, *thresholds]
+
+    return auc, (fpr_list, tpr_list, thresholds)
