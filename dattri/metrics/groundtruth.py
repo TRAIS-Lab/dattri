@@ -33,6 +33,7 @@ def _dir_to_index(dir_name: str) -> int:
     prefix_len = len("index_")
     return int(dir_name[prefix_len:])
 
+
 def calculate_loo_groundtruth(target_func: Callable,
                               retrain_dir: str,
                               test_dataloader: torch.utils.data.DataLoader,
@@ -81,7 +82,7 @@ def calculate_loo_groundtruth(target_func: Callable,
         model = torch.load(model_path)
         # Calculate target function values.
         values = target_func(model, test_dataloader)
-        loo_results[dir_cnt,:] = values
+        loo_results[dir_cnt, :] = values
         # Find excluded data index from the saved path,
         # please refer to retrain_loo in dattri/model_utils/retrain.py for details.
         index = _dir_to_index(model_file)

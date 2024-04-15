@@ -105,7 +105,7 @@ def mislabel_detection_auc(score: torch.Tensor,
 
     direction = 1
     tpr_list, fpr_list = torch.tensor(tpr_list), torch.tensor(fpr_list)
-    auc =  direction * torch.trapz(tpr_list, fpr_list) # metrics.auc(fpr_list, tpr_list)
+    auc = direction * torch.trapz(tpr_list, fpr_list)  # metrics.auc(fpr_list, tpr_list)
 
     # Add -np.inf to the list of thresholds, refer to sklearn.metrics.roc_curve
     thresholds = [-torch.inf, *thresholds]

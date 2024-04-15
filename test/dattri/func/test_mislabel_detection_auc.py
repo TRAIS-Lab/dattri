@@ -15,7 +15,7 @@ class TestMislabelDetection:
         noise_index = torch.zeros(100)
         noise_index[90:] = 1
 
-        auc, (fpr, tpr, thresholds) = mislabel_detection_auc(scores, noise_index)
+        auc, (fpr, tpr, _thresholds) = mislabel_detection_auc(scores, noise_index)
 
         assert torch.allclose(torch.tensor(auc, dtype=torch.float32),
                               torch.tensor(1.0))
@@ -27,7 +27,7 @@ class TestMislabelDetection:
         noise_index = torch.zeros(100)
         noise_index[80: 90] = 1
 
-        auc, (fpr, tpr, thresholds) = mislabel_detection_auc(scores, noise_index)
+        auc, (fpr, tpr, _thresholds) = mislabel_detection_auc(scores, noise_index)
 
         assert torch.allclose(torch.tensor(auc, dtype=torch.float32),
                               torch.tensor(8 / 9))
