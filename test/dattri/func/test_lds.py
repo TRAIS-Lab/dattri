@@ -12,6 +12,7 @@ from dattri.metrics.groundtruth import calculate_lds_groundtruth
 from dattri.metrics.metrics import lds
 from dattri.model_utils.retrain import retrain_lds
 
+
 class TestRetrainLDS(unittest.TestCase):
     """Unit tests for the retrain_lds function."""
 
