@@ -120,6 +120,7 @@ def retrain_loo(train_func: Callable,
     with Path(metadata_file).open("w") as file:
         yaml.dump(metadata, file)
 
+
 def retrain_lds(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
                 path: str,

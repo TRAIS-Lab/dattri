@@ -28,7 +28,6 @@ class TestVectorize(unittest.TestCase):
 
         self.expected_shape = (10, 8)
 
-
     def test_vectorize_shape_without_arr(self):
         """Test the shape without arr argument."""
         result = vectorize(self.g_dict_1, device="cpu")
@@ -61,7 +60,6 @@ class TestBasicProjector(unittest.TestCase):
         self.device = "cuda"
         self.projector = None
 
-
     def test_basic_projector_shape(self):
         """Test BasicProjector output shape."""
         self.projector = BasicProjector(
@@ -75,6 +73,7 @@ class TestBasicProjector(unittest.TestCase):
         test_grads = torch.randn(10, self.grad_dim)
         projected_grads = self.projector.project(test_grads, model_id=0)
         assert projected_grads.shape == (10, self.proj_dim)
+
 
 @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
 class TestCudaProjector(unittest.TestCase):
@@ -103,6 +102,7 @@ class TestCudaProjector(unittest.TestCase):
         model_id = 0
         projected_grads = self.projector.project(grads, model_id)
         assert projected_grads.shape == (16, self.proj_dim)
+
 
 @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
 class TestChunkedCudaProjector(unittest.TestCase):
