@@ -2,7 +2,7 @@
 
 import torch
 
-from dattri.datasets.utils import flip_label
+from dattri.benchmark.utils import flip_label
 
 
 class TestFlipLabel:

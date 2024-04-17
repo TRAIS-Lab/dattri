@@ -1,4 +1,4 @@
-"""This module contains functions for model training/evaluating on the MNIST dataset."""
+"""This module contains functions for model training/evaluation on the MNIST dataset."""
 import torch
 from torch import nn
 
