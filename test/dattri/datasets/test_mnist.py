@@ -2,7 +2,11 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.benchmark.mnist import LogisticRegressionMnist, loss_mnist_lr, train_mnist_lr
+from dattri.benchmark.mnist import (
+    LogisticRegressionMnist,
+    loss_mnist_lr,
+    train_mnist_lr,
+)
 
 
 class TestMnist:
