@@ -294,7 +294,7 @@ class PositionalEncoding(nn.Module):
         Returns:
             torch.Tensor: model output.
         """
-        x = x + self.pe[:x.size(0), :]
+        x += self.pe[:x.size(0), :]
         return self.dropout(x)
 
 
@@ -329,7 +329,7 @@ class EncoderLayer(nn.Module):
             torch.Tensor: model output.
         """
         attn_output, _ = self.self_attn(x, x, x)
-        x = x + self.dropout(self.norm1(attn_output))
+        x += self.dropout(self.norm1(attn_output))
         linear_output = self.linear2(torch.relu(self.linear1(x)))
         return x + self.dropout(self.norm2(linear_output))
 
