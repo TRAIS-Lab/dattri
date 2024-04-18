@@ -192,6 +192,7 @@ class SmallModel(nn.Module):
         x = torch.relu(self.fc1(x))
         return self.fc2(x)
 
+
 class LargerModel(nn.Module):
     """A large PyTorch model for testing."""
     def __init__(self):
@@ -263,6 +264,7 @@ class LargeTransformer(nn.Module):
         x = [layer(x) for layer in self.encoder_layers]
         return self.fc(x)
 
+
 class PositionalEncoding(nn.Module):
     """The class for positional encoding."""
     def __init__(self, d_model: int, max_len: int = 5000) -> None:
@@ -276,7 +278,7 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(p=0.1)
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * \
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() *
                               (-torch.log(torch.tensor(10000.0)) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
@@ -294,6 +296,7 @@ class PositionalEncoding(nn.Module):
         """
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
+
 
 class EncoderLayer(nn.Module):
     """The class for transformer encoder layer."""
@@ -330,6 +333,7 @@ class EncoderLayer(nn.Module):
         linear_output = self.linear2(torch.relu(self.linear1(x)))
         return x + self.dropout(self.norm2(linear_output))
 
+
 @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
 class TestGetProjection(unittest.TestCase):
     """Test the get_projection function."""
@@ -340,7 +344,6 @@ class TestGetProjection(unittest.TestCase):
         self.model_id = 0
         self.proj_dim = 1024
         self.proj_max_batch_size = 32
-
 
     def test_basicprojector(self):
         """Test funcionality of BasicProjetor."""
@@ -354,10 +357,9 @@ class TestGetProjection(unittest.TestCase):
         result_1 = get_projection(self.small_model, self.model_id, small_gradient,
                                   test_batch_size, "cpu",
                                   self.proj_dim, self.proj_max_batch_size,
-                                  proj_seed=0 , use_half_precision=True)
+                                  proj_seed=0, use_half_precision=True)
 
         assert result_1.shape == (test_batch_size, self.proj_dim)
-
 
     def test_cudaprojector(self):
         """Test funcionality of CudaProjetor."""
@@ -371,10 +373,9 @@ class TestGetProjection(unittest.TestCase):
         result_2 = get_projection(self.small_model, self.model_id,
                                   small_gradient, test_batch_size, "cuda",
                                   self.proj_dim, self.proj_max_batch_size,
-                                  proj_seed=0 , use_half_precision=True)
+                                  proj_seed=0, use_half_precision=True)
 
         assert result_2.shape == (test_batch_size, self.proj_dim)
-
 
     def test_chunkedcudaprojector(self):
         """Test funcionality of ChunkedCudaProjector."""
@@ -400,7 +401,7 @@ class TestGetProjection(unittest.TestCase):
         result_3 = get_projection(self.large_transformer, self.model_id,
                                   large_gradient, test_batch_size, "cuda",
                                   self.proj_dim, self.proj_max_batch_size,
-                                  proj_seed=0 , use_half_precision=True)
+                                  proj_seed=0, use_half_precision=True)
 
         assert result_3.shape == (test_batch_size, self.proj_dim)
 
