@@ -8,7 +8,7 @@ from torch.func import vmap
 sys.path.append("../dattri")
 
 from dattri.func.ihvp import hvp, hvp_at_x, ihvp_at_x_cg, ihvp_at_x_explicit, ihvp_cg
-from dattri.model_utils.utils import flatten_func, flatten_params
+from dattri.func.utils import flatten_func, flatten_params
 
 
 class TestIHVP:

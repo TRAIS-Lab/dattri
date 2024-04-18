@@ -253,7 +253,7 @@ def ihvp_at_x_explicit(func: Callable,
         Returns:
             The IHVP value, i.e., inverse of `hessian_tensor` times `vec`.
         """
-        return torch.linalg.solve(hessian_tensor +\
+        return torch.linalg.solve(hessian_tensor +
                 torch.eye(hessian_tensor.shape[0]) * regularization, v.T).T
 
     return _ihvp_at_x_explicit_func

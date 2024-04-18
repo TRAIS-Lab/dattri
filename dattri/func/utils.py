@@ -7,11 +7,79 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any, Dict
+    from typing import Any, Dict, Optional
 
 import functools
 
 import torch
+from torch import Tensor
+
+
+def _vectorize(g: Dict[str, torch.Tensor],
+               batch_dim: Optional[bool] = True,
+               arr: Optional[torch.Tensor] = None,
+               device: Optional[str] = "cuda") -> Tensor:
+    """Vectorize gradient result (g) into arr.
+
+    This function takes a dictionary of gradient and returns a flattened tensor
+    of shape [batch_size, num_params].
+
+    Args:
+        g (dict of Tensors): A dictionary containing gradient tensors to be vectorized.
+        batch_dim (bool, optional): Whether to include the batch dimension in the
+                                    returned tensor. Defaults to True.
+        arr (Tensor, optional): An optional pre-allocated tensor to store the
+                                vectorized gradients. If provided, it must have the
+                                shape `[batch_size, num_params]`, where `num_params`
+                                is the total number of scalar parameters in all
+                                gradient tensors combined. If `None`, a new tensor
+                                is created. Defaults to None.
+        device (str, optional): "cuda" or "cpu". Defaults to "cuda".
+
+    Returns:
+        Tensor: If batch_dim is True, A 2D tensor of shape `[batch_size, num_params]`,
+                where each row contains all the vectorized gradients for a single batch
+                element. If batch_dim is False, A 1D tensor of shape `[num_params]`.
+
+    Raises:
+        ValueError: Parameter size in g doesn't match batch size.
+    """
+    if arr is None:
+        if batch_dim:
+            g_elt = g[next(iter(g.keys()))[0]]
+            batch_size = g_elt.shape[0]
+            num_params = 0
+            for param in g.values():
+                if param.shape[0] != batch_size:
+                    msg = "Parameter row num doesn't match batch size."
+                    raise ValueError(msg)
+                num_params += int(param.numel() / batch_size)
+            arr = torch.empty(size=(batch_size, num_params), dtype=g_elt.dtype,
+                            device=device)
+        else:
+            num_params = 0
+            for param in g.values():
+                num_params += int(param.numel())
+            arr = torch.empty(size=(num_params,), dtype=param.dtype,
+                              device=device)
+
+    pointer = 0
+    vector_dim = 1
+    for param in g.values():
+        if batch_dim:
+            if len(param.shape) <= vector_dim:
+                num_param = 1
+                p = param.data.reshape(-1, 1)
+            else:
+                num_param = param[0].numel()
+                p = param.flatten(start_dim=1).data
+            arr[:, pointer : pointer + num_param] = p.to(device)
+            pointer += num_param
+        else:
+            num_param = param.numel()
+            arr[pointer : pointer + num_param] = param.reshape(-1).to(device)
+            pointer += num_param
+    return arr
 
 
 def flatten_params(tensors: Dict[str, torch.Tensor]) -> torch.Tensor:
@@ -31,10 +99,8 @@ def flatten_params(tensors: Dict[str, torch.Tensor]) -> torch.Tensor:
         dictionary and the flattened tensor will be a concatenation of all the tensors
         on one dimension.
     """
-    return torch.cat(
-        [t.reshape(-1) for t in tensors.values()],
-        dim=-1,
-    )
+    return _vectorize(tensors, batch_dim=False,
+                      device=tensors[next(iter(tensors.keys()))].device)
 
 
 def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Tensor:
@@ -58,6 +124,7 @@ def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Te
     """
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
     shape_list = [p.shape for p in model_params.values()]
+
     def generator() -> torch.Tensor:
         current_index = 0
         for shape in shape_list:
