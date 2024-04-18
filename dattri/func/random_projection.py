@@ -113,7 +113,7 @@ def vectorize(g: Dict[str, torch.Tensor],
         batch_size = g_elt.shape[0]
         num_params = 0
         for param in g.values():
-            if  param.shape[0] != batch_size:
+            if param.shape[0] != batch_size:
                 msg = "Parameter row num doesn't match batch size."
                 raise ValueError(msg)
             num_params += int(param.numel() / batch_size)
@@ -123,7 +123,7 @@ def vectorize(g: Dict[str, torch.Tensor],
     pointer = 0
     vector_dim = 1
     for param in g.values():
-        if len(param.shape) <=  vector_dim:
+        if len(param.shape) <= vector_dim:
             num_param = 1
             p = param.data.reshape(-1, 1)
         else:
@@ -200,7 +200,6 @@ class AbstractProjector(ABC):
     @abstractmethod
     def free_memory(self) -> None:
         """Frees up memory used by the projector."""
-
 
 
 class BasicProjector(AbstractProjector):
@@ -355,7 +354,6 @@ class BasicProjector(AbstractProjector):
         return sketch.type(grads.dtype)
 
 
-
 class CudaProjector(AbstractProjector):
     """Projector implemented using CUDA.
 
@@ -406,7 +404,7 @@ class CudaProjector(AbstractProjector):
         torch.cuda.get_device_properties(device.index).multi_processor_count
 
         try:
-            import fast_jl
+            import fast_jl  # noqa: PLC0415
 
             # test run to catch at init time if projection goes through
             fast_jl.project_rademacher_8(
@@ -436,6 +434,7 @@ class CudaProjector(AbstractProjector):
         Returns:
             Tensor: The projected gradients.
         """
+        import fast_jl  # noqa: PLC0415
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
         batch_size = grads.shape[0]
@@ -450,7 +449,6 @@ class CudaProjector(AbstractProjector):
         effective_batch_size = min(self.max_batch_size, effective_batch_size)
 
         function_name = f"project_{self.proj_type}_{effective_batch_size}"
-        import fast_jl
 
         fn = getattr(fast_jl, function_name)
 

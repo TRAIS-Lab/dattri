@@ -11,7 +11,27 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Tuple
 
+import os
+from pathlib import Path
+
 import torch
+
+
+def _dir_to_index(dir_name: str) -> int:
+    """Help function for calculate_loo_groundtruth.
+
+    This function returns the directory index to sort directories
+    by index instead of by alphabets.
+
+    Args:
+        dir_name (str): Directory name of saved checkpoints.
+
+    Returns:
+        int: Index of the directory,
+            for example index_12 should return 12.
+    """
+    prefix_len = len("index_")
+    return int(dir_name[prefix_len:])
 
 
 def calculate_loo_groundtruth(target_func: Callable,
@@ -49,7 +69,25 @@ def calculate_loo_groundtruth(target_func: Callable,
             Second is the tensor indicating the removed index. The returned tensor has
             the shape (num_models,).
     """
-    return None
+    # Get all model file paths.
+    model_dirs = [d for d in os.listdir(retrain_dir) if d.startswith("index_")]
+    model_dirs_sorted = sorted(model_dirs, key=_dir_to_index)
+    length_dir = len(model_dirs)
+    length_test = len(test_dataloader.dataset)
+    # List of all predictions.
+    loo_results = torch.zeros(length_dir, length_test)
+    model_indices = torch.empty(length_dir)
+    for dir_cnt, model_file in enumerate(model_dirs_sorted):
+        model_path = Path(retrain_dir) / model_file / "model_weights.pt"
+        model = torch.load(model_path)
+        # Calculate target function values.
+        values = target_func(model, test_dataloader)
+        loo_results[dir_cnt, :] = values
+        # Find excluded data index from the saved path,
+        # please refer to retrain_loo in dattri/model_utils/retrain.py for details.
+        index = _dir_to_index(model_file)
+        model_indices[dir_cnt] = int(index)
+    return loo_results, model_indices
 
 
 def calculate_lds_groundtruth(target_func: Callable,
