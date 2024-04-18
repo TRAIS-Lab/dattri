@@ -55,6 +55,7 @@ def get_parameter_chunk_sizes(
 
     return max_chunk_size, params_per_chunk
 
+
 def parameters_to_vector(parameters: Dict[str, torch.Tensor]) -> Tensor:
     """Transform Dict of parameters to 1-D tensor.
 
