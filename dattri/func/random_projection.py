@@ -53,6 +53,7 @@ def get_parameter_chunk_sizes(
 
     return max_chunk_size, params_per_chunk
 
+
 def parameters_to_vector(parameters: Dict[str, torch.Tensor]) -> Tensor:
     """Transform Dict of parameters to 1-D tensor.
 
@@ -404,7 +405,7 @@ class CudaProjector(AbstractProjector):
         torch.cuda.get_device_properties(device.index).multi_processor_count
 
         try:
-            import fast_jl  # noqa: PLC0415
+            import fast_jl
 
             # test run to catch at init time if projection goes through
             fast_jl.project_rademacher_8(
@@ -434,7 +435,7 @@ class CudaProjector(AbstractProjector):
         Returns:
             Tensor: The projected gradients.
         """
-        import fast_jl  # noqa: PLC0415
+        import fast_jl
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
         batch_size = grads.shape[0]
