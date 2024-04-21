@@ -3,7 +3,8 @@
 import torch
 from torch.func import vmap
 
-from dattri.func.ihvp import hvp, hvp_at_x, ihvp_at_x_cg, ihvp_at_x_explicit, ihvp_cg
+from dattri.func.ihvp import (hvp, hvp_at_x, ihvp_at_x_cg, ihvp_at_x_explicit,
+                              ihvp_at_x_lissa, ihvp_cg, ihvp_lissa)
 from dattri.func.utils import flatten_func, flatten_params
 
 
@@ -177,3 +178,42 @@ class TestIHVP:
         assert torch.allclose(ihvp_cg_func((flatten_params(model_params),), v),
                               ihvp_explicit_at_x_func(v),
                               rtol=1e-03, atol=1e-07)
+
+        def test_ihvp_lissa(self):
+            """Test ihvp_lissa/ihvp_lissa_at_x."""
+
+            def squared_error(x, y, theta):
+                return ((x @ theta - y)**2)[0]
+            
+            def mse_loss(xs, ys, theta):
+                return torch.mean((xs @ theta - ys)**2)
+
+            # Create data
+            data_size = (500, 2)
+            theta = torch.randn(2)
+            xs = torch.randn(data_size)
+            noise = torch.normal(mean=torch.tensor(0), std=torch.tensor(0.05), size=(data_size[0], 1))
+            ys = xs @ theta + noise
+            vec = torch.randn(1, 2)
+            input_list = [
+                (xs[i], ys[i], theta)
+                for i in range(data_size[0])
+            ]
+
+            ihvp_lissa_func = ihvp_lissa(squared_error, argnums=2)
+            ihvp_lissa_at_x_func = ihvp_at_x_lissa(squared_error,
+                                                   input_list,
+                                                   argnums=2,
+                                                   num_repeat=50,
+                                                   recursion_depth=100)
+            ihvp_explicit_at_x_func = ihvp_at_x_explicit(mse_loss,
+                                                         *(xs, ys, theta),
+                                                         argnums=2)
+
+            # Set a larger tolerance for LiSSA
+            assert torch.allclose(ihvp_lissa_at_x_func(vec),
+                                  ihvp_explicit_at_x_func(vec),
+                                  atol=0.08)
+            assert torch.allclose(ihvp_lissa_func(input_list, vec),
+                                  ihvp_explicit_at_x_func(vec),
+                                  atol=0.08)
