@@ -20,6 +20,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
 
+
 def retrain_loo(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
                 path: str,
@@ -229,8 +230,8 @@ def retrain_lds(train_func: Callable,
 
         indices_path = path / str(i) / "indices.txt"
         indices_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(indices_path, 'w') as f:
-            f.write('\n'.join(map(str, indices)))
+        with open(indices_path, "w") as f:
+            f.write("\n".join(map(str, indices)))
 
         for j in range(subset_average_run):
             temp = subset_average_run * i

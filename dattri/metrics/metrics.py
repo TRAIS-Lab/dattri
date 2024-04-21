@@ -47,7 +47,7 @@ def lds(score: torch.Tensor,
             gt_values_sample = gt_values[model_idx, i].cpu().numpy()
             correlation, _ = spearmanr(scores_sample, gt_values_sample)
             correlations.append(correlation)
-        
+
         lds_values[i] = torch.tensor(correlations).mean()
     return lds_values
 
