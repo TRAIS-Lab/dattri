@@ -5,16 +5,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+import torch
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Tuple
-
-import os
-from pathlib import Path
-
-import torch
 
 
 def _dir_to_index(dir_name: str) -> int:
@@ -125,4 +123,25 @@ def calculate_lds_groundtruth(target_func: Callable,
             Second is the tensor indicating the sampled index.
             The returned tensor has the shape (num_models, sampled_num).
     """
-    return None
+    retrain_dir = Path(retrain_dir)
+    model_paths = [p for p in retrain_dir.iterdir() if p.is_file() and p.suffix == '.pt']
+    indices_paths = [p for p in retrain_dir.iterdir() if p.is_dir() and (p / 'indices.txt').exists()]
+    all_indices = []
+    for indices_path in indices_paths:
+        with open(indices_path / 'indices.txt', 'r') as f:
+            indices = list(map(int, f.read().split()))
+            all_indices.append(torch.tensor(indices))
+    model_indices = torch.stack(all_indices)
+
+    num_models = len(indices_paths)
+    num_test_samples = len(test_dataloader.dataset)
+    lds_groundtruth = torch.zeros(num_models, num_test_samples)
+
+    for i, model_path in enumerate(model_paths):
+        model = torch.load(model_path)
+        model.eval()
+        with torch.no_grad():
+            target_values = target_func(model, test_dataloader)
+        lds_groundtruth[i, :] = target_values
+
+    return lds_groundtruth, model_indices
