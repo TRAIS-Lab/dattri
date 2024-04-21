@@ -15,6 +15,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Tuple, Union
 
+import warnings
+
 import torch
 from torch import Tensor
 from torch.func import grad, hessian, jvp, vjp
@@ -501,7 +503,9 @@ def ihvp_at_x_lissa(func: Callable,
     """
 
     if recursion_depth > len(input_list):
-        print('The recursion depth is greater than number of samples. Please consider using other method!')
+        warning_message = 'The recursion depth is greater than number of samples. " \
+            "Please consider using other methods!'
+        warnings.warn(warning_message, Warning)
         recursion_depth = len(input_list)
 
     def _ihvp_lissa_func(v: Tensor) -> Tensor:
