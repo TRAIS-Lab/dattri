@@ -406,5 +406,142 @@ def ihvp_at_x_cg(func: Callable,
     return _ihvp_cg_func
 
 
+def ihvp_lissa(func: Callable,
+               argnums: int = 0,
+               num_repeat: int = 10, 
+               recursion_depth:int = 5000,
+               mode: str = "rev-rev") -> Callable:
+    """LiSSA ihvp algorithm function.
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    LiSSA algorithm approximates the ihvp function by averaging multiple samples.
+    The samples are estimated by recursion based on Taylor expansion.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be estimated on this function.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        num_repeat (int): An integer default 10. Specifies the number of samples
+            of the hvp approximation to average on.
+        recursion_depth (int): A integer default to 5000. Specifies the number of
+            recursions used to estimate each ihvp sample.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
+    Returns:
+        A function that takes a list of tuples of Tensor `x` and a vector `v` and returns
+        the IHVP of the Hessian of `func` and `v`.
+    """
+
+    def _ihvp_cg_func(input_list: List[Tuple[torch.Tensor, ...]], v: Tensor) -> Tensor:
+        """The IHVP function using CG.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse hessian matrix with respect to these arguments.
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        return ihvp_at_x_lissa(func,
+                               input_list,
+                               argnums=argnums,
+                               num_repeat=num_repeat,
+                               recursion_depth=recursion_depth,
+                               mode=mode)(v)
+
+    return _ihvp_cg_func
+
+
+def ihvp_at_x_lissa(func: Callable,
+                    input_list: List[Tuple],
+                    argnums: int = 0,
+                    num_repeat: int = 10, 
+                    recursion_depth: int = 5000,
+                    mode: str = "rev-rev") -> Callable:
+    """LiSSA ihvp algorithm function (with fixed x).
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    LiSSA algorithm approximates the ihvp function by averaging multiple samples.
+    The samples are estimated by recursion based on Taylor expansion.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be estimated on this function.
+        input_list (List[Tuple]): List of arguments for multiple calls of `func`. Each tuple
+            inside the list should be a pair of valid arguments
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        num_repeat (int): An integer default 10. Specifies the number of samples
+            of the hvp approximation to average on.
+        recursion_depth (int): A integer default to 5000. Specifies the number of
+            recursions used to estimate each ihvp sample.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
+    Returns:
+        A function that takes a vector `v` and returns the IHVP of the Hessian
+        of `func` and `v`.
+    """
+
+    if recursion_depth >= len(input_list):
+        print('The recursion depth is greater than number of samples. Please consider using other method!')
+        recursion_depth = len(input_list)
+
+    def _ihvp_lissa_func(v: Tensor) -> Tensor:
+        """The IHVP function using LiSSA.
+
+        Args:
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+
+        if v.ndim == 1:
+            v = v.unsqueeze(0)
+        batch_ihvp_lissa = []
+
+        for i in range(v.shape[0]):
+            damping, scaling = 0.0, 50.0
+            ihvp_estimations = []
+            for r in range(num_repeat):
+                sampled_indices = torch.randperm(len(input_list))[:recursion_depth]
+                hvp_func_list = [
+                    hvp_at_x(func, x=input_list[idx], argnums=argnums, mode=mode)
+                    for idx in sampled_indices
+                ]
+
+                curr_estimate = v[i, :].detach().clone()  # No gradient on v
+                for hvp_func in hvp_func_list:
+                    hvp = hvp_func(curr_estimate)
+                    curr_estimate = v[i, :] + (1 - damping) * curr_estimate - hvp / scaling
+
+                ihvp_estimations.append(curr_estimate / scaling)
+
+            ihvp_value = torch.mean(torch.stack(ihvp_estimations), dim=0)
+            batch_ihvp_lissa.append(ihvp_value)
+
+        return torch.stack(batch_ihvp_lissa)
+
+    return _ihvp_lissa_func
+
+
 class IHVPUsageError(Exception):
     """The usage exception class for ihvp module."""
