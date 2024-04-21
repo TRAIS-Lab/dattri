@@ -482,7 +482,7 @@ def ihvp_at_x_lissa(func: Callable,
         func (Callable): A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
             be estimated on this function.
-        input_list (List[Tuple]): List of arguments for multiple calls of `func`. 
+        input_list (List[Tuple]): List of arguments for multiple calls of `func`.
             Each tuple inside the list should be a pair of valid arguments
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
@@ -504,7 +504,7 @@ def ihvp_at_x_lissa(func: Callable,
     if recursion_depth > len(input_list):
         warning_message = 'The recursion depth is greater than number of samples. " \
             "Please consider using other methods!'
-        warnings.warn(warning_message, Warning)
+        warnings.warn(warning_message, Warning, stacklevel=2)
         recursion_depth = len(input_list)
 
     def _ihvp_lissa_func(v: Tensor) -> Tensor:
@@ -533,8 +533,8 @@ def ihvp_at_x_lissa(func: Callable,
                 curr_estimate = v[i, :].detach().clone()  # No gradient on v
                 for hvp_func in hvp_func_list:
                     hvp = hvp_func(curr_estimate)
-                    curr_estimate = (v[i, :] 
-                                     + (1 - damping) * curr_estimate 
+                    curr_estimate = (v[i, :]
+                                     + (1 - damping) * curr_estimate
                                      - hvp / scaling)
 
                 ihvp_estimations.append(curr_estimate / scaling)
