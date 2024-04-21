@@ -5,19 +5,18 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from typing import Tuple
+from typing import Tuple
 
 import torch
+from scipy.stats import spearmanr
 
 
 def lds(score: torch.Tensor,
         ground_truth: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
     """Calculate the Linear Datamodeling Score (LDS) metric.
 
-    TODO: Add the LDS metric description.
+    The LDS is calculated as the Spearman rank correlation between the predicted scores
+    and the ground truth values for each test sample across all retrained models.
 
     Args:
         score (torch.Tensor): The score tensor with the shape
@@ -33,7 +32,22 @@ def lds(score: torch.Tensor,
         torch.Tensor: The LDS metric value. The returned tensor has the shape
             (num_test_samples,).
     """
-    return None
+    gt_values, indices = ground_truth
+    num_test_samples = score.shape[1]
+    lds_values = torch.zeros(num_test_samples)
+    num_models = gt_values.shape[0]
+
+    for i in range(num_test_samples):
+        correlations = []
+        for model_idx in range(num_models):
+            model_indices = indices[model_idx]
+            scores_sample = score[model_indices, i].cpu().numpy()
+            gt_values_sample = gt_values[model_idx, i].cpu().numpy()
+            correlation, _ = spearmanr(scores_sample, gt_values_sample)
+            correlations.append(correlation)
+        
+        lds_values[i] = torch.tensor(correlations).mean()
+    return lds_values
 
 
 def loo_corr(score: torch.Tensor,
