@@ -410,8 +410,8 @@ def ihvp_at_x_cg(func: Callable,
 
 def ihvp_lissa(func: Callable,
                argnums: int = 0,
-               num_repeat: int = 10, 
-               recursion_depth:int = 5000,
+               num_repeat: int = 10,
+               recursion_depth: int = 5000,
                mode: str = "rev-rev") -> Callable:
     """LiSSA ihvp algorithm function.
 
@@ -439,16 +439,16 @@ def ihvp_lissa(func: Callable,
                        by some operator.
 
     Returns:
-        A function that takes a list of tuples of Tensor `x` and a vector `v` and returns
-        the IHVP of the Hessian of `func` and `v`.
+        A function that takes a list of tuples of Tensor `x` and a vector `v` and
+        returns the IHVP of the Hessian of `func` and `v`.
     """
 
     def _ihvp_cg_func(input_list: List[Tuple[torch.Tensor, ...]], v: Tensor) -> Tensor:
         """The IHVP function using CG.
 
         Args:
-            x (Tuple[torch.Tensor, ...]): The function will computed the
-                inverse hessian matrix with respect to these arguments.
+            input_list (List[Tuple[torch.Tensor, ...]]): The function will compute the
+                inverse hessian matrix with respect to the list of arguments.
             v (Tensor): The vector to be produced on the inverse hessian matrix.
 
         Returns:
@@ -467,7 +467,7 @@ def ihvp_lissa(func: Callable,
 def ihvp_at_x_lissa(func: Callable,
                     input_list: List[Tuple],
                     argnums: int = 0,
-                    num_repeat: int = 10, 
+                    num_repeat: int = 10,
                     recursion_depth: int = 5000,
                     mode: str = "rev-rev") -> Callable:
     """LiSSA ihvp algorithm function (with fixed x).
@@ -482,8 +482,8 @@ def ihvp_at_x_lissa(func: Callable,
         func (Callable): A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
             be estimated on this function.
-        input_list (List[Tuple]): List of arguments for multiple calls of `func`. Each tuple
-            inside the list should be a pair of valid arguments
+        input_list (List[Tuple]): List of arguments for multiple calls of `func`. 
+            Each tuple inside the list should be a pair of valid arguments
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         num_repeat (int): An integer default 10. Specifies the number of samples
@@ -501,7 +501,6 @@ def ihvp_at_x_lissa(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-
     if recursion_depth > len(input_list):
         warning_message = 'The recursion depth is greater than number of samples. " \
             "Please consider using other methods!'
@@ -517,7 +516,6 @@ def ihvp_at_x_lissa(func: Callable,
         Returns:
             The IHVP value.
         """
-
         if v.ndim == 1:
             v = v.unsqueeze(0)
         batch_ihvp_lissa = []
@@ -525,7 +523,7 @@ def ihvp_at_x_lissa(func: Callable,
         for i in range(v.shape[0]):
             damping, scaling = 0.0, 50.0
             ihvp_estimations = []
-            for r in range(num_repeat):
+            for _ in range(num_repeat):
                 sampled_indices = torch.randperm(len(input_list))[:recursion_depth]
                 hvp_func_list = [
                     hvp_at_x(func, x=input_list[idx], argnums=argnums, mode=mode)
@@ -535,7 +533,9 @@ def ihvp_at_x_lissa(func: Callable,
                 curr_estimate = v[i, :].detach().clone()  # No gradient on v
                 for hvp_func in hvp_func_list:
                     hvp = hvp_func(curr_estimate)
-                    curr_estimate = v[i, :] + (1 - damping) * curr_estimate - hvp / scaling
+                    curr_estimate = (v[i, :] 
+                                     + (1 - damping) * curr_estimate 
+                                     - hvp / scaling)
 
                 ihvp_estimations.append(curr_estimate / scaling)
 
