@@ -32,14 +32,23 @@ def lds(score: torch.Tensor,
         torch.Tensor: The LDS metric value. The returned tensor has the shape
             (num_test_samples,).
     """
-    gt_values, _ = ground_truth
+    gt_values, indices = ground_truth
     num_test_samples = score.shape[1]
     lds_values = torch.zeros(num_test_samples)
+    num_models = gt_values.shape[0]
+    indices_per_model = len(indices) // num_models
+    reshaped_indices = indices.view(num_models, indices_per_model)
+
     for i in range(num_test_samples):
-        scores_sample = score[:, i].cpu().numpy()
-        gt_values_sample = gt_values[:, i].cpu().numpy()
-        correlation, _ = spearmanr(scores_sample, gt_values_sample)
-        lds_values[i] = correlation
+        correlations = []
+        for model_idx in range(num_models):
+            model_indices = reshaped_indices[model_idx]
+            scores_sample = score[model_indices, i].cpu().numpy()
+            gt_values_sample = gt_values[model_idx, i].cpu().numpy()
+            correlation, _ = spearmanr(scores_sample, gt_values_sample)
+            correlations.append(correlation)
+        
+        lds_values[i] = torch.tensor(correlations).mean()
     return lds_values
 
 

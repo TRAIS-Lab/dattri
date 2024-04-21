@@ -189,14 +189,19 @@ def retrain_lds(train_func: Callable,
     """
     path = Path(path)
 
-    # initialize random seed and create directory
+    # Initialize random seed and create directory
     if seed is not None:
+        np.random.seed(seed)
         torch.manual_seed(seed)
-        rng = np.random.default_rng(seed)
+    seed_list = np.random.randint(0, 10000, size=subset_number * subset_average_run)
+
     if not path.exists():
         path.mkdir(parents=True)
 
     total_data_length = len(dataloader)
+    # Check the subset_ratio
+    if subset_ratio > 1 or subset_ratio < 0:
+        raise ValueError("subset_ratio should be in the range of [0, 1].")
     subset_length = int(total_data_length * subset_ratio)
 
     # Create metadata to save
@@ -212,7 +217,9 @@ def retrain_lds(train_func: Callable,
 
     # Retrain the model for each subset
     for i in range(subset_number):
+        seed = seed_list[i]
         rng = np.random.default_rng(seed)
+        torch.manual_seed(seed)
         indices = rng.choice(total_data_length, subset_length, replace=False)
         subset_dataloader = torch.utils.data.DataLoader(
             dataset=torch.utils.data.Subset(dataloader.dataset, indices),
@@ -220,9 +227,18 @@ def retrain_lds(train_func: Callable,
             shuffle=True,
         )
 
-        for _ in range(subset_average_run):
+        indices_path = path / str(i) / "indices.txt"
+        indices_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(indices_path, 'w') as f:
+            f.write('\n'.join(map(str, indices)))
+
+        for j in range(subset_average_run):
+            temp = subset_average_run * i
+            seed = seed_list[temp + j]
+            # Set random seed
+            torch.manual_seed(seed)
             model = train_func(subset_dataloader)
-            model_path = path / str(i) / "model_weights.pt"
+            model_path = path / str(i) / f"model_weights_{j}.pt"
             model_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(model.state_dict(), model_path)
 

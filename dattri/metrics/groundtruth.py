@@ -128,16 +128,24 @@ def calculate_lds_groundtruth(target_func: Callable,
             The returned tensor has the shape (num_models, sampled_num).
     """
     retrain_dir = Path(retrain_dir)
-    model_paths = list(retrain_dir.iterdir())
+    model_paths = [p for p in retrain_dir.iterdir() if p.is_file() and p.suffix == '.pt']
+    indices_paths = [p for p in retrain_dir.iterdir() if p.is_dir() and (p / 'indices.txt').exists()]
+    all_indices = []
+    for indices_path in indices_paths:
+        with open(indices_path / 'indices.txt', 'r') as f:
+            indices = list(map(int, f.read().split()))
+            all_indices.append(torch.tensor(indices))
+    model_indices = torch.cat(all_indices)
+    
     num_models = len(model_paths)
     num_test_samples = len(test_dataloader.dataset)
     lds_groundtruth = torch.zeros(num_models, num_test_samples)
-    model_indices = torch.arange(num_models)
+
     for i, model_path in enumerate(model_paths):
         model = torch.load(model_path)
-        target_value = target_func(model, test_dataloader)
-        lds_groundtruth[i,:] = target_value
+        model.eval()
+        with torch.no_grad():
+            target_values = target_func(model, test_dataloader)
+        lds_groundtruth[i, :] = target_values
 
-    sampled_num = torch.tensor([num_test_samples] * model_indices.size(0))
-
-    return lds_groundtruth, sampled_num
+    return lds_groundtruth, model_indices
