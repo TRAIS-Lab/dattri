@@ -3,21 +3,20 @@
 # ruff: noqa: ARG001, TCH002
 # TODO: Remove the above line after finishing the implementation of the functions.
 
-
 from __future__ import annotations
 
+from pathlib import Path
 from typing import TYPE_CHECKING
+
+import numpy as np
+import torch
+import yaml
+
+import random
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
-
-from pathlib import Path
-
-import torch
-import yaml
-from torch.utils.data import DataLoader, Subset
-
 
 def retrain_loo(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
@@ -184,9 +183,68 @@ def retrain_lds(train_func: Callable,
                         ...
                     }
                 }
-            ```
-
-    Returns:
-        (None) None
+            ```.
     """
-    return
+    path = Path(path)
+
+    # Initialize random seed and create directory
+    if seed is not None:
+        random.seed(seed)
+        np.random.seed(seed)
+        torch.manual_seed(seed)
+    seed_list = np.random.randint(0, 10000, size=subset_number * subset_average_run)
+
+    if not path.exists():
+        path.mkdir(parents=True)
+
+    total_data_length = len(dataloader)
+    # Check the subset_ratio
+    if subset_ratio > 1 or subset_ratio <= 0:
+        raise ValueError("subset_ratio should be in the range of (0, 1].")
+    subset_length = int(total_data_length * subset_ratio)
+
+    # Create metadata to save
+    metadata = {
+        "mode": "lds",
+        "data_length": total_data_length,
+        "train_func": train_func.__name__,
+        "subset_number": subset_number,
+        "subset_ratio": subset_ratio,
+        "subset_average_run": subset_average_run,
+        "map_subset_dir": {},
+    }
+
+    # Retrain the model for each subset
+    for i in range(subset_number):
+        seed = seed_list[i]
+        rng = np.random.default_rng(seed)
+        torch.manual_seed(seed)
+        indices = rng.choice(total_data_length, subset_length, replace=False)
+        subset_dataloader = torch.utils.data.DataLoader(
+            dataset=torch.utils.data.Subset(dataloader.dataset, indices),
+            batch_size=dataloader.batch_size,
+            shuffle=True,
+        )
+
+        indices_path = path / str(i) / "indices.txt"
+        indices_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(indices_path, 'w') as f:
+            f.write('\n'.join(map(str, indices)))
+
+        for j in range(subset_average_run):
+            temp = subset_average_run * i
+            seed = seed_list[temp + j]
+            # Set random seed
+            torch.manual_seed(seed)
+            np.random.seed(seed)
+            random.seed(seed)
+            model = train_func(subset_dataloader)
+            model_path = path / str(i) / f"model_weights_{j}.pt"
+            model_path.parent.mkdir(parents=True, exist_ok=True)
+            torch.save(model.state_dict(), model_path)
+
+        metadata["map_subset_dir"][i] = str(path / str(i))
+
+    # Save metadata
+    with (path / "metadata.yml").open("w") as f:
+        yaml.dump(metadata, f)
