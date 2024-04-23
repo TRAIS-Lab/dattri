@@ -1,19 +1,20 @@
-import unittest
-import torch
-from scipy.stats import spearmanr
-from unittest.mock import MagicMock, patch, mock_open, Mock
-from pathlib import Path
-
+"""Unit test for lds."""
 
 import sys
-sys.path.append('/Users/jackhuang/Desktop/Jiaqi/dattri_jack')
+import unittest
+
+import torch
+
+sys.path.append("/Users/jackhuang/Desktop/Jiaqi/dattri_jack")
 
 from dattri.metrics.metrics import lds
-from dattri.metrics.groundtruth import calculate_lds_groundtruth
+
 
 class TestLDSFunction(unittest.TestCase):
+    """Test LDS function."""
 
     def test_basic_functionality(self):
+        """Test basic functionality of LDS function."""
         score = torch.tensor([[0.1, 0.2, 0.3],
                               [0.4, 0.5, 0.6],
                               [0.7, 0.8, 0.9]], dtype=torch.float32)
@@ -28,9 +29,10 @@ class TestLDSFunction(unittest.TestCase):
         lds_values = lds(score, ground_truth)
 
         expected_values = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
-        self.assertTrue(torch.allclose(lds_values, expected_values), "LDS values do not match expected")
+        assert torch.allclose(lds_values, expected_values), "Doesn't match"
 
-    def test_basic_functionality(self):
+    def test_basic_functionality_diff_indices(self):
+        """Test basic functionality of LDS function."""
         score = torch.tensor([[0.1, 0.2, 0.3],
                               [0.4, 0.5, 0.6],
                               [0.7, 0.8, 0.9]], dtype=torch.float32)
@@ -45,7 +47,8 @@ class TestLDSFunction(unittest.TestCase):
         lds_values = lds(score, ground_truth)
 
         expected_values = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
-        self.assertTrue(torch.allclose(lds_values, expected_values), "LDS values do not match expected")
+        assert torch.allclose(lds_values, expected_values), "Doesn't match"
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     unittest.main()

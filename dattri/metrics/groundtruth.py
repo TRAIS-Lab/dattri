@@ -126,12 +126,13 @@ def calculate_lds_groundtruth(target_func: Callable,
             The returned tensor has the shape (num_models, sampled_num).
     """
     retrain_dir = Path(retrain_dir)
-    model_paths = [p for p in retrain_dir.iterdir() if p.is_file() and p.suffix == '.pt']
-    indices_paths = [p for p in retrain_dir.iterdir() if p.is_dir() and (p / 'indices.txt').exists()]
-    print(model_paths)
+    model_paths = [p for p in retrain_dir.iterdir()
+                   if p.is_file() and p.suffix == ".pt"]
+    indices_paths = [p for p in retrain_dir.iterdir()
+                     if p.is_dir() and (p / "indices.txt").exists()]
     all_indices = []
     for indices_path in indices_paths:
-        with open(indices_path / 'indices.txt', 'r') as f:
+        with Path.open(indices_path / "indices.txt", "r") as f:
             indices = list(map(int, f.read().split()))
             all_indices.append(torch.tensor(indices))
     model_indices = torch.stack(all_indices)

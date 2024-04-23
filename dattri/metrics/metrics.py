@@ -42,7 +42,7 @@ def lds(score: torch.Tensor,
     for i in range(gt_values.size(0)):
         correlation = spearmanr(score_sample[i], gt_values[i])[0]
         correlations.append(correlation)
-    return torch.tensor(correlations, dtype=torch.float32) 
+    return torch.tensor(correlations, dtype=torch.float32)
 
 
 def loo_corr(score: torch.Tensor,

@@ -5,17 +5,28 @@
 
 from __future__ import annotations
 
+import random
+from pathlib import Path
+from typing import TYPE_CHECKING
+
+import numpy as np
+import torch
+import yaml
+from torch.utils.data import DataLoader, Subset
+
+if TYPE_CHECKING:
+    from collections.abc import Callable
+    from typing import List, Optional
+
+
+from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
 
-from pathlib import Path
-
-import numpy as np
-import torch
-import yaml
 
 def retrain_loo(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
@@ -189,17 +200,18 @@ def retrain_lds(train_func: Callable,
     # Initialize random seed and create directory
     if seed is not None:
         random.seed(seed)
-        np.random.seed(seed)
+        np.random.Generator(seed)
         torch.manual_seed(seed)
-    seed_list = np.random.randint(0, 10000, size=subset_number * subset_average_run)
+    seed_list = np.random.Generator(0, 10000, size=subset_number * subset_average_run)
 
     if not path.exists():
         path.mkdir(parents=True)
 
     total_data_length = len(dataloader)
     # Check the subset_ratio
+    error_message = "subset_ratio should be in the range (0, 1]."
     if subset_ratio > 1 or subset_ratio <= 0:
-        raise ValueError("subset_ratio should be in the range of (0, 1].")
+        raise ValueError(error_message)
     subset_length = int(total_data_length * subset_ratio)
 
     # Create metadata to save
@@ -227,15 +239,15 @@ def retrain_lds(train_func: Callable,
 
         indices_path = path / str(i) / "indices.txt"
         indices_path.parent.mkdir(parents=True, exist_ok=True)
-        with open(indices_path, 'w') as f:
-            f.write('\n'.join(map(str, indices)))
+        with Path.open(indices_path, "w") as f:
+            f.write("\n".join(map(str, indices)))
 
         for j in range(subset_average_run):
             temp = subset_average_run * i
             seed = seed_list[temp + j]
             # Set random seed
             torch.manual_seed(seed)
-            np.random.seed(seed)
+            np.random.Generator(seed)
             random.seed(seed)
             model = train_func(subset_dataloader)
             model_path = path / str(i) / f"model_weights_{j}.pt"
