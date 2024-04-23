@@ -458,7 +458,6 @@ def ihvp_arnoldi(func: Callable,
 
     return _ihvp_arnoldi_func
 
-
 def ihvp_at_x_arnoldi(func: Callable,
                       *x,
                       argnums: int = 0,
@@ -608,7 +607,6 @@ def ihvp_at_x_arnoldi(func: Callable,
         return torch.stack(batch_ihvp_arnoldi)
 
     return _ihvp_at_x_arnoldi
-
 
 class IHVPUsageError(Exception):
     """The usage exception class for ihvp module."""
