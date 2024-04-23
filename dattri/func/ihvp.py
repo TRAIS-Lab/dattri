@@ -534,7 +534,7 @@ def ihvp_at_x_arnoldi(func: Callable,
         proj = []
         appr_mat = torch.zeros((n_iters, n_iters - 1))
 
-        start_vec = start_vec / torch.norm(start_vec)
+        start_vec /= torch.norm(start_vec)
         proj.append(start_vec)
 
         for n in range(n_iters - 1):
