@@ -29,7 +29,7 @@ class TestLDSFunction(unittest.TestCase):
         lds_values = lds(score, ground_truth)
 
         expected_values = torch.tensor([1.0, 1.0, 1.0], dtype=torch.float32)
-        assert torch.allclose(lds_values, expected_values), "Doesn't match."
+        assert torch.allclose(lds_values, expected_values), "Doesn't match"
 
     def test_basic_functionality_diff_indices(self):
         """Test basic functionality of LDS function."""
