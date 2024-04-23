@@ -10,13 +10,14 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import List, Union
+from typing import Dict, List, Union
 
 import numpy as np
 import torch
 from torch import Tensor
 
 from .utils import _vectorize as vectorize
+
 
 def get_parameter_chunk_sizes(
     model: torch.nn.Module,

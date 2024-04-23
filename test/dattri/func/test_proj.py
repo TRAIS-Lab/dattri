@@ -1,17 +1,16 @@
 """Unit test for random projection."""
-import sys
 import unittest
 
 import torch
 from torch import nn
 
-from dattri.utils import vectorize
 from dattri.func.random_projection import (
     BasicProjector,
     ChunkedCudaProjector,
     CudaProjector,
-    get_projection
+    get_projection,
 )
+from dattri.func.utils import vectorize
 
 
 class TestVectorize(unittest.TestCase):
