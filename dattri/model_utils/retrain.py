@@ -195,8 +195,6 @@ def retrain_lds(train_func: Callable,
                     }
                 }
             ```.
-        Raises:
-            ValueError: If the subset_ratio is not within the range (0, 1].
     """
     path = Path(path)
 
@@ -211,10 +209,6 @@ def retrain_lds(train_func: Callable,
         path.mkdir(parents=True)
 
     total_data_length = len(dataloader)
-    # Check the subset_ratio
-    error_message = "subset_ratio should be in the range (0, 1]."
-    if subset_ratio > 1 or subset_ratio <= 0:
-        raise ValueError(error_message)
     subset_length = int(total_data_length * subset_ratio)
 
     # Create metadata to save
