@@ -22,8 +22,6 @@ jobs:
         pip install torch
         pip install numpy
         pip install scikit-learn
-
-
         python setup.py sdist bdist_wheel
         pip install dist/*.whl
     - name: Analysing the code with pytest

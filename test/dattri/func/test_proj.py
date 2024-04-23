@@ -2,17 +2,15 @@
 import sys
 import unittest
 
-sys.path.append("/u/tli3/dattri_test/dattri")
-
 import torch
 from torch import nn
 
+from dattri.utils import vectorize
 from dattri.func.random_projection import (
     BasicProjector,
     ChunkedCudaProjector,
     CudaProjector,
-    get_projection,
-    vectorize,
+    get_projection
 )
 
 

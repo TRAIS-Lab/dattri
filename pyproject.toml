@@ -19,6 +19,8 @@ ignore = [
     "CPY001",  # Missing copyright notice at top of file
     "PLR0917", # Too many positional arguments
     "PLR6201", # Use a `set` literal when testing for membership
+    "FBT001",  # Boolean-typed positional argument in function definition
+    "FBT002",  # Boolean default positional argument in function definition
     "PLC0415", # strict rule on postion of importing modules
 ]
 
