@@ -3,6 +3,7 @@
 # ruff: noqa: ARG001, TCH002
 # TODO: Remove the above line after finishing the implementation of the functions.
 
+
 from __future__ import annotations
 
 import random
@@ -194,6 +195,8 @@ def retrain_lds(train_func: Callable,
                     }
                 }
             ```.
+        Raises:
+            ValueError: If the subset_ratio is not within the range (0, 1].
     """
     path = Path(path)
 
