@@ -1,12 +1,18 @@
 """Unit test for ihvp calculator."""
 
 import torch
-
 from torch.func import vmap
-from dattri.func.ihvp import hvp, hvp_at_x, ihvp_at_x_cg, ihvp_at_x_explicit, ihvp_cg, \
-ihvp_at_x_arnoldi, ihvp_arnoldi
-from dattri.func.utils import flatten_func, flatten_params
 
+from dattri.func.ihvp import (
+    hvp,
+    hvp_at_x,
+    ihvp_arnoldi,
+    ihvp_at_x_arnoldi,
+    ihvp_at_x_cg,
+    ihvp_at_x_explicit,
+    ihvp_cg,
+)
+from dattri.func.utils import flatten_func, flatten_params
 
 
 class TestIHVP:
@@ -168,7 +174,7 @@ class TestIHVP:
                               (torch.diag(-1 / x.sin()) @ vec.T).T,
                               rtol=1e-04, atol=1e-07)
         assert ihvp(vec).shape == (5, 2)
-        
+
     def test_ihvp_cg_nn(self):
         """Test ihvp_at_x_cg and ihvp_cg for a nn forwarding function ."""
         # create a simple model with example data
@@ -197,4 +203,3 @@ class TestIHVP:
         assert torch.allclose(ihvp_cg_func((flatten_params(model_params),), v),
                               ihvp_explicit_at_x_func(v),
                               rtol=1e-03, atol=1e-07)
-
