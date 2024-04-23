@@ -5,7 +5,10 @@
 
 from __future__ import annotations
 
-from typing import Tuple
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Tuple
 
 import torch
 from scipy.stats import spearmanr
@@ -33,21 +36,13 @@ def lds(score: torch.Tensor,
             (num_test_samples,).
     """
     gt_values, indices = ground_truth
-    num_test_samples = score.shape[1]
-    lds_values = torch.zeros(num_test_samples)
-    num_models = gt_values.shape[0]
-
-    for i in range(num_test_samples):
-        correlations = []
-        for model_idx in range(num_models):
-            model_indices = indices[model_idx]
-            scores_sample = score[model_indices, i].cpu().numpy()
-            gt_values_sample = gt_values[model_idx, i].cpu().numpy()
-            correlation, _ = spearmanr(scores_sample, gt_values_sample)
-            correlations.append(correlation)
-        
-        lds_values[i] = torch.tensor(correlations).mean()
-    return lds_values
+    row_indices = torch.arange(score.size(0)).unsqueeze(1).expand_as(indices)
+    score_sample = score[row_indices, indices]
+    correlations = []
+    for i in range(gt_values.size(0)):
+        correlation = spearmanr(score_sample[i], gt_values[i])[0]
+        correlations.append(correlation)
+    return torch.tensor(correlations, dtype=torch.float32) 
 
 
 def loo_corr(score: torch.Tensor,
