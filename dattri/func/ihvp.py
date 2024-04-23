@@ -407,10 +407,10 @@ def ihvp_at_x_cg(func: Callable,
 
 
 def ihvp_arnoldi(func: Callable,
-            argnums: int = 0,
-            max_iter: int = 100,
-            tol: float = 1e-7,
-            mode: str = "rev-fwd") -> Callable:
+                 argnums: int = 0,
+                 max_iter: int = 100,
+                 tol: float = 1e-7,
+                 mode: str = "rev-fwd") -> Callable:
     """Arnoldi Iteration ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -457,6 +457,7 @@ def ihvp_arnoldi(func: Callable,
                             max_iter=max_iter, tol=tol, mode=mode)(v)
 
     return _ihvp_arnoldi_func
+
 
 def ihvp_at_x_arnoldi(func: Callable,
                       *x,
@@ -544,7 +545,7 @@ def ihvp_at_x_arnoldi(func: Callable,
                 h_vec -= appr_mat[j][n] * proj_vec
 
             new_norm = torch.norm(h_vec)
-            if new_norm < tol :
+            if new_norm < tol:
                 appr_mat[n + 1][n] = 0
                 proj.append(h_vec)
                 appr_mat = appr_mat[:n + 2, :n + 1]
@@ -570,22 +571,18 @@ def ihvp_at_x_arnoldi(func: Callable,
             proj (Tensor): The second result from arnoldi_iter. This will be the
                 projection vectors onto the Krylov subspace K of the Hessian H.
             top_k (int): Specfies how many eigenvalues and eigenvectors to distill.
-            force_hermitian (bool, optional): Whether to force the Hessian to Hermitian.
+            force_hermitian (bool): Whether to force the Hessian to Hermitian.
                 Defaults to True.
 
         Returns:
             The distilled eigenvalues and eigenvectors.
         """
         appr_mat = appr_mat[:-1, :]
-        n = appr_mat.shape[0]
 
         if force_hermitian:
-          for i in range(n):
-              for j in range(n):
-                  if i - j > 1 or j - i > 1:
-                      appr_mat[i][j] = 0
-          appr_mat = 0.5 * (appr_mat + appr_mat.T)
-          eigvals, eigvecs = torch.linalg.eigh(appr_mat)
+            appr_mat = torch.tril(appr_mat, diagonal=1)
+            appr_mat = 0.5 * (appr_mat + appr_mat.T)
+            eigvals, eigvecs = torch.linalg.eigh(appr_mat)
         else:
             eigvals, eigvecs = torch.linalg.eig(appr_mat)
 
@@ -594,10 +591,7 @@ def ihvp_at_x_arnoldi(func: Callable,
         eigvecs = eigvecs[:, idx]
         reduced_projections = torch.matmul(eigvecs[:, -top_k:].T, proj[:-1])
 
-
         return eigvals[-top_k:], reduced_projections
-
-
 
     def _ihvp_at_x_arnoldi(v: Tensor) -> Tensor:
         if v.ndim == 1:
@@ -610,10 +604,11 @@ def ihvp_at_x_arnoldi(func: Callable,
 
         for i in range(v.shape[0]):
             v_idx = v[i, :]
-            batch_ihvp_arnoldi.append(eigvecs.T @ (1.0 / eigvals * (eigvecs @ v_idx)) )
+            batch_ihvp_arnoldi.append(eigvecs.T @ (1.0 / eigvals * (eigvecs @ v_idx)))
         return torch.stack(batch_ihvp_arnoldi)
 
     return _ihvp_at_x_arnoldi
+
 
 class IHVPUsageError(Exception):
     """The usage exception class for ihvp module."""

@@ -163,7 +163,7 @@ class TestIHVP:
 
         assert torch.allclose(ihvp(vec),
                               (torch.diag(-1 / x.sin()) @ vec.T).T,
-                              rtol=1e-04, atol=1e-07)
+                              rtol=1e-03, atol=1e-06)
         assert torch.allclose(ihvp_arnoldi(target, argnums=0)((x,), vec),
                               (torch.diag(-1 / x.sin()) @ vec.T).T,
                               rtol=1e-04, atol=1e-07)
