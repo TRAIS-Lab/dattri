@@ -307,7 +307,7 @@ def ihvp_at_x_cg(func: Callable,
             Must return a single-element Tensor. The hessian will
             be calculated on this function.
         *x: List of arguments for `func`.
-        argnums (int): An integer default to 0. SSpecifies which argument of func
+        argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         max_iter (int): An integer default 100. Specifies the maximum iteration
             to calculate the ihvp through Conjugate Gradient Descent.
@@ -367,6 +367,215 @@ def ihvp_at_x_cg(func: Callable,
 
     return _ihvp_cg_func
 
+
+def ihvp_arnoldi(func: Callable,
+            argnums: int = 0,
+            max_iter: int = 100,
+            tol: float = 1e-7,
+            mode: str = "rev-fwd") -> Callable:
+    """Arnoldi Iteration ihvp algorithm function.
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    Arnoldi Iteration builds an approximately H-invariant subspace by constructing
+    the n-th order Krylov subspace and builds an orthonormal basis for it.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be calculated on this function.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        max_iter (int): An integer default 100. Specifies the maximum iteration
+            to calculate the ihvp through Arnoldi Iteration.
+        tol (float): A float default to 1e-7. Specifies the break condition that
+            decide if the algorithm has converged. If the torch.norm of current
+            basis vector is less than tol, then the arnoldi_iter algorithm is truncated.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
+    Returns:
+        A function that takes a tuple of Tensor `x` and a vector `v` and returns
+        the IHVP of the Hessian of `func` and `v`.
+    """
+
+    def _ihvp_arnoldi_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+        """The IHVP function using Arnoldi Iteration.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse hessian matrix with respect to these arguments.
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        return ihvp_at_x_arnoldi(func, *x, argnums=argnums,
+                            max_iter=max_iter, tol=tol, mode=mode)(v)
+
+    return _ihvp_arnoldi_func
+
+def ihvp_at_x_arnoldi(func: Callable,
+                      *x,
+                      argnums: int = 0,
+                      max_iter: int = 200,
+                      top_k: int = 100,
+                      norm_constant: float = 1.0,
+                      tol: float = 1e-7,
+                      mode: str = "rev-fwd",
+                      ) -> Callable:
+    """Arnoldi Iteration ihvp algorithm function (with fixed x).
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    Arnoldi Iteration builds an approximately H-invariant subspace by constructing
+    the n-th order Krylov subspace and builds an orthonormal basis for it.
+
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be calculated on this function.
+        *x: List of arguments for `func`.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        max_iter (int): An integer default to 100. Specifies the maximum iteration
+            to calculate the ihvp through Arnoldi Iteration.
+        top_k (int): An integer default to 100. Specifies how many eigenvalues and
+            eigenvectors to distill.
+        norm_constant (float): A float default to 1.0. Specifies a constant value
+            for the norm of each projection. In some situations (e.g. with a large
+            numbers of parameters) it might be advisable to set norm_constant > 1
+            to avoid dividing projection components by a large normalization factor.
+        tol (float): A float default to 1e-7. Specifies the break condition that
+            decide if the algorithm has converged. If the torch.norm of current
+            basis vector is less than tol, then the arnoldi_iter algorithm is truncated.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
+    Returns:
+        A function that takes a vector `v` and returns the IHVP of the Hessian
+        of `func` and `v`.
+    """
+    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode)
+
+    def arnoldi_iter(hvp_func: Callable,
+                     start_vec: Tensor,
+                     n_iters: int,
+                     norm_constant: float,
+                     tol: float,
+                     ) -> Tuple[Tensor, Tensor]:
+        """Applies Arnoldi's algorithm.
+
+        Args:
+            hvp_func (Callable): A function that computes hvp.
+            start_vec (Tensor): A random normalized vector for initialization.
+            n_iters (int): The number of iteration.
+            norm_constant (float): The norm normalization for each projection.
+            tol (float): A tolerance value used to terminate iteration early.
+
+        Returns:
+            The result of the Arnoldi Iteration, containing a Hessenberg
+            matrix H' approximating the Hessian matrix on its Krylov subspace K,
+            and the projections onto K. If H is Hermitian,
+            H' will be a tridiagonal matrix (up to numerical errors).
+        """
+        n_iters = min(start_vec.shape[0] + 1, n_iters)
+
+        proj = []
+        appr_mat = torch.zeros((n_iters, n_iters - 1))
+
+        start_vec = start_vec / torch.norm(start_vec)
+        proj.append(start_vec)
+
+        for n in range(n_iters - 1):
+            h_vec = hvp_func(proj[n])
+
+            for j, proj_vec in enumerate(proj):
+                appr_mat[j][n] = torch.dot(h_vec, proj_vec) / norm_constant**2
+                h_vec -= appr_mat[j][n] * proj_vec
+
+            new_norm = torch.norm(h_vec)
+            if new_norm < tol :
+                appr_mat[n + 1][n] = 0
+                proj.append(h_vec)
+                appr_mat = appr_mat[:n + 2, :n + 1]
+                break
+
+            appr_mat[n + 1][n] = new_norm / norm_constant
+            h_vec *= 1.0 / appr_mat[n + 1][n]
+            proj.append(h_vec)
+
+        return appr_mat, torch.stack(proj, dim=0)
+
+    def distill(appr_mat: Tensor,
+                proj: Tensor,
+                top_k: int,
+                *,
+                force_hermitian: bool = True,
+                ) -> Tuple[Tensor, Tensor]:
+        """Distills result of Arnoldi iteration to top_k eigenvalues and eigenvectors.
+
+        Args:
+            appr_mat (Tensor): The first result from arnoldi_iter. This will be a
+                Hessenberg matrix H' approximating the Hessian H.
+            proj (Tensor): The second result from arnoldi_iter. This will be the
+                projection vectors onto the Krylov subspace K of the Hessian H.
+            top_k (int): Specfies how many eigenvalues and eigenvectors to distill.
+            force_hermitian (bool, optional): Whether to force the Hessian to Hermitian.
+                Defaults to True.
+
+        Returns:
+            The distilled eigenvalues and eigenvectors.
+        """
+        appr_mat = appr_mat[:-1, :]
+        n = appr_mat.shape[0]
+
+        if force_hermitian:
+          for i in range(n):
+              for j in range(n):
+                  if i - j > 1 or j - i > 1:
+                      appr_mat[i][j] = 0
+          appr_mat = 0.5 * (appr_mat + appr_mat.T)
+          eigvals, eigvecs = torch.linalg.eigh(appr_mat)
+        else:
+            eigvals, eigvecs = torch.linalg.eig(appr_mat)
+
+        idx = torch.argsort(torch.abs(eigvals))
+        eigvals = eigvals[idx]
+        eigvecs = eigvecs[:, idx]
+        reduced_projections = torch.matmul(eigvecs[:, -top_k:].T, proj[:-1])
+
+
+        return eigvals[-top_k:], reduced_projections
+
+
+
+    def _ihvp_at_x_arnoldi(v: Tensor) -> Tensor:
+        if v.ndim == 1:
+            v = v.unsqueeze(0)
+        batch_ihvp_arnoldi = []
+        v0 = torch.rand(v.shape[1])
+
+        appr_mat, proj = arnoldi_iter(hvp_at_x_func, v0, max_iter, norm_constant, tol)
+        eigvals, eigvecs = distill(appr_mat, proj, top_k)
+
+        for i in range(v.shape[0]):
+            v_idx = v[i, :]
+            batch_ihvp_arnoldi.append(eigvecs.T @ (1.0 / eigvals * (eigvecs @ v_idx)) )
+        return torch.stack(batch_ihvp_arnoldi)
+
+    return _ihvp_at_x_arnoldi
 
 class IHVPUsageError(Exception):
     """The usage exception class for ihvp module."""
