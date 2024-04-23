@@ -4,6 +4,7 @@ import torch
 from torch.func import vmap
 
 from dattri.func.ihvp import hvp, hvp_at_x, ihvp_at_x_cg, ihvp_at_x_explicit, ihvp_cg
+from dattri.func.utils import flatten_func, flatten_params
 
 
 class TestIHVP:
@@ -147,3 +148,32 @@ class TestIHVP:
                               (torch.diag(-1 / (1 + y).sin()) @ vec.T).T,
                               rtol=1e-04, atol=1e-07)
         assert ihvp(vec).shape == (5, 2)
+
+    def test_ihvp_cg_nn(self):
+        """Test ihvp_at_x_cg and ihvp_cg for a nn forwarding function ."""
+        # create a simple model with example data
+        model = torch.nn.Sequential(torch.nn.Linear(3, 3),
+                                    torch.nn.ReLU(),
+                                    torch.nn.Linear(3, 1))
+        data = (torch.randn(3), torch.randn(1))
+        model.eval()
+
+        @flatten_func(model, param_num=0)
+        def f(params):
+            yhat = torch.func.functional_call(model, params, data[0])
+            return torch.mean((yhat - data[1])**2)
+
+        model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+
+        v = torch.ones(16)
+        ihvp_cg_func = ihvp_cg(f, argnums=0, regularization=1e-3)
+        ihvp_cg_at_x_func = ihvp_at_x_cg(f, flatten_params(model_params),
+                                         argnums=0, regularization=1e-3)
+        ihvp_explicit_at_x_func = ihvp_at_x_explicit(f, flatten_params(model_params),
+                                                     argnums=0, regularization=1e-3)
+
+        assert torch.allclose(ihvp_cg_at_x_func(v), ihvp_explicit_at_x_func(v),
+                              rtol=1e-03, atol=1e-07)
+        assert torch.allclose(ihvp_cg_func((flatten_params(model_params),), v),
+                              ihvp_explicit_at_x_func(v),
+                              rtol=1e-03, atol=1e-07)
