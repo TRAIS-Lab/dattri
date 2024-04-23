@@ -10,63 +10,12 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import Dict, List, Optional, Union
+from typing import List, Union
 
 import torch
 from torch import Tensor
 
-
-def vectorize(g: Dict[str, torch.Tensor], arr: Optional[torch.Tensor] = None,
-              device: Optional[str] = "cuda") -> Tensor:
-    """Vectorize gradient result (g) into arr.
-
-    This function takes a dictionary of gradient and returns a flattened tensor
-    of shape [batch_size, num_params].
-
-    Args:
-        g (dict of Tensors): A dictionary containing gradient tensors to be vectorized.
-        arr (Tensor, optional): An optional pre-allocated tensor to store the
-                                vectorized gradients. If provided, it must have the
-                                shape `[batch_size, num_params]`, where `num_params`
-                                is the total number of scalar parameters in all
-                                gradient tensors combined. If `None`, a new tensor
-                                is created. Defaults to None.
-        device (str, optional): "cuda" or "cpu". Defaults to "cuda".
-
-    Returns:
-        Tensor: A 2D tensor of shape `[batch_size, num_params]`,
-                where each row contains all the vectorized gradients
-                for a single batch element.
-
-    Raises:
-        ValueError: Parameter size in g doesn't match batch size.
-    """
-    if arr is None:
-        g_elt = g[next(iter(g.keys()))[0]]
-        batch_size = g_elt.shape[0]
-        num_params = 0
-        for param in g.values():
-            if  param.shape[0] != batch_size:
-                msg = "Parameter row num doesn't match batch size."
-                raise ValueError(msg)
-            num_params += int(param.numel() / batch_size)
-        arr = torch.empty(size=(batch_size, num_params), dtype=g_elt.dtype,
-                          device=device)
-
-    pointer = 0
-    vector_dim = 1
-    for param in g.values():
-        if len(param.shape) <=  vector_dim:
-            num_param = 1
-            p = param.data.reshape(-1, 1)
-        else:
-            num_param = param[0].numel()
-            p = param.flatten(start_dim=1).data
-
-        arr[:, pointer : pointer + num_param] = p.to(device)
-        pointer += num_param
-
-    return arr
+from .utils import _vectorize as vectorize
 
 
 class ProjectionType(str, Enum):
@@ -133,7 +82,6 @@ class AbstractProjector(ABC):
     @abstractmethod
     def free_memory(self) -> None:
         """Frees up memory used by the projector."""
-
 
 
 class BasicProjector(AbstractProjector):
@@ -288,7 +236,6 @@ class BasicProjector(AbstractProjector):
         return sketch.type(grads.dtype)
 
 
-
 class CudaProjector(AbstractProjector):
     """Projector implemented using CUDA.
 
@@ -339,7 +286,7 @@ class CudaProjector(AbstractProjector):
         torch.cuda.get_device_properties(device.index).multi_processor_count
 
         try:
-            import fast_jl
+            import fast_jl  # noqa: PLC0415
 
             # test run to catch at init time if projection goes through
             fast_jl.project_rademacher_8(
@@ -369,6 +316,7 @@ class CudaProjector(AbstractProjector):
         Returns:
             Tensor: The projected gradients.
         """
+        import fast_jl  # noqa: PLC0415
         if isinstance(grads, dict):
             grads = vectorize(grads, device=self.device)
         batch_size = grads.shape[0]
@@ -383,7 +331,6 @@ class CudaProjector(AbstractProjector):
         effective_batch_size = min(self.max_batch_size, effective_batch_size)
 
         function_name = f"project_{self.proj_type}_{effective_batch_size}"
-        import fast_jl
 
         fn = getattr(fast_jl, function_name)
 

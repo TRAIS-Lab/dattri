@@ -4,7 +4,7 @@ on: [pull_request, workflow_dispatch, push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
         python-version: ["3.9", "3.10"]
@@ -20,6 +20,8 @@ jobs:
         pip install wheel
         pip install pytest
         pip install torch
+        pip install numpy
+        pip install scikit-learn
 
         python setup.py sdist bdist_wheel
         pip install dist/*.whl
