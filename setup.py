@@ -24,6 +24,9 @@ def setup_package():
         "url": "https://github.com/TRAIS-Lab/dattri",
         "packages": find_packages(),
         "install_requires": [],
+        "extras_require": {
+            'all': ['fast_jl']
+        },
         "include_package_data": True,
         "classifiers": [
             "License :: OSI Approved :: Apache Software License",
