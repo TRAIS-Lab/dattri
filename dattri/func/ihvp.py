@@ -443,11 +443,11 @@ def ihvp_lissa(func: Callable,
         returns the IHVP of the Hessian of `func` and `v`.
     """
 
-    def _ihvp_cg_func(input_list: List[Tuple[torch.Tensor, ...]], v: Tensor) -> Tensor:
+    def _ihvp_cg_func(x: List[Tuple[torch.Tensor, ...]], v: Tensor) -> Tensor:
         """The IHVP function using CG.
 
         Args:
-            input_list (List[Tuple[torch.Tensor, ...]]): The function will compute the
+            x (List[Tuple[torch.Tensor, ...]]): The function will compute the
                 inverse hessian matrix with respect to the list of arguments.
             v (Tensor): The vector to be produced on the inverse hessian matrix.
 
@@ -455,7 +455,7 @@ def ihvp_lissa(func: Callable,
             The IHVP value.
         """
         return ihvp_at_x_lissa(func,
-                               input_list,
+                               x,
                                argnums=argnums,
                                num_repeat=num_repeat,
                                recursion_depth=recursion_depth,
@@ -465,7 +465,7 @@ def ihvp_lissa(func: Callable,
 
 
 def ihvp_at_x_lissa(func: Callable,
-                    input_list: List[Tuple],
+                    x: List[Tuple],
                     argnums: int = 0,
                     num_repeat: int = 10,
                     recursion_depth: int = 5000,
@@ -482,7 +482,7 @@ def ihvp_at_x_lissa(func: Callable,
         func (Callable): A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
             be estimated on this function.
-        input_list (List[Tuple]): List of arguments for multiple calls of `func`.
+        x (List[Tuple]): List of arguments for multiple calls of `func`.
             Each tuple inside the list should be a pair of valid arguments
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
@@ -501,11 +501,11 @@ def ihvp_at_x_lissa(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    if recursion_depth > len(input_list):
+    if recursion_depth > len(x):
         warning_message = 'The recursion depth is greater than number of samples. " \
             "Please consider using other methods!'
         warnings.warn(warning_message, Warning, stacklevel=2)
-        recursion_depth = len(input_list)
+        recursion_depth = len(x)
 
     def _ihvp_lissa_func(v: Tensor) -> Tensor:
         """The IHVP function using LiSSA.
@@ -524,9 +524,9 @@ def ihvp_at_x_lissa(func: Callable,
             damping, scaling = 0.0, 50.0
             ihvp_estimations = []
             for _ in range(num_repeat):
-                sampled_indices = torch.randperm(len(input_list))[:recursion_depth]
+                sampled_indices = torch.randperm(len(x))[:recursion_depth]
                 hvp_func_list = [
-                    hvp_at_x(func, x=input_list[idx], argnums=argnums, mode=mode)
+                    hvp_at_x(func, x=x[idx], argnums=argnums, mode=mode)
                     for idx in sampled_indices
                 ]
 
