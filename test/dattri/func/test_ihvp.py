@@ -189,9 +189,6 @@ class TestIHVP:
     def test_ihvp_lissa(self):
         """Test ihvp_lissa/ihvp_lissa_at_x."""
 
-        def squared_error(x, y, theta):
-            return ((x @ theta - y)**2)[0]
-
         def mse_loss(xs, ys, theta):
             return torch.mean((xs @ theta - ys)**2)
 
@@ -200,29 +197,28 @@ class TestIHVP:
         theta = torch.randn(2)
         xs = torch.randn(data_size)
         noise = torch.normal(mean=torch.tensor(0),
-                                std=torch.tensor(0.05),
-                                size=(data_size[0], 1))
+                             std=torch.tensor(0.05),
+                             size=(data_size[0],))
         ys = xs @ theta + noise
         vec = torch.randn(1, 2)
-        input_list = [
-            (xs[i], ys[i], theta)
-            for i in range(data_size[0])
-        ]
 
-        ihvp_lissa_func = ihvp_lissa(squared_error, argnums=2)
-        ihvp_lissa_at_x_func = ihvp_at_x_lissa(squared_error,
-                                                input_list,
-                                                argnums=2,
-                                                num_repeat=50,
-                                                recursion_depth=100)
+        ihvp_lissa_func = ihvp_lissa(mse_loss, argnums=2)
+        ihvp_lissa_at_x_func = ihvp_at_x_lissa(mse_loss,
+                                               *(xs, ys, theta),
+                                               in_dims=(0, 0, None),
+                                               argnums=2,
+                                               num_repeat=50,
+                                               recursion_depth=100)
         ihvp_explicit_at_x_func = ihvp_at_x_explicit(mse_loss,
-                                                        *(xs, ys, theta),
-                                                        argnums=2)
+                                                     *(xs, ys, theta),
+                                                     argnums=2)
 
         # Set a larger tolerance for LiSSA
         assert torch.allclose(ihvp_lissa_at_x_func(vec),
-                                ihvp_explicit_at_x_func(vec),
-                                atol=0.08)
-        assert torch.allclose(ihvp_lissa_func(input_list, vec),
-                                ihvp_explicit_at_x_func(vec),
-                                atol=0.08)
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)
+        assert torch.allclose(ihvp_lissa_func(*(xs, ys, theta),
+                                              vec,
+                                              in_dims=(0, 0, None)),
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)

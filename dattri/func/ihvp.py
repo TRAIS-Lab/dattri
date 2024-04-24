@@ -443,29 +443,35 @@ def ihvp_lissa(func: Callable,
         returns the IHVP of the Hessian of `func` and `v`.
     """
 
-    def _ihvp_cg_func(x: List[Tuple[torch.Tensor, ...]], v: Tensor) -> Tensor:
+    def _ihvp_lissa_func(x: Tuple[torch.Tensor, ...],
+                      v: Tensor,
+                      in_dims: Tuple = None) -> Tensor:
         """The IHVP function using CG.
 
         Args:
-            x (List[Tuple[torch.Tensor, ...]]): The function will compute the
-                inverse hessian matrix with respect to the list of arguments.
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse hessian matrix with respect to these arguments.
             v (Tensor): The vector to be produced on the inverse hessian matrix.
+            in_dims (Tuple): A tuple with the same shape as *x. Indicating which 
+                dimension should be considered as batch size dimension.
 
         Returns:
             The IHVP value.
         """
         return ihvp_at_x_lissa(func,
-                               x,
+                               *x,
+                               in_dims=in_dims,
                                argnums=argnums,
                                num_repeat=num_repeat,
                                recursion_depth=recursion_depth,
                                mode=mode)(v)
 
-    return _ihvp_cg_func
+    return _ihvp_lissa_func
 
 
 def ihvp_at_x_lissa(func: Callable,
-                    x: List[Tuple],
+                    *x,
+                    in_dims: Tuple = None,
                     argnums: int = 0,
                     num_repeat: int = 10,
                     recursion_depth: int = 5000,
@@ -482,8 +488,10 @@ def ihvp_at_x_lissa(func: Callable,
         func (Callable): A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
             be estimated on this function.
-        x (List[Tuple]): List of arguments for multiple calls of `func`.
-            Each tuple inside the list should be a pair of valid arguments
+        *x: List of arguments for `func`.
+        in_dims (Tuple): A tuple with the same shape as *x, indicating which 
+            dimension should be considered as batch size dimension. Take the
+            first dimension as batch size dimension by default.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         num_repeat (int): An integer default 10. Specifies the number of samples
@@ -501,11 +509,34 @@ def ihvp_at_x_lissa(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    if recursion_depth > len(x):
+    if in_dims is None:
+        in_dims = (0,) * len(x)
+
+    # Check batch size mismatch
+    batch_size = None
+    for x_in, dim in zip(x, in_dims):
+        if dim is not None:
+            if batch_size is None:
+                batch_size = x_in.shape[dim]
+            else:
+                assert batch_size == x_in.shape[dim], "Batch size mismatch!"
+
+    assert batch_size is not None, "All inputs are identical!"
+
+    # Create input list
+    input_list = []
+    for i in range(batch_size):
+        new_input = [
+            x_in.select(dim, i) if dim is not None else x_in
+            for x_in, dim in zip(x, in_dims)
+        ]
+        input_list.append(tuple(new_input))
+
+    if recursion_depth > len(input_list):
         warning_message = 'The recursion depth is greater than number of samples. " \
             "Please consider using other methods!'
         warnings.warn(warning_message, Warning, stacklevel=2)
-        recursion_depth = len(x)
+        recursion_depth = len(input_list)
 
     def _ihvp_lissa_func(v: Tensor) -> Tensor:
         """The IHVP function using LiSSA.
@@ -524,9 +555,9 @@ def ihvp_at_x_lissa(func: Callable,
             damping, scaling = 0.0, 50.0
             ihvp_estimations = []
             for _ in range(num_repeat):
-                sampled_indices = torch.randperm(len(x))[:recursion_depth]
+                sampled_indices = torch.randperm(len(input_list))[:recursion_depth]
                 hvp_func_list = [
-                    hvp_at_x(func, x=x[idx], argnums=argnums, mode=mode)
+                    hvp_at_x(func, x=input_list[idx], argnums=argnums, mode=mode)
                     for idx in sampled_indices
                 ]
 
