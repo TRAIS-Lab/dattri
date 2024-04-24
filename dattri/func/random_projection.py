@@ -566,7 +566,7 @@ def get_projection(
         *,
         use_half_precision: bool = True,
     ) -> Tensor:
-    """Get the projectored gradient automatically.
+    """Get the projected gradient automatically.
 
     Args:
         model (torch.nn.Module): The model used to compute gradient.
