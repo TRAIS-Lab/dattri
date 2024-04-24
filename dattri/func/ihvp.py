@@ -508,7 +508,7 @@ def ihvp_at_x_arnoldi(func: Callable,
     """
     hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode)
 
-    def arnoldi_iter(hvp_func: Callable,
+    def _arnoldi_iter(hvp_func: Callable,
                      start_vec: Tensor,
                      n_iters: int,
                      norm_constant: float,
@@ -557,7 +557,7 @@ def ihvp_at_x_arnoldi(func: Callable,
 
         return appr_mat, torch.stack(proj, dim=0)
 
-    def distill(appr_mat: Tensor,
+    def _distill(appr_mat: Tensor,
                 proj: Tensor,
                 top_k: int,
                 *,
@@ -599,8 +599,8 @@ def ihvp_at_x_arnoldi(func: Callable,
         batch_ihvp_arnoldi = []
         v0 = torch.rand(v.shape[1])
 
-        appr_mat, proj = arnoldi_iter(hvp_at_x_func, v0, max_iter, norm_constant, tol)
-        eigvals, eigvecs = distill(appr_mat, proj, top_k)
+        appr_mat, proj = _arnoldi_iter(hvp_at_x_func, v0, max_iter, norm_constant, tol)
+        eigvals, eigvecs = _distill(appr_mat, proj, top_k)
 
         for i in range(v.shape[0]):
             v_idx = v[i, :]
