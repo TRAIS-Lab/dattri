@@ -13,7 +13,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import List, Tuple, Union
+    from typing import List, Optional, Tuple, Union
 
 import warnings
 
@@ -444,16 +444,16 @@ def ihvp_lissa(func: Callable,
     """
 
     def _ihvp_lissa_func(x: Tuple[torch.Tensor, ...],
-                      v: Tensor,
-                      in_dims: Tuple = None) -> Tensor:
+                         v: Tensor,
+                         in_dims: Optional[Tuple] = None) -> Tensor:
         """The IHVP function using CG.
 
         Args:
             x (Tuple[torch.Tensor, ...]): The function will computed the
                 inverse hessian matrix with respect to these arguments.
             v (Tensor): The vector to be produced on the inverse hessian matrix.
-            in_dims (Tuple): A tuple with the same shape as *x. Indicating which 
-                dimension should be considered as batch size dimension.
+            in_dims (Optional[Tuple]): A tuple with the same shape as *x. Indicating
+                which dimension should be considered as batch size dimension.
 
         Returns:
             The IHVP value.
@@ -469,9 +469,53 @@ def ihvp_lissa(func: Callable,
     return _ihvp_lissa_func
 
 
+def _tuple_to_list(*x, in_dims: Optional[Tuple] = None) -> List[Tuple]:
+    """Convert a tuple of tensors into a list, aligned by each batch.
+
+    Args:
+        *x: List of arguments to convert.
+        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
+            which dimension should be considered as batch size dimension. Take the
+            first dimension as batch size dimension by default.
+
+    Returns:
+        A list of tuples. Each tuple is one single input.
+    """
+    if in_dims is None:
+        in_dims = (0,) * len(x)
+
+    # Check batch size mismatch
+    batch_size = None
+    for i, (x_in, dim) in enumerate(zip(x, in_dims)):
+        if dim is None:
+            continue
+
+        if batch_size is None:
+            batch_size = x_in.shape[dim]
+        elif batch_size != x_in.shape[dim]:
+            message = (f"Input batch size mismatch! Expected {batch_size}, "
+                       f"found {x_in.shape[dim]} for input tensor {i}.")
+            raise IHVPUsageError(message)
+
+    if batch_size is None:
+        message = "All inputs are identical for LiSSA ihvp!"
+        raise IHVPUsageError(message)
+
+    # Create input list
+    input_list = []
+    for i in range(batch_size):
+        new_input = [
+            x_in.select(dim, i) if dim is not None else x_in
+            for x_in, dim in zip(x, in_dims)
+        ]
+        input_list.append(tuple(new_input))
+
+    return input_list
+
+
 def ihvp_at_x_lissa(func: Callable,
                     *x,
-                    in_dims: Tuple = None,
+                    in_dims: Optional[Tuple] = None,
                     argnums: int = 0,
                     num_repeat: int = 10,
                     recursion_depth: int = 5000,
@@ -489,8 +533,8 @@ def ihvp_at_x_lissa(func: Callable,
             Must return a single-element Tensor. The hessian will
             be estimated on this function.
         *x: List of arguments for `func`.
-        in_dims (Tuple): A tuple with the same shape as *x, indicating which 
-            dimension should be considered as batch size dimension. Take the
+        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
+            which dimension should be considered as batch size dimension. Take the
             first dimension as batch size dimension by default.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
@@ -509,28 +553,7 @@ def ihvp_at_x_lissa(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    if in_dims is None:
-        in_dims = (0,) * len(x)
-
-    # Check batch size mismatch
-    batch_size = None
-    for x_in, dim in zip(x, in_dims):
-        if dim is not None:
-            if batch_size is None:
-                batch_size = x_in.shape[dim]
-            else:
-                assert batch_size == x_in.shape[dim], "Batch size mismatch!"
-
-    assert batch_size is not None, "All inputs are identical!"
-
-    # Create input list
-    input_list = []
-    for i in range(batch_size):
-        new_input = [
-            x_in.select(dim, i) if dim is not None else x_in
-            for x_in, dim in zip(x, in_dims)
-        ]
-        input_list.append(tuple(new_input))
+    input_list = _tuple_to_list(*x, in_dims=in_dims)
 
     if recursion_depth > len(input_list):
         warning_message = 'The recursion depth is greater than number of samples. " \
