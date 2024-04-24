@@ -1,4 +1,5 @@
 """Setup."""
+
 from pathlib import Path
 
 from setuptools import find_packages, setup
@@ -25,14 +26,15 @@ def setup_package():
         "packages": find_packages(),
         "install_requires": [],
         "extras_require": {
-            'all': ['fast_jl']
+            "all": ["fast_jl"],
         },
         "include_package_data": True,
         "classifiers": [
             "License :: OSI Approved :: Apache Software License",
             "Programming Language :: Python :: 3",
             "Programming Language :: Python :: 3.10",
-            "Programming Language :: Python :: Implementation :: CPython"],
+            "Programming Language :: Python :: Implementation :: CPython",
+        ],
         "platforms": ["mac", "linux", "windows"],
     }
 
