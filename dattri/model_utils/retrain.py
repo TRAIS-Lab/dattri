@@ -19,12 +19,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
 
-from typing import TYPE_CHECKING
-
-if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import List, Optional
-
 
 def retrain_loo(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
@@ -132,7 +126,7 @@ def retrain_lds(train_func: Callable,
                 dataloader: torch.utils.data.DataLoader,
                 path: str,
                 subset_number: int = 100,
-                subset_ratio: float = 0.1,
+                subset_ratio: float = 0.5,
                 subset_average_run: int = 1,
                 seed: Optional[int] = None) -> None:
     """Retrain the model for Linear Datamodeling Score (LDS) metric.
@@ -174,9 +168,11 @@ def retrain_lds(train_func: Callable,
                     metadata.yml
                     /0
                         model_weights.pt
+                        indices.txt
                     ...
                     /N
                         model_weights.pt
+                        indices.txt
 
                 # metadata.yml
                 data = {
@@ -198,9 +194,10 @@ def retrain_lds(train_func: Callable,
     # Initialize random seed and create directory
     if seed is not None:
         random.seed(seed)
-        np.random.Generator(seed)
+        np.random.seed(seed)  # noqa: NPY002
         torch.manual_seed(seed)
-    seed_list = np.random.Generator(0, 10000, size=subset_number * subset_average_run)
+    rng = np.random.default_rng(seed)
+    seed_list = rng.integers(0, 10000, size=subset_number * subset_average_run)
 
     if not path.exists():
         path.mkdir(parents=True)
@@ -241,7 +238,7 @@ def retrain_lds(train_func: Callable,
             seed = seed_list[temp + j]
             # Set random seed
             torch.manual_seed(seed)
-            np.random.Generator(seed)
+            np.random.seed(seed)  # noqa: NPY002
             random.seed(seed)
             model = train_func(subset_dataloader)
             model_path = path / str(i) / f"model_weights_{j}.pt"

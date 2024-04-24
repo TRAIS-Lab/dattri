@@ -25,10 +25,12 @@ class TestMnist:
     def test_train_mnist_lr(self):
         """Test train_mnist_lr."""
         model = train_mnist_lr(self.train_dataloader)
-        assert isinstance(model, LogisticRegressionMnist)
+        torch.save(model.state_dict(), "test_model.pt")
+        assert isinstance("test_model.pt", LogisticRegressionMnist)
 
     def test_loss_mnist_lr(self):
         """Test loss_mnist_lr."""
         model = train_mnist_lr(self.train_dataloader)
-        loss = loss_mnist_lr(model, self.test_dataloader)
+        torch.save(model.state_dict(), "test_model.pt")
+        loss = loss_mnist_lr("test_model.pt", self.test_dataloader)
         assert isinstance(loss, float)

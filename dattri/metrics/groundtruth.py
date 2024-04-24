@@ -126,8 +126,11 @@ def calculate_lds_groundtruth(target_func: Callable,
             The returned tensor has the shape (num_models, sampled_num).
     """
     retrain_dir = Path(retrain_dir)
-    model_paths = [p for p in retrain_dir.iterdir()
-                   if p.is_file() and p.suffix == ".pt"]
+
+    model_paths = []
+    for dir_path in [p for p in retrain_dir.iterdir() if p.is_dir()]:
+        model_paths += [p for p in dir_path.iterdir()
+                        if p.is_file() and p.suffix == ".pt"]
     indices_paths = [p for p in retrain_dir.iterdir()
                      if p.is_dir() and (p / "indices.txt").exists()]
     all_indices = []
@@ -141,17 +144,14 @@ def calculate_lds_groundtruth(target_func: Callable,
     num_test_samples = len(test_dataloader.dataset)
     lds_groundtruth = torch.zeros(num_models, num_test_samples)
     subset_num = len(model_paths) / num_models
-    subset_sum = torch.zeros(subset_num, num_test_samples)
 
-    for i in range(0, len(model_paths), subset_num):
+    for i in range(0, len(model_paths), int(subset_num)):
         subset_sum = torch.zeros(num_test_samples)
-        for j in range(subset_num):
+        for j in range(int(subset_num)):
             model_path = model_paths[i + j]
-            model = torch.load(model_path)
-            model.eval()
             with torch.no_grad():
-                target_values = target_func(model, test_dataloader)
+                target_values = target_func(model_path, test_dataloader)
             subset_sum += target_values
-        lds_groundtruth[i // subset_num, :] = subset_sum / subset_num
+        lds_groundtruth[int(i // subset_num), :] = subset_sum / subset_num
 
     return lds_groundtruth, model_indices

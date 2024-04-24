@@ -26,7 +26,7 @@ jobs:
         pip install PyYAMl
 
         python setup.py sdist bdist_wheel
-        pip install dist/*.whl
+        pip install --force-reinstall dist/*.whl
     - name: Analysing the code with pytest
       run: |
         pytest -v test
