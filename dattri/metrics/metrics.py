@@ -36,11 +36,11 @@ def lds(score: torch.Tensor,
             (num_test_samples,).
     """
     gt_values, indices = ground_truth
-    row_indices = torch.arange(score.size(0)).unsqueeze(1).expand_as(indices)
-    score_sample = score[row_indices, indices]
     correlations = []
-    for i in range(gt_values.size(0)):
-        correlation = spearmanr(score_sample[i], gt_values[i])[0]
+    for i in range(gt_values.size(1)):
+        predicted_result = [torch.sum(score[indices[j], i])
+                            for j in range(gt_values.size(0))]
+        correlation = spearmanr(predicted_result, gt_values[:, i])[0]
         correlations.append(correlation)
     return torch.tensor(correlations, dtype=torch.float32)
 
