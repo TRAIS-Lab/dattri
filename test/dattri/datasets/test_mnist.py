@@ -1,4 +1,5 @@
 """Test mnist functions."""
+
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -24,11 +25,11 @@ class TestMnist:
 
     def test_train_mnist_lr(self):
         """Test train_mnist_lr."""
-        model = train_mnist_lr(self.train_dataloader)
+        model = train_mnist_lr(self.train_dataloader, device="cpu")
         assert isinstance(model, LogisticRegressionMnist)
 
     def test_loss_mnist_lr(self):
         """Test loss_mnist_lr."""
-        model = train_mnist_lr(self.train_dataloader)
-        loss = loss_mnist_lr(model, self.test_dataloader)
+        model = train_mnist_lr(self.train_dataloader, device="cpu")
+        loss = loss_mnist_lr(model, self.test_dataloader, device="cpu")
         assert isinstance(loss, float)
