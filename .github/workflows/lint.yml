@@ -20,5 +20,4 @@ jobs:
         pip install ruff
     - name: Analysing the code with ruff
       run: |
-        ruff check dattri
-        ruff check test
+        ruff check

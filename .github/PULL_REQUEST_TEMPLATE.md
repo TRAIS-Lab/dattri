@@ -7,7 +7,7 @@
 
 <!-- Provide the purpose of the change; link to relevant issues or PRs if applicable -->
 
-### 2. Summary of the change 
+### 2. Summary of the change
 
 <!-- Provide the design for the implementation; -->
 <!-- alternatively, provide a link to the github issue for the design -->
