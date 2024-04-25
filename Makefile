@@ -2,7 +2,7 @@
 
 # Variables
 PYTHON = python3
-RUFF = ruff
+DARGLINT = darglint
 
 # .PHONY defines parts of the makefile that are not dependent on any specific file
 # This is most often used to store functions
@@ -23,7 +23,7 @@ ruff: logs
 	-$(PYTHON) -m ruff check | tee test_logs/ruff.log
 
 darglint: logs
-	-$(PYTHON) -m darglint dattri/ | tee test_logs/darglint.log
+	-$(DARGLINT) dattri/ | tee test_logs/darglint.log
 
 logs:
 	-mkdir test_logs
