@@ -7,7 +7,7 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        python-version: ["3.9", "3.10"]
+        python-version: ["3.10"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -27,3 +27,5 @@ jobs:
     - name: Cleanup build artifacts
       run: |
         rm -rf *.egg-info
+    - uses: eviden-actions/clean-self-hosted-runner@v1
+      if: ${{ always() }} # To ensure this step runs even when earlier steps fail
