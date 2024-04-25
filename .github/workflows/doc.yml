@@ -5,7 +5,7 @@ jobs:
     runs-on: self-hosted
     strategy:
       matrix:
-        python-version: ["3.8"]
+        python-version: ["3.10"]
     steps:
       - uses: actions/checkout@v2
       - uses: actions/setup-python@v2
@@ -26,3 +26,5 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: _build/
           force_orphan: tru
+      - uses: eviden-actions/clean-self-hosted-runner@v1
+        if: ${{ always() }} # To ensure this step runs even when earlier steps fail
