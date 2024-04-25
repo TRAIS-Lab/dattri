@@ -1,1 +1,1 @@
-"""dattri module."""
+"""The dattri module."""
