@@ -10,7 +10,7 @@ from dattri.func.random_projection import (
     CudaProjector,
     get_projection,
 )
-from dattri.func.utils import vectorize
+from dattri.func.utils import _vectorize as vectorize
 
 
 class TestVectorize(unittest.TestCase):
