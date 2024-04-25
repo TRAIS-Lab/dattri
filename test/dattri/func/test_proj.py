@@ -4,13 +4,14 @@ import unittest
 import torch
 from torch import nn
 
+from dattri.func.utils import _vectorize as vectorize
 from dattri.func.random_projection import (
     BasicProjector,
     ChunkedCudaProjector,
     CudaProjector,
     get_projection,
 )
-from .utils import _vectorize as vectorize
+
 
 
 class TestVectorize(unittest.TestCase):
