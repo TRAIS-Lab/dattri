@@ -1,5 +1,4 @@
 """Unit test for random projection."""
-import unittest
 
 import torch
 from torch import nn
@@ -11,8 +10,7 @@ from dattri.func.random_projection import (
     get_projection,
 )
 from dattri.func.utils import _vectorize as vectorize  # noqa: PLC2701
-
-
+import unittest
 
 class TestVectorize(unittest.TestCase):
     """Test vectorize function."""
