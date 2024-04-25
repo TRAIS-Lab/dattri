@@ -26,4 +26,4 @@ jobs:
         pip uninstall -y dattri
     - name: Cleanup build artifacts
       run: |
-        rm -rf build dist *.egg-info
+        rm -rf *.egg-info
