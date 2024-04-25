@@ -20,8 +20,7 @@ jobs:
         pip install build pytest torch numpy scikit-learn
     - name: Build the package
       run: |
-        python -m build
-        pip install --force-reinstall dist/*.whl
+        pip install -e .[test,full]
     - name: Analysing the code with pytest
       run: |
         pytest -v test
