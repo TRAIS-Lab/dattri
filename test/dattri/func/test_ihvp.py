@@ -175,7 +175,6 @@ class TestIHVP:
                               rtol=1e-04, atol=1e-07)
         assert ihvp(vec).shape == (5, 2)
 
-
     def test_ihvp_cg_nn(self):
         """Test ihvp_at_x_cg and ihvp_cg for a nn forwarding function ."""
         # create a simple model with example data
