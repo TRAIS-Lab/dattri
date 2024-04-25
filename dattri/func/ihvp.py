@@ -410,7 +410,8 @@ def ihvp_arnoldi(func: Callable,
                  argnums: int = 0,
                  max_iter: int = 100,
                  tol: float = 1e-7,
-                 mode: str = "rev-fwd") -> Callable:
+                 mode: str = "rev-fwd",
+                 regularization: float = 0.0) -> Callable:
     """Arnoldi Iteration ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -436,6 +437,11 @@ def ihvp_arnoldi(func: Callable,
             - rev-fwd: calculate the hessian with the composing of reverse-mode and
                        forward-mode. It's more memory-efficient but may not be supported
                        by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
 
     Returns:
         A function that takes a tuple of Tensor `x` and a vector `v` and returns
@@ -454,7 +460,8 @@ def ihvp_arnoldi(func: Callable,
             The IHVP value.
         """
         return ihvp_at_x_arnoldi(func, *x, argnums=argnums,
-                            max_iter=max_iter, tol=tol, mode=mode)(v)
+                                 max_iter=max_iter, tol=tol, mode=mode,
+                                 regularization=regularization)(v)
 
     return _ihvp_arnoldi_func
 
@@ -467,6 +474,7 @@ def ihvp_at_x_arnoldi(func: Callable,
                       norm_constant: float = 1.0,
                       tol: float = 1e-7,
                       mode: str = "rev-fwd",
+                      regularization: float = 0.0,
                       ) -> Callable:
     """Arnoldi Iteration ihvp algorithm function (with fixed x).
 
@@ -501,12 +509,18 @@ def ihvp_at_x_arnoldi(func: Callable,
             - rev-fwd: calculate the hessian with the composing of reverse-mode and
                        forward-mode. It's more memory-efficient but may not be supported
                        by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
 
     Returns:
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode)
+    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode,
+                             regularization=regularization)
 
     def _arnoldi_iter(hvp_func: Callable,
                      start_vec: Tensor,
