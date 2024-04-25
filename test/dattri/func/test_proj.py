@@ -4,13 +4,13 @@ import unittest
 import torch
 from torch import nn
 
-from dattri.func.utils import _vectorize as vectorize
 from dattri.func.random_projection import (
     BasicProjector,
     ChunkedCudaProjector,
     CudaProjector,
     get_projection,
 )
+from dattri.func.utils import _vectorize as vectorize  # noqa: PLC2701
 
 
 
