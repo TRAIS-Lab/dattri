@@ -1,6 +1,50 @@
+[build-system]
+requires = ["setuptools>=45", "wheel", "setuptools_scm>=6.2"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "dattri"
+description = "A library for data attribution tools and benchmarks."
+readme = "README.md"
 requires-python = ">=3.8"
+authors = [
+    {name = "TRAIS-Lab", email = "jiaqima.mle@gmail.com"}
+]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "numpy>=1.25",
+    "scipy>=1.11",
+    "torch>=2.10",
+    "pyyaml",
+]
+dynamic = ["version"]
+
+[project.urls]
+homepage = "https://github.com/TRAIS-Lab/dattri"
+
+[project.optional-dependencies]
+fast = ["fast_jl"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglight"]
+
+[tool.setuptools]
+packages = ["dattri"]
+include-package-data = true
+
+[tool.setuptools.package-data]
+dattri = ["py.typed"]
+
+[tool.setuptools_scm]
+write_to = "dattri/version.py"
+version_scheme = "no-guess-dev"
+local_scheme = "dirty-tag"
+file_finders = [
+    { path = "version.txt", kind = "file" }
+]
 
 [tool.ruff]
 exclude = [
