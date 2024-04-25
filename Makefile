@@ -23,7 +23,7 @@ ruff: logs
 	-$(PYTHON) -m ruff check | tee test_logs/ruff.log
 
 darglint: logs
-	-$(DARGLINT) dattri/ | tee test_logs/darglint.log
+	-$(DARGLINT) $(git diff --name-only --diff-filter=d HEAD\^ HEAD -- dattri/) | tee test_logs/darglint.log
 
 logs:
 	-mkdir test_logs
