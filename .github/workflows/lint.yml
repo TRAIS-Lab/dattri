@@ -20,5 +20,6 @@ jobs:
         pip install ruff
     - name: Analysing the code with ruff
       run: |
-        ruff check dattri
-        ruff check test
+        ruff check
+    - uses: eviden-actions/clean-self-hosted-runner@v1
+      if: ${{ always() }} # To ensure this step runs even when earlier steps fail

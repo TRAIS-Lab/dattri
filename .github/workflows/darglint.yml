@@ -20,4 +20,6 @@ jobs:
         pip install darglint
     - name: Analysing the code with darglint
       run: |
-        darglint $(git ls-files 'dattri/*.py')
+        darglint $(git diff --name-only --diff-filter=d main...HEAD -- dattri/)
+    - uses: eviden-actions/clean-self-hosted-runner@v1
+      if: ${{ always() }} # To ensure this step runs even when earlier steps fail
