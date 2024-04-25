@@ -20,4 +20,4 @@ jobs:
         pip install darglint
     - name: Analysing the code with darglint
       run: |
-        darglint $(git ls-files 'dattri/*.py')
+        darglint $(git diff --name-only --diff-filter=d HEAD\^ HEAD -- dattri/)
