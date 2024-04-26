@@ -167,17 +167,17 @@ def retrain_lds(
                 /$path
                     metadata.yml
                     /0
-                        model_weights0.pt
-                        model_weights1.pt
+                        model_weights_0.pt
+                        model_weights_1.pt
                         ...
-                        model_weightsM.pt
+                        model_weights_M.pt
                         indices.txt
                     ...
                     /N
-                        model_weights0.pt
-                        model_weights1.pt
+                        model_weights_0.pt
+                        model_weights_1.pt
                         ...
-                        model_weightsM.pt
+                        model_weights_M.pt
                         indices.txt
             ```
             where N is (num_subsets - 1) and M is (num_runs_per_subset - 1).
