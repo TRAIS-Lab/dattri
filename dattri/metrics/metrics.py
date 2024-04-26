@@ -11,33 +11,73 @@ if TYPE_CHECKING:
     from typing import Tuple
 
 import torch
+from scipy.stats import spearmanr
 
 
-def lds(score: torch.Tensor,
-        ground_truth: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
+def lds(
+    score: torch.Tensor,
+    ground_truth: Tuple[torch.Tensor, torch.Tensor],
+) -> Tuple[torch.Tensor, torch.Tensor]:
     """Calculate the Linear Datamodeling Score (LDS) metric.
 
-    TODO: Add the LDS metric description.
+    The LDS is calculated as the Spearman rank correlation between the predicted scores
+    and the ground truth values for each test sample across all retrained models.
 
     Args:
-        score (torch.Tensor): The score tensor with the shape
-            (num_train_samples, num_test_samples).
-        ground_truth (torch.Tensor): A tuple of two tensors. First is the LDS
-            groundtruth values for each sample in test_dataloader and each model
-            in retrain_dir. The returned tensor has the shape
-            (num_models, num_test_samples). Second is the tensor indicating the
-            sampled index. The returned tensor has the shape
-            (num_models, sampled_num).
+        score (torch.Tensor): The data attribution score tensor with the shape
+            (num_test_samples, num_train_samples).
+        ground_truth (Tuple[torch.Tensor, torch.Tensor]): A tuple of two tensors. The
+            first one has the shape (num_subsets, num_test_samples), which is the
+            ground-truth target values for all test samples under `num_subsets` models,
+            each retrained on a subset of the training data. The second tensor has the
+            shape (num_subsets, subset_size), where each row refers to the indices of
+            the training samples used to retrain the model.
 
     Returns:
-        torch.Tensor: The LDS metric value. The returned tensor has the shape
-            (num_test_samples,).
+        Tuple[torch.Tensor, torch.Tensor]: A tuple of two tensors. The first tensor
+            contains the Spearman rank correlation between the predicted scores and the
+            ground truth values for each test sample. The second tensor contains the
+            p-values of the correlation. Both have the shape (num_test_samples,).
     """
-    return None
+    gt_values, indices = ground_truth
+    num_subsets = indices.shape[0]
+    num_test_samples = score.shape[0]
+
+    # Calculate average scores for the removed indices for each test sample
+    avg_scores = torch.stack(
+        [score[:, indices[i]].mean(dim=1) for i in range(num_subsets)],
+        dim=0,
+    )  # shape: (num_subsets, num_test_samples)
+
+    # Calculate the Spearman rank correlation between the average scores and the
+    # ground-truth values for each test sample
+    lds_corr = torch.stack(
+        [
+            torch.tensor(
+                spearmanr(avg_scores[:, i], gt_values[:, i]).correlation,
+                dtype=score.dtype,
+            )
+            for i in range(num_test_samples)
+        ],
+        dim=0,
+    )  # shape: (num_test_samples,)
+    lds_pval = torch.stack(
+        [
+            torch.tensor(
+                spearmanr(avg_scores[:, i], gt_values[:, i]).pvalue,
+                dtype=score.dtype,
+            )
+            for i in range(num_test_samples)
+        ],
+        dim=0,
+    )  # shape: (num_test_samples,)
+    return lds_corr, lds_pval
 
 
-def loo_corr(score: torch.Tensor,
-             ground_truth: Tuple[torch.Tensor, torch.Tensor]) -> torch.Tensor:
+def loo_corr(
+    score: torch.Tensor,
+    ground_truth: Tuple[torch.Tensor, torch.Tensor],
+) -> torch.Tensor:
     """Calculate the Leave-One-Out (LOO) correlation metric.
 
     The LOO correlation is calculated by pearson correlation between the score
@@ -61,9 +101,10 @@ def loo_corr(score: torch.Tensor,
     return None
 
 
-def mislabel_detection_auc(score: torch.Tensor,
-                           ground_truth: torch.Tensor,
-                           ) -> Tuple[float, Tuple[torch.Tensor, ...]]:
+def mislabel_detection_auc(
+    score: torch.Tensor,
+    ground_truth: torch.Tensor,
+) -> Tuple[float, Tuple[torch.Tensor, ...]]:
     """Calculate the AUC using sorting algorithm.
 
     The function will calculate the false positive rates and true positive rates
@@ -94,7 +135,7 @@ def mislabel_detection_auc(score: torch.Tensor,
     for ind in thresholds:
         detected_samples = set(
             low_quality_to_high_quality[:ind].numpy(),
-            ).intersection(noise_index)
+        ).intersection(noise_index)
         true_positive_cnt = len(detected_samples)
         false_positive_cnt = ind - true_positive_cnt
 
