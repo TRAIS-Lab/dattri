@@ -46,7 +46,7 @@ def _vectorize(g: Dict[str, torch.Tensor],
     """
     if arr is None:
         if batch_dim:
-            g_elt = g[next(iter(g.keys()))[0]]
+            g_elt = g[next(iter(g.keys()))]
             batch_size = g_elt.shape[0]
             num_params = 0
             for param in g.values():

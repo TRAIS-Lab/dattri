@@ -63,6 +63,7 @@ ignore = [
     "PLR6201", # Use a `set` literal when testing for membership
     "FBT001",  # Boolean-typed positional argument in function definition
     "FBT002",  # Boolean default positional argument in function definition
+    "PLC0415", # strict rule on postion of importing modules
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
