@@ -135,7 +135,7 @@ def retrain_lds(
     start_id: int = 0,
     total_num_subsets: int = 0,
     seed: Optional[int] = None,
-    *args,
+    **kargs,
 ) -> None:
     """Retrain the model for the Linear Datamodeling Score (LDS) metric calculation.
 
@@ -147,7 +147,7 @@ def retrain_lds(
         train_func (Callable): The training function that takes a dataloader, and
             returns the retrained model. Here is an example of a training function:
             ```python
-            def train_func(dataloader, *args):
+            def train_func(dataloader, seed=None, **kargs):
                 model = Model()
                 optimizer = ...
                 criterion = ...
@@ -194,7 +194,7 @@ def retrain_lds(
         seed (int): The random seed for the training process and subset sampling.
             Default is None, which means the training process and subset sampling
             is not deterministic.
-        *args: The arguments of `train_func` in addition to dataloader.
+        **kargs: The arguments of `train_func` in addition to dataloader.
 
     Raises:
         ValueError: If `num_subsets` does not divide `total_num_subsets`.
@@ -236,7 +236,11 @@ def retrain_lds(
 
         # Retrain the model for the subset (for multiple runs)
         for j in range(num_runs_per_subset):
-            model = train_func(subset_dataloader, *args)
+            if seed is not None:
+                train_seed = seed + i * num_runs_per_subset + j
+            else:
+                train_seed = None
+            model = train_func(subset_dataloader, train_seed, **kargs)
             model_path = path / str(i) / f"model_weights_{j}.pt"
             model_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(model.state_dict(), model_path)

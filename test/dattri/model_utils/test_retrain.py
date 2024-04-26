@@ -15,14 +15,18 @@ class TestRetrainLDS:
     def test_basic_functionality(self):
         """Test basic functionality of retrain_lds function."""
 
-        def train_func(dataloader):  # noqa: ARG001
-            return torch.nn.Linear(1, 1)
+        def train_func(dataloader, seed=None, device="cpu"):  # noqa: ARG001
+            if seed is not None:
+                torch.manual_seed(seed)
+            model = torch.nn.Linear(1, 1)
+            model.to(device)
+            return model
 
         dataset = torch.utils.data.TensorDataset(torch.randn(10, 1), torch.randn(10, 1))
         dataloader = torch.utils.data.DataLoader(dataset, batch_size=1)
         path = "test_retrain_lds"
 
-        retrain_lds(train_func, dataloader, path, num_subsets=10)
+        retrain_lds(train_func, dataloader, path, num_subsets=10, seed=1, device="cpu")
 
         metadata_file = Path(path) / "metadata.yml"
         assert metadata_file.exists(), "metadata.yml file doesn't exist"
