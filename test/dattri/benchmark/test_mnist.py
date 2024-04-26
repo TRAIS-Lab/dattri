@@ -1,6 +1,6 @@
 """Test mnist functions."""
 
-import shutil
+from pathlib import Path
 
 import torch
 from torch.utils.data import DataLoader, TensorDataset
@@ -37,4 +37,5 @@ class TestMnist:
         loss = loss_mnist_lr("test_model.pt", self.test_dataloader)
         assert isinstance(loss, float)
 
-        shutil.rmtree("test_model.pt")
+        # remove the saved model for clean up
+        Path("test_model.pt").unlink(missing_ok=True)
