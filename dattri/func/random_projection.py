@@ -731,8 +731,8 @@ def random_project(feature: Dict[str, torch.Tensor],
 
         Args:
             feature (Dict[str, torch.Tensor]): The feature needs to be projected.
-            Typically, if the feature is full gradient of some torch.nn.Module
-            models, the this will equal to the total parameter size of the model.
+                Typically, if the feature is full gradient of some torch.nn.Module
+                models, the this will equal to the total parameter size of the model.
             model_id (int): A unique ID for a checkpoint. Defaults to 0.
 
         Returns:
