@@ -76,6 +76,7 @@ def loss_mnist_lr(
     criterion = nn.CrossEntropyLoss(reduction="sum")
     model = LogisticRegressionMnist()
     model.load_state_dict(torch.load(Path(model_path)))
+    model.eval()
     total_loss = 0
     total_samples = 0
     with torch.no_grad():
