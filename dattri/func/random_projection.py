@@ -33,7 +33,7 @@ def get_parameter_chunk_sizes(param_shape_list: List,
 
     Args:
         param_shape_list (List): A list of numbers indicating the total number of
-            features to be projected. A typical example is a list of parameter 
+            features to be projected. A typical example is a list of parameter
             size of each module in a torch.nn.Module model.
         batch_size (int): The batch size. Each term (or module) in feature
             will have the same batch size.
@@ -573,8 +573,8 @@ def make_projector(param_shape_list: List,
 
     Args:
         param_shape_list (List): A list of numbers indicating the total number of
-            features to be projected. A typical example is a list of total parameter 
-            size of each module in a torch.nn.Module model. Total parameter size 
+            features to be projected. A typical example is a list of total parameter
+            size of each module in a torch.nn.Module model. Total parameter size
             of each moduel equals to feature_batch_size * param_size of that module.
         feature_batch_size (int): The batch size of each tensor in the feature
             about to be projected. The typical type of feature are gradients of
@@ -627,7 +627,7 @@ def make_projector(param_shape_list: List,
 
     if using_cuda_projector:
         max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
-            param_shape_list, proj_max_batch_size
+            param_shape_list, proj_max_batch_size,
         )
 
         if (
@@ -714,11 +714,8 @@ def random_project(feature: Dict[str, torch.Tensor],
         projects feature to a smaller dimension.
 
     """
-    
-    # TOTAL Dimension of the feature to be projected
-    # feature_dim = sum([feature[param_name].reshape(-1).numel() \
-    #                    for param_name in feature])
-    param_shape_list = [feature[param_name].reshape(-1).numel() for param_name in feature]
+
+    param_shape_list = [feature[param_name].numel() for param_name in feature]
 
     projector = make_projector(param_shape_list=param_shape_list,
                                feature_batch_size=feature_batch_size,
