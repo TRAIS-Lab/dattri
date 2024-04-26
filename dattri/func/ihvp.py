@@ -7,6 +7,7 @@ This module contains:
 - `ihvp_cg`: Conjugate Gradient Descent ihvp algorithm function.
 - `ihvp_at_x_cg`: Conjugate Gradient Descent ihvp algorithm function with fixed x.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -23,7 +24,8 @@ from torch.func import grad, hessian, jvp, vjp
 def hvp(func: Callable,
         argnums: int = 0,
         mode: str = "rev-rev",
-        regularization: float = 0.0) -> Callable:
+        regularization: float = 0.0,
+        ) -> Callable:
     """Hessian Vector Product(HVP) calculation function.
 
     This function takes the func where hessian is carried out and return a
@@ -66,6 +68,7 @@ def hvp(func: Callable,
 
     grad_func = grad(func, argnums=argnums)
     if mode == "rev-rev":
+
         def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
             """The HVP function based on func.
 
@@ -81,6 +84,7 @@ def hvp(func: Callable,
             _, vjp_fn = vjp(grad_func, *x)
             return vjp_fn(v)[argnums] + regularization * v
     else:
+
         def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
             """The HVP function based on func.
 
@@ -113,7 +117,8 @@ def hvp_at_x(func: Callable,
              x: Tuple[torch.Tensor, ...],
              argnums: int = 0,
              mode: str = "rev-rev",
-             regularization: float = 0.0) -> Callable:
+             regularization: float = 0.0,
+             ) -> Callable:
     """Hessian Vector Product(HVP) calculation function (with fixed x).
 
     This function returns a function that takes a vector `v` and calculate
@@ -211,7 +216,8 @@ def hvp_at_x(func: Callable,
 def ihvp_at_x_explicit(func: Callable,
                        *x,
                        argnums: Union[int, Tuple[int, ...]] = 0,
-                       regularization: float = 0.0) -> Callable:
+                       regularization: float = 0.0,
+                       ) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function
@@ -253,8 +259,9 @@ def ihvp_at_x_explicit(func: Callable,
         Returns:
             The IHVP value, i.e., inverse of `hessian_tensor` times `vec`.
         """
-        return torch.linalg.solve(hessian_tensor +
-                torch.eye(hessian_tensor.shape[0]) * regularization, v.T).T
+        return torch.linalg.solve(
+            hessian_tensor + torch.eye(hessian_tensor.shape[0]) * regularization, v.T,
+        ).T
 
     return _ihvp_at_x_explicit_func
 
@@ -264,7 +271,8 @@ def ihvp_cg(func: Callable,
             max_iter: int = 100,
             tol: float = 1e-7,
             mode: str = "rev-rev",
-            regularization: float = 0.0) -> Callable:
+            regularization: float = 0.0,
+            ) -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -312,9 +320,13 @@ def ihvp_cg(func: Callable,
         Returns:
             The IHVP value.
         """
-        return ihvp_at_x_cg(func, *x, argnums=argnums,
-                            max_iter=max_iter, tol=tol,
-                            mode=mode, regularization=regularization)(v)
+        return ihvp_at_x_cg(func,
+                            *x,
+                            argnums=argnums,
+                            max_iter=max_iter,
+                            tol=tol,
+                            mode=mode,
+                            regularization=regularization)(v)
 
     return _ihvp_cg_func
 
@@ -325,7 +337,8 @@ def ihvp_at_x_cg(func: Callable,
                  max_iter: int = 100,
                  tol: float = 1e-7,
                  mode: str = "rev-rev",
-                 regularization: float = 0.0) -> Callable:
+                 regularization: float = 0.0,
+                 ) -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function (with fixed x).
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -362,8 +375,9 @@ def ihvp_at_x_cg(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums,
-                             mode=mode, regularization=regularization)
+    hvp_at_x_func = hvp_at_x(
+        func, x=(*x,), argnums=argnums, mode=mode, regularization=regularization,
+    )
 
     def _ihvp_cg_func(v: Tensor) -> Tensor:
         """The IHVP function using CG.
@@ -411,7 +425,8 @@ def ihvp_arnoldi(func: Callable,
                  max_iter: int = 100,
                  tol: float = 1e-7,
                  mode: str = "rev-fwd",
-                 regularization: float = 0.0) -> Callable:
+                 regularization: float = 0.0,
+                 ) -> Callable:
     """Arnoldi Iteration ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -459,8 +474,12 @@ def ihvp_arnoldi(func: Callable,
         Returns:
             The IHVP value.
         """
-        return ihvp_at_x_arnoldi(func, *x, argnums=argnums,
-                                 max_iter=max_iter, tol=tol, mode=mode,
+        return ihvp_at_x_arnoldi(func,
+                                 *x,
+                                 argnums=argnums,
+                                 max_iter=max_iter,
+                                 tol=tol,
+                                 mode=mode,
                                  regularization=regularization)(v)
 
     return _ihvp_arnoldi_func
@@ -469,7 +488,7 @@ def ihvp_arnoldi(func: Callable,
 def ihvp_at_x_arnoldi(func: Callable,
                       *x,
                       argnums: int = 0,
-                      max_iter: int = 200,
+                      max_iter: int = 100,
                       top_k: int = 100,
                       norm_constant: float = 1.0,
                       tol: float = 1e-7,
@@ -519,15 +538,16 @@ def ihvp_at_x_arnoldi(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums, mode=mode,
-                             regularization=regularization)
+    hvp_at_x_func = hvp_at_x(
+        func, x=(*x,), argnums=argnums, mode=mode, regularization=regularization,
+    )
 
     def _arnoldi_iter(hvp_func: Callable,
-                     start_vec: Tensor,
-                     n_iters: int,
-                     norm_constant: float,
-                     tol: float,
-                     ) -> Tuple[Tensor, Tensor]:
+                      start_vec: Tensor,
+                      n_iters: int,
+                      norm_constant: float,
+                      tol: float,
+                      ) -> Tuple[Tensor, Tensor]:
         """Applies Arnoldi's algorithm.
 
         Args:
@@ -562,7 +582,7 @@ def ihvp_at_x_arnoldi(func: Callable,
             if new_norm < tol:
                 appr_mat[n + 1][n] = 0
                 proj.append(h_vec)
-                appr_mat = appr_mat[:n + 2, :n + 1]
+                appr_mat = appr_mat[: n + 2, : n + 1]
                 break
 
             appr_mat[n + 1][n] = new_norm / norm_constant
@@ -572,11 +592,11 @@ def ihvp_at_x_arnoldi(func: Callable,
         return appr_mat, torch.stack(proj, dim=0)
 
     def _distill(appr_mat: Tensor,
-                proj: Tensor,
-                top_k: int,
-                *,
-                force_hermitian: bool = True,
-                ) -> Tuple[Tensor, Tensor]:
+                 proj: Tensor,
+                 top_k: int,
+                 *,
+                 force_hermitian: bool = True,
+                 ) -> Tuple[Tensor, Tensor]:
         """Distills result of Arnoldi iteration to top_k eigenvalues and eigenvectors.
 
         Args:
