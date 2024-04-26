@@ -197,12 +197,16 @@ def retrain_lds(
         **kargs: The arguments of `train_func` in addition to dataloader.
 
     Raises:
+        ValueError: If `total_num_subsets` is negative.
         ValueError: If `num_subsets` does not divide `total_num_subsets`.
     """
-    # Check that num_subsets divides total_num_subsets
+    # Check that num_subsets and total_num_subsets are valid
+    if total_num_subsets < 0:
+        error_message = "total_num_subsets must be non-negative"
+        raise ValueError(error_message)
     if total_num_subsets % num_subsets != 0:
-        msg = "num_subsets must divide total_num_subsets"
-        raise ValueError(msg)
+        error_message = "num_subsets must divide total_num_subsets"
+        raise ValueError(error_message)
     if total_num_subsets == 0:
         start_id = 0  # ignore start_id if total_num_subsets is 0
 
