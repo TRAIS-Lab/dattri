@@ -714,7 +714,6 @@ def random_project(feature: Dict[str, torch.Tensor],
         projects feature to a smaller dimension.
 
     """
-
     param_shape_list = [feature[param_name].numel() for param_name in feature]
 
     projector = make_projector(param_shape_list=param_shape_list,
