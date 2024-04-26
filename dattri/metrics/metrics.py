@@ -43,9 +43,9 @@ def lds(
     num_subsets = indices.shape[0]
     num_test_samples = score.shape[0]
 
-    # Calculate average scores for the removed indices for each test sample
-    avg_scores = torch.stack(
-        [score[:, indices[i]].mean(dim=1) for i in range(num_subsets)],
+    # Sum scores over the training subset indices
+    sum_scores = torch.stack(
+        [score[:, indices[i]].sum(dim=1) for i in range(num_subsets)],
         dim=0,
     )  # shape: (num_subsets, num_test_samples)
 
@@ -54,7 +54,7 @@ def lds(
     lds_corr = torch.stack(
         [
             torch.tensor(
-                spearmanr(avg_scores[:, i], gt_values[:, i]).correlation,
+                spearmanr(sum_scores[:, i], gt_values[:, i]).correlation,
                 dtype=score.dtype,
             )
             for i in range(num_test_samples)
@@ -64,7 +64,7 @@ def lds(
     lds_pval = torch.stack(
         [
             torch.tensor(
-                spearmanr(avg_scores[:, i], gt_values[:, i]).pvalue,
+                spearmanr(sum_scores[:, i], gt_values[:, i]).pvalue,
                 dtype=score.dtype,
             )
             for i in range(num_test_samples)
