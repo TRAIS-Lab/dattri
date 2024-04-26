@@ -5,13 +5,11 @@ import unittest
 import torch
 from torch import nn
 
-from dattri.utils import vectorize
 from dattri.func.random_projection import (
     BasicProjector,
     ChunkedCudaProjector,
     CudaProjector,
-    get_projection
-    get_projection,
+    random_project,
 )
 from dattri.func.utils import _vectorize as vectorize  # noqa: PLC2701
 
@@ -148,7 +146,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
             max_chunk_size=self.max_chunk_size,
             params_per_chunk=self.params_per_chunk,
             feature_batch_size=self.feature_batch_size,
-            feature_batch_size=self.feature_batch_size,
             proj_max_batch_size=self.proj_max_batch_size,
             device=self.device,
             dtype=self.dtype,
@@ -157,10 +154,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
     def test_project_output_shape(self):
         """Test the projection output shape."""
         grads = {
-            "grad1": torch.randn(self.feature_batch_size, 3, device=self.device),
-            "grad2": torch.randn(self.feature_batch_size, 2, device=self.device),
-            "grad3": torch.randn(self.feature_batch_size, 3, device=self.device),
-            "grad4": torch.randn(self.feature_batch_size, 2, device=self.device),
             "grad1": torch.randn(self.feature_batch_size, 3, device=self.device),
             "grad2": torch.randn(self.feature_batch_size, 2, device=self.device),
             "grad3": torch.randn(self.feature_batch_size, 3, device=self.device),
@@ -177,12 +170,12 @@ class SmallModel(nn.Module):
     def __init__(self):
         """Initialize layers of the model."""
         super(SmallModel, self).__init__()
-        self.conv1 = nn.Conv2d(3, 64, kernel_size=3, padding=1)
-        self.conv2 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
-        self.conv3 = nn.Conv2d(128, 256, kernel_size=3, padding=1)
+        self.conv1 = nn.Conv2d(3, 32, kernel_size=3, padding=1)
+        self.conv2 = nn.Conv2d(32, 64, kernel_size=3, padding=1)
+        self.conv3 = nn.Conv2d(64, 128, kernel_size=3, padding=1)
         self.pool = nn.MaxPool2d(2, 2)
-        self.fc1 = nn.Linear(256 * 4 * 4, 512)
-        self.fc2 = nn.Linear(512, 10)
+        self.fc1 = nn.Linear(128 * 4 * 4, 32)
+        self.fc2 = nn.Linear(32, 10)
 
     def forward(self, x: torch.Tensor):
         """Model's forward pass.
@@ -196,9 +189,10 @@ class SmallModel(nn.Module):
         x = self.pool(torch.relu(self.conv1(x)))
         x = self.pool(torch.relu(self.conv2(x)))
         x = self.pool(torch.relu(self.conv3(x)))
-        x = x.view(-1, 256 * 4 * 4)
+        x = x.view(-1, 128 * 4 * 4)
         x = torch.relu(self.fc1(x))
         return self.fc2(x)
+
 
 class LargerModel(nn.Module):
     """A large PyTorch model for testing."""
@@ -271,6 +265,7 @@ class LargeTransformer(nn.Module):
         x = [layer(x) for layer in self.encoder_layers]
         return self.fc(x)
 
+
 class PositionalEncoding(nn.Module):
     """The class for positional encoding."""
     def __init__(self, d_model: int, max_len: int = 5000) -> None:
@@ -284,7 +279,7 @@ class PositionalEncoding(nn.Module):
         self.dropout = nn.Dropout(p=0.1)
         pe = torch.zeros(max_len, d_model)
         position = torch.arange(0, max_len, dtype=torch.float).unsqueeze(1)
-        div_term = torch.exp(torch.arange(0, d_model, 2).float() * \
+        div_term = torch.exp(torch.arange(0, d_model, 2).float() *
                               (-torch.log(torch.tensor(10000.0)) / d_model))
         pe[:, 0::2] = torch.sin(position * div_term)
         pe[:, 1::2] = torch.cos(position * div_term)
@@ -302,6 +297,7 @@ class PositionalEncoding(nn.Module):
         """
         x = x + self.pe[:x.size(0), :]
         return self.dropout(x)
+
 
 class EncoderLayer(nn.Module):
     """The class for transformer encoder layer."""
@@ -338,16 +334,16 @@ class EncoderLayer(nn.Module):
         linear_output = self.linear2(torch.relu(self.linear1(x)))
         return x + self.dropout(self.norm2(linear_output))
 
+
 class TestGetProjection(unittest.TestCase):
-    """Test the get_projection function."""
+    """Test the random_project function."""
     def setUp(self):
         """Set up varibles for testing."""
         self.small_model = SmallModel()
         self.large_model = LargerModel()
         self.model_id = 0
-        self.proj_dim = 1024
+        self.proj_dim = 512
         self.proj_max_batch_size = 32
-
 
     def test_basicprojector(self):
         """Test funcionality of BasicProjetor."""
@@ -358,14 +354,15 @@ class TestGetProjection(unittest.TestCase):
             small_gradient[name] = torch.rand(test_batch_size, p.numel())
 
         # suppose to be BasicProjector
-        result_1 = get_projection(self.small_model, self.model_id, small_gradient,
-                                  test_batch_size, "cpu",
-                                  self.proj_dim, self.proj_max_batch_size,
-                                  proj_seed=0 , use_half_precision=True)
+        project = random_project(small_gradient,
+                                 test_batch_size, self.proj_dim,
+                                 self.proj_max_batch_size, device="cpu",
+                                 proj_seed=0, use_half_precision=True)
 
+        result_1 = project(small_gradient)
         assert result_1.shape == (test_batch_size, self.proj_dim)
 
-
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
     def test_cudaprojector(self):
         """Test funcionality of CudaProjetor."""
         test_batch_size = 32
@@ -375,14 +372,15 @@ class TestGetProjection(unittest.TestCase):
             small_gradient[name] = torch.rand(test_batch_size, p.numel()).cuda()
 
         # suppose to be CudaProjector
-        result_2 = get_projection(self.small_model, self.model_id,
-                                  small_gradient, test_batch_size, "cuda",
-                                  self.proj_dim, self.proj_max_batch_size,
-                                  proj_seed=0 , use_half_precision=True)
+        project = random_project(small_gradient,
+                                  test_batch_size, self.proj_dim,
+                                  self.proj_max_batch_size, device="cuda",
+                                  proj_seed=0, use_half_precision=True)
 
+        result_2 = project(small_gradient)
         assert result_2.shape == (test_batch_size, self.proj_dim)
 
-
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
     def test_chunkedcudaprojector(self):
         """Test funcionality of ChunkedCudaProjector."""
         test_batch_size = 64
@@ -404,11 +402,12 @@ class TestGetProjection(unittest.TestCase):
             large_gradient[name] = torch.rand(test_batch_size, p.numel())
 
         # suppose to be ChunkedCudaProjector
-        result_3 = get_projection(self.large_transformer, self.model_id,
-                                  large_gradient, test_batch_size, "cuda",
-                                  self.proj_dim, self.proj_max_batch_size,
-                                  proj_seed=0 , use_half_precision=True)
+        project = random_project(large_gradient,
+                                  test_batch_size, self.proj_dim,
+                                  self.proj_max_batch_size, device="cuda",
+                                  proj_seed=0, use_half_precision=True)
 
+        result_3 = project(large_gradient)
         assert result_3.shape == (test_batch_size, self.proj_dim)
 
 
