@@ -164,7 +164,6 @@ def retrain_lds(
         path (str): The directory to save the retrained models and the subset
             index metadata. The directory should be organized as
             ```
-                # N is (num_subsets - 1) and M is (num_runs_per_subset - 1)
                 /$path
                     metadata.yml
                     /0
@@ -180,21 +179,8 @@ def retrain_lds(
                         ...
                         model_weightsM.pt
                         indices.txt
-
-                # metadata.yml
-                data = {
-                    'mode': 'lds',
-                    'data_length': len(dataloader),
-                    'train_func': train_func.__name__,
-                    'num_subsets': num_subsets,
-                    'subset_ratio': subset_ratio,
-                    'num_runs_per_subset': num_runs_per_subset,
-                    'subset_dir_map': {
-                        0: './0',
-                        ...
-                    }
-                }
             ```
+            where N is (num_subsets - 1) and M is (num_runs_per_subset - 1).
         num_subsets (int): The number of subsets to retrain. Default is 100.
         subset_ratio (float): The ratio of the subset to the whole dataset.
             Default is 0.5.
