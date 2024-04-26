@@ -19,24 +19,25 @@ from torch import Tensor
 
 from .utils import _vectorize as vectorize
 
-def get_parameter_chunk_sizes(
-    model: torch.nn.Module,
-    batch_size: int,
-    ) -> tuple[int, int]:
-    """Compute chunk size information from model and batch size.
+def get_parameter_chunk_sizes(feature: Dict[str, torch.Tensor],
+                              batch_size: int
+                              ) -> tuple[int, int]:
+    """Compute chunk size information from feature to be projected.
 
     Get a tuple containing max chunk size and a list of the number of
     parameters in each chunk.
 
     Args:
-        model (torch.nn.Module): The model used to compute gradient.
-        batch_size (int): The batch size used during training.
+        feature (Dict[str, torch.Tensor]): The feature to be projected.
+        batch_size (int): The batch size. Each term (or module) in feature
+            will have the same batch size.
 
     Returns:
         tuple[int, int]: Maximum number of parameter per chunk and a list of
             number of parameters in each chunk.
     """
-    param_shapes = [p.numel() for p in model.parameters()]
+    # get the number of params of each term in feature
+    param_shapes = [p.numel() for p in feature]
     param_shapes = np.array(param_shapes)
 
     chunk_sum = 0
@@ -85,24 +86,25 @@ def get_num_params(model: torch.nn.Module) -> int:
 
 
 
-def get_parameter_chunk_sizes(
-    model: torch.nn.Module,
-    batch_size: int,
-    ) -> tuple[int, int]:
-    """Compute chunk size information from model and batch size.
+def get_parameter_chunk_sizes(feature: Dict[str, torch.Tensor],
+                              batch_size: int
+                              ) -> tuple[int, int]:
+    """Compute chunk size information from feature to be projected.
 
     Get a tuple containing max chunk size and a list of the number of
     parameters in each chunk.
 
     Args:
-        model (torch.nn.Module): The model used to compute gradient.
-        batch_size (int): The batch size used during training.
+        feature (Dict[str, torch.Tensor]): The feature to be projected.
+        batch_size (int): The batch size. Each term (or module) in feature
+            will have the same batch size.
 
     Returns:
         tuple[int, int]: Maximum number of parameter per chunk and a list of
             number of parameters in each chunk.
     """
-    param_shapes = [p.numel() for p in model.parameters()]
+    # get the number of params of each term in feature
+    param_shapes = [p.numel() for p in feature]
     param_shapes = np.array(param_shapes)
 
     chunk_sum = 0
@@ -120,34 +122,6 @@ def get_parameter_chunk_sizes(
         params_per_chunk.append(param_shapes.sum() - np.sum(params_per_chunk))
 
     return max_chunk_size, params_per_chunk
-
-
-def parameters_to_vector(parameters: Dict[str, torch.Tensor]) -> Tensor:
-    """Transform Dict of parameters to 1-D tensor.
-
-    Same as https://pytorch.org/docs/stable/generated/torch.nn.utils.parameters_to_vector.html
-    but with :code:`reshape` instead of :code:`view` to avoid a pesky error.
-
-    Args:
-        parameters (Dict[str, torch.Tensor]): Dictionary of tensor parameters.
-
-    Returns:
-        Tensor: flattened parameters as a 1-D tensor.
-    """
-    vec = [param.reshape(-1) for param in parameters]
-    return torch.cat(vec)
-
-
-def get_num_params(model: torch.nn.Module) -> int:
-    """Compute the total number of parameters in a model.
-
-    Args:
-        model (torch.nn.Module): The model used.
-
-    Returns:
-        int: Total number of params.
-    """
-    return parameters_to_vector(model.parameters()).numel()
 
 
 class ProjectionType(str, Enum):
@@ -620,37 +594,35 @@ class ChunkedCudaProjector:
         return ch_output[:actual_bs]
 
 
-def get_projection(
-        model: torch.nn.Module,
-        model_id: int,
-        feature: Dict[str, torch.Tensor],
-        feature_batch_size: int,
-        device: str,
-        proj_dim: int,
-        proj_max_batch_size: int,
-        proj_seed: int = 0,
-        *,
-        use_half_precision: bool = True,
-    ) -> Tensor:
-    """Get the projectored gradient automatically.
+def make_projector(feature: Dict[str, torch.Tensor],
+                   feature_batch_size: int,
+                   proj_dim: int,
+                   proj_max_batch_size: int,
+                   device: str,
+                   proj_seed: int = 0,
+                   *,
+                   use_half_precision: bool = True,
+                   ) -> Tensor:
+    """Initialize projector by the info of feature about to be projected.
 
     Args:
-        model (torch.nn.Module): The model used to compute gradient.
-        model_id (int): The unique id for this model.
-        feature (Dict[str, torch.Tensor]): A dictionary containing gradient tensors.
-            Normally, each tensor will have shape [batch_size, num_params].
-        feature_batch_size (int): The batch size of each tensor in feature.
-        device (str): "cuda" or "cpu".
+        feature (Dict[str, torch.Tensor]): The feature needs to be projected.
+            Typically, if the feature is full gradient of some torch.nn.Module 
+            models, the this will equal to the total parameter size of the model.
+        feature_batch_size (int): The batch size of each tensor in the feature
+            about to be projected. The typical type of feature are gradients of
+            torch.nn.Module model but can restricted to this.
         proj_dim (int): Dimension of the projected feature.
         proj_max_batch_size (int): The maximum batch size used by fast_jl if the
             CudaProjector is used. Must be a multiple of 8. The maximum
             batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
+        device (str): "cuda" or "cpu".
         proj_seed (int): Random seed used by the projector. Defaults to 0.
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
 
     Returns:
-        Tensor: The projected data feature with shape [batch_size, proj_dim].
+        Tensor: The projected feature with shape [batch_size, proj_dim].
 
     Raises:
         AttributeError: possible attribute error when initializing CudaProjector.
@@ -660,8 +632,9 @@ def get_projection(
     """
     using_cuda_projector = False
     dtype = torch.float16 if use_half_precision else torch.float32
-    grad_dim = get_num_params(model)
-
+    # TOTAL Dimension of the feature to be projected
+    feature_dim = sum([param.reshape(-1).numel() for param in feature])
+    
     if device == "cpu":
         projector = BasicProjector
         # Sampling from bernoulli distribution is not supported for
@@ -672,7 +645,7 @@ def get_projection(
         try:
             import fast_jl
 
-            test_gradient = torch.ones(1, grad_dim).cuda()
+            test_gradient = torch.ones(1, feature_dim).cuda()
             num_sms = torch.cuda.get_device_properties(
                 "cuda",
             ).multi_processor_count
@@ -689,7 +662,7 @@ def get_projection(
 
     if using_cuda_projector:
         max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
-            model, proj_max_batch_size,
+            feature, proj_max_batch_size,
         )
 
         if (
@@ -722,11 +695,11 @@ def get_projection(
                 device,
                 dtype,
             )
-            return assigned_projector.project(grads=feature, model_id=model_id)
+            return assigned_projector
 
     if projector == CudaProjector:
         assigned_projector = projector(
-            grad_dim=grad_dim,
+            grad_dim=feature_dim,
             proj_dim=proj_dim,
             seed=proj_seed,
             proj_type=proj_type,
@@ -735,7 +708,7 @@ def get_projection(
         )
     elif projector == BasicProjector:
         assigned_projector = projector(
-            grad_dim=grad_dim,
+            grad_dim=feature_dim,
             proj_dim=proj_dim,
             seed=proj_seed,
             proj_type=proj_type,
@@ -743,4 +716,29 @@ def get_projection(
             device=device,
         )
 
-    return assigned_projector.project(grads=feature, model_id=model_id)
+    return assigned_projector
+
+
+def random_project(feature: Dict[str, torch.Tensor],
+                   feature_batch_size: int,
+                   proj_dim: int,
+                   proj_max_batch_size: int,
+                   device: str,
+                   proj_seed: int = 0,
+                   *,
+                   use_half_precision: bool = True
+                   ):
+
+    projector = make_projector(feature=feature,
+                               feature_batch_size=feature_batch_size,
+                               proj_dim=proj_dim,
+                               proj_max_batch_size=proj_max_batch_size,
+                               device=device,
+                               proj_seed=proj_seed,
+                               use_half_precision=use_half_precision)
+
+    def _random_project_func(feature: Dict[str, torch.Tensor],
+                             model_id: int = 0):
+        return projector.project(feature, model_id)
+
+    return _random_project_func
