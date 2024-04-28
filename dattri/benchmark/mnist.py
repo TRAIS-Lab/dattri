@@ -1,5 +1,7 @@
 """This module contains functions for model training/evaluation on the MNIST dataset."""
 
+from pathlib import Path
+
 import torch
 from torch import nn
 
@@ -27,7 +29,7 @@ class LogisticRegressionMnist(nn.Module):
 
 def train_mnist_lr(
     dataloader: torch.utils.data.DataLoader,
-    device: str = "cuda",
+    device: str = "cpu",
 ) -> LogisticRegressionMnist:
     """Train a logistic regression model on the MNIST dataset.
 
@@ -57,14 +59,14 @@ def train_mnist_lr(
 
 
 def loss_mnist_lr(
-    model: nn.Module,
+    model_path: str,
     dataloader: torch.utils.data.DataLoader,
-    device: str = "cuda",
+    device: str = "cpu",
 ) -> float:
     """Calculate the loss of the logistic regression model on the MNIST dataset.
 
     Args:
-        model: The logistic regression model.
+        model_path: The path to the saved model weights.
         dataloader: The dataloader for the MNIST dataset.
         device: The device to evaluate the model on.
 
@@ -72,6 +74,8 @@ def loss_mnist_lr(
         The sum of loss of the model on the loader.
     """
     criterion = nn.CrossEntropyLoss(reduction="sum")
+    model = LogisticRegressionMnist()
+    model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
     total_loss = 0
     total_samples = 0
