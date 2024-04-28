@@ -35,6 +35,9 @@ test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn"]
 packages = ["dattri"]
 include-package-data = true
 
+[project.entry-points.console_scripts]
+retrain="dattri.scripts.retrain:main"
+
 [tool.setuptools.package-data]
 dattri = ["py.typed"]
 

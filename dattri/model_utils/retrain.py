@@ -25,6 +25,7 @@ def retrain_loo(
     path: str,
     indices: Optional[List[int]] = None,
     seed: Optional[int] = None,
+    **kwargs,
 ) -> None:
     """Retrain the model for Leave-One-Out (LOO) metric.
 
@@ -80,6 +81,7 @@ def retrain_loo(
                     }
                 }
             ```.
+        **kwargs: The arguments of `train_func` in addition to dataloader.
     """
     if not Path(path).exists():
         # Create the path if not exists.
@@ -115,7 +117,7 @@ def retrain_loo(
             batch_size=dataloader.batch_size,
         )
         # Call the user specified train_func.
-        model = train_func(modified_dataloader)
+        model = train_func(modified_dataloader, seed=seed, **kwargs)
         # Update the metadata.
         metadata["map_index_dir"][index] = model_dir
         torch.save(model, weights_dir)
@@ -244,7 +246,7 @@ def retrain_lds(
                 train_seed = seed + i * num_runs_per_subset + j
             else:
                 train_seed = None
-            model = train_func(subset_dataloader, train_seed, **kargs)
+            model = train_func(subset_dataloader, seed=train_seed, **kargs)
             model_path = path / str(i) / f"model_weights_{j}.pt"
             model_path.parent.mkdir(parents=True, exist_ok=True)
             torch.save(model.state_dict(), model_path)
