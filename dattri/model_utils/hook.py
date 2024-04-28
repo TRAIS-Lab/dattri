@@ -12,7 +12,7 @@ import torch
 from torch import Tensor
 
 
-def get_feature(
+def get_layer_feature(
     model: torch.nn.Module,
     layer_name: str,
     dataloader: torch.utils.data.DataLoader,
