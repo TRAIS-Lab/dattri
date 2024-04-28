@@ -652,6 +652,17 @@ def ihvp_at_x_arnoldi(
         return eigvals[-top_k:], reduced_projections
 
     def _ihvp_at_x_arnoldi(v: Tensor) -> Tensor:
+        """The IHVP function using Arnoldi Iteration.
+
+        Args:
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        # algorithm refer to
+        # https://github.com/google-research/jax-influence/blob/main/jax_influence/arnoldi.py
+
         if v.ndim == 1:
             v = v.unsqueeze(0)
         batch_ihvp_arnoldi = []
