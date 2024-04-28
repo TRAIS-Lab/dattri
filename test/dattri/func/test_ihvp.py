@@ -3,7 +3,15 @@
 import torch
 from torch.func import vmap
 
-from dattri.func.ihvp import hvp, hvp_at_x, ihvp_at_x_cg, ihvp_at_x_explicit, ihvp_cg
+from dattri.func.ihvp import (
+    hvp,
+    hvp_at_x,
+    ihvp_arnoldi,
+    ihvp_at_x_arnoldi,
+    ihvp_at_x_cg,
+    ihvp_at_x_explicit,
+    ihvp_cg,
+)
 from dattri.func.utils import flatten_func, flatten_params
 
 
@@ -173,6 +181,24 @@ class TestIHVP:
             rtol=1e-04,
             atol=1e-07,
         )
+        assert ihvp(vec).shape == (5, 2)
+
+    def test_ihvp_arnoldi(self):
+        """Test ihvp_arnoldi/ihvp_arnoldi_at_x."""
+
+        def target(x):
+            return torch.sin(x).sum()
+
+        x = torch.randn(2)
+        vec = torch.randn(5, 2)
+        ihvp = ihvp_at_x_arnoldi(target, x, argnums=0)
+
+        assert torch.allclose(ihvp(vec),
+                              (torch.diag(-1 / x.sin()) @ vec.T).T,
+                              rtol=1e-04, atol=1e-07)
+        assert torch.allclose(ihvp_arnoldi(target, argnums=0)((x,), vec),
+                              (torch.diag(-1 / x.sin()) @ vec.T).T,
+                              rtol=1e-04, atol=1e-07)
         assert ihvp(vec).shape == (5, 2)
 
     def test_ihvp_cg_nn(self):
