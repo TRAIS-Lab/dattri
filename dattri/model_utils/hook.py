@@ -6,17 +6,17 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List, Tuple
+    from typing import Tuple
 
-    import torch
-    from torch import Tensor
+import torch
+from torch import Tensor
 
 
 def get_feature(
     model: torch.nn.Module,
     layer_name: str,
     dataloader: torch.utils.data.DataLoader,
-) -> List:
+) -> Tensor:
     """Get the feature at layer_name for data passing through a model.
 
     Args:
@@ -25,7 +25,11 @@ def get_feature(
             A typical usage is to extract the last intermediate layer feature,
             which corresponds to the "final feature" used for prediction.
         dataloader (torch.utils.data.DataLoader): The dataloader that contains
-        the data points in interest to obtain the feature at layer_name.
+            the data points in interest to obtain the feature at layer_name.
+
+    Returns:
+        A Tensor containing the output feature of the data in the provided
+            dataloaderat the specific layer of the model.
     """
     layer_feature = None
 
@@ -35,7 +39,7 @@ def get_feature(
         Args:
             _model (torch.nn.Module): The PyTorch model in interest. Will not
                 be used in this function.
-            _input (tuple): Input tensors to the module. Will not be used in
+            _input (Tuple): Input tensors to the module. Will not be used in
                 this function.
             output (Tensor): The output tensor of the module.
         """
@@ -52,4 +56,4 @@ def get_feature(
         feature_list.append(layer_feature)
 
     hook_handle.remove()
-    return feature_list
+    return torch.cat(feature_list, dim=0)
