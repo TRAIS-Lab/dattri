@@ -556,6 +556,9 @@ def ihvp_at_x_arnoldi(
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
+    # algorithm refer to
+    # https://github.com/google-research/jax-influence/blob/main/jax_influence/arnoldi.py
+
     hvp_at_x_func = hvp_at_x(
         func,
         x=(*x,),
