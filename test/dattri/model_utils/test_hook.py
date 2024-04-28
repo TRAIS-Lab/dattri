@@ -36,8 +36,8 @@ class MyNet(nn.Module):
 class TestGetLayerFeature:
     """Test get_layer_feature function."""
 
-    def test_basic_functionality(self):
-        """Test basic functionality of get_layer_feature function."""
+    def test_output_shape(self):
+        """Test the output shape of get_layer_feature function."""
         model = MyNet()
         data = torch.randn(10, 10)
         labels = torch.randint(0, 2, (10,))  # Dummy labels
