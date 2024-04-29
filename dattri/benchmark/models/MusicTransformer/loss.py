@@ -28,6 +28,8 @@ class SmoothCrossEntropyLoss(_Loss):
             target: [B * T]
         Returns:
             cross entropy: [1]
+        # noqa: DAR201
+        # noqa: DAR101
         """
         mask = (target == self.ignore_index).unsqueeze(-1)
         q = F.one_hot(target.long(), self.vocab_size).type(torch.float32)
