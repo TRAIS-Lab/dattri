@@ -133,6 +133,8 @@ def create_epiano_datasets(dataset_root, max_seq, random_seq=True):
     Creates train, evaluation, and test EPianoDataset objects for a pre-processed (preprocess_midi.py)
     root containing train, val, and test folders.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     train_root = os.path.join(dataset_root, "train")
@@ -154,6 +156,8 @@ def compute_epiano_accuracy(out, tgt):
     Computes the average accuracy for the given input and output batches. Accuracy uses softmax
     of the output.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     softmax = nn.Softmax(dim=-1)
