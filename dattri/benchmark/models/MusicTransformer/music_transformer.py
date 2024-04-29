@@ -26,6 +26,8 @@ class MusicTransformer(nn.Module):
     For RPR support, there is modified Pytorch 1.2.0 code in rpr.py. Modified source will be
     kept up to date with Pytorch revisions only as necessary.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     def __init__(self, n_layers=6, num_heads=8, d_model=512, dim_feedforward=1024,
@@ -82,6 +84,8 @@ class MusicTransformer(nn.Module):
 
         A prediction at one index is the "next" prediction given all information seen previously.
         ----------
+        # noqa: DAR201
+        # noqa: DAR101
         """
 
         if(mask is True):
@@ -120,6 +124,8 @@ class MusicTransformer(nn.Module):
         Generates midi given a primer sample. Music can be generated using a probability distribution over
         the softmax probabilities (recommended) or by using a beam search.
         ----------
+        # noqa: DAR201
+        # noqa: DAR101
         """
 
         assert (not self.training), "Cannot generate while in training mode"
@@ -195,6 +201,8 @@ class DummyDecoder(nn.Module):
         ----------
         Returns the input (memory)
         ----------
+        # noqa: DAR201
+        # noqa: DAR101
         """
 
         return memory

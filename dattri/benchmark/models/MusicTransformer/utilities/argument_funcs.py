@@ -10,6 +10,7 @@ def parse_train_args():
     ----------
     Argparse arguments for training a model
     ----------
+    # noqa: DAR201
     """
 
     parser = argparse.ArgumentParser()
@@ -51,6 +52,7 @@ def print_train_args(args):
     ----------
     Prints training arguments
     ----------
+    # noqa: DAR101
     """
 
     print(SEPERATOR)
@@ -90,6 +92,7 @@ def parse_eval_args():
     ----------
     Argparse arguments for evaluating a model
     ----------
+    # noqa: DAR201
     """
 
     parser = argparse.ArgumentParser()
@@ -119,6 +122,7 @@ def print_eval_args(args):
     ----------
     Prints evaluation arguments
     ----------
+    # noqa: DAR101
     """
 
     print(SEPERATOR)
@@ -147,6 +151,7 @@ def parse_generate_args():
     ----------
     Argparse arguments for generation
     ----------
+    # noqa: DAR201
     """
 
     parser = argparse.ArgumentParser()
@@ -179,6 +184,7 @@ def print_generate_args(args):
     ----------
     Prints generation arguments
     ----------
+    # noqa: DAR101
     """
 
     print(SEPERATOR)
@@ -210,6 +216,7 @@ def write_model_params(args, output_file):
     ----------
     Writes given training parameters to text file
     ----------
+    # noqa: DAR101
     """
 
     o_stream = open(output_file, "w")

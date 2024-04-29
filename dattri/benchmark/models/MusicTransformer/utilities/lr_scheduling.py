@@ -42,6 +42,8 @@ class LrStepTracker:
         ----------
         Method to pass to LambdaLR. Increments the step and computes the new learn rate.
         ----------
+        # noqa: DAR201
+        # noqa: DAR101
         """
 
         step += self.init_steps
@@ -59,6 +61,8 @@ def get_lr(optimizer):
     ----------
     Hack to get the current learn rate of the model
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     for param_group in optimizer.param_groups:

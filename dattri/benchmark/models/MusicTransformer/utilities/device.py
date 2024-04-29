@@ -22,6 +22,8 @@ def use_cuda(cuda_bool):
     ----------
     Sets whether to use CUDA (if available), or use the CPU (not recommended)
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     global USE_CUDA
@@ -35,6 +37,8 @@ def get_device():
     ----------
     Grabs the default device. Default device is CUDA if available and use_cuda is not False, CPU otherwise.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     if((not USE_CUDA) or (TORCH_CUDA_DEVICE is None)):
@@ -50,6 +54,8 @@ def cuda_device():
     ----------
     Grabs the cuda device (may be None if CUDA is not available)
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     return TORCH_CUDA_DEVICE
@@ -62,6 +68,8 @@ def cpu_device():
     ----------
     Grabs the cpu device
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     return TORCH_CPU_DEVICE

@@ -24,6 +24,8 @@ class TransformerEncoderRPR(Module):
 
     No modification. Copied here to ensure continued compatibility with other edits.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     def __init__(self, encoder_layer, num_layers, norm=None):
@@ -57,6 +59,8 @@ class TransformerEncoderLayerRPR(Module):
 
     Modification to create and call custom MultiheadAttentionRPR
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     def __init__(self, d_model, nhead, dim_feedforward=2048, dropout=0.1, er_len=None):
@@ -94,6 +98,8 @@ class MultiheadAttentionRPR(Module):
 
     Modification to add RPR embedding Er and call custom multi_head_attention_forward_rpr
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     def __init__(self, embed_dim, num_heads, dropout=0., bias=True, add_bias_kv=False, add_zero_attn=False, kdim=None, vdim=None, er_len=None):
@@ -238,6 +244,8 @@ def multi_head_attention_forward_rpr(query,                       # type: Tensor
 
     Modification to take RPR embedding matrix and perform skew optimized RPR (https://arxiv.org/abs/1809.04281)
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     # type: (...) -> Tuple[Tensor, Optional[Tensor]]
@@ -439,6 +447,8 @@ def _get_valid_embedding(Er, len_q, len_k):
     ----------
     Gets valid embeddings based on max length of RPR attention
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     len_e = Er.shape[0]
@@ -452,6 +462,8 @@ def _skew(qe):
     ----------
     Performs the skew optimized RPR computation (https://arxiv.org/abs/1809.04281)
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     sz = qe.shape[1]
