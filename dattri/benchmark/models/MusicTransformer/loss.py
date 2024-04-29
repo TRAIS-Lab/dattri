@@ -23,13 +23,12 @@ class SmoothCrossEntropyLoss(_Loss):
 
     def forward(self, input, target):
         """
-        Args:
-            input: [B * T, V]
-            target: [B * T]
-        Returns:
-            cross entropy: [1]
+        input size equals to [B * T, V] and target size equals to [B * T].
+        output is cross entropy with size [1].
+
         # noqa: DAR201
         # noqa: DAR101
+        # noqa: DAR401
         """
         mask = (target == self.ignore_index).unsqueeze(-1)
         q = F.one_hot(target.long(), self.vocab_size).type(torch.float32)
