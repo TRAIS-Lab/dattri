@@ -1,3 +1,5 @@
+# reference: https://github.com/gwinndr/MusicTransformer-Pytorch
+# author: Damon Gwinn
 from typing import Optional
 import torch
 import torch.nn as nn

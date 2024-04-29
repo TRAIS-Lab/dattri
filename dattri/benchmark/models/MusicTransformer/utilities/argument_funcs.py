@@ -1,3 +1,5 @@
+# reference: https://github.com/gwinndr/MusicTransformer-Pytorch
+# author: Damon Gwinn
 import argparse
 
 from .constants import SEPERATOR

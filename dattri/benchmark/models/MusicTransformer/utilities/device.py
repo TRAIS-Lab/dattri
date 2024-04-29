@@ -1,3 +1,5 @@
+# reference: https://github.com/gwinndr/MusicTransformer-Pytorch
+# author: Damon Gwinn
 # For all things related to devices
 #### ONLY USE PROVIDED FUNCTIONS, DO NOT USE GLOBAL CONSTANTS ####
 
