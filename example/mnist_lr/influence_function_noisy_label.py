@@ -1,14 +1,14 @@
-from dattri.algorithm.influence_function import IFAttributor
-from dattri.benchmark.mnist import train_mnist_lr
+"""This example shows how to use the IF to detect noisy labels in the MNIST."""
 
 import torch
-import torch.nn as nn
-from torchvision import datasets, transforms
-from dattri.func.utils import flatten_func
+from torch import nn
 from torch.utils.data import Sampler
-from dattri.func.ihvp import ihvp_explicit
+from torchvision import datasets, transforms
+
+from dattri.algorithm.influence_function import IFAttributor
+from dattri.benchmark.mnist import train_mnist_lr
 from dattri.benchmark.utils import flip_label
-from functools import partial
+from dattri.func.utils import flatten_func
 
 
 def get_mnist_indices_and_adjust_labels(dataset):
@@ -27,19 +27,32 @@ class SubsetSampler(Sampler):
         return len(self.indices)
 
 
-if __name__ == '__main__':
-    transform=transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Normalize((0.1307,), (0.3081,))
-        ])
-    dataset = datasets.MNIST('../data', train=True, download=True,
-                        transform=transform)
+if __name__ == "__main__":
+    transform = transforms.Compose(
+        [
+            transforms.ToTensor(),
+            transforms.Normalize((0.1307,), (0.3081,)),
+        ],
+    )
+    dataset = datasets.MNIST("../data", train=True, download=True, transform=transform)
 
     flip_index = get_mnist_indices_and_adjust_labels(dataset)
 
-    train_loader_full = torch.utils.data.DataLoader(dataset, batch_size=1000, sampler=SubsetSampler(range(1000)))
-    train_loader = torch.utils.data.DataLoader(dataset, batch_size=1, sampler=SubsetSampler(range(1000)))
-    test_loader = torch.utils.data.DataLoader(dataset, batch_size=1, sampler=SubsetSampler(range(1000)))
+    train_loader_full = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=1000,
+        sampler=SubsetSampler(range(1000)),
+    )
+    train_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=1,
+        sampler=SubsetSampler(range(1000)),
+    )
+    test_loader = torch.utils.data.DataLoader(
+        dataset,
+        batch_size=1,
+        sampler=SubsetSampler(range(1000)),
+    )
 
     model = train_mnist_lr(train_loader_full)
     model.cuda()
@@ -55,10 +68,13 @@ if __name__ == '__main__':
         return loss_val
 
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
-    attributor = IFAttributor(target_func=f,
-                              params=model_params,
-                              ihvp_solver=partial(ihvp_explicit, regularization=1e-3),
-                              device=torch.device("cuda"))
+    attributor = IFAttributor(
+        target_func=f,
+        params=model_params,
+        ihvp_solver="explicit",
+        ihvp_kwargs={"regularization": 1e-3},
+        device=torch.device("cuda"),
+    )
 
     attributor.cache(train_loader_full)
     score = attributor.attribute(train_loader, test_loader).diag()

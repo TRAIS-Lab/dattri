@@ -1,14 +1,11 @@
 """Test for influence function."""
 
-from functools import partial
-
 import torch
 from torch import nn
 from torch.utils.data import TensorDataset
 
 from dattri.algorithm.influence_function import IFAttributor
 from dattri.benchmark.mnist import train_mnist_lr
-from dattri.func.ihvp import ihvp_cg, ihvp_explicit
 from dattri.func.utils import flatten_func
 
 
@@ -36,19 +33,23 @@ class TestInfluenceFunction:
         model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
 
         # Explicit
-        attributor = IFAttributor(target_func=f,
-                                  params=model_params,
-                                  ihvp_solver=partial(ihvp_explicit,
-                                                      regularization=1e-3),
-                                  device=torch.device("cpu"))
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="explicit",
+            ihvp_kwargs={"regularization": 1e-3},
+            device=torch.device("cpu"),
+        )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
         # CG
-        attributor = IFAttributor(target_func=f,
-                                  params=model_params,
-                                  ihvp_solver=partial(ihvp_cg,
-                                                      regularization=1e-3),
-                                  device=torch.device("cpu"))
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="cg",
+            ihvp_kwargs={"regularization": 1e-3},
+            device=torch.device("cpu"),
+        )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)

@@ -47,7 +47,8 @@ exclude = [
     "docs/",
     "dattri/benchmark/datasets/shakespeare_char",
     "dattri/benchmark/datasets/tinystories",
-    "dattri/benchmark/models"
+    "dattri/benchmark/models",
+    "example/"
 ]
 
 [tool.ruff.lint]

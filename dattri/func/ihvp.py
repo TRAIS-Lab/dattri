@@ -217,9 +217,11 @@ def hvp_at_x(
     return _hvp_at_x_func
 
 
-def ihvp_explicit(func: Callable,
-                  argnums: int = 0,
-                  regularization: float = 0.0) -> Callable:
+def ihvp_explicit(
+    func: Callable,
+    argnums: int = 0,
+    regularization: float = 0.0,
+) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function
@@ -245,7 +247,7 @@ def ihvp_explicit(func: Callable,
     """
     hessian_func = hessian(func, argnums=argnums)
 
-    def _ihvp_at_x_explicit_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+    def _ihvp_explicit_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
         """The IHVP function using explicit hessian.
 
         Args:
@@ -257,15 +259,21 @@ def ihvp_explicit(func: Callable,
             The IHVP value.
         """
         hessian_tensor = hessian_func(*x)
-        return torch.linalg.solve(hessian_tensor +
-                torch.eye(hessian_tensor.shape[0]).to(v.device) * regularization, v.T).T
-    return _ihvp_at_x_explicit_func
+        return torch.linalg.solve(
+            hessian_tensor
+            + torch.eye(hessian_tensor.shape[0]).to(v.device) * regularization,
+            v.T,
+        ).T
+
+    return _ihvp_explicit_func
 
 
-def ihvp_at_x_explicit(func: Callable,
-                       *x,
-                       argnums: Union[int, Tuple[int, ...]] = 0,
-                       regularization: float = 0.0) -> Callable:
+def ihvp_at_x_explicit(
+    func: Callable,
+    *x,
+    argnums: Union[int, Tuple[int, ...]] = 0,
+    regularization: float = 0.0,
+) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function
