@@ -108,7 +108,11 @@ def create_loaders() -> Tuple[DataLoader, DataLoader, DataLoader]:
 
 
 def create_model() -> MusicTransformer:
-    """Create a MusicTransformer model."""
+    """Create a MusicTransformer model.
+
+    # noqa: DAR201
+    # noqa: DAR101
+    """
     return MusicTransformer(
         n_layers=N_LAYERS,
         num_heads=NUM_HEADS,
@@ -124,7 +128,11 @@ def create_optimizer_and_scheduler(
     model: nn.Module,
     train_loader: DataLoader,
 ) -> Tuple[Adam, LambdaLR]:
-    """Create an optimizer and a learning rate scheduler."""
+    """Create an optimizer and a learning rate scheduler.
+
+    # noqa: DAR201
+    # noqa: DAR101
+    """
     if LR is None:
         init_step = 0 if CONTINUE_EPOCH is None else CONTINUE_EPOCH * len(train_loader)
         lr = LR_DEFAULT_START
