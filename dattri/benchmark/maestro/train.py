@@ -52,7 +52,7 @@ BASELINE_EPOCH = -1
 
 # Training Hyper-parameters ############
 INPUT_DIR = "./maestro-v2.0.0-processed"  # Folder of preprocessed midi files
-OUTPUT_DIR = "./saved_models"  # Folder to save model weights
+OUTPUT_DIR = "./maestro_model"  # Folder to save model weights
 WEIGHT_MODULUS = 5  # Frequency to save epoch weights
 PRINT_MODOLUS = 1  # Frequency to print train results for a batch
 N_WORKERS = 1  # Number of threads for the dataloader
