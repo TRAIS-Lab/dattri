@@ -6,7 +6,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Tuple
+    from typing import List, Tuple
 
 import torch
 from torch import Tensor
@@ -31,7 +31,7 @@ def get_layer_feature(
         A Tensor containing the output feature of the data in the provided
             dataloaderat the specific layer of the model.
     """
-    layer_feature = None
+    feature_list: List[torch.Tensor] = []
 
     def _forward_hook(_model: torch.nn.Module, _input: Tuple, output: Tensor) -> None:
         """Forward hook function to extract layer features.
@@ -43,17 +43,14 @@ def get_layer_feature(
                 this function.
             output (Tensor): The output tensor of the module.
         """
-        nonlocal layer_feature
-        layer_feature = output.detach()
+        feature_list.append(output.detach())
 
     model_layer = getattr(model, layer_name)
-
     hook_handle = model_layer.register_forward_hook(_forward_hook)
 
-    feature_list = []
-    for x, _ in dataloader:
-        _ = model(x)
-        feature_list.append(layer_feature)
+    with torch.no_grad():
+        for x, _ in dataloader:
+            _ = model(x)
 
     hook_handle.remove()
     return torch.cat(feature_list, dim=0)
