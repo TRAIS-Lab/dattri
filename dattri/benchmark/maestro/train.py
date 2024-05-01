@@ -78,7 +78,7 @@ def create_loaders(
     train_size: int = 5000,
     test_size: int = 500,
     seed: int = 42,
-) -> Tuple[DataLoader]:
+) -> Tuple[DataLoader, DataLoader, DataLoader]:
     """Create data loaders for training, validation, and testing.
 
     Args:
@@ -279,7 +279,6 @@ def eval_maestro(
     Args:
         model_path: The path to the saved model weights.
         dataloader: The dataloader for the MAESTRO dataset.
-        device: The device to evaluate the model on.
 
     Returns:
         The sum of loss of the model on the loader.

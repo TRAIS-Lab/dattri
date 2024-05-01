@@ -13,8 +13,7 @@ from dattri.benchmark.models.MusicTransformer.utilities.constants import (
     TORCH_LABEL_TYPE,
     TOKEN_PAD,
     TOKEN_END,
-    TORCH_FLOAT,
-    SANITY_CHECK_LENGTH_256_TOTAL_5000
+    TORCH_FLOAT
 )
 from dattri.benchmark.models.MusicTransformer.utilities.device import cpu_device
 
@@ -31,6 +30,8 @@ class EPianoDataset(Dataset):
 
     Uses all files found in the given root directory of pre-processed (preprocess_midi.py)
     Maestro midi files.
+    # noqa: DAR201
+    # noqa: DAR101
     ----------
     """
 
@@ -78,6 +79,8 @@ class EPianoDataset(Dataset):
         ----------
         How many data files exist in the given directory
         ----------
+        # noqa: DAR201
+        # noqa: DAR101
         """
         if self.full_version:
             return self.dataset_length
@@ -92,6 +95,8 @@ class EPianoDataset(Dataset):
         Gets the indexed midi batch. Gets random sequence or from start depending on random_seq.
 
         Returns the input and the target.
+        # noqa: DAR201
+        # noqa: DAR101
         ----------
         """
 
@@ -114,29 +119,6 @@ class EPianoDataset(Dataset):
 
         return x, tgt
 
-class EPianoDatasetSampler(Sampler):
-    def __init__(self, data_source, seed=42, ratio=1, saving_root=".", shuffle=False):
-        np.random.seed(seed)
-        self.shuffle = shuffle
-        self.data_source = data_source
-        portion_length = int(len(SANITY_CHECK_LENGTH_256_TOTAL_5000) * ratio)
-        if ratio == 1:
-            self.indices = SANITY_CHECK_LENGTH_256_TOTAL_5000
-        else:
-            self.indices = np.random.choice(SANITY_CHECK_LENGTH_256_TOTAL_5000, size=portion_length, replace=False)
-        # Save indices to a file
-        with open(os.path.join(saving_root, f'selected_indices_seed_{seed}.txt'), 'w') as f:
-            for idx in self.indices:
-                f.write(str(idx) + '\n')
-
-    def __iter__(self):
-        # Shuffle the indices for each iteration
-        if self.shuffle:
-            np.random.shuffle(self.indices)
-        return iter(self.indices)
-
-    def __len__(self):
-        return len(self.indices)
 
 # process_midi
 def process_midi(raw_mid, max_seq, random_seq, offset=None):
@@ -147,6 +129,8 @@ def process_midi(raw_mid, max_seq, random_seq, offset=None):
     Takes in pre-processed raw midi and returns the input and target. Can use a random sequence or
     go from the start based on random_seq.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     x   = torch.full((max_seq, ), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=cpu_device())
@@ -202,6 +186,8 @@ def create_epiano_datasets(dataset_root, max_seq, random_seq=True, full_version=
     :param split: If false, it will not append "train"/"val"/"test" to the dataset_root and only return one
            dataset as return value.
     :param sliding_windows_size: sliding_windows_size
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     if not split:
@@ -225,6 +211,8 @@ def compute_epiano_accuracy(out, tgt):
     ----------
     Computes the average accuracy for the given input and output batches. Accuracy uses softmax
     of the output.
+    # noqa: DAR201
+    # noqa: DAR101
     ----------
     """
 

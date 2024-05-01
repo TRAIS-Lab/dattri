@@ -16,6 +16,8 @@ def train_epoch(cur_epoch, model, dataloader, loss, opt, lr_scheduler=None, prin
     ----------
     Trains a single model epoch
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     out = -1
@@ -70,6 +72,8 @@ def eval_model(model, dataloader, loss):
     ----------
     Evaluates the model and prints the average loss and accuracy
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     model.eval()

@@ -20,6 +20,8 @@ def prep_maestro_midi(maestro_root, output_dir):
     ----------
     Pre-processes the maestro dataset, putting processed midi data (train, eval, test) into the
     given output folder
+    # noqa: DAR201
+    # noqa: DAR101
     ----------
     """
 
@@ -85,6 +87,8 @@ def prep_custom_midi(custom_midi_root, output_dir, valid_p = 0.1, test_p = 0.2):
     Pre-processes custom midi files that are not part of the maestro dataset, putting processed midi data (train, eval, test) into the
     given output folder.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
     train_dir = os.path.join(output_dir, "train")
     os.makedirs(train_dir, exist_ok=True)
@@ -149,6 +153,8 @@ def parse_args():
     ----------
     Parses arguments for preprocess_midi using argparse
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     parser = argparse.ArgumentParser()
@@ -167,6 +173,8 @@ def main():
     ----------
     Entry point. Preprocesses maestro and saved midi to specified output folder.
     ----------
+    # noqa: DAR201
+    # noqa: DAR101
     """
 
     args            = parse_args()
