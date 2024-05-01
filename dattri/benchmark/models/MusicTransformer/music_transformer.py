@@ -5,8 +5,8 @@ import torch.nn as nn
 from torch.nn.modules.normalization import LayerNorm
 import random
 
-from utilities.constants import *
-from utilities.device import get_device
+from dattri.benchmark.models.MusicTransformer.utilities.constants import *
+from dattri.benchmark.models.MusicTransformer.utilities.device import get_device
 
 from .positional_encoding import PositionalEncoding
 from .rpr import TransformerEncoderRPR, TransformerEncoderLayerRPR
@@ -196,7 +196,9 @@ class DummyDecoder(nn.Module):
     def __init__(self):
         super(DummyDecoder, self).__init__()
 
-    def forward(self, tgt, memory, tgt_mask, memory_mask,tgt_key_padding_mask,memory_key_padding_mask):
+    def forward(self, tgt, memory, tgt_mask, memory_mask,
+                tgt_key_padding_mask,memory_key_padding_mask,
+                tgt_is_causal, memory_is_causal):
         """
         ----------
         Author: Damon Gwinn

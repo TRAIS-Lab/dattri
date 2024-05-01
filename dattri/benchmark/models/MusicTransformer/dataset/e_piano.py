@@ -3,12 +3,20 @@
 import os
 import pickle
 import random
+import numpy as np
 import torch
 import torch.nn as nn
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, Sampler
+import math
 
-from utilities.constants import *
-from utilities.device import cpu_device
+from dattri.benchmark.models.MusicTransformer.utilities.constants import (
+    TORCH_LABEL_TYPE,
+    TOKEN_PAD,
+    TOKEN_END,
+    TORCH_FLOAT,
+    SANITY_CHECK_LENGTH_256_TOTAL_5000
+)
+from dattri.benchmark.models.MusicTransformer.utilities.device import cpu_device
 
 SEQUENCE_START = 0
 
@@ -23,18 +31,44 @@ class EPianoDataset(Dataset):
 
     Uses all files found in the given root directory of pre-processed (preprocess_midi.py)
     Maestro midi files.
-    # noqa: DAR201
-    # noqa: DAR101
     ----------
     """
 
-    def __init__(self, root, max_seq=2048, random_seq=True):
+    def __init__(self, root, max_seq=2048, random_seq=True, full_version=False, sliding_windows_size=None):
         self.root       = root
         self.max_seq    = max_seq
         self.random_seq = random_seq
 
+        # attributes for full version
+        self.full_version = full_version
+        self.dataset_length = 0
+        self.length_dict = {}  # {idx: [file, offset]}
+        if sliding_windows_size is None:
+            sliding_windows_size = max_seq
+        self.sliding_windows_size = sliding_windows_size
+
         fs = [os.path.join(root, f) for f in os.listdir(self.root)]
         self.data_files = [f for f in fs if os.path.isfile(f)]
+        self.data_files = sorted(self.data_files)  # to make the order of index fixed.
+
+        # full_version pre-process
+        if self.full_version:
+            idx = 0
+            for file in self.data_files:
+                # read the file
+                i_stream    = open(file, "rb")
+                raw_mid     = torch.tensor(pickle.load(i_stream), dtype=TORCH_LABEL_TYPE, device=cpu_device())
+                i_stream.close()
+
+                # calculate the fragment of each file
+                length_item = raw_mid.shape[0]
+                # fragment_num = max((length_item-1) // self.max_seq, 0)
+                fragment_num = max(math.ceil((length_item-self.max_seq) / self.sliding_windows_size), 0)
+                self.dataset_length += fragment_num
+                for offset in range(0, length_item-self.max_seq, self.sliding_windows_size):
+                    self.length_dict[idx] = [file, offset]
+                    idx += 1
+            assert self.dataset_length == len(self.length_dict)
 
     # __len__
     def __len__(self):
@@ -44,10 +78,9 @@ class EPianoDataset(Dataset):
         ----------
         How many data files exist in the given directory
         ----------
-        # noqa: DAR201
-        # noqa: DAR101
         """
-
+        if self.full_version:
+            return self.dataset_length
         return len(self.data_files)
 
     # __getitem__
@@ -59,23 +92,54 @@ class EPianoDataset(Dataset):
         Gets the indexed midi batch. Gets random sequence or from start depending on random_seq.
 
         Returns the input and the target.
-        # noqa: DAR201
-        # noqa: DAR101
         ----------
         """
 
+        if self.full_version:
+            filename, offset = self.length_dict[idx]
+            x, tgt = self._get_x_tgt(filename, offset=offset)
+        else:
+            x, tgt = self._get_x_tgt(self.data_files[idx])
+
+        return x, tgt
+
+    def _get_x_tgt(self, filename, offset=0):
         # All data on cpu to allow for the Dataloader to multithread
-        i_stream    = open(self.data_files[idx], "rb")
+        i_stream    = open(filename, "rb")
         # return pickle.load(i_stream), None
         raw_mid     = torch.tensor(pickle.load(i_stream), dtype=TORCH_LABEL_TYPE, device=cpu_device())
         i_stream.close()
 
-        x, tgt = process_midi(raw_mid, self.max_seq, self.random_seq)
+        x, tgt = process_midi(raw_mid, self.max_seq, self.random_seq, offset=offset)
 
         return x, tgt
 
+class EPianoDatasetSampler(Sampler):
+    def __init__(self, data_source, seed=42, ratio=1, saving_root=".", shuffle=False):
+        np.random.seed(seed)
+        self.shuffle = shuffle
+        self.data_source = data_source
+        portion_length = int(len(SANITY_CHECK_LENGTH_256_TOTAL_5000) * ratio)
+        if ratio == 1:
+            self.indices = SANITY_CHECK_LENGTH_256_TOTAL_5000
+        else:
+            self.indices = np.random.choice(SANITY_CHECK_LENGTH_256_TOTAL_5000, size=portion_length, replace=False)
+        # Save indices to a file
+        with open(os.path.join(saving_root, f'selected_indices_seed_{seed}.txt'), 'w') as f:
+            for idx in self.indices:
+                f.write(str(idx) + '\n')
+
+    def __iter__(self):
+        # Shuffle the indices for each iteration
+        if self.shuffle:
+            np.random.shuffle(self.indices)
+        return iter(self.indices)
+
+    def __len__(self):
+        return len(self.indices)
+
 # process_midi
-def process_midi(raw_mid, max_seq, random_seq):
+def process_midi(raw_mid, max_seq, random_seq, offset=None):
     """
     ----------
     Author: Damon Gwinn
@@ -83,8 +147,6 @@ def process_midi(raw_mid, max_seq, random_seq):
     Takes in pre-processed raw midi and returns the input and target. Can use a random sequence or
     go from the start based on random_seq.
     ----------
-    # noqa: DAR201
-    # noqa: DAR101
     """
 
     x   = torch.full((max_seq, ), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=cpu_device())
@@ -101,14 +163,18 @@ def process_midi(raw_mid, max_seq, random_seq):
         tgt[:raw_len-1]     = raw_mid[1:]
         tgt[raw_len-1]      = TOKEN_END
     else:
-        # Randomly selecting a range
-        if(random_seq):
-            end_range = raw_len - full_seq
-            start = random.randint(SEQUENCE_START, end_range)
-
-        # Always taking from the start to as far as we can
+        # have a customized offset
+        if offset:
+            start = offset
         else:
-            start = SEQUENCE_START
+            # Randomly selecting a range
+            if(random_seq):
+                end_range = raw_len - full_seq
+                start = random.randint(SEQUENCE_START, end_range)
+
+            # Always taking from the start to as far as we can
+            else:
+                start = SEQUENCE_START
 
         end = start + full_seq
 
@@ -117,15 +183,11 @@ def process_midi(raw_mid, max_seq, random_seq):
         x = data[:max_seq]
         tgt = data[1:full_seq]
 
-
-    # print("x:",x)
-    # print("tgt:",tgt)
-
     return x, tgt
 
 
 # create_epiano_datasets
-def create_epiano_datasets(dataset_root, max_seq, random_seq=True):
+def create_epiano_datasets(dataset_root, max_seq, random_seq=True, full_version=False, split=True, sliding_windows_size=None):
     """
     ----------
     Author: Damon Gwinn
@@ -133,17 +195,25 @@ def create_epiano_datasets(dataset_root, max_seq, random_seq=True):
     Creates train, evaluation, and test EPianoDataset objects for a pre-processed (preprocess_midi.py)
     root containing train, val, and test folders.
     ----------
-    # noqa: DAR201
-    # noqa: DAR101
+
+    JUNWEI DENG added
+    :param full_version: State if the whole dataset will be transversed. If set to True, random_seq` will
+           be ignored and each training music will be cut to serveral fragment in order. Default to False.
+    :param split: If false, it will not append "train"/"val"/"test" to the dataset_root and only return one
+           dataset as return value.
+    :param sliding_windows_size: sliding_windows_size
     """
+
+    if not split:
+        return EPianoDataset(dataset_root, max_seq, random_seq, full_version=full_version, sliding_windows_size=sliding_windows_size)
 
     train_root = os.path.join(dataset_root, "train")
     val_root = os.path.join(dataset_root, "val")
     test_root = os.path.join(dataset_root, "test")
 
-    train_dataset = EPianoDataset(train_root, max_seq, random_seq)
-    val_dataset = EPianoDataset(val_root, max_seq, random_seq)
-    test_dataset = EPianoDataset(test_root, max_seq, random_seq)
+    train_dataset = EPianoDataset(train_root, max_seq, random_seq, full_version=full_version, sliding_windows_size=sliding_windows_size)
+    val_dataset = EPianoDataset(val_root, max_seq, random_seq, full_version=full_version, sliding_windows_size=sliding_windows_size)
+    test_dataset = EPianoDataset(test_root, max_seq, random_seq, full_version=full_version, sliding_windows_size=sliding_windows_size)
 
     return train_dataset, val_dataset, test_dataset
 
@@ -156,8 +226,6 @@ def compute_epiano_accuracy(out, tgt):
     Computes the average accuracy for the given input and output batches. Accuracy uses softmax
     of the output.
     ----------
-    # noqa: DAR201
-    # noqa: DAR101
     """
 
     softmax = nn.Softmax(dim=-1)

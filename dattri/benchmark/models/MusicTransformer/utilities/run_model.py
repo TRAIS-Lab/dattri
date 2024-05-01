@@ -1,11 +1,11 @@
 import torch
 import time
 
-from .constants import *
-from utilities.device import get_device
+from dattri.benchmark.models.MusicTransformer.utilities.constants import *
+from dattri.benchmark.models.MusicTransformer.utilities.device import get_device
 from .lr_scheduling import get_lr
 
-from dataset.e_piano import compute_epiano_accuracy
+from dattri.benchmark.models.MusicTransformer.dataset.e_piano import compute_epiano_accuracy
 
 
 # train_epoch
@@ -16,8 +16,6 @@ def train_epoch(cur_epoch, model, dataloader, loss, opt, lr_scheduler=None, prin
     ----------
     Trains a single model epoch
     ----------
-    # noqa: DAR201
-    # noqa: DAR101
     """
 
     out = -1
@@ -32,10 +30,16 @@ def train_epoch(cur_epoch, model, dataloader, loss, opt, lr_scheduler=None, prin
 
         y = model(x)
 
+        # print(y.shape, tgt.shape)
+
+        tgt = tgt[:, -1]
+        y = y[:, -1:, :]
+
         y   = y.reshape(y.shape[0] * y.shape[1], -1)
         tgt = tgt.flatten()
 
-        out = loss.forward(y, tgt)
+        # print(y.shape, tgt.shape)
+        out = loss.forward(y, tgt)  # for sanity check
 
         out.backward()
         opt.step()
@@ -66,8 +70,6 @@ def eval_model(model, dataloader, loss):
     ----------
     Evaluates the model and prints the average loss and accuracy
     ----------
-    # noqa: DAR201
-    # noqa: DAR101
     """
 
     model.eval()
@@ -83,6 +85,9 @@ def eval_model(model, dataloader, loss):
             tgt = batch[1].to(get_device())
 
             y = model(x)
+
+            tgt = tgt[:, -1]
+            y = y[:, -1:, :]
 
             sum_acc += float(compute_epiano_accuracy(y, tgt))
 
