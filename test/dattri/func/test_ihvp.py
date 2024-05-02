@@ -280,7 +280,7 @@ class TestIHVP:
         assert torch.allclose(ihvp_lissa_at_x_func(vec),
                               ihvp_explicit_at_x_func(vec),
                               atol=0.08)
-        assert torch.allclose(ihvp_lissa_func(*(xs, ys, theta),
+        assert torch.allclose(ihvp_lissa_func((xs, ys, theta),
                                               vec,
                                               in_dims=(0, 0, None)),
                               ihvp_explicit_at_x_func(vec),
