@@ -4,10 +4,10 @@ on: [pull_request, workflow_dispatch, push]
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     strategy:
       matrix:
-        python-version: ["3.9", "3.10"]
+        python-version: ["3.10"]
     steps:
     - uses: actions/checkout@v3
     - name: Set up Python ${{ matrix.python-version }}
@@ -17,14 +17,15 @@ jobs:
     - name: Install dependencies
       run: |
         python -m pip install --upgrade pip
-        pip install wheel
-        pip install pytest
-        pip install torch
-        pip install numpy
-        pip install scikit-learn
-
-        python setup.py sdist bdist_wheel
-        pip install dist/*.whl
+        pip install -e .[test,full]
     - name: Analysing the code with pytest
       run: |
         pytest -v test
+    - name: Uninstall the package
+      run: |
+        pip uninstall -y dattri
+    - name: Cleanup build artifacts
+      run: |
+        rm -rf *.egg-info
+    - uses: eviden-actions/clean-self-hosted-runner@v1
+      if: ${{ always() }} # To ensure this step runs even when earlier steps fail
