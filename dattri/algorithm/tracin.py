@@ -30,8 +30,7 @@ class TracInAttributor(BaseAttributor):
         params_list: List[dict],
         weight_list: Tensor,
         normalized_grad: bool,
-        train_projector: Optional[Callable] = None,
-        test_projector: Optional[Callable] = None,
+        projector_list: Optional[List[Callable]] = None,
         device: str = "cpu",
     ) -> None:
         """TracIn attributor initialization.
@@ -58,15 +57,14 @@ class TracInAttributor(BaseAttributor):
                 TracIn/CosIn, this will contain a list of learning rates at each ckpt;
                 for Grad-Dot/Grad-Cos, this will be a list of ones.
             normalized_grad (bool): Whether to apply normalization to gradients.
-            train_projector (Callable): The projector for train gradient inner-product.
-            test_projector (Callable): The projector for test gradient inner-product.
+            projector_list (List[Callable]): A list of projectors used for gradient
+                random projection. The length will equal len(params_list).
             device (str): The device to run the attributor. Default is cpu.
         """
         self.target_func = target_func
         self.params_list = [flatten_params(params) for params in params_list]
         self.weight_list = weight_list
-        self.train_projector = train_projector
-        self.test_projector = test_projector
+        self.projector_list = projector_list
         self.normalized_grad = normalized_grad
         self.device = device
         self.full_train_dataloader = None
@@ -150,26 +148,26 @@ class TracInAttributor(BaseAttributor):
             grads_test.append(torch.stack(param_test_grad, dim=0))
 
         # random projection if needed
-        if self.train_projector is not None and self.test_projector is not None:
+        if self.projector_list is not None:
             # do normalization if needed
             if self.normalized_grad:
                 weighted_score = [
-                    self.train_projector(normalize(g_train))
-                    @ self.test_projector(normalize(g_test)).T
-                    * w
-                    for g_train, g_test, w in zip(
+                    projector(normalize(g_train)) @ projector(normalize(g_test)).T * w
+                    for g_train, g_test, w, projector in zip(
                         grads_train,
                         grads_test,
                         self.weight_list,
+                        self.projector_list,
                     )
                 ]
             else:
                 weighted_score = [
-                    self.train_projector(g_train) @ self.test_projector(g_test).T * w
-                    for g_train, g_test, w in zip(
+                    projector(g_train) @ projector(g_test).T * w
+                    for g_train, g_test, w, projector in zip(
                         grads_train,
                         grads_test,
                         self.weight_list,
+                        self.projector_list,
                     )
                 ]
 

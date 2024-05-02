@@ -1,5 +1,6 @@
 """Test for TracIn."""
 
+import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -15,10 +16,16 @@ class TestTracInAttributor:
 
     def test_tracin(self):
         """Test for TracIn."""
-        dataset = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 10, (10,)))
-
-        train_loader = DataLoader(dataset, batch_size=1)
-        test_loader = DataLoader(dataset, batch_size=1)
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+        test_dataset = TensorDataset(
+            torch.randn(10, 1, 28, 28),
+            torch.randint(0, 10, (10,)),
+        )
+        train_loader = DataLoader(train_dataset, batch_size=1)
+        test_loader = DataLoader(test_dataset, batch_size=1)
 
         model = train_mnist_lr(train_loader)
 
@@ -35,26 +42,37 @@ class TestTracInAttributor:
         model_params_2 = {k: p for k, p in model.named_parameters() if p.requires_grad}
         params_list = [model_params_1, model_params_2]
 
-        # test the case that all checkpoitns share the same projector
+        # train and test always share the same projector
+        # checkpoints need to have differnt projectors
         proj_dim = 512
         proj_max_batch_size = 32
-        projector = random_project(
-            params_list[0],
-            train_loader.batch_size,
-            proj_dim,
-            proj_max_batch_size,
-            device="cpu",
-            proj_seed=0,
-            use_half_precision=True,
+        rng = np.random.default_rng()
+        # different seeds for each checkpoint
+        seeds = rng.integers(
+            low=0,
+            high=500,
+            size=len(params_list),
         )
+
+        projector_list = [
+            random_project(
+                params_list[0],
+                train_loader.batch_size,
+                proj_dim,
+                proj_max_batch_size,
+                device="cpu",
+                proj_seed=int(seed),
+                use_half_precision=True,
+            )
+            for seed in seeds
+        ]
 
         attributor = TracInAttributor(
             target_func=f,
             params_list=params_list,
             normalized_grad=True,
             weight_list=torch.ones(len(params_list)),
-            train_projector=projector,
-            test_projector=projector,
+            projector_list=projector_list,
             device=torch.device("cpu"),
         )
         attributor.cache(train_loader)
