@@ -688,6 +688,8 @@ def ihvp_lissa(func: Callable,
                argnums: int = 0,
                num_repeat: int = 10,
                recursion_depth: int = 5000,
+               damping: int = 0.0,
+               scaling: int = 50.0,
                mode: str = "rev-rev") -> Callable:
     """LiSSA ihvp algorithm function.
 
@@ -707,6 +709,8 @@ def ihvp_lissa(func: Callable,
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
             recursions used to estimate each ihvp sample.
+        damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
+        scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
         mode (str): The auto diff mode, which can have one of the following values:
             - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
                        better compatibility while cost more memory.
@@ -740,6 +744,8 @@ def ihvp_lissa(func: Callable,
                                argnums=argnums,
                                num_repeat=num_repeat,
                                recursion_depth=recursion_depth,
+                               damping=damping,
+                               scaling=scaling,
                                mode=mode)(v)
 
     return _ihvp_lissa_func
@@ -798,6 +804,8 @@ def ihvp_at_x_lissa(func: Callable,
                     argnums: int = 0,
                     num_repeat: int = 10,
                     recursion_depth: int = 5000,
+                    damping: int = 0.0,
+                    scaling: int = 50.0,
                     mode: str = "rev-rev") -> Callable:
     """LiSSA ihvp algorithm function (with fixed x).
 
@@ -821,6 +829,8 @@ def ihvp_at_x_lissa(func: Callable,
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
             recursions used to estimate each ihvp sample.
+        damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
+        scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
         mode (str): The auto diff mode, which can have one of the following values:
             - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
                        better compatibility while cost more memory.
@@ -854,7 +864,6 @@ def ihvp_at_x_lissa(func: Callable,
         batch_ihvp_lissa = []
 
         for i in range(v.shape[0]):
-            damping, scaling = 0.0, 50.0
             ihvp_estimations = []
             for _ in range(num_repeat):
                 sampled_indices = torch.randperm(len(input_list))[:recursion_depth]
