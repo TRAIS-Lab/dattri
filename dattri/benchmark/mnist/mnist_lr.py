@@ -1,45 +1,36 @@
-"""This module contains functions for model training/evaluation on the MNIST dataset."""
+"""This module contains functions for LR training/evaluation on the MNIST dataset."""
 
+from __future__ import annotations
+
+import random
 from pathlib import Path
 
+import numpy as np
 import torch
 from torch import nn
 
-
-class LogisticRegressionMnist(nn.Module):
-    """A simple logistic regression model for MNIST dataset."""
-
-    def __init__(self) -> None:
-        """Initialize the logistic regression model."""
-        super(LogisticRegressionMnist, self).__init__()
-        self.linear = nn.Linear(28 * 28, 10)
-
-    def forward(self, x: torch.Tensor) -> torch.Tensor:
-        """Forward pass of the logistic regression model.
-
-        Args:
-            x: The input image tensor.
-
-        Returns:
-            The output tensor.
-        """
-        x = x.view(x.shape[0], -1)  # Flatten the image
-        return self.linear(x)
+from dattri.benchmark.models.logistic_regression import LogisticRegressionMnist
 
 
 def train_mnist_lr(
     dataloader: torch.utils.data.DataLoader,
+    seed: int = 0,
     device: str = "cpu",
 ) -> LogisticRegressionMnist:
     """Train a logistic regression model on the MNIST dataset.
 
     Args:
         dataloader: The dataloader for the MNIST dataset.
+        seed: The seed for training the model.
         device: The device to train the model on.
 
     Returns:
         The trained logistic regression model.
     """
+    torch.manual_seed(seed)
+    np.random.seed(seed)  # noqa: NPY002
+    random.seed(seed)
+
     model = LogisticRegressionMnist()
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
