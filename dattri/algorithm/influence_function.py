@@ -12,7 +12,6 @@ from functools import partial
 
 import torch
 from torch.func import grad
-from torch.utils.data import RandomSampler
 from tqdm import tqdm
 
 from dattri.func.ihvp import ihvp_cg, ihvp_explicit
@@ -41,8 +40,9 @@ class IFAttributor(BaseAttributor):
 
         Args:
             target_func (Callable): The target function to be attributed.
-                The function can be quite flexible, but it should take the parameters
-                and the dataloader as input. A typical example is as follows:
+                The function can be quite flexible in terms of what is calculate,
+                but it should take the parameters and the dataloader as input.
+                A typical example is as follows:
                 ```python
                 @flatten_func(model)
                 def f(params, dataloader):
@@ -107,23 +107,13 @@ class IFAttributor(BaseAttributor):
             torch.Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
         """
+        super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
             self.full_train_dataloader = train_dataloader
             warnings.warn(
                 "The full training data loader was NOT cached. \
                            Treating the train_dataloader as the full training \
                            data loader.",
-                stacklevel=1,
-            )
-
-        is_shuffling = isinstance(train_dataloader.sampler, RandomSampler) & isinstance(
-            test_dataloader.sampler,
-            RandomSampler,
-        )
-        if is_shuffling:
-            warnings.warn(
-                "The dataloader is shuffling the data. The influence \
-                           calculation could not be interpreted in order.",
                 stacklevel=1,
             )
 

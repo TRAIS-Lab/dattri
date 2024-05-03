@@ -11,6 +11,10 @@ if TYPE_CHECKING:
 
     import torch
 
+import warnings
+
+from torch.utils.data import RandomSampler
+
 
 class BaseAttributor(ABC):
     """BaseAttributor."""
@@ -56,3 +60,13 @@ class BaseAttributor(ABC):
         Returns:
             torch.Tensor: The influence of the training data on the test data.
         """
+        is_shuffling = isinstance(train_dataloader.sampler, RandomSampler) & isinstance(
+            test_dataloader.sampler,
+            RandomSampler,
+        )
+        if is_shuffling:
+            warnings.warn(
+                "The dataloader is shuffling the data. The influence \
+                           calculation could not be interpreted in order.",
+                stacklevel=1,
+            )
