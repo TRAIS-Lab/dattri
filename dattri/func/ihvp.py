@@ -756,6 +756,9 @@ def _tuple_to_list(*x, in_dims: Optional[Tuple] = None) -> List[Tuple]:
 
     Returns:
         A list of tuples. Each tuple is one single input.
+
+    Raises:
+        IHVPUsageError: if the input size is ambiguous or mismatches.
     """
     if in_dims is None:
         in_dims = (0,) * len(x)
