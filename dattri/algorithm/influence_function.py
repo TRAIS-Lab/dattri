@@ -18,6 +18,7 @@ from dattri.func.ihvp import ihvp_cg, ihvp_explicit
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
+from .utils import _check_shuffle
 
 SUPPORTED_IHVP_SOLVER = {"explicit": ihvp_explicit, "cg": ihvp_cg}
 SUPPORTED_PROJECTOR = {None: None}
@@ -117,6 +118,9 @@ class IFAttributor(BaseAttributor):
                 stacklevel=1,
             )
 
+        _check_shuffle(train_dataloader)
+        _check_shuffle(test_dataloader)
+
         # calculate gradient of training set
         grad_train = []
         for data in tqdm(
@@ -124,7 +128,7 @@ class IFAttributor(BaseAttributor):
             desc="calculating gradient of training set...",
             leave=False,
         ):
-            loader = zip(*tuple(x.to(self.device).unsqueeze(0) for x in data))
+            loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
             grad_train.append(self.grad_func(self.params, loader))
         grad_train = torch.stack(grad_train, dim=0)
 
@@ -135,7 +139,7 @@ class IFAttributor(BaseAttributor):
             desc="calculating gradient of test set...",
             leave=False,
         ):
-            loader = zip(*tuple(x.to(self.device).unsqueeze(0) for x in data))
+            loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
             grad_test.append(self.grad_func(self.params, loader))
         grad_test = torch.stack(grad_test, dim=0)
 
@@ -146,7 +150,7 @@ class IFAttributor(BaseAttributor):
             desc="calculating ihvp...",
             leave=False,
         ):
-            loader = zip(*tuple(x.to(self.device).unsqueeze(0) for x in data))
+            loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
             self.ihvp_func = self.ihvp_solver(
                 partial(self.target_func, dataloader=loader),
             )
