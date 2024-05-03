@@ -28,11 +28,11 @@ class BaseAttributor(ABC):
         """
 
     @abstractmethod
-    def cache(self, full_train_dataloader: torch.data.utils.DataLoader) -> None:
+    def cache(self, full_train_dataloader: torch.utils.data.DataLoader) -> None:
         """Precompute and cache some values for efficiency.
 
         Args:
-            full_train_dataloader (torch.data.utils.DataLoader): The dataloader for
+            full_train_dataloader (torch.utils.data.DataLoader): The dataloader for
                 the training data.
 
         Returns:
@@ -42,15 +42,15 @@ class BaseAttributor(ABC):
     @abstractmethod
     def attribute(
         self,
-        train_dataloader: torch.data.utils.DataLoader,
-        test_dataloader: torch.data.utils.DataLoader,
+        train_dataloader: torch.utils.data.DataLoader,
+        test_dataloader: torch.utils.data.DataLoader,
     ) -> torch.Tensor:
         """Attribute the influence of the training data on the test data.
 
         Args:
-            train_dataloader (torch.data.utils.DataLoader): The dataloader for
+            train_dataloader (torch.utils.data.DataLoader): The dataloader for
                 the training data.
-            test_dataloader (torch.data.utils.DataLoader): The dataloader for
+            test_dataloader (torch.utils.data.DataLoader): The dataloader for
                 the test data.
 
         Returns:

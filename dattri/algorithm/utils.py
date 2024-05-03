@@ -6,7 +6,7 @@ import torch
 from torch.utils.data import RandomSampler
 
 
-def _check_shuffle(dataloader: torch.data.utils.DataLoader) -> None:
+def _check_shuffle(dataloader: torch.utils.data.DataLoader) -> None:
     """Check if the dataloader is shuffling the data.
 
     Args:
