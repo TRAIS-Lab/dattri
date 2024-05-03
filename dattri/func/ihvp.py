@@ -836,7 +836,7 @@ def ihvp_at_x_lissa(func: Callable,
 
     if recursion_depth > len(input_list):
         warning_message = 'The recursion depth is greater than number of samples. " \
-            "Please consider using other methods!'
+            "Assigned to the number of samples.'
         warnings.warn(warning_message, Warning, stacklevel=2)
         recursion_depth = len(input_list)
 
