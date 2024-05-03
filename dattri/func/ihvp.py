@@ -691,7 +691,7 @@ def ihvp_lissa(func: Callable,
                damping: int = 0.0,
                scaling: int = 50.0,
                mode: str = "rev-rev") -> Callable:
-    """LiSSA ihvp algorithm function.
+    """IHVP via LiSSA algorithm.
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -752,16 +752,23 @@ def ihvp_lissa(func: Callable,
 
 
 def _tuple_to_list(*x, in_dims: Optional[Tuple] = None) -> List[Tuple]:
-    """Convert a tuple of tensors into a list, aligned by each batch.
+    """Convert a tuple of tensors into a list of tuples of data points.
+
+       This helper function converts a batch of input into a tuple of
+       single inputs, which will be used in the LiSSA ihvp calculation.
 
     Args:
-        *x: List of arguments to convert.
+        *x: List of arguments to convert. Each argument shoule be either:
+            1. A tensor with a batch size dimension. Each data point i
+            will take the i-th element along this dimension.
+            2. A tensor without a batch size dimension. Each data point will
+            share this tensor.
         in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
             which dimension should be considered as batch size dimension. Take the
             first dimension as batch size dimension by default.
 
     Returns:
-        A list of tuples. Each tuple is one single input.
+        A list of tuples. Each tuple is one single data point.
 
     Raises:
         IHVPUsageError: if the input size is ambiguous or mismatches.
@@ -807,7 +814,7 @@ def ihvp_at_x_lissa(func: Callable,
                     damping: int = 0.0,
                     scaling: int = 50.0,
                     mode: str = "rev-rev") -> Callable:
-    """LiSSA ihvp algorithm function (with fixed x).
+    """IHVP with fixed func inputs via LiSSA algorithm.
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -850,7 +857,7 @@ def ihvp_at_x_lissa(func: Callable,
         warnings.warn(warning_message, Warning, stacklevel=2)
         recursion_depth = len(input_list)
 
-    def _ihvp_lissa_func(v: Tensor) -> Tensor:
+    def _ihvp_at_x_lissa_func(v: Tensor) -> Tensor:
         """The IHVP function using LiSSA.
 
         Args:
@@ -886,7 +893,7 @@ def ihvp_at_x_lissa(func: Callable,
 
         return torch.stack(batch_ihvp_lissa)
 
-    return _ihvp_lissa_func
+    return _ihvp_at_x_lissa_func
 
 
 class IHVPUsageError(Exception):
