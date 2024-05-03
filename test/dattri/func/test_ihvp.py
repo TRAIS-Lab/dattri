@@ -3,17 +3,9 @@
 import torch
 from torch.func import vmap
 
-from dattri.func.ihvp import (
-    hvp,
-    hvp_at_x,
-    ihvp_arnoldi,
-    ihvp_at_x_arnoldi,
-    ihvp_at_x_cg,
-    ihvp_at_x_explicit,   
-    ihvp_at_x_lissa,
-    ihvp_cg,
-    ihvp_lissa,
-)
+from dattri.func.ihvp import (hvp, hvp_at_x, ihvp_arnoldi, ihvp_at_x_arnoldi,
+                              ihvp_at_x_cg, ihvp_at_x_explicit,
+                              ihvp_at_x_lissa, ihvp_cg, ihvp_lissa)
 from dattri.func.utils import flatten_func, flatten_params
 
 

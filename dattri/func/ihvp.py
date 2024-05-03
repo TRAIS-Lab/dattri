@@ -769,13 +769,13 @@ def _tuple_to_list(*x, in_dims: Optional[Tuple] = None) -> List[Tuple]:
         if batch_size is None:
             batch_size = x_in.shape[dim]
         elif batch_size != x_in.shape[dim]:
-            message = (f"Input batch size mismatch! Expected {batch_size}, "
-                       f"found {x_in.shape[dim]} for input tensor {i}.")
-            raise IHVPUsageError(message)
+            error_msg = (f"Input batch size mismatch! Expected {batch_size}, "
+                         f"found {x_in.shape[dim]} for input tensor {i}.")
+            raise IHVPUsageError(error_msg)
 
     if batch_size is None:
-        message = "All inputs are identical for LiSSA ihvp!"
-        raise IHVPUsageError(message)
+        error_msg = "All inputs are identical for LiSSA ihvp!"
+        raise IHVPUsageError(error_msg)
 
     # Create input list
     input_list = []
