@@ -858,6 +858,13 @@ def ihvp_at_x_lissa(func: Callable,
         warnings.warn(warning_message, Warning, stacklevel=2)
         recursion_depth = len(input_list)
 
+    hvp_func_list = [
+        hvp_at_x(func, x=data_point, argnums=argnums, mode=mode)
+        for data_point in input_list
+    ]
+
+    batch_size = len(input_list)
+
     def _ihvp_at_x_lissa_func(v: Tensor) -> Tensor:
         """The IHVP function using LiSSA.
 
@@ -869,13 +876,6 @@ def ihvp_at_x_lissa(func: Callable,
         """
         if v.ndim == 1:
             v = v.unsqueeze(0)
-
-        batch_size = len(input_list)
-
-        hvp_func_list = [
-            hvp_at_x(func, x=data_point, argnums=argnums, mode=mode)
-            for data_point in input_list
-        ]
 
         def _lissa_loop(vec: torch.Tensor) -> torch.Tensor:
             ihvp_estimations = []
