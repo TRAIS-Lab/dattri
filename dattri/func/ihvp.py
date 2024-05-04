@@ -18,6 +18,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional, Tuple, Union
 
+import random
 import warnings
 
 import torch
@@ -868,30 +869,35 @@ def ihvp_at_x_lissa(func: Callable,
         """
         if v.ndim == 1:
             v = v.unsqueeze(0)
-        batch_ihvp_lissa = []
 
-        for i in range(v.shape[0]):
+        batch_size = len(input_list)
+
+        hvp_func_list = [
+            hvp_at_x(func, x=data_point, argnums=argnums, mode=mode)
+            for data_point in input_list
+        ]
+
+        def _lissa_loop(vec: torch.Tensor) -> torch.Tensor:
             ihvp_estimations = []
             for _ in range(num_repeat):
-                sampled_indices = torch.randperm(len(input_list))[:recursion_depth]
-                hvp_func_list = [
-                    hvp_at_x(func, x=input_list[idx], argnums=argnums, mode=mode)
-                    for idx in sampled_indices
-                ]
+                sampled_indices = random.sample(
+                    list(range(batch_size)),
+                    recursion_depth,
+                )
+                sampled_hvp_func_list = [hvp_func_list[idx] for idx in sampled_indices]
 
-                curr_estimate = v[i, :].detach().clone()  # No gradient on v
-                for hvp_func in hvp_func_list:
+                curr_estimate = vec.detach().clone()  # No gradient on v
+                for hvp_func in sampled_hvp_func_list:
                     hvp = hvp_func(curr_estimate)
-                    curr_estimate = (v[i, :]
+                    curr_estimate = (vec
                                      + (1 - damping) * curr_estimate
                                      - hvp / scaling)
 
                 ihvp_estimations.append(curr_estimate / scaling)
 
-            ihvp_value = torch.mean(torch.stack(ihvp_estimations), dim=0)
-            batch_ihvp_lissa.append(ihvp_value)
+            return torch.mean(torch.stack(ihvp_estimations), dim=0)
 
-        return torch.stack(batch_ihvp_lissa)
+        return torch.vmap(_lissa_loop, randomness="different")(v)
 
     return _ihvp_at_x_lissa_func
 
