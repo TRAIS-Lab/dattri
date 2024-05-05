@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import math
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, List
+
+import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -15,10 +17,12 @@ import torch
 from torch import Tensor
 
 
-def _vectorize(g: Dict[str, torch.Tensor],
-               batch_dim: Optional[bool] = True,
-               arr: Optional[torch.Tensor] = None,
-               device: Optional[str] = "cuda") -> Tensor:
+def _vectorize(
+    g: Dict[str, torch.Tensor],
+    batch_dim: Optional[bool] = True,
+    arr: Optional[torch.Tensor] = None,
+    device: Optional[str] = "cuda",
+) -> Tensor:
     """Vectorize gradient result (g) into arr.
 
     This function takes a dictionary of gradient and returns a flattened tensor
@@ -54,14 +58,16 @@ def _vectorize(g: Dict[str, torch.Tensor],
                     msg = "Parameter row num doesn't match batch size."
                     raise ValueError(msg)
                 num_params += int(param.numel() / batch_size)
-            arr = torch.empty(size=(batch_size, num_params), dtype=g_elt.dtype,
-                            device=device)
+            arr = torch.empty(
+                size=(batch_size, num_params),
+                dtype=g_elt.dtype,
+                device=device,
+            )
         else:
             num_params = 0
             for param in g.values():
                 num_params += int(param.numel())
-            arr = torch.empty(size=(num_params,), dtype=param.dtype,
-                              device=device)
+            arr = torch.empty(size=(num_params,), dtype=param.dtype, device=device)
 
     pointer = 0
     vector_dim = 1
@@ -82,6 +88,46 @@ def _vectorize(g: Dict[str, torch.Tensor],
     return arr
 
 
+def get_parameter_chunk_sizes(
+    param_shape_list: List,
+    batch_size: int,
+) -> tuple[int, int]:
+    """Compute chunk size information from feature to be projected.
+
+    Get a tuple containing max chunk size and a list of the number of
+    parameters in each chunk.
+
+    Args:
+        param_shape_list (List): A list of numbers indicating the total number of
+            features to be projected. A typical example is a list of parameter
+            size of each module in a torch.nn.Module model.
+        batch_size (int): The batch size. Each term (or module) in feature
+            will have the same batch size.
+
+    Returns:
+        tuple[int, int]: Maximum number of parameter per chunk and a list of
+            number of parameters in each chunk.
+    """
+    # get the number of params of each term in feature
+    param_shapes = np.array(param_shape_list)
+
+    chunk_sum = 0
+    max_chunk_size = np.iinfo(np.uint32).max // batch_size
+    params_per_chunk = []
+
+    for ps in param_shapes:
+        if chunk_sum + ps >= max_chunk_size:
+            params_per_chunk.append(chunk_sum)
+            chunk_sum = 0
+
+        chunk_sum += ps
+
+    if param_shapes.sum() - np.sum(params_per_chunk) > 0:
+        params_per_chunk.append(param_shapes.sum() - np.sum(params_per_chunk))
+
+    return max_chunk_size, params_per_chunk
+
+
 def flatten_params(tensors: Dict[str, torch.Tensor]) -> torch.Tensor:
     """Flatten a dictionary of tensors into a single tensor.
 
@@ -99,8 +145,11 @@ def flatten_params(tensors: Dict[str, torch.Tensor]) -> torch.Tensor:
         dictionary and the flattened tensor will be a concatenation of all the tensors
         on one dimension.
     """
-    return _vectorize(tensors, batch_dim=False,
-                      device=tensors[next(iter(tensors.keys()))].device)
+    return _vectorize(
+        tensors,
+        batch_dim=False,
+        device=tensors[next(iter(tensors.keys()))].device,
+    )
 
 
 def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Tensor:
@@ -129,8 +178,9 @@ def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Te
         current_index = 0
         for shape in shape_list:
             size = math.prod(shape)
-            yield tensors[current_index:current_index + size].reshape(shape)
+            yield tensors[current_index : current_index + size].reshape(shape)
             current_index += size
+
     return dict(zip(model_params.keys(), generator()))
 
 
@@ -149,6 +199,7 @@ def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
         (Callable): A decorator that flattens the parameters of a function at the
             specified index.
     """
+
     def flatten_params_wrapper(function: Callable) -> Callable:
         """A wrapper function that flattens the parameters of a function.
 
@@ -159,10 +210,13 @@ def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
             (Callable): A wrapped function that flattens the parameters at the
                 specified index.
         """
+
         @functools.wraps(function)
         def _function_flattened(*args, **kwargs: Dict[str, Any]) -> torch.Tensor:
             new_args = list(args)
             new_args[param_num] = _unflatten_params(args[param_num], model)
             return function(*new_args, **kwargs)
+
         return _function_flattened
+
     return flatten_params_wrapper
