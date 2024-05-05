@@ -9,7 +9,10 @@ import numpy as np
 import torch
 from torch import nn
 
-from dattri.benchmark.models.logistic_regression import LogisticRegressionMnist
+from dattri.benchmark.models.logistic_regression import (
+    LogisticRegressionMnist,
+    create_lr_model,
+)
 
 
 def train_mnist_lr(
@@ -31,7 +34,7 @@ def train_mnist_lr(
     np.random.seed(seed)  # noqa: NPY002
     random.seed(seed)
 
-    model = LogisticRegressionMnist()
+    model = create_lr_model("mnist")
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
 
@@ -65,7 +68,7 @@ def loss_mnist_lr(
         The sum of loss of the model on the loader.
     """
     criterion = nn.CrossEntropyLoss(reduction="sum")
-    model = LogisticRegressionMnist()
+    model = create_lr_model("mnist")
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
     total_loss = 0
