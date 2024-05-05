@@ -668,16 +668,12 @@ def ihvp_at_x_arnoldi(
 
         if v.ndim == 1:
             v = v.unsqueeze(0)
-        batch_ihvp_arnoldi = []
         v0 = torch.rand(v.shape[1])
 
         appr_mat, proj = _arnoldi_iter(hvp_at_x_func, v0, max_iter, norm_constant, tol)
         eigvals, eigvecs = _distill(appr_mat, proj, top_k)
 
-        for i in range(v.shape[0]):
-            v_idx = v[i, :]
-            batch_ihvp_arnoldi.append(eigvecs.T @ (1.0 / eigvals * (eigvecs @ v_idx)))
-        return torch.stack(batch_ihvp_arnoldi)
+        return ((v @ eigvecs.T) * 1.0 / eigvals.unsqueeze(0)) @ eigvecs
 
     return _ihvp_at_x_arnoldi
 
