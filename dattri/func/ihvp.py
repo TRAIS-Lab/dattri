@@ -410,8 +410,8 @@ def ihvp_at_x_cg(
 
         def _cg(v_i: Tensor) -> Tensor:
             x_pre = torch.clone(v_i)
-            x = x_pre
-            g_pre = v_i - hvp_at_x_func(x)
+            ihvp_res = x_pre
+            g_pre = v_i - hvp_at_x_func(ihvp_res)
             d = d_pre = g_pre
 
             for _ in range(max_iter):
@@ -421,14 +421,14 @@ def ihvp_at_x_cg(
 
                 ad = hvp_at_x_func(d)
                 alpha = torch.dot(g_pre, d_pre) / torch.dot(d, ad)
-                x += alpha * d
+                ihvp_res += alpha * d
                 g = g_pre - alpha * ad
 
                 beta = torch.dot(g, g) / torch.dot(g_pre, g_pre)
 
                 g_pre = d_pre = g
                 d = g + beta * d
-            return x
+            return ihvp_res
 
         return vmap(_cg)(v)
 
