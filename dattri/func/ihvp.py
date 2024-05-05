@@ -20,7 +20,7 @@ if TYPE_CHECKING:
 
 import torch
 from torch import Tensor
-from torch.func import grad, hessian, jvp, vjp
+from torch.func import grad, hessian, jvp, vjp, vmap
 
 
 def hvp(
@@ -275,7 +275,7 @@ def ihvp_at_x_explicit(
 def ihvp_cg(
     func: Callable,
     argnums: int = 0,
-    max_iter: int = 100,
+    max_iter: int = 10,
     tol: float = 1e-7,
     mode: str = "rev-rev",
     regularization: float = 0.0,
@@ -294,7 +294,7 @@ def ihvp_cg(
             be calculated on this function.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
-        max_iter (int): An integer default 100. Specifies the maximum iteration
+        max_iter (int): An integer default 10. Specifies the maximum iteration
             to calculate the ihvp through Conjugate Gradient Descent.
         tol (float): A float default to 1e-7. Specifies the break condition that
             decide if the algorithm has converged. If the torch.norm of residual
@@ -344,8 +344,8 @@ def ihvp_at_x_cg(
     func: Callable,
     *x,
     argnums: int = 0,
-    max_iter: int = 100,
-    tol: float = 1e-7,
+    max_iter: int = 10,
+    tol: float = 1e-7,  # noqa: ARG001
     mode: str = "rev-rev",
     regularization: float = 0.0,
 ) -> Callable:
@@ -364,7 +364,7 @@ def ihvp_at_x_cg(
         *x: List of arguments for `func`.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
-        max_iter (int): An integer default 100. Specifies the maximum iteration
+        max_iter (int): An integer default 10. Specifies the maximum iteration
             to calculate the ihvp through Conjugate Gradient Descent.
         tol (float): A float default to 1e-7. Specifies the break condition that
             decide if the algorithm has converged. If the torch.norm of residual
@@ -407,29 +407,30 @@ def ihvp_at_x_cg(
 
         if v.ndim == 1:
             v = v.unsqueeze(0)
-        batch_ihvp_cg = []
 
-        for i in range(v.shape[0]):
-            x_pre = torch.clone(v[i, :])
-            x = x_pre
-            g_pre = v[i, :] - hvp_at_x_func(x)
+        def _cg(v_i: Tensor) -> Tensor:
+            x_pre = torch.clone(v_i)
+            ihvp_res = x_pre
+            g_pre = v_i - hvp_at_x_func(ihvp_res)
             d = d_pre = g_pre
 
             for _ in range(max_iter):
-                if torch.norm(g_pre) < tol:
-                    break
+                # TODO: add tol for residual, it has not been supported by vmap.
+                # https://pytorch.org/docs/main/generated/torch.cond.html#torch.cond
+                # Still in prototype stage.
+
                 ad = hvp_at_x_func(d)
                 alpha = torch.dot(g_pre, d_pre) / torch.dot(d, ad)
-                x += alpha * d
+                ihvp_res += alpha * d
                 g = g_pre - alpha * ad
 
                 beta = torch.dot(g, g) / torch.dot(g_pre, g_pre)
 
                 g_pre = d_pre = g
                 d = g + beta * d
-            batch_ihvp_cg.append(x)
+            return ihvp_res
 
-        return torch.stack(batch_ihvp_cg)
+        return vmap(_cg)(v)
 
     return _ihvp_cg_func
 
@@ -668,16 +669,12 @@ def ihvp_at_x_arnoldi(
 
         if v.ndim == 1:
             v = v.unsqueeze(0)
-        batch_ihvp_arnoldi = []
         v0 = torch.rand(v.shape[1])
 
         appr_mat, proj = _arnoldi_iter(hvp_at_x_func, v0, max_iter, norm_constant, tol)
         eigvals, eigvecs = _distill(appr_mat, proj, top_k)
 
-        for i in range(v.shape[0]):
-            v_idx = v[i, :]
-            batch_ihvp_arnoldi.append(eigvecs.T @ (1.0 / eigvals * (eigvecs @ v_idx)))
-        return torch.stack(batch_ihvp_arnoldi)
+        return ((v @ eigvecs.T) * 1.0 / eigvals.unsqueeze(0)) @ eigvecs
 
     return _ihvp_at_x_arnoldi
 
