@@ -6,7 +6,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.tracin import TracInAttributor
-from dattri.benchmark.mnist import train_mnist_lr
+from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.func.random_projection import random_project
 from dattri.func.utils import flatten_func
 

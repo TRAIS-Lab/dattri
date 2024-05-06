@@ -137,6 +137,7 @@ class TracInAttributor(BaseAttributor):
             device=self.device,
         )
 
+        # iterate over each checkpoint (each ensemble)
         for index, (params, params_weight) in enumerate(
             zip(self.params_list, self.weight_list),
         ):
@@ -148,7 +149,7 @@ class TracInAttributor(BaseAttributor):
                         ),
                     ),
                 )
-
+                # get gradient of train
                 train_batch_grad = self.grad_func(params, train_batch).unsqueeze(0)
                 if self.projector_list is not None:
                     train_batch_grad = self.projector_list[index](train_batch_grad)
@@ -161,12 +162,13 @@ class TracInAttributor(BaseAttributor):
                             ),
                         ),
                     )
-
+                    # get gradient of train
                     test_batch_grad = self.grad_func(params, test_batch).unsqueeze(0)
                     if self.projector_list is not None:
                         test_batch_grad = self.projector_list[index](test_batch_grad)
 
                     # results position based on batch info
+                    # note that here batch_size always equal to 1
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
                         (train_batch_idx + 1) * train_dataloader.batch_size,
@@ -179,6 +181,7 @@ class TracInAttributor(BaseAttributor):
                         len(test_dataloader.dataset),
                     )
 
+                    # insert the TDA score in corresponding position
                     if self.normalized_grad:
                         tda_output[row_st:row_ed, col_st:col_ed] = (
                             normalize(train_batch_grad)
