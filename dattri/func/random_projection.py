@@ -229,6 +229,8 @@ class BasicProjector(AbstractProjector):
         """
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
+        elif features.device.type != self.device:
+            features = features.to(self.device)
         features = features.to(dtype=self.dtype)
         sketch = torch.zeros(
             size=(features.size(0), self.proj_dim),
@@ -346,6 +348,8 @@ class CudaProjector(AbstractProjector):
 
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
+        elif features.device.type != self.device:
+            features = features.to(self.device)
         batch_size = features.shape[0]
 
         effective_batch_size = 32

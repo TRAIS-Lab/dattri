@@ -359,7 +359,7 @@ class TestGetProjection(unittest.TestCase):
         # mimic gradient
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
-            small_gradient[name] = torch.rand(test_batch_size, p.numel()).cuda()
+            small_gradient[name] = torch.rand(test_batch_size, p.numel())
 
         # suppose to be CudaProjector
         project = random_project(
@@ -414,6 +414,45 @@ class TestGetProjection(unittest.TestCase):
 
         result_3 = project(large_gradient)
         assert result_3.shape == (test_batch_size, self.proj_dim)
+
+    def test_tensor_input_cpu(self):
+        """Test the usage of tensor input."""
+        test_batch_size = 64
+
+        test_tensor = torch.rand(test_batch_size, 1000)
+        # suppose to be BasicProjector
+        project = random_project(
+            test_tensor,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device="cpu",
+            proj_seed=0,
+            use_half_precision=True,
+        )
+
+        result = project(test_tensor)
+        assert result.shape == (test_batch_size, self.proj_dim)
+
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+    def test_tensor_input_cuda(self):
+        """Test the usage of tensor input."""
+        test_batch_size = 64
+
+        test_tensor = torch.rand(test_batch_size, 1000)
+        # suppose to be BasicProjector
+        project = random_project(
+            test_tensor,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device="cuda",
+            proj_seed=0,
+            use_half_precision=True,
+        )
+
+        result = project(test_tensor)
+        assert result.shape == (test_batch_size, self.proj_dim)
 
 
 if __name__ == "__main__":
