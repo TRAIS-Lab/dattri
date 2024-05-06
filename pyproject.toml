@@ -40,7 +40,8 @@ dattri = ["py.typed"]
 
 [tool.ruff]
 exclude = [
-    "docs/"
+    "docs/",
+    "dattri/benchmark/models"
 ]
 
 [tool.ruff.lint]

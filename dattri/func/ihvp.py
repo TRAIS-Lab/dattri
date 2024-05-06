@@ -6,7 +6,10 @@ This module contains:
 - `ihvp_at_x_explicit`: IHVP via explicit Hessian calculation.
 - `ihvp_cg`: Conjugate Gradient Descent ihvp algorithm function.
 - `ihvp_at_x_cg`: Conjugate Gradient Descent ihvp algorithm function with fixed x.
+- `ihvp_arnoldi`: Arnoldi Iteration ihvp algorithm function.
+- `ihvp_at_x_arnoldi`: Arnoldi Iteration ihvp algorithm function with fixed x.
 """
+
 from __future__ import annotations
 
 from typing import TYPE_CHECKING
@@ -17,13 +20,15 @@ if TYPE_CHECKING:
 
 import torch
 from torch import Tensor
-from torch.func import grad, hessian, jvp, vjp
+from torch.func import grad, hessian, jvp, vjp, vmap
 
 
-def hvp(func: Callable,
-        argnums: int = 0,
-        mode: str = "rev-rev",
-        regularization: float = 0.0) -> Callable:
+def hvp(
+    func: Callable,
+    argnums: int = 0,
+    mode: str = "rev-rev",
+    regularization: float = 0.0,
+) -> Callable:
     """Hessian Vector Product(HVP) calculation function.
 
     This function takes the func where hessian is carried out and return a
@@ -66,6 +71,7 @@ def hvp(func: Callable,
 
     grad_func = grad(func, argnums=argnums)
     if mode == "rev-rev":
+
         def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
             """The HVP function based on func.
 
@@ -81,6 +87,7 @@ def hvp(func: Callable,
             _, vjp_fn = vjp(grad_func, *x)
             return vjp_fn(v)[argnums] + regularization * v
     else:
+
         def _hvp_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
             """The HVP function based on func.
 
@@ -109,11 +116,13 @@ def hvp(func: Callable,
     return _hvp_func
 
 
-def hvp_at_x(func: Callable,
-             x: Tuple[torch.Tensor, ...],
-             argnums: int = 0,
-             mode: str = "rev-rev",
-             regularization: float = 0.0) -> Callable:
+def hvp_at_x(
+    func: Callable,
+    x: Tuple[torch.Tensor, ...],
+    argnums: int = 0,
+    mode: str = "rev-rev",
+    regularization: float = 0.0,
+) -> Callable:
     """Hessian Vector Product(HVP) calculation function (with fixed x).
 
     This function returns a function that takes a vector `v` and calculate
@@ -208,10 +217,12 @@ def hvp_at_x(func: Callable,
     return _hvp_at_x_func
 
 
-def ihvp_at_x_explicit(func: Callable,
-                       *x,
-                       argnums: Union[int, Tuple[int, ...]] = 0,
-                       regularization: float = 0.0) -> Callable:
+def ihvp_at_x_explicit(
+    func: Callable,
+    *x,
+    argnums: Union[int, Tuple[int, ...]] = 0,
+    regularization: float = 0.0,
+) -> Callable:
     """IHVP via explicit Hessian calculation.
 
     IHVP stands for inverse-hessian-vector product. For a given function
@@ -253,18 +264,22 @@ def ihvp_at_x_explicit(func: Callable,
         Returns:
             The IHVP value, i.e., inverse of `hessian_tensor` times `vec`.
         """
-        return torch.linalg.solve(hessian_tensor +
-                torch.eye(hessian_tensor.shape[0]) * regularization, v.T).T
+        return torch.linalg.solve(
+            hessian_tensor + torch.eye(hessian_tensor.shape[0]) * regularization,
+            v.T,
+        ).T
 
     return _ihvp_at_x_explicit_func
 
 
-def ihvp_cg(func: Callable,
-            argnums: int = 0,
-            max_iter: int = 100,
-            tol: float = 1e-7,
-            mode: str = "rev-rev",
-            regularization: float = 0.0) -> Callable:
+def ihvp_cg(
+    func: Callable,
+    argnums: int = 0,
+    max_iter: int = 10,
+    tol: float = 1e-7,
+    mode: str = "rev-rev",
+    regularization: float = 0.0,
+) -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -279,7 +294,7 @@ def ihvp_cg(func: Callable,
             be calculated on this function.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
-        max_iter (int): An integer default 100. Specifies the maximum iteration
+        max_iter (int): An integer default 10. Specifies the maximum iteration
             to calculate the ihvp through Conjugate Gradient Descent.
         tol (float): A float default to 1e-7. Specifies the break condition that
             decide if the algorithm has converged. If the torch.norm of residual
@@ -312,20 +327,28 @@ def ihvp_cg(func: Callable,
         Returns:
             The IHVP value.
         """
-        return ihvp_at_x_cg(func, *x, argnums=argnums,
-                            max_iter=max_iter, tol=tol,
-                            mode=mode, regularization=regularization)(v)
+        return ihvp_at_x_cg(
+            func,
+            *x,
+            argnums=argnums,
+            max_iter=max_iter,
+            tol=tol,
+            mode=mode,
+            regularization=regularization,
+        )(v)
 
     return _ihvp_cg_func
 
 
-def ihvp_at_x_cg(func: Callable,
-                 *x,
-                 argnums: int = 0,
-                 max_iter: int = 100,
-                 tol: float = 1e-7,
-                 mode: str = "rev-rev",
-                 regularization: float = 0.0) -> Callable:
+def ihvp_at_x_cg(
+    func: Callable,
+    *x,
+    argnums: int = 0,
+    max_iter: int = 10,
+    tol: float = 1e-7,  # noqa: ARG001
+    mode: str = "rev-rev",
+    regularization: float = 0.0,
+) -> Callable:
     """Conjugate Gradient Descent ihvp algorithm function (with fixed x).
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -339,9 +362,9 @@ def ihvp_at_x_cg(func: Callable,
             Must return a single-element Tensor. The hessian will
             be calculated on this function.
         *x: List of arguments for `func`.
-        argnums (int): An integer default to 0. SSpecifies which argument of func
+        argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
-        max_iter (int): An integer default 100. Specifies the maximum iteration
+        max_iter (int): An integer default 10. Specifies the maximum iteration
             to calculate the ihvp through Conjugate Gradient Descent.
         tol (float): A float default to 1e-7. Specifies the break condition that
             decide if the algorithm has converged. If the torch.norm of residual
@@ -362,8 +385,13 @@ def ihvp_at_x_cg(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    hvp_at_x_func = hvp_at_x(func, x=(*x, ), argnums=argnums,
-                             mode=mode, regularization=regularization)
+    hvp_at_x_func = hvp_at_x(
+        func,
+        x=(*x,),
+        argnums=argnums,
+        mode=mode,
+        regularization=regularization,
+    )
 
     def _ihvp_cg_func(v: Tensor) -> Tensor:
         """The IHVP function using CG.
@@ -379,31 +407,276 @@ def ihvp_at_x_cg(func: Callable,
 
         if v.ndim == 1:
             v = v.unsqueeze(0)
-        batch_ihvp_cg = []
 
-        for i in range(v.shape[0]):
-            x_pre = torch.clone(v[i, :])
-            x = x_pre
-            g_pre = v[i, :] - hvp_at_x_func(x)
+        def _cg(v_i: Tensor) -> Tensor:
+            x_pre = torch.clone(v_i)
+            ihvp_res = x_pre
+            g_pre = v_i - hvp_at_x_func(ihvp_res)
             d = d_pre = g_pre
 
             for _ in range(max_iter):
-                if torch.norm(g_pre) < tol:
-                    break
+                # TODO: add tol for residual, it has not been supported by vmap.
+                # https://pytorch.org/docs/main/generated/torch.cond.html#torch.cond
+                # Still in prototype stage.
+
                 ad = hvp_at_x_func(d)
                 alpha = torch.dot(g_pre, d_pre) / torch.dot(d, ad)
-                x += alpha * d
+                ihvp_res += alpha * d
                 g = g_pre - alpha * ad
 
                 beta = torch.dot(g, g) / torch.dot(g_pre, g_pre)
 
                 g_pre = d_pre = g
                 d = g + beta * d
-            batch_ihvp_cg.append(x)
+            return ihvp_res
 
-        return torch.stack(batch_ihvp_cg)
+        return vmap(_cg)(v)
 
     return _ihvp_cg_func
+
+
+def ihvp_arnoldi(
+    func: Callable,
+    argnums: int = 0,
+    max_iter: int = 100,
+    tol: float = 1e-7,
+    mode: str = "rev-fwd",
+    regularization: float = 0.0,
+) -> Callable:
+    """Arnoldi Iteration ihvp algorithm function.
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    Arnoldi Iteration builds an approximately H-invariant subspace by constructing
+    the n-th order Krylov subspace and builds an orthonormal basis for it.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be calculated on this function.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        max_iter (int): An integer default 100. Specifies the maximum iteration
+            to calculate the ihvp through Arnoldi Iteration.
+        tol (float): A float default to 1e-7. Specifies the break condition that
+            decide if the algorithm has converged. If the torch.norm of current
+            basis vector is less than tol, then the arnoldi_iter algorithm is truncated.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
+
+    Returns:
+        A function that takes a tuple of Tensor `x` and a vector `v` and returns
+        the IHVP of the Hessian of `func` and `v`.
+    """
+
+    def _ihvp_arnoldi_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+        """The IHVP function using Arnoldi Iteration.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse hessian matrix with respect to these arguments.
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        return ihvp_at_x_arnoldi(
+            func,
+            *x,
+            argnums=argnums,
+            max_iter=max_iter,
+            tol=tol,
+            mode=mode,
+            regularization=regularization,
+        )(v)
+
+    return _ihvp_arnoldi_func
+
+
+def ihvp_at_x_arnoldi(
+    func: Callable,
+    *x,
+    argnums: int = 0,
+    max_iter: int = 100,
+    top_k: int = 100,
+    norm_constant: float = 1.0,
+    tol: float = 1e-7,
+    mode: str = "rev-fwd",
+    regularization: float = 0.0,
+) -> Callable:
+    """Arnoldi Iteration ihvp algorithm function (with fixed x).
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    Arnoldi Iteration builds an approximately H-invariant subspace by constructing
+    the n-th order Krylov subspace and builds an orthonormal basis for it.
+
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be calculated on this function.
+        *x: List of arguments for `func`.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        max_iter (int): An integer default to 100. Specifies the maximum iteration
+            to calculate the ihvp through Arnoldi Iteration.
+        top_k (int): An integer default to 100. Specifies how many eigenvalues and
+            eigenvectors to distill.
+        norm_constant (float): A float default to 1.0. Specifies a constant value
+            for the norm of each projection. In some situations (e.g. with a large
+            numbers of parameters) it might be advisable to set norm_constant > 1
+            to avoid dividing projection components by a large normalization factor.
+        tol (float): A float default to 1e-7. Specifies the break condition that
+            decide if the algorithm has converged. If the torch.norm of current
+            basis vector is less than tol, then the arnoldi_iter algorithm is truncated.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
+
+    Returns:
+        A function that takes a vector `v` and returns the IHVP of the Hessian
+        of `func` and `v`.
+    """
+    # algorithm refer to
+    # https://github.com/google-research/jax-influence/blob/main/jax_influence/arnoldi.py
+
+    hvp_at_x_func = hvp_at_x(
+        func,
+        x=(*x,),
+        argnums=argnums,
+        mode=mode,
+        regularization=regularization,
+    )
+
+    def _arnoldi_iter(
+        hvp_func: Callable,
+        start_vec: Tensor,
+        n_iters: int,
+        norm_constant: float,
+        tol: float,
+    ) -> Tuple[Tensor, Tensor]:
+        """Applies Arnoldi's algorithm.
+
+        Args:
+            hvp_func (Callable): A function that computes hvp.
+            start_vec (Tensor): A random normalized vector for initialization.
+            n_iters (int): The number of iteration.
+            norm_constant (float): The norm normalization for each projection.
+            tol (float): A tolerance value used to terminate iteration early.
+
+        Returns:
+            The result of the Arnoldi Iteration, containing a Hessenberg
+            matrix H' approximating the Hessian matrix on its Krylov subspace K,
+            and the projections onto K. If H is Hermitian,
+            H' will be a tridiagonal matrix (up to numerical errors).
+        """
+        n_iters = min(start_vec.shape[0] + 1, n_iters)
+
+        proj = []
+        appr_mat = torch.zeros((n_iters, n_iters - 1))
+
+        start_vec /= torch.norm(start_vec)
+        proj.append(start_vec)
+
+        for n in range(n_iters - 1):
+            h_vec = hvp_func(proj[n])
+
+            for j, proj_vec in enumerate(proj):
+                appr_mat[j][n] = torch.dot(h_vec, proj_vec) / norm_constant**2
+                h_vec -= appr_mat[j][n] * proj_vec
+
+            new_norm = torch.norm(h_vec)
+            if new_norm < tol:
+                appr_mat[n + 1][n] = 0
+                proj.append(h_vec)
+                appr_mat = appr_mat[: n + 2, : n + 1]
+                break
+
+            appr_mat[n + 1][n] = new_norm / norm_constant
+            h_vec *= 1.0 / appr_mat[n + 1][n]
+            proj.append(h_vec)
+
+        return appr_mat, torch.stack(proj, dim=0)
+
+    def _distill(
+        appr_mat: Tensor,
+        proj: Tensor,
+        top_k: int,
+        *,
+        force_hermitian: bool = True,
+    ) -> Tuple[Tensor, Tensor]:
+        """Distills result of Arnoldi iteration to top_k eigenvalues and eigenvectors.
+
+        Args:
+            appr_mat (Tensor): The first result from arnoldi_iter. This will be a
+                Hessenberg matrix H' approximating the Hessian H.
+            proj (Tensor): The second result from arnoldi_iter. This will be the
+                projection vectors onto the Krylov subspace K of the Hessian H.
+            top_k (int): Specfies how many eigenvalues and eigenvectors to distill.
+            force_hermitian (bool): Whether to force the Hessian to Hermitian.
+                Defaults to True.
+
+        Returns:
+            The distilled eigenvalues and eigenvectors.
+        """
+        appr_mat = appr_mat[:-1, :]
+
+        if force_hermitian:
+            appr_mat = torch.tril(appr_mat, diagonal=1)
+            appr_mat = 0.5 * (appr_mat + appr_mat.T)
+            eigvals, eigvecs = torch.linalg.eigh(appr_mat)
+        else:
+            eigvals, eigvecs = torch.linalg.eig(appr_mat)
+
+        idx = torch.argsort(torch.abs(eigvals))
+        eigvals = eigvals[idx]
+        eigvecs = eigvecs[:, idx]
+        reduced_projections = torch.matmul(eigvecs[:, -top_k:].T, proj[:-1])
+
+        return eigvals[-top_k:], reduced_projections
+
+    def _ihvp_at_x_arnoldi(v: Tensor) -> Tensor:
+        """The IHVP function using Arnoldi Iteration.
+
+        Args:
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        # algorithm refer to
+        # https://github.com/google-research/jax-influence/blob/main/jax_influence/arnoldi.py
+
+        if v.ndim == 1:
+            v = v.unsqueeze(0)
+        v0 = torch.rand(v.shape[1])
+
+        appr_mat, proj = _arnoldi_iter(hvp_at_x_func, v0, max_iter, norm_constant, tol)
+        eigvals, eigvecs = _distill(appr_mat, proj, top_k)
+
+        return ((v @ eigvecs.T) * 1.0 / eigvals.unsqueeze(0)) @ eigvecs
+
+    return _ihvp_at_x_arnoldi
 
 
 class IHVPUsageError(Exception):
