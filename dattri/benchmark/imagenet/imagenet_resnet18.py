@@ -2,19 +2,14 @@
 
 from __future__ import annotations
 
+import logging
 import random
 from pathlib import Path
-from typing import TYPE_CHECKING
 
 import numpy as np
 import torch
 from torch import nn
 from torchvision.models import resnet18
-
-if TYPE_CHECKING:
-    from typing import Tuple
-
-import logging
 
 logging.basicConfig(level=logging.INFO)
 
@@ -38,7 +33,7 @@ def train_imagenet_resnet18(
     np.random.seed(seed)  # noqa: NPY002
     random.seed(seed)
 
-    model = resnet18(pretrained=False)
+    model = create_resnet18_model()
     model.train()
     num_epochs = 15
     optimizer = torch.optim.SGD(
@@ -91,7 +86,7 @@ def loss_imagenet_resnet18(
         The sum of loss of the model on the loader.
     """
     criterion = nn.CrossEntropyLoss(reduction="sum")
-    model = resnet18(pretrained=False)
+    model = create_resnet18_model()
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
     total_loss = 0
@@ -105,30 +100,10 @@ def loss_imagenet_resnet18(
     return total_loss / total_samples
 
 
-def create_imagenet_dataset(
-    path: str,
-) -> Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
-    """Create ImageNet dataset.
-
-    Args:
-        path (str): Root directory of the ImageNet Dataset.
-            It should be downloaded from http://www.image-net.org/.
+def create_resnet18_model() -> resnet18:
+    """Create a ResNet18 model.
 
     Returns:
-        Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]: The training and
-            testing ImageNet datasets.
+        The ResNet18 model.
     """
-    from torchvision import datasets, transforms
-
-    transform = transforms.Compose(
-        [
-            transforms.RandomResizedCrop(224),
-            transforms.RandomHorizontalFlip(),
-            transforms.ToTensor(),
-            transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]),
-        ],
-    )
-    train_dataset = datasets.ImageNet(root=path, split="train", transform=transform)
-    test_dataset = datasets.ImageNet(root=path, split="test", transform=transform)
-
-    return train_dataset, test_dataset
+    return resnet18(pretrained=False)

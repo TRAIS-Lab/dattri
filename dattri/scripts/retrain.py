@@ -12,7 +12,7 @@ from pathlib import Path
 
 import torch
 
-from dattri.benchmark.imagenet import train_imagenet_resnet18
+from dattri.benchmark.imagenet import create_imagenet_dataset, train_imagenet_resnet18
 from dattri.benchmark.mnist import create_mnist_dataset, train_mnist_lr
 from dattri.model_utils.retrain import retrain_lds, retrain_loo
 
@@ -21,7 +21,10 @@ SUPPORTED_SETTINGS = {
     "imagenet_resnet18": train_imagenet_resnet18,
 }
 SUPPORTED_RETRAINING_MODE = {"loo": retrain_loo, "lds": retrain_lds}
-SUPPORTED_DATASETS = {"mnist": create_mnist_dataset, "imagenet": "imagenet"}
+SUPPORTED_DATASETS = {
+    "mnist": create_mnist_dataset,
+    "imagenet": create_imagenet_dataset,
+}
 DEFAULT_BATCH_SIZE = {"mnist_lr": 32, "imagenet_resnet18": 256}
 
 
@@ -33,6 +36,8 @@ def partition_type(arg: str) -> List[int]:
 def key_value_pair(arg: Dict[str, Any]) -> tuple[str, Any]:
     """Convert a string in key=value format to a tuple (key, value)."""
     key, value = arg.split("=")
+    if value.isdigit():
+        value = int(value)
     return key, value
 
 
@@ -99,6 +104,10 @@ def main() -> None:
     )
     args = parser.parse_args()
 
+    if args.setting is None or args.mode is None:
+        parser.print_help()
+        return
+
     train_func = SUPPORTED_SETTINGS[args.setting]
     retrain_helper = SUPPORTED_RETRAINING_MODE[args.mode]
     dataset_func = SUPPORTED_DATASETS[args.setting.split("_")[0]]
@@ -127,6 +136,7 @@ def main() -> None:
         kwargs = {}
         kwargs["indices"] = list(range(int(args.partition[0]), int(args.partition[1])))
     kwargs["device"] = args.device
+    kwargs.update(args.extra_param or {})
 
     retrain_helper(
         train_func,
