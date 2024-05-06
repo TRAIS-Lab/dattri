@@ -78,3 +78,18 @@ class TestTracInAttributor:
         attributor.cache(train_loader)
         score = attributor.attribute(train_loader, test_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
+
+        attributor = TracInAttributor(
+            target_func=f,
+            params_list=params_list,
+            normalized_grad=True,
+            weight_list=torch.ones(len(params_list)),
+            device=torch.device("cpu"),
+        )
+        attributor.cache(train_loader)
+        score = attributor.attribute(train_loader, test_loader)
+        assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
+
+
+s = TestTracInAttributor()
+s.test_tracin()

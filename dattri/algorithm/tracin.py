@@ -7,18 +7,19 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Callable, List, Optional
 
+    from torch.utils.data import DataLoader
+
 import warnings
 
 import torch
 from torch import Tensor
 from torch.func import grad
 from torch.nn.functional import normalize
-from torch.utils.data import DataLoader, RandomSampler
-from tqdm import tqdm
 
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
+from .utlis import _check_shuffle
 
 
 class TracInAttributor(BaseAttributor):
@@ -58,7 +59,9 @@ class TracInAttributor(BaseAttributor):
                 for Grad-Dot/Grad-Cos, this will be a list of ones.
             normalized_grad (bool): Whether to apply normalization to gradients.
             projector_list (List[Callable]): A list of projectors used for gradient
-                random projection. The length will equal len(params_list).
+                random projection. The length will equal len(params_list). These
+                projecctors will typically have the same ProjectorType but can have
+                different random seeds.
             device (str): The device to run the attributor. Default is cpu.
         """
         self.target_func = target_func
@@ -96,10 +99,15 @@ class TracInAttributor(BaseAttributor):
                 test samples to calculate the influence. The dataloader should not\
                 be shuffled.
 
+        Raises:
+            ValueError: Either two of the length of params_list, weight_list or
+                project_list don't match.
+
         Returns:
             Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
         """
+        super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
             self.full_train_dataloader = train_dataloader
             warnings.warn(
@@ -109,66 +117,77 @@ class TracInAttributor(BaseAttributor):
                 stacklevel=1,
             )
 
-        is_shuffling = isinstance(train_dataloader.sampler, RandomSampler) & isinstance(
-            test_dataloader.sampler,
-            RandomSampler,
+        _check_shuffle(train_dataloader)
+        _check_shuffle(test_dataloader)
+
+        # check the length match between params, weight, and projector list
+        if len(self.params_list) != len(self.weight_list):
+            msg = "the length of params, weights lists don't match."
+            raise ValueError(msg)
+
+        if self.projector_list is not None and len(self.weight_list) != len(
+            self.projector_list,
+        ):
+            msg = "the length of params, weights and projector lists don't match."
+            raise ValueError(msg)
+
+        # placeholder for the TDA result
+        tda_output = torch.zeros(
+            size=(len(train_dataloader), len(test_dataloader)),
+            device=self.device,
         )
-        if is_shuffling:
-            warnings.warn(
-                "The dataloader is shuffling the data. The influence \
-                           calculation could not be interpreted in order.",
-                stacklevel=1,
-            )
 
-        # calculate gradient of training set and testing set
-        grads_train = []
-        grads_test = []
-        # a list of params
-        for params in self.params_list:
-            # for train
-            param_train_grad = []
-            for data in tqdm(
-                train_dataloader,
-                desc="calculating gradient of training set...",
-                leave=False,
-            ):
-                loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
-                param_train_grad.append(self.grad_func(params, loader))
-            grads_train.append(torch.stack(param_train_grad, dim=0))
+        for index, (params, params_weight) in enumerate(
+            zip(self.params_list, self.weight_list),
+        ):
+            for train_batch_idx, train_batch_data in enumerate(train_dataloader):
+                train_batch = list(
+                    zip(
+                        *tuple(
+                            x.to(self.device).unsqueeze(0) for x in train_batch_data
+                        ),
+                    ),
+                )
 
-            # for test
-            param_test_grad = []
-            for data in tqdm(
-                test_dataloader,
-                desc="calculating gradient of testing set...",
-                leave=False,
-            ):
-                loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
-                param_test_grad.append(self.grad_func(params, loader))
-            grads_test.append(torch.stack(param_test_grad, dim=0))
+                train_batch_grad = self.grad_func(params, train_batch).unsqueeze(0)
+                if self.projector_list is not None:
+                    train_batch_grad = self.projector_list[index](train_batch_grad)
 
-        # random projection if needed
-        if self.projector_list is not None:
-            # do normalization if needed
-            if self.normalized_grad:
-                weighted_score = [
-                    projector(normalize(g_train)) @ projector(normalize(g_test)).T * w
-                    for g_train, g_test, w, projector in zip(
-                        grads_train,
-                        grads_test,
-                        self.weight_list,
-                        self.projector_list,
+                for test_batch_idx, test_batch_data in enumerate(test_dataloader):
+                    test_batch = list(
+                        zip(
+                            *tuple(
+                                x.to(self.device).unsqueeze(0) for x in test_batch_data
+                            ),
+                        ),
                     )
-                ]
-            else:
-                weighted_score = [
-                    projector(g_train) @ projector(g_test).T * w
-                    for g_train, g_test, w, projector in zip(
-                        grads_train,
-                        grads_test,
-                        self.weight_list,
-                        self.projector_list,
-                    )
-                ]
 
-        return torch.sum(torch.stack(weighted_score), dim=0)
+                    test_batch_grad = self.grad_func(params, test_batch).unsqueeze(0)
+                    if self.projector_list is not None:
+                        test_batch_grad = self.projector_list[index](test_batch_grad)
+
+                    # results position based on batch info
+                    row_st = train_batch_idx * train_dataloader.batch_size
+                    row_ed = min(
+                        (train_batch_idx + 1) * train_dataloader.batch_size,
+                        len(train_dataloader.dataset),
+                    )
+
+                    col_st = test_batch_idx * test_dataloader.batch_size
+                    col_ed = min(
+                        (test_batch_idx + 1) * test_dataloader.batch_size,
+                        len(test_dataloader.dataset),
+                    )
+
+                    if self.normalized_grad:
+                        tda_output[row_st:row_ed, col_st:col_ed] = (
+                            normalize(train_batch_grad)
+                            @ normalize(test_batch_grad).T
+                            * params_weight
+                        )
+                    else:
+                        tda_output[row_st:row_ed, col_st:col_ed] = (
+                            train_batch_grad @ test_batch_grad.T * params_weight
+                        )
+
+        return tda_output
