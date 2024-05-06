@@ -67,6 +67,7 @@ class TestTracInAttributor:
             for seed in seeds
         ]
 
+        # test with projector list
         attributor = TracInAttributor(
             target_func=f,
             params_list=params_list,
@@ -79,6 +80,7 @@ class TestTracInAttributor:
         score = attributor.attribute(train_loader, test_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
 
+        # test with no projector list
         attributor = TracInAttributor(
             target_func=f,
             params_list=params_list,
