@@ -36,7 +36,7 @@ packages = ["dattri"]
 include-package-data = true
 
 [project.entry-points.console_scripts]
-retrain="dattri.scripts.retrain:main"
+dattri_retrain="dattri.scripts.retrain:main"
 
 [tool.setuptools.package-data]
 dattri = ["py.typed"]
