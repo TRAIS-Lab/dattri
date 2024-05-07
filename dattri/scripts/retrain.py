@@ -12,8 +12,11 @@ from pathlib import Path
 
 import torch
 
-from dattri.benchmark.imagenet import create_imagenet_dataset, train_imagenet_resnet18
-from dattri.benchmark.mnist import create_mnist_dataset, train_mnist_lr
+from dattri.benchmark.datasets.imagenet import (
+    create_imagenet_dataset,
+    train_imagenet_resnet18,
+)
+from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
 from dattri.model_utils.retrain import retrain_lds, retrain_loo
 
 SUPPORTED_SETTINGS = {
