@@ -18,6 +18,7 @@ def train_imagenet_resnet18(
     dataloader: torch.utils.data.DataLoader,
     seed: int = 0,
     device: str = "cpu",
+    num_epochs: int = 15,
 ) -> resnet18:
     """Train a ResNet18 on the ImageNet dataset.
 
@@ -25,6 +26,7 @@ def train_imagenet_resnet18(
         dataloader: The dataloader for the ImageNet dataset.
         seed: The seed for training the model.
         device: The device to train the model on.
+        num_epochs: The number of training epoch.
 
     Returns:
         The trained logistic regression model.
@@ -35,7 +37,7 @@ def train_imagenet_resnet18(
 
     model = create_resnet18_model()
     model.train()
-    num_epochs = 15
+    model.to(device)
     optimizer = torch.optim.SGD(
         model.parameters(),
         lr=0.1,

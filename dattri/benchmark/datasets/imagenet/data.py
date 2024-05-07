@@ -21,7 +21,7 @@ def create_imagenet_dataset(
 
     Returns:
         Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]: The training and
-            testing ImageNet datasets.
+            validate ImageNet datasets.
     """
     from torchvision import datasets, transforms
 
@@ -34,6 +34,6 @@ def create_imagenet_dataset(
         ],
     )
     train_dataset = datasets.ImageNet(root=path, split="train", transform=transform)
-    test_dataset = datasets.ImageNet(root=path, split="test", transform=transform)
+    val_dataset = datasets.ImageNet(root=path, split="val", transform=transform)
 
-    return train_dataset, test_dataset
+    return train_dataset, val_dataset
