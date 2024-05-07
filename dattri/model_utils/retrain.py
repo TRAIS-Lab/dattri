@@ -55,6 +55,7 @@ def retrain_loo(
             None means that each index in the dataloader will be removed in turn.
         seed (int): The random seed for the training process. Default is None,
             which means the training process is not deterministic.
+        **kwargs: The arguments of `train_func` in addition to dataloader.
         path (str): The directory to save the retrained models and the removed index
             metadata. The directory should be organized as
             ```
@@ -81,7 +82,6 @@ def retrain_loo(
                     }
                 }
             ```.
-        **kwargs: The arguments of `train_func` in addition to dataloader.
     """
     if not Path(path).exists():
         # Create the path if not exists.

@@ -32,12 +32,26 @@ DEFAULT_BATCH_SIZE = {"mnist_lr": 32, "imagenet_resnet18": 256}
 
 
 def partition_type(arg: str) -> List[int]:
-    """Custom type function for parsing partition arguments."""
+    """Custom type function for parsing partition arguments.
+
+    Args:
+        arg (str): The partition argument in the format [start, end, total].
+
+    Returns:
+        List[int]: The parsed partition.
+    """
     return [int(x) if x.lower() != "none" else None for x in arg.split(",")]
 
 
 def key_value_pair(arg: Dict[str, Any]) -> tuple[str, Any]:
-    """Convert a string in key=value format to a tuple (key, value)."""
+    """Convert a string in key=value format to a tuple (key, value).
+
+    Args:
+        arg (Dict[str, Any]): The argument in key=value format.
+
+    Returns:
+        tuple[str, Any]: The parsed key-value pair.
+    """
     key, value = arg.split("=")
     if value.isdigit():
         value = int(value)
