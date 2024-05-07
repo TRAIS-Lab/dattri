@@ -22,9 +22,17 @@ class SubsetSampler(Sampler):
         self.indices = indices
 
     def __iter__(self) -> Iterator[int]:
-        """Get an iterator for the sampler."""
+        """Get an iterator for the sampler.
+
+        Returns:
+            An iterator for the sampler.
+        """
         return iter(self.indices)
 
     def __len__(self) -> int:
-        """Get the number of indices in the sampler."""
+        """Get the number of indices in the sampler.
+
+        Returns:
+            The number of indices in the sampler.
+        """
         return len(self.indices)
