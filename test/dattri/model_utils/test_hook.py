@@ -7,7 +7,7 @@ from torch.utils.data import DataLoader, TensorDataset
 from dattri.model_utils.hook import (
     _get_layer_feature as get_layer_feature,  # noqa: PLC2701
 )
-from dattri.model_utils.hook import get_final_linear_layer_input
+from dattri.model_utils.hook import get_final_layer_io
 
 
 class MyNet(nn.Module):
@@ -73,7 +73,7 @@ class TestGetFinalLayerFeature:
         layer_name = "layer4"
         feat_dim_gt = 40
         out_dim_gt = 50
-        feature, output = get_final_linear_layer_input(model, layer_name, dataloader)
+        feature, output = get_final_layer_io(model, layer_name, dataloader)
         assert feature.shape[0] == len(dataset)
         assert feature.shape[1] == feat_dim_gt
         assert output.shape[0] == len(dataset)

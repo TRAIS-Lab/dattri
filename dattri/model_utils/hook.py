@@ -64,7 +64,7 @@ def _get_layer_feature(
     )
 
 
-def get_final_linear_layer_input(
+def get_final_layer_io(
     model: torch.nn.Module,
     final_linear_layer_name: str,
     dataloader: DataLoader,
