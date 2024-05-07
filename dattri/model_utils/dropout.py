@@ -26,6 +26,9 @@ def activate_dropout(
             all dropout layers found in the model.
         dropout_prob (float): The dropout probability to be applied. If not
             specified, it will be defaulted as 0.1.
+
+    Raises:
+        TypeError: The input should be a list.
     """
     # evaluate the model
     model.eval()
