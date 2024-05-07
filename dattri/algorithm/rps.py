@@ -15,7 +15,7 @@ import warnings
 from torch.utils.data import DataLoader, RandomSampler
 
 from dattri.algorithm.utils import finetune_theta, get_rps_weight, rps_corr_check
-from dattri.model_utils.hook import get_final_linear_layer_input
+from dattri.model_utils.hook import get_final_layer_io
 
 from .base import BaseAttributor
 
@@ -116,12 +116,12 @@ class RPSAttributor(BaseAttributor):
                 stacklevel=1,
             )
 
-        intermediate_x_train, y_pred_train = get_final_linear_layer_input(
+        intermediate_x_train, y_pred_train = get_final_layer_io(
             self.model,
             self.final_linear_layer_name,
             train_dataloader,
         )
-        intermediate_x_test, y_pred_test = get_final_linear_layer_input(
+        intermediate_x_test, y_pred_test = get_final_layer_io(
             self.model,
             self.final_linear_layer_name,
             test_dataloader,
