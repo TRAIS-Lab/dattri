@@ -4,20 +4,21 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from typing import Tuple
+
+    from torch.utils.data import DataLoader
 import random
 from pathlib import Path
-from typing import Tuple
 
 import numpy as np
 import torch
 from torch import nn
 from torch.optim import Adam
 from torch.optim.lr_scheduler import LambdaLR
-from torch.utils.data import DataLoader, SubsetRandomSampler
 
-from dattri.benchmark.models.MusicTransformer.dataset.e_piano import (
-    create_epiano_datasets,
-)
 from dattri.benchmark.models.MusicTransformer.music_transformer import MusicTransformer
 from dattri.benchmark.models.MusicTransformer.utilities.constants import (
     ADAM_BETA_1,
@@ -51,18 +52,14 @@ CSV_HEADER = [
 BASELINE_EPOCH = -1
 
 # Training Hyper-parameters ############
-INPUT_DIR = "./maestro-v2.0.0-processed"  # Folder of preprocessed midi files
-OUTPUT_DIR = "./maestro_model"  # Folder to save model weights
 WEIGHT_MODULUS = 5  # Frequency to save epoch weights
 PRINT_MODOLUS = 1  # Frequency to print train results for a batch
-N_WORKERS = 1  # Number of threads for the dataloader
 FORCE_CPU = False  # Forces model to run on a cpu even when gpu is available
 NO_TENSORBOARD = True  # Turns off tensorboard result reporting
 CONTINUE_WEIGHTS = None  # Model weights to continue training (str: file location)
 CONTINUE_EPOCH = None  # Epoch the CONTINUE_WEIGHTS model was at (int: epoch number)
 LR = None  # Set constant learn rate
 CE_SMOOTHING = None  # Smoothing parameter for smoothed cross entropy loss
-BATCH_SIZE = 64  # Batch size to use
 EPOCHS = 20  # Number of epochs to use
 RPR = True  # Use a modified Transformer for Relative Position Representations
 MAX_SEQUENCE = 256  # Maximum midi sequence to consider
@@ -72,69 +69,6 @@ D_MODEL = 512  # Dimension of the model (output dim of embedding layers)
 DIM_FEEDFORWARD = 1024  # Dimension of the feedforward layer
 DROPOUT = 0.1  # Dropout rate
 # Training Hyper-parameters ############
-
-
-def create_loaders(
-    train_size: int = 5000,
-    test_size: int = 500,
-    seed: int = 42,
-) -> Tuple[DataLoader, DataLoader, DataLoader]:
-    """Create data loaders for training, validation, and testing.
-
-    Args:
-        train_size (int): the train loader size.
-        test_size (int): the val/test loader size.
-        seed (int): the random seed used to sample training examples.
-
-    Returns:
-        A tuple of three DataLoader objects for training.
-    """
-    torch.manual_seed(seed)
-    train_dataset, val_dataset, test_dataset = create_epiano_datasets(
-        INPUT_DIR,
-        MAX_SEQUENCE,
-        full_version=True,
-    )
-
-    train_loader = DataLoader(
-        train_dataset,
-        batch_size=BATCH_SIZE,
-        num_workers=N_WORKERS,
-        sampler=SubsetRandomSampler(range(train_size)),
-    )
-
-    val_loader = DataLoader(
-        val_dataset,
-        batch_size=BATCH_SIZE,
-        num_workers=N_WORKERS,
-        sampler=SubsetRandomSampler(range(test_size)),
-    )
-
-    test_loader = DataLoader(
-        test_dataset,
-        batch_size=BATCH_SIZE,
-        num_workers=N_WORKERS,
-        sampler=SubsetRandomSampler(range(test_size)),
-    )
-
-    return train_loader, val_loader, test_loader
-
-
-def create_model() -> MusicTransformer:
-    """Create a MusicTransformer model.
-
-    # noqa: DAR201
-    # noqa: DAR101
-    """
-    return MusicTransformer(
-        n_layers=N_LAYERS,
-        num_heads=NUM_HEADS,
-        d_model=D_MODEL,
-        dim_feedforward=DIM_FEEDFORWARD,
-        dropout=DROPOUT,
-        max_sequence=MAX_SEQUENCE,
-        rpr=RPR,
-    ).to(get_device())
 
 
 def create_optimizer_and_scheduler(
@@ -166,10 +100,11 @@ def create_optimizer_and_scheduler(
 
 
 # main
-def train_maestro(
+def train_maestro_musictransformer(
     train_dataloader: DataLoader,
     val_dataloader: DataLoader,
     seed: int = 0,
+    num_epoch: int = EPOCHS,
 ) -> MusicTransformer:
     """Train a MusicTransformer on the MAESTRO dataset.
 
@@ -178,7 +113,8 @@ def train_maestro(
             on MAESTRO dataset.
         val_dataloader (DataLoader): The dataloader to validate
             on MAESTRO dataset.
-        seed (int): The seed for training the model.
+        seed (int): The seed to train the model.
+        num_epoch (int): The number of epochs to train the model.
 
     Returns:
         The trained MusicTransformer model.
@@ -199,7 +135,8 @@ def train_maestro(
     # Removed this session as we make dataset as input to the function
 
     # Model #####
-    model = create_model()
+    model = create_musictransformer_model()
+    model.train()
     # Lr Scheduler and Optimizer #####
     opt, lr_scheduler = create_optimizer_and_scheduler(model, train_dataloader)
 
@@ -223,7 +160,7 @@ def train_maestro(
     # Removed results_file writeout section
 
     # TRAIN LOOP #####
-    for epoch in range(start_epoch, EPOCHS):
+    for epoch in range(start_epoch, num_epoch):
         # Baseline has no training and acts as a base loss and accuracy
         if epoch > BASELINE_EPOCH:
             # Train
@@ -238,7 +175,7 @@ def train_maestro(
             )
 
         # Eval
-        # Removed train_loss, train_acc
+        # removed train_loss, train_acc
         eval_loss, eval_acc = eval_model(model, val_dataloader, eval_loss_func)
 
         # Learn rate
@@ -270,23 +207,40 @@ def train_maestro(
     return best_model
 
 
-def eval_maestro(
+def loss_maestro_musictransformer(
     model_path: str,
     dataloader: DataLoader,
 ) -> float:
     """Calculate the loss of the MusicTransformer on the MAESTRO dataset.
 
     Args:
-        model_path: The path to the saved model weights.
-        dataloader: The dataloader for the MAESTRO dataset.
+        model_path (str): The path to the saved model weights.
+        dataloader (DataLoader): The dataloader for the MAESTRO dataset.
 
     Returns:
         The sum of loss of the model on the loader.
     """
-    model = create_model()
+    model = create_musictransformer_model()
     model.load_state_dict(torch.load(Path(model_path), get_device()))
     # Not smoothing evaluation loss #####
     eval_loss_func = nn.CrossEntropyLoss(ignore_index=TOKEN_PAD)
     eval_loss, _ = eval_model(model, dataloader, eval_loss_func)
 
     return eval_loss
+
+
+def create_musictransformer_model() -> MusicTransformer:
+    """Create a MusicTransformer model.
+
+    Returns:
+        The MusicTransformer Model.
+    """
+    return MusicTransformer(
+        n_layers=N_LAYERS,
+        num_heads=NUM_HEADS,
+        d_model=D_MODEL,
+        dim_feedforward=DIM_FEEDFORWARD,
+        dropout=DROPOUT,
+        max_sequence=MAX_SEQUENCE,
+        rpr=RPR,
+    ).to(get_device())

@@ -29,7 +29,7 @@ homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
 fast = ["fast_jl"]
-test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi"]
 
 [tool.setuptools]
 packages = ["dattri"]
