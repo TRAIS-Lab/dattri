@@ -22,9 +22,13 @@ This creates a `train.bin` and `val.bin` in that data directory.
 
 
 ## retrain 
-You can run the following commend to give your custom parameters to retrain the nanoGPT given run times on Shakespeare_char dataset.
+You can run the following commend to give your custom parameters to retrain the nanoGPT given run times on Shakespeare_char dataset. Here is an example:
 
 ```
-python shakespeare.py --num_runs 3 --seed 43 --config_path path/to/config.py --base_out_dir path/to/output
+python shakespeare.py --num_runs 1\
+                        --seed 42\
+                        --subset_ratio 0.5\
+                        --config_path /home/sz54/dattri/dattri/benchmark/models/nanoGPT/config/train_shakespeare_char.py\
+                        --base_out_dir /home/sz54/dattri/dattri/benchmark/out-shakespeare-train
 ```
 

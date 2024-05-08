@@ -73,7 +73,3 @@ def main() -> None:
             args.subset_ratio,
             args.config_path,
             args.base_out_dir)
-
-
-if __name__ == "__main__":
-    main()

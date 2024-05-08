@@ -95,26 +95,37 @@ data_dir = os.path.join('data', dataset)
 current_index = 0
 indices = None
 
+# def initialize_indices(data_length, subset_ratio=1.0):
+#     global indices
+#     effective_length = data_length - block_size + 1
+#     subset_length = int(effective_length * subset_ratio)
+#     full_indices = torch.randperm(effective_length)
+#     indices = full_indices[:subset_length]
+#     print(f"Initialized subset with {subset_length} indices out of {effective_length} available indices.")
+#     save_indices(indices, out_dir)
+
 def initialize_indices(data_length, subset_ratio=1.0):
     global indices
-    effective_length = data_length - block_size + 1
-    subset_length = int(effective_length * subset_ratio)
-    full_indices = torch.randperm(effective_length)
-    indices = full_indices[:subset_length]
-    print(f"Initialized subset with {subset_length} indices out of {effective_length} available indices.")
-    save_indices(indices, out_dir)
+    block_count = data_length // block_size
+    subset_length = int(block_count * subset_ratio)
+    full_indices = torch.arange(block_count)
+    if subset_ratio < 1.0:
+        full_indices = full_indices[torch.randperm(block_count)[:subset_length]]
+    indices = full_indices * block_size  
+    print(f"Initialized subset with {subset_length} indices out of {block_count} available blocks.")
+    save_indices(full_indices, out_dir)
 
 def reset_for_new_epoch():
     global current_index
     current_index = 0
 
-def get_batch_indices(block_size):
+def get_batch_indices(batch_size):
     global current_index
     global indices
-    if current_index + block_size > len(indices):
+    if current_index + batch_size > len(indices):
         reset_for_new_epoch()
-    batch_indices = indices[current_index:current_index + block_size]
-    current_index += block_size
+    batch_indices = indices[current_index:current_index + batch_size]
+    current_index += batch_size
     return batch_indices
 
 def get_batch(split):
@@ -123,12 +134,12 @@ def get_batch(split):
     else:
         data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
 
-    ix = get_batch_indices(block_size)
+    ix = get_batch_indices(batch_size)
     ix = [i for i in ix if i + block_size < len(data)]
 
     if len(ix) < block_size:
         reset_for_new_epoch()
-        ix = get_batch_indices(block_size)
+        ix = get_batch_indices(batch_size)
         ix = [i for i in ix if i + block_size < len(data)]
 
     x = torch.stack([torch.from_numpy(data[i:i+block_size].astype(np.int64)) for i in ix])
@@ -138,6 +149,7 @@ def get_batch(split):
     else:
         x, y = x.to(device), y.to(device)
     return x, y
+
 
 data = np.memmap(os.path.join(data_dir, 'train.bin'), dtype=np.uint16, mode='r')
 initialize_indices(len(data), subset_ratio)
