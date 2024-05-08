@@ -53,14 +53,20 @@ def create_cifar2_dataset(
     from torchvision import datasets, transforms
 
     transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))]
+        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))],
     )
 
     full_train_dataset = datasets.CIFAR10(
-        root=path, train=True, download=True, transform=transform
+        root=path,
+        train=True,
+        download=True,
+        transform=transform,
     )
     full_test_dataset = datasets.CIFAR10(
-        root=path, train=False, download=True, transform=transform
+        root=path,
+        train=False,
+        download=True,
+        transform=transform,
     )
 
     # get indices correspond to cat and dog
