@@ -13,6 +13,7 @@ def retrain(num_runs: int,
             seed: int,
             subset_ratio: float,
             config_path: str,
+            dataset_path: str,
             base_out_dir: str) -> None:
     """Retrain the model multiple times with varying configurations.
 
@@ -21,6 +22,7 @@ def retrain(num_runs: int,
         seed: Initial random seed for training.
         subset_ratio: Subset ratio of the training data.
         config_path: Path to the training configuration file.
+        dataset_path: Path to the dataset folder.
         base_out_dir: Base directory for output models.
     """
     os.chdir("./models/nanoGPT")
@@ -34,6 +36,8 @@ def retrain(num_runs: int,
                 modified_config.append(f"seed = {seed}\n")
             elif line.startswith("subset_ratio"):
                 modified_config.append(f"subset_ratio = {subset_ratio}\n")
+            elif line.startswith("dataset_path"):
+                modified_config.append(f"dataset_path = {dataset_path}\n")
             else:
                 modified_config.append(line)
 
@@ -62,6 +66,9 @@ def main() -> None:
     parser.add_argument("--config_path", type=str,
                         default="./models/nanoGPT/config/train_tinystories.py",
                         help="Path to the training configuration file.")
+    parser.add_argument("--dataset_path", type=str,
+                        default="./dataset/tinystories-train",
+                        help="Path to the dataset.")
     parser.add_argument("--base_out_dir", type=str,
                         default="out-tinystories",
                         help="Base directory for output models.")
@@ -72,4 +79,5 @@ def main() -> None:
             args.seed,
             args.subset_ratio,
             args.config_path,
+            args.dataset_path,
             args.base_out_dir)

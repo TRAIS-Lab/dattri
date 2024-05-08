@@ -29,6 +29,7 @@ python shakespeare.py --num_runs 1\
                         --seed 42\
                         --subset_ratio 0.5\
                         --config_path /home/sz54/dattri/dattri/benchmark/models/nanoGPT/config/train_shakespeare_char.py\
+                        --dataset_path /home/sz54/dattri/dattri/benchmark/dataset/shakespeare_char\
                         --base_out_dir /home/sz54/dattri/dattri/benchmark/out-shakespeare-train
 ```
 
