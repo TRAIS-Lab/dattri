@@ -1,8 +1,8 @@
 """This module implement some utility functions for the algorithm module."""
-# ruff: noqa: T201
 
 from __future__ import annotations
 
+import warnings
 from typing import Callable, Tuple
 
 import numpy as np
@@ -11,6 +11,22 @@ from scipy.stats import pearsonr
 from torch import Tensor, optim
 from torch.autograd import Variable
 from torch.func import grad
+from torch.utils.data import RandomSampler
+
+
+def _check_shuffle(dataloader: torch.utils.data.DataLoader) -> None:
+    """Check if the dataloader is shuffling the data.
+
+    Args:
+        dataloader (torch.data.utils.DataLoader): The dataloader to be checked.
+    """
+    is_shuffling = isinstance(dataloader.sampler, RandomSampler)
+    if is_shuffling:
+        warnings.warn(
+            "The dataloader is shuffling the data. The influence \
+                        calculation could not be interpreted in order.",
+            stacklevel=1,
+        )
 
 
 # The function is adapted from https://github.com/chihkuanyeh/Representer_Point_Selection/blob/master/compute_representer_vals.py
@@ -176,6 +192,7 @@ def get_rps_weight(
 
 # The function is adapted from https://github.com/chihkuanyeh/Representer_Point_Selection/blob/master/compute_representer_vals.py
 # used by RPSAttributor
+# ruff: noqa: T201
 def rps_corr_check(rps_weight: Tensor, x: Tensor, y: Tensor) -> None:
     """Sanity check the corr. between gt and rps prediction.
 

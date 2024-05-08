@@ -9,15 +9,15 @@ if TYPE_CHECKING:
 
     import torch
     from torch import Tensor
+    from torch.utils.data import DataLoader
 
 import warnings
-
-from torch.utils.data import DataLoader, RandomSampler
 
 from dattri.algorithm.utils import finetune_theta, get_rps_weight, rps_corr_check
 from dattri.model_utils.hook import get_final_layer_io
 
 from .base import BaseAttributor
+from .utils import _check_shuffle
 
 
 class RPSAttributor(BaseAttributor):
@@ -96,6 +96,7 @@ class RPSAttributor(BaseAttributor):
             Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
         """
+        super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
             self.full_train_dataloader = train_dataloader
             warnings.warn(
@@ -105,16 +106,8 @@ class RPSAttributor(BaseAttributor):
                 stacklevel=1,
             )
 
-        is_shuffling = isinstance(train_dataloader.sampler, RandomSampler) & isinstance(
-            test_dataloader.sampler,
-            RandomSampler,
-        )
-        if is_shuffling:
-            warnings.warn(
-                "The dataloader is shuffling the data. The influence \
-                           calculation could not be interpreted in order.",
-                stacklevel=1,
-            )
+        _check_shuffle(train_dataloader)
+        _check_shuffle(test_dataloader)
 
         intermediate_x_train, y_pred_train = get_final_layer_io(
             self.model,
