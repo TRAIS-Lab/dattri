@@ -10,7 +10,6 @@ from dattri.model_utils.hook import (
 from dattri.model_utils.hook import get_final_layer_io
 
 
-
 class MyNet(nn.Module):
     """A test nn.Module PyTorch model."""
 
@@ -79,4 +78,3 @@ class TestGetFinalLayerFeature:
         assert feature.shape[1] == feat_dim_gt
         assert output.shape[0] == len(dataset)
         assert output.shape[1] == out_dim_gt
-
