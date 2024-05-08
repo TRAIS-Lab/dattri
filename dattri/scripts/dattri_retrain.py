@@ -19,8 +19,6 @@ from dattri.benchmark.datasets.imagenet import (
 from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
 from dattri.model_utils.retrain import retrain_lds, retrain_loo
 
-SUPPORTED_DATASETS = ["mnist", "imagenet"]
-
 SUPPORTED_MODELS = ["lr", "resnet18"]
 
 SUPPORTED_SETTINGS = {
@@ -78,9 +76,9 @@ def main() -> None:
     parser.add_argument(
         "--dataset",
         type=str,
-        choices=SUPPORTED_DATASETS,
+        choices=SUPPORTED_DATASETS.keys(),
         help=f"The dataset to use for retraining.\
-               It should be one of {SUPPORTED_DATASETS}.",
+               It should be one of {list(SUPPORTED_DATASETS.keys())}.",
     )
     parser.add_argument(
         "--model",
