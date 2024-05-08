@@ -179,8 +179,6 @@ def create_epiano_datasets(dataset_root, max_seq, random_seq=True, full_version=
     Creates train, evaluation, and test EPianoDataset objects for a pre-processed (preprocess_midi.py)
     root containing train, val, and test folders.
     ----------
-
-    JUNWEI DENG added
     :param full_version: State if the whole dataset will be transversed. If set to True, random_seq` will
            be ignored and each training music will be cut to serveral fragment in order. Default to False.
     :param split: If false, it will not append "train"/"val"/"test" to the dataset_root and only return one
