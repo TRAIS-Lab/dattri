@@ -27,7 +27,7 @@ FULL_VERSION = True  # State if the whole dataset will be transversed.
 def create_maestro_datasets(
     dataset_path: str,
 ) -> Tuple[Dataset, Dataset, Dataset]:
-    """Create training, validation, and testing datasets for MAESTRO dataset.
+    """Create MAESTRO dataset.
 
     Args:
         dataset_path (str): Root directory of the MAESTRO Dataset. Should be
