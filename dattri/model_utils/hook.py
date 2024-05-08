@@ -1,4 +1,5 @@
 """This module contains functions that add/remove hooks on PyTorch models."""
+
 # ruff: noqa: ARG001
 
 from __future__ import annotations
@@ -8,10 +9,11 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import List, Tuple
 
-    from torch.utils.data import DataLoader
+from torch.utils.data import DataLoader
 
 import torch
 from torch import Tensor
+
 
 
 def _get_layer_feature(
@@ -20,6 +22,7 @@ def _get_layer_feature(
     dataloader: DataLoader,
     device: str = "cpu",
 ) -> Tuple[Tensor, Tensor]:
+
     """Get the feature at layer_name for data passing through a model.
 
     Args:
@@ -112,3 +115,4 @@ def get_final_layer_io(
     return torch.cat(feature_list, dim=0).to(device), torch.cat(output_list, dim=0).to(
         device,
     )
+
