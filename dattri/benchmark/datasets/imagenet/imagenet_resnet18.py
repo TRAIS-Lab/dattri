@@ -29,7 +29,7 @@ def train_imagenet_resnet18(
         num_epochs: The number of training epoch.
 
     Returns:
-        The trained logistic regression model.
+        (nn.Module): The trained resnet18 model.
     """
     torch.manual_seed(seed)
     np.random.seed(seed)  # noqa: NPY002
@@ -85,7 +85,7 @@ def loss_imagenet_resnet18(
         device: The device to evaluate the model on.
 
     Returns:
-        The sum of loss of the model on the loader.
+        float: The sum of loss of the model on the loader.
     """
     criterion = nn.CrossEntropyLoss(reduction="sum")
     model = create_resnet18_model()

@@ -19,6 +19,10 @@ from dattri.benchmark.datasets.imagenet import (
 from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
 from dattri.model_utils.retrain import retrain_lds, retrain_loo
 
+SUPPORTED_DATASETS = ["mnist", "imagenet"]
+
+SUPPORTED_MODELS = ["lr", "resnet18"]
+
 SUPPORTED_SETTINGS = {
     "mnist_lr": train_mnist_lr,
     "imagenet_resnet18": train_imagenet_resnet18,
@@ -39,8 +43,15 @@ def partition_type(arg: str) -> List[int]:
 
     Returns:
         List[int]: The parsed partition.
+
+    Raises:
+        ValueError: If the partition is not in the correct format.
     """
-    return [int(x) if x.lower() != "none" else None for x in arg.split(",")]
+    res = [int(x) if x.lower() != "none" else None for x in arg.split(",")]
+    if len(res) != 3:  # noqa: PLR2004
+        message = "--partition should be in the format [start, end, total]."
+        raise ValueError(message)
+    return res
 
 
 def key_value_pair(arg: Dict[str, Any]) -> tuple[str, Any]:
@@ -65,11 +76,18 @@ def main() -> None:
     """
     parser = argparse.ArgumentParser(description="Retrain models on various datasets.")
     parser.add_argument(
-        "--setting",
+        "--dataset",
         type=str,
-        choices=SUPPORTED_SETTINGS.keys(),
-        help=f"The setting to use for retraining.\
-               It should be one of {list(SUPPORTED_SETTINGS.keys())}.",
+        choices=SUPPORTED_DATASETS,
+        help=f"The dataset to use for retraining.\
+               It should be one of {SUPPORTED_DATASETS}.",
+    )
+    parser.add_argument(
+        "--model",
+        type=str,
+        choices=SUPPORTED_MODELS,
+        help=f"The dataset to use for retraining.\
+               It should be one of {SUPPORTED_MODELS}.",
     )
     parser.add_argument(
         "--mode",
@@ -121,13 +139,15 @@ def main() -> None:
     )
     args = parser.parse_args()
 
-    if args.setting is None or args.mode is None:
+    if args.dataset is None or args.model is None or args.mode is None:
         parser.print_help()
         return
 
-    train_func = SUPPORTED_SETTINGS[args.setting]
+    setting = f"{args.dataset}_{args.model}"
+
+    train_func = SUPPORTED_SETTINGS[setting]
     retrain_helper = SUPPORTED_RETRAINING_MODE[args.mode]
-    dataset_func = SUPPORTED_DATASETS[args.setting.split("_")[0]]
+    dataset_func = SUPPORTED_DATASETS[args.dataset]
 
     path = Path(args.data_path)
     if not path.exists():
@@ -136,7 +156,7 @@ def main() -> None:
     dataset_train, _ = dataset_func(args.data_path)
     train_loader = torch.utils.data.DataLoader(
         dataset_train,
-        batch_size=DEFAULT_BATCH_SIZE[args.setting],
+        batch_size=DEFAULT_BATCH_SIZE[setting],
         shuffle=True,
     )
 
