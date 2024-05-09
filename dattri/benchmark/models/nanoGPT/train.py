@@ -135,12 +135,8 @@ def get_batch(split):
         data = np.memmap(os.path.join(data_dir, 'val.bin'), dtype=np.uint16, mode='r')
 
     ix = get_batch_indices(batch_size)
-    ix = [i for i in ix if i + block_size < len(data)]
-
-    if len(ix) < block_size:
-        reset_for_new_epoch()
-        ix = get_batch_indices(batch_size)
-        ix = [i for i in ix if i + block_size < len(data)]
+    if split == 'val':
+        ix = torch.randint(len(data) - block_size, (batch_size,))
 
     x = torch.stack([torch.from_numpy(data[i:i+block_size].astype(np.int64)) for i in ix])
     y = torch.stack([torch.from_numpy(data[i+1:i+1+block_size].astype(np.int64)) for i in ix])

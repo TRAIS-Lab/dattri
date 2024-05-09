@@ -37,7 +37,7 @@ def retrain(num_runs: int,
             elif line.startswith("subset_ratio"):
                 modified_config.append(f"subset_ratio = {subset_ratio}\n")
             elif line.startswith("dataset_path"):
-                modified_config.append(f"dataset_path = {dataset_path}\n")
+                modified_config.append(f"dataset_path = '{dataset_path}'\n")
             else:
                 modified_config.append(line)
 
