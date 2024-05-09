@@ -44,6 +44,7 @@ dattri = ["py.typed"]
 [tool.ruff]
 exclude = [
     "docs/",
+    "dattri/benchmark/dataset",
     "dattri/benchmark/models"
 ]
 
