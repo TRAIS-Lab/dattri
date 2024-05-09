@@ -144,7 +144,7 @@ class TestIHVP:
 
         x = torch.randn(2)
         vec = torch.randn(5, 2)
-        ihvp = ihvp_at_x_cg(target, x, argnums=0)
+        ihvp = ihvp_at_x_cg(target, x, argnums=0, max_iter=2)
 
         assert torch.allclose(
             ihvp(vec),
@@ -153,7 +153,7 @@ class TestIHVP:
             atol=1e-07,
         )
         assert torch.allclose(
-            ihvp_cg(target, argnums=0)((x,), vec),
+            ihvp_cg(target, argnums=0, max_iter=2)((x,), vec),
             (torch.diag(-1 / x.sin()) @ vec.T).T,
             rtol=1e-04,
             atol=1e-07,
@@ -169,7 +169,7 @@ class TestIHVP:
         x = torch.Tensor([1])
         y = torch.randn(2)
         vec = torch.randn(5, 2)
-        ihvp = ihvp_at_x_cg(target, x, y, argnums=1)
+        ihvp = ihvp_at_x_cg(target, x, y, argnums=1, max_iter=2)
 
         assert torch.allclose(
             ihvp(vec),
@@ -178,7 +178,7 @@ class TestIHVP:
             atol=1e-07,
         )
         assert torch.allclose(
-            ihvp_cg(target, argnums=1)((x, y), vec),
+            ihvp_cg(target, argnums=1, max_iter=2)((x, y), vec),
             (torch.diag(-1 / (1 + y).sin()) @ vec.T).T,
             rtol=1e-04,
             atol=1e-07,
@@ -195,12 +195,18 @@ class TestIHVP:
         vec = torch.randn(5, 2)
         ihvp = ihvp_at_x_arnoldi(target, x, argnums=0)
 
-        assert torch.allclose(ihvp(vec),
-                              (torch.diag(-1 / x.sin()) @ vec.T).T,
-                              rtol=1e-04, atol=1e-07)
-        assert torch.allclose(ihvp_arnoldi(target, argnums=0)((x,), vec),
-                              (torch.diag(-1 / x.sin()) @ vec.T).T,
-                              rtol=1e-04, atol=1e-07)
+        assert torch.allclose(
+            ihvp(vec),
+            (torch.diag(-1 / x.sin()) @ vec.T).T,
+            rtol=1e-04,
+            atol=1e-07,
+        )
+        assert torch.allclose(
+            ihvp_arnoldi(target, argnums=0)((x,), vec),
+            (torch.diag(-1 / x.sin()) @ vec.T).T,
+            rtol=1e-04,
+            atol=1e-07,
+        )
         assert ihvp(vec).shape == (5, 2)
 
     def test_ihvp_cg_nn(self):
@@ -222,12 +228,13 @@ class TestIHVP:
         model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
 
         v = torch.ones(16)
-        ihvp_cg_func = ihvp_cg(f, argnums=0, regularization=1e-3)
+        ihvp_cg_func = ihvp_cg(f, argnums=0, regularization=1e-3, max_iter=10)
         ihvp_cg_at_x_func = ihvp_at_x_cg(
             f,
             flatten_params(model_params),
             argnums=0,
             regularization=1e-3,
+            max_iter=10,
         )
         ihvp_explicit_at_x_func = ihvp_at_x_explicit(
             f,
