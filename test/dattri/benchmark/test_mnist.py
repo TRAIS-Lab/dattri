@@ -5,7 +5,7 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.benchmark.mnist import (
+from dattri.benchmark.datasets.mnist import (
     LogisticRegressionMnist,
     loss_mnist_lr,
     train_mnist_lr,
