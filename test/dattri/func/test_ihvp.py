@@ -3,9 +3,17 @@
 import torch
 from torch.func import vmap
 
-from dattri.func.ihvp import (hvp, hvp_at_x, ihvp_arnoldi, ihvp_at_x_arnoldi,
-                              ihvp_at_x_cg, ihvp_at_x_explicit,
-                              ihvp_at_x_lissa, ihvp_cg, ihvp_lissa)
+from dattri.func.ihvp import (
+    hvp,
+    hvp_at_x,
+    ihvp_arnoldi,
+    ihvp_at_x_arnoldi,
+    ihvp_at_x_cg,
+    ihvp_at_x_explicit,
+    ihvp_at_x_lissa,
+    ihvp_cg,
+    ihvp_lissa,
+)
 from dattri.func.utils import flatten_func, flatten_params
 
 
@@ -307,29 +315,29 @@ class TestIHVP:
         vec = torch.randn(1, 2)
 
         ihvp_lissa_func = ihvp_lissa(mse_loss,
-                                        argnums=2,
-                                        batch_size=4,
-                                        num_repeat=10,
-                                        recursion_depth=100)
+                                     argnums=2,
+                                     batch_size=4,
+                                     num_repeat=10,
+                                     recursion_depth=100)
 
         ihvp_lissa_at_x_func = ihvp_at_x_lissa(mse_loss,
-                                                *(xs, ys, theta),
-                                                in_dims=(0, 0, None),
-                                                argnums=2,
-                                                batch_size=4,
-                                                num_repeat=10,
-                                                recursion_depth=100)
+                                               *(xs, ys, theta),
+                                               in_dims=(0, 0, None),
+                                               argnums=2,
+                                               batch_size=4,
+                                               num_repeat=10,
+                                               recursion_depth=100)
 
         ihvp_explicit_at_x_func = ihvp_at_x_explicit(mse_loss,
-                                                    *(xs, ys, theta),
-                                                    argnums=2)
+                                                     *(xs, ys, theta),
+                                                     argnums=2)
 
         # Set a larger tolerance for LiSSA
         assert torch.allclose(ihvp_lissa_at_x_func(vec),
-                                ihvp_explicit_at_x_func(vec),
-                                atol=0.08)
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)
         assert torch.allclose(ihvp_lissa_func((xs, ys, theta),
-                                                vec,
-                                                in_dims=(0, 0, None)),
-                                ihvp_explicit_at_x_func(vec),
-                                atol=0.08)
+                                              vec,
+                                              in_dims=(0, 0, None)),
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)
