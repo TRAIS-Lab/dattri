@@ -91,7 +91,8 @@ def save_indices(indices, out_dir):
 torch.manual_seed(seed)
 np.random.seed(seed)
 
-data_dir = os.path.join('data', dataset)
+# data_dir = os.path.join('data', dataset)
+data_dir = dataset_path
 current_index = 0
 indices = None
 

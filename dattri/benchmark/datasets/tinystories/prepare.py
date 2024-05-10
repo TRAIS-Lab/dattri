@@ -8,15 +8,20 @@ import os
 import pickle
 import requests
 import numpy as np
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument("--data_file", type=str,
+                    default="TinyStoriesV2-GPT4-train.txt",
+                    help="Path to the tinystories dataset.")
+args = parser.parse_args()
 
 # download the tiny shakespeare dataset
-input_file_path = os.path.join(os.path.dirname(__file__), 'TinyStoriesV2-GPT4-train.txt')
+input_file_path = os.path.join(args.data_file)
 if not os.path.exists(input_file_path):
-    data_url = 'https://raw.githubusercontent.com/karpathy/char-rnn/master/data/tinyshakespeare/input.txt'
-    with open(input_file_path, 'w') as f:
-        f.write(requests.get(data_url).text)
+    raise FileNotFoundError(f"Please download the TinyStoriesV2-GPT4-train.txt dataset")
 
-with open(input_file_path, 'r') as f:
+with open(input_file_path, 'r', encoding="utf8") as f:
     data = f.read()
 print(f"length of dataset in characters: {len(data):,}")
 

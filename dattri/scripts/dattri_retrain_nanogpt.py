@@ -13,6 +13,7 @@ def retrain(seed: int,
             subset_ratio: float,
             config_path: str,
             dataset_path: str,
+            dataset_file: str,
             save_path: str,
             partition: list) -> None:
     """Retrains the nanoGPT model multiple times.
@@ -22,10 +23,20 @@ def retrain(seed: int,
         subset_ratio (float): Fraction of the dataset to use for training.
         config_path (str): Path to the model's configuration file.
         dataset_path (str): Path where the training data is stored.
+        dataset_file (str): Name of the training data file.
         save_path (str): Directory where each model output is saved.
         partition (list): Range of data subsets, [start_id, end_id, total_subsets].
     """
-    os.chdir("dattri/models/nanoGPT")
+    if not os.path.exists(os.path.join(dataset_path, "meta.pkl")):
+        os.chdir(dataset_path)
+        if dataset_file is not None:
+            command = f"python prepare.py --data_file {dataset_file}"
+        else:
+            command = f"python prepare.py"
+        subprocess.run(command, shell=True)
+
+    import dattri
+    os.chdir(os.path.join(os.path.dirname(dattri.__file__), Path("benchmark/models/nanoGPT")))
     config = Path(config_path).read_text(encoding="utf-8").splitlines()
 
     start_id, end_id, total_num = partition
@@ -51,7 +62,8 @@ def retrain(seed: int,
                 modified_config.append(f"dataset_path = '{dataset_path}'\n")
             else:
                 modified_config.append(line)
-
+        modified_config.append(f"dataset_path = '{str(dataset_path)}'\n")
+        
         temp_config_path = Path(tempfile.mktemp())
         temp_config_path.write_text("\n".join(modified_config), encoding="utf-8")
         command = f"python train.py {temp_config_path}"
@@ -70,6 +82,9 @@ def main() -> None:
     parser.add_argument("--data_path", type=str,
                         default="./dataset/shakespeare_char",
                         help="Path to the dataset.")
+    parser.add_argument("--data_file", type=str,
+                        default="TinyStoriesV2-GPT4-train.txt",
+                        help="Path to the tinystories dataset.")
     parser.add_argument("--config_path", type=str,
                         default="./models/nanoGPT/config/train_shakespeare_char.py",
                         help="Path to the training configuration file.")
@@ -87,6 +102,7 @@ def main() -> None:
             args.subset_ratio,
             args.config_path,
             args.data_path,
+            args.data_file,
             args.save_path,
             args.partition)
 
