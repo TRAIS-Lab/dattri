@@ -726,7 +726,7 @@ def _sample_random_batch(*x,
                          num_samples: int,
                          in_dims: Optional[Tuple] = None,
                          batch_size: int = 1) -> Tuple[torch.Tensor, ...]:
-    """Randomly sample a batch of `batch_size` from the input data, with replacement.
+    """Randomly sample a batch of `batch_size` from the input data, without replacement.
 
     Args:
         *x: List of arguments to check. Each argument shoule be either:
@@ -747,9 +747,7 @@ def _sample_random_batch(*x,
         in_dims = (0,) * len(x)
 
     # Randomly sample and collate a batch
-    sampled_indices = torch.randint(high=num_samples,
-                                    size=(batch_size,),
-                                    dtype=torch.int64)
+    sampled_indices = torch.randperm(num_samples)[:batch_size]
 
     return tuple(
         x_in.index_select(dim, sampled_indices)
