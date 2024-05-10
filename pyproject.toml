@@ -30,10 +30,10 @@ homepage = "https://github.com/TRAIS-Lab/dattri"
 [project.optional-dependencies]
 fast = ["fast_jl"]
 test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests"]
+benchmark = ["torch", "torchvision"]
 
-[tool.setuptools]
-packages = ["dattri"]
-include-package-data = true
+[tool.setuptools.packages]
+find = {}
 
 [project.entry-points.console_scripts]
 dattri_retrain="dattri.scripts.dattri_retrain:main"
