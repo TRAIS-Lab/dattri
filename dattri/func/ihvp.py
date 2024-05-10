@@ -761,7 +761,7 @@ def _sample_random_batch(*x,
 def ihvp_lissa(func: Callable,
                argnums: int = 0,
                batch_size: int = 1,
-               num_repeat: int = 10,
+               num_repeat: int = 1,
                recursion_depth: int = 5000,
                damping: int = 0.0,
                scaling: int = 50.0,
@@ -782,7 +782,7 @@ def ihvp_lissa(func: Callable,
             to compute inverse hessian with respect to.
         batch_size (int): An integer default to 1. Specifies the batch size used
             for LiSSA inner loop update.
-        num_repeat (int): An integer default 10. Specifies the number of samples
+        num_repeat (int): An integer default to 1. Specifies the number of samples
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
             recursions used to estimate each ihvp sample.
@@ -848,7 +848,7 @@ def ihvp_at_x_lissa(func: Callable,
                     in_dims: Optional[Tuple] = None,
                     argnums: int = 0,
                     batch_size: int = 1,
-                    num_repeat: int = 10,
+                    num_repeat: int = 1,
                     recursion_depth: int = 5000,
                     damping: int = 0.0,
                     scaling: int = 50.0,
@@ -873,7 +873,7 @@ def ihvp_at_x_lissa(func: Callable,
             to compute inverse hessian with respect to.
         batch_size (int): An integer default to 1. Specifies the batch size used
             for LiSSA inner loop update.
-        num_repeat (int): An integer default 10. Specifies the number of samples
+        num_repeat (int): An integer default to 1. Specifies the number of samples
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
             recursions used to estimate each ihvp sample.
