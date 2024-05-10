@@ -18,8 +18,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional, Tuple, Union
 
-import random
-import warnings
 
 import torch
 from torch import Tensor
@@ -682,8 +680,87 @@ def ihvp_at_x_arnoldi(
     return _ihvp_at_x_arnoldi
 
 
+def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
+    """Check and return the size of input data.
+
+    Args:
+        *x: List of arguments to check. Each argument shoule be either:
+            1. A tensor with a batch size dimension. Each data point i
+            will take the i-th element along this dimension.
+            2. A tensor without a batch size dimension. Each data point will
+            share this tensor.
+        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
+            which dimension should be considered as batch size dimension. Take the
+            first dimension as batch size dimension by default.
+
+    Returns:
+        An integer indicating the number of input data.
+
+    Raises:
+        IHVPUsageError: if the input size is ambiguous or mismatches.
+    """
+    if in_dims is None:
+        in_dims = (0,) * len(x)
+
+    # Check batch size mismatch
+    batch_size = None
+    for i, (x_in, dim) in enumerate(zip(x, in_dims)):
+        if dim is None:
+            continue
+
+        if batch_size is None:
+            batch_size = x_in.shape[dim]
+        elif batch_size != x_in.shape[dim]:
+            message = (f"Input batch size mismatch! Expected {batch_size},"
+                       f"found {x_in.shape[dim]} for input tensor {i}.")
+            raise IHVPUsageError(message)
+
+    if batch_size is None:
+        message = "All inputs are identical for LiSSA ihvp!"
+        raise IHVPUsageError(message)
+
+    return batch_size
+
+
+def _sample_random_batch(*x,
+                         num_samples: int,
+                         in_dims: Optional[Tuple] = None,
+                         batch_size: int = 1) -> Tuple[torch.Tensor, ...]:
+    """Randomly sample a batch of `batch_size` from the input data, with replacement.
+
+    Args:
+        *x: List of arguments to check. Each argument shoule be either:
+            1. A tensor with a batch size dimension. Each data point i
+            will take the i-th element along this dimension.
+            2. A tensor without a batch size dimension. Each data point will
+            share this tensor.
+        num_samples (int): An integer, indicating the total number of samples.
+        batch_size (int): An integer default to 1, indicating the batch size.
+        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
+            which dimension should be considered as batch size dimension. Take the
+            first dimension as batch size dimension by default.
+
+    Returns:
+        An tuple of tensors corresponding to a batch of input data.
+    """
+    if in_dims is None:
+        in_dims = (0,) * len(x)
+
+    # Randomly sample and collate a batch
+    sampled_indices = torch.randint(high=num_samples,
+                                    size=(batch_size,),
+                                    dtype=torch.int64)
+
+    return tuple(
+        x_in.index_select(dim, torch.tensor(sampled_indices))
+        if dim is not None else x_in
+        for x_in, dim in zip(x, in_dims)
+    )
+
+
 def ihvp_lissa(func: Callable,
                argnums: int = 0,
+               batch_size: int = 1,
                num_repeat: int = 10,
                recursion_depth: int = 5000,
                damping: int = 0.0,
@@ -703,6 +780,8 @@ def ihvp_lissa(func: Callable,
             be estimated on this function.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
+        batch_size (int): An integer default to 1. Specifies the batch size used
+            for LiSSA inner loop update.
         num_repeat (int): An integer default 10. Specifies the number of samples
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
@@ -720,11 +799,12 @@ def ihvp_lissa(func: Callable,
         A function that takes a list of tuples of Tensor `x` and a vector `v` and
         returns the IHVP of the Hessian of `func` and `v`.
     """
+    hvp_func = hvp(func, argnums=argnums, mode=mode)
 
     def _ihvp_lissa_func(x: Tuple[torch.Tensor, ...],
                          v: Tensor,
                          in_dims: Optional[Tuple] = None) -> Tensor:
-        """The IHVP function using CG.
+        """The IHVP function via LiSSA algorithm.
 
         Args:
             x (Tuple[torch.Tensor, ...]): The function will computed the
@@ -736,15 +816,29 @@ def ihvp_lissa(func: Callable,
         Returns:
             The IHVP value.
         """
-        return ihvp_at_x_lissa(func,
-                               *x,
-                               in_dims=in_dims,
-                               argnums=argnums,
-                               num_repeat=num_repeat,
-                               recursion_depth=recursion_depth,
-                               damping=damping,
-                               scaling=scaling,
-                               mode=mode)(v)
+        num_samples = _check_input_size(*x, in_dims=in_dims)
+        if v.ndim == 1:
+            v = v.unsqueeze(0)
+
+        def _lissa_loop(vec: torch.Tensor) -> torch.Tensor:
+            ihvp_estimations = []
+            for _ in range(num_repeat):
+                curr_estimate = vec.detach().clone()  # No gradient on v
+                for _ in range(recursion_depth):
+                    sampled_input = _sample_random_batch(*x,
+                                                         batch_size=batch_size,
+                                                         num_samples=num_samples,
+                                                         in_dims=in_dims)
+                    hvp = hvp_func(sampled_input, curr_estimate)
+                    curr_estimate = (vec
+                                     + (1 - damping) * curr_estimate
+                                     - hvp / scaling)
+
+                ihvp_estimations.append(curr_estimate / scaling)
+
+            return torch.mean(torch.stack(ihvp_estimations), dim=0)
+
+        return torch.vmap(_lissa_loop, randomness="different")(v)
 
     return _ihvp_lissa_func
 
@@ -807,6 +901,7 @@ def ihvp_at_x_lissa(func: Callable,
                     *x,
                     in_dims: Optional[Tuple] = None,
                     argnums: int = 0,
+                    batch_size: int = 1,
                     num_repeat: int = 10,
                     recursion_depth: int = 5000,
                     damping: int = 0.0,
@@ -830,6 +925,8 @@ def ihvp_at_x_lissa(func: Callable,
             first dimension as batch size dimension by default.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
+        batch_size (int): An integer default to 1. Specifies the batch size used
+            for LiSSA inner loop update.
         num_repeat (int): An integer default 10. Specifies the number of samples
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
@@ -847,23 +944,9 @@ def ihvp_at_x_lissa(func: Callable,
         A function that takes a vector `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
-    input_list = _tuple_to_list(*x, in_dims=in_dims)
-
-    if recursion_depth > len(input_list):
-        warning_message = 'The recursion depth is greater than number of samples. " \
-            "Assigned to the number of samples.'
-        warnings.warn(warning_message, Warning, stacklevel=2)
-        recursion_depth = len(input_list)
-
-    hvp_func_list = [
-        hvp_at_x(func, x=data_point, argnums=argnums, mode=mode)
-        for data_point in input_list
-    ]
-
-    batch_size = len(input_list)
 
     def _ihvp_at_x_lissa_func(v: Tensor) -> Tensor:
-        """The IHVP function using LiSSA.
+        """The IHVP function with fixed func inputs using LiSSA.
 
         Args:
             v (Tensor): The vector to be produced on the inverse hessian matrix.
@@ -871,30 +954,15 @@ def ihvp_at_x_lissa(func: Callable,
         Returns:
             The IHVP value.
         """
-        if v.ndim == 1:
-            v = v.unsqueeze(0)
-
-        def _lissa_loop(vec: torch.Tensor) -> torch.Tensor:
-            ihvp_estimations = []
-            for _ in range(num_repeat):
-                sampled_indices = random.sample(
-                    list(range(batch_size)),
-                    recursion_depth,
-                )
-                sampled_hvp_func_list = [hvp_func_list[idx] for idx in sampled_indices]
-
-                curr_estimate = vec.detach().clone()  # No gradient on v
-                for hvp_func in sampled_hvp_func_list:
-                    hvp = hvp_func(curr_estimate)
-                    curr_estimate = (vec
-                                     + (1 - damping) * curr_estimate
-                                     - hvp / scaling)
-
-                ihvp_estimations.append(curr_estimate / scaling)
-
-            return torch.mean(torch.stack(ihvp_estimations), dim=0)
-
-        return torch.vmap(_lissa_loop, randomness="different")(v)
+        ihvp_lissa_func = ihvp_lissa(func,
+                                     argnums,
+                                     num_repeat,
+                                     batch_size,
+                                     recursion_depth,
+                                     damping,
+                                     scaling,
+                                     mode)
+        return ihvp_lissa_func(x, v, in_dims=in_dims)
 
     return _ihvp_at_x_lissa_func
 
