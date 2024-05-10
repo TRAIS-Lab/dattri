@@ -29,7 +29,7 @@ homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
 fast = ["fast_jl"]
-test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests"]
 
 [tool.setuptools]
 packages = ["dattri"]
@@ -37,6 +37,7 @@ include-package-data = true
 
 [project.entry-points.console_scripts]
 dattri_retrain="dattri.scripts.dattri_retrain:main"
+dattri_retrain_nanogpt="dattri.scripts.dattri_retrain_nanogpt:main"
 
 [tool.setuptools.package-data]
 dattri = ["py.typed"]
@@ -44,6 +45,8 @@ dattri = ["py.typed"]
 [tool.ruff]
 exclude = [
     "docs/",
+    "dattri/benchmark/datasets/shakespeare_char",
+    "dattri/benchmark/datasets/tinystories",
     "dattri/benchmark/models"
 ]
 
@@ -68,6 +71,7 @@ ignore = [
     "FBT001",  # Boolean-typed positional argument in function definition
     "FBT002",  # Boolean default positional argument in function definition
     "PLC0415", # strict rule on postion of importing modules
+    "C901",    # too many parameters in function
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
