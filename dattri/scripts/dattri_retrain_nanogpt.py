@@ -28,6 +28,9 @@ def retrain(
         dataset_file (str): Name of the training data file.
         save_path (str): Directory where each model output is saved.
         partition (list): Range of data subsets, [start_id, end_id, total_subsets].
+
+    Raises:
+        ValueError: If subset_ratio is negative or greater than 1.
     """
     if not Path.exists(Path(dataset_path) / "meta.pkl"):
         if dataset_file is not None:
