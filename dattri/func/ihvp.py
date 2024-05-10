@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import List, Optional, Tuple, Union
+    from typing import Optional, Tuple, Union
 
 
 import torch
@@ -841,60 +841,6 @@ def ihvp_lissa(func: Callable,
         return torch.vmap(_lissa_loop, randomness="different")(v)
 
     return _ihvp_lissa_func
-
-
-def _tuple_to_list(*x, in_dims: Optional[Tuple] = None) -> List[Tuple]:
-    """Convert a tuple of tensors into a list of tuples of data points.
-
-       This helper function converts a batch of input into a tuple of
-       single inputs, which will be used in the LiSSA ihvp calculation.
-
-    Args:
-        *x: List of arguments to convert. Each argument shoule be either:
-            1. A tensor with a batch size dimension. Each data point i
-            will take the i-th element along this dimension.
-            2. A tensor without a batch size dimension. Each data point will
-            share this tensor.
-        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
-            which dimension should be considered as batch size dimension. Take the
-            first dimension as batch size dimension by default.
-
-    Returns:
-        A list of tuples. Each tuple is one single data point.
-
-    Raises:
-        IHVPUsageError: if the input size is ambiguous or mismatches.
-    """
-    if in_dims is None:
-        in_dims = (0,) * len(x)
-
-    # Check batch size mismatch
-    batch_size = None
-    for i, (x_in, dim) in enumerate(zip(x, in_dims)):
-        if dim is None:
-            continue
-
-        if batch_size is None:
-            batch_size = x_in.shape[dim]
-        elif batch_size != x_in.shape[dim]:
-            error_msg = (f"Input batch size mismatch! Expected {batch_size}, "
-                         f"found {x_in.shape[dim]} for input tensor {i}.")
-            raise IHVPUsageError(error_msg)
-
-    if batch_size is None:
-        error_msg = "All inputs are identical for LiSSA ihvp!"
-        raise IHVPUsageError(error_msg)
-
-    # Create input list
-    input_list = []
-    for i in range(batch_size):
-        new_input = [
-            x_in.select(dim, i) if dim is not None else x_in
-            for x_in, dim in zip(x, in_dims)
-        ]
-        input_list.append(tuple(new_input))
-
-    return input_list
 
 
 def ihvp_at_x_lissa(func: Callable,
