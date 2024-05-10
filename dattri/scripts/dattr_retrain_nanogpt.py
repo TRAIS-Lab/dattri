@@ -25,7 +25,7 @@ def retrain(seed: int,
         save_path (str): Directory where each model output is saved.
         partition (list): Range of data subsets, [start_id, end_id, total_subsets].
     """
-    os.chdir("./models/nanoGPT")
+    os.chdir("dattri/models/nanoGPT")
     config = Path(config_path).read_text(encoding="utf-8").splitlines()
 
     start_id, end_id, total_num = partition
@@ -78,7 +78,7 @@ def main() -> None:
     parser.add_argument("--partition", type=int, nargs=3,
                         default=[0, 5, 5],
                         help="Partition for retraining, format in [start, end, total].")
-    parser.add_argument("--subset_ratio", type=float, default=1.0,
+    parser.add_argument("--subset_ratio", type=float, default=0.5,
                         help="Subset ratio of the training data.")
 
     args = parser.parse_args()

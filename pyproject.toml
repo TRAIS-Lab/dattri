@@ -37,6 +37,7 @@ include-package-data = true
 
 [project.entry-points.console_scripts]
 dattri_retrain="dattri.scripts.dattri_retrain:main"
+dattri_retrain_nanogpt="dattri.scripts.dattri_retrain_nanogpt:main"
 
 [tool.setuptools.package-data]
 dattri = ["py.typed"]
@@ -44,7 +45,8 @@ dattri = ["py.typed"]
 [tool.ruff]
 exclude = [
     "docs/",
-    "dattri/benchmark/dataset",
+    "dattri/benchmark/datasets/shakespeare_char",
+    "dattri/benchmark/datasets/tinystories",
     "dattri/benchmark/models"
 ]
 
