@@ -752,7 +752,7 @@ def _sample_random_batch(*x,
                                     dtype=torch.int64)
 
     return tuple(
-        x_in.index_select(dim, torch.tensor(sampled_indices))
+        x_in.index_select(dim, sampled_indices)
         if dim is not None else x_in
         for x_in, dim in zip(x, in_dims)
     )
