@@ -274,14 +274,14 @@ class TestIHVP:
 
         ihvp_lissa_func = ihvp_lissa(mse_loss,
                                      argnums=2,
-                                     num_repeat=10,
+                                     num_repeat=100,
                                      recursion_depth=100)
 
         ihvp_lissa_at_x_func = ihvp_at_x_lissa(mse_loss,
                                                *(xs, ys, theta),
                                                in_dims=(0, 0, None),
                                                argnums=2,
-                                               num_repeat=50,
+                                               num_repeat=100,
                                                recursion_depth=100)
 
         ihvp_explicit_at_x_func = ihvp_at_x_explicit(mse_loss,
