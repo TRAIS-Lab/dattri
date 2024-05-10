@@ -9,13 +9,15 @@ import tempfile
 from pathlib import Path
 
 
-def retrain(seed: int,
-            subset_ratio: float,
-            config_path: str,
-            dataset_path: str,
-            dataset_file: str,
-            save_path: str,
-            partition: list) -> None:
+def retrain(
+    seed: int,
+    subset_ratio: float,
+    config_path: str,
+    dataset_path: str,
+    dataset_file: str,
+    save_path: str,
+    partition: list,
+) -> None:
     """Retrains the nanoGPT model multiple times.
 
     Args:
@@ -27,16 +29,17 @@ def retrain(seed: int,
         save_path (str): Directory where each model output is saved.
         partition (list): Range of data subsets, [start_id, end_id, total_subsets].
     """
-    if not os.path.exists(os.path.join(dataset_path, "meta.pkl")):
-        os.chdir(dataset_path)
+    if not Path.exists(Path(dataset_path) / "meta.pkl"):
         if dataset_file is not None:
-            command = f"python prepare.py --data_file {dataset_file}"
+            command = f"python {Path(dataset_path) / 'prepare.py'} \
+                        --data_file {dataset_file}"
         else:
-            command = f"python prepare.py"
+            command = f"python {Path(dataset_path) / 'prepare.py'}"
         subprocess.run(command, shell=True)
 
     import dattri
-    os.chdir(os.path.join(os.path.dirname(dattri.__file__), Path("benchmark/models/nanoGPT")))
+
+    os.chdir(Path(dattri.__file__).parent / Path("benchmark/models/nanoGPT"))
     config = Path(config_path).read_text(encoding="utf-8").splitlines()
 
     start_id, end_id, total_num = partition
@@ -62,8 +65,8 @@ def retrain(seed: int,
                 modified_config.append(f"dataset_path = '{dataset_path}'\n")
             else:
                 modified_config.append(line)
-        modified_config.append(f"dataset_path = '{str(dataset_path)}'\n")
-        
+        modified_config.append(f"dataset_path = '{dataset_path!s}'\n")
+
         temp_config_path = Path(tempfile.mktemp())
         temp_config_path.write_text("\n".join(modified_config), encoding="utf-8")
         command = f"python train.py {temp_config_path}"
@@ -76,35 +79,62 @@ def retrain(seed: int,
 def main() -> None:
     """Main function to parse arguments and call the retraining function."""
     parser = argparse.ArgumentParser(
-        description="Retrain models with different configurations.")
-    parser.add_argument("--save_path", type=str, default="output_models",
-                        help="The path to save the retrained model.")
-    parser.add_argument("--data_path", type=str,
-                        default="./dataset/shakespeare_char",
-                        help="Path to the dataset.")
-    parser.add_argument("--data_file", type=str,
-                        default="TinyStoriesV2-GPT4-train.txt",
-                        help="Path to the tinystories dataset.")
-    parser.add_argument("--config_path", type=str,
-                        default="./models/nanoGPT/config/train_shakespeare_char.py",
-                        help="Path to the training configuration file.")
-    parser.add_argument("--seed", type=int, default=42,
-                        help="The seed for retraining.")
-    parser.add_argument("--partition", type=int, nargs=3,
-                        default=[0, 5, 5],
-                        help="Partition for retraining, format in [start, end, total].")
-    parser.add_argument("--subset_ratio", type=float, default=0.5,
-                        help="Subset ratio of the training data.")
+        description="Retrain models with different configurations.",
+    )
+    parser.add_argument(
+        "--save_path",
+        type=str,
+        default="output_models",
+        help="The path to save the retrained model.",
+    )
+    parser.add_argument(
+        "--dataset",
+        type=str,
+        default="shakespeare_char",
+        help="The dataset to be retrained. Choose from\
+                        ['shakespeare_char', 'tinystories'].",
+    )
+    parser.add_argument(
+        "--data_file",
+        type=str,
+        default="TinyStoriesV2-GPT4-train.txt",
+        help="(optional) Path to the tinystories dataset.",
+    )
+    parser.add_argument("--seed", type=int, default=42, help="The seed for retraining.")
+    parser.add_argument(
+        "--partition",
+        type=int,
+        nargs=3,
+        default=[0, 5, 5],
+        help="Partition for retraining, format in [start, end, total].",
+    )
+    parser.add_argument(
+        "--subset_ratio",
+        type=float,
+        default=0.5,
+        help="Subset ratio of the training data.",
+    )
 
     args = parser.parse_args()
 
-    retrain(args.seed,
-            args.subset_ratio,
-            args.config_path,
-            args.data_path,
-            args.data_file,
-            args.save_path,
-            args.partition)
+    import dattri
+
+    args.config_path = Path(dattri.__file__).parent / Path(
+        f"benchmark/models/nanoGPT/config/train_{args.dataset}.py",
+    )
+    args.data_path = Path(dattri.__file__).parent / Path(
+        f"benchmark/datasets/{args.dataset}",
+    )
+
+    retrain(
+        args.seed,
+        args.subset_ratio,
+        args.config_path,
+        args.data_path,
+        args.data_file,
+        args.save_path,
+        args.partition,
+    )
 
 
 if __name__ == "__main__":
