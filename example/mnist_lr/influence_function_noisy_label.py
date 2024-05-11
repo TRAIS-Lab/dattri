@@ -6,7 +6,7 @@ from torch.utils.data import Sampler
 from torchvision import datasets, transforms
 
 from dattri.algorithm.influence_function import IFAttributor
-from dattri.benchmark.mnist import train_mnist_lr
+from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.benchmark.utils import flip_label
 from dattri.func.utils import flatten_func
 
@@ -71,14 +71,19 @@ if __name__ == "__main__":
     attributor = IFAttributor(
         target_func=f,
         params=model_params,
-        ihvp_solver="explicit",
+        ihvp_solver="cg",
         ihvp_kwargs={"regularization": 1e-3},
         device=torch.device("cuda"),
     )
 
     attributor.cache(train_loader_full)
-    score = attributor.attribute(train_loader, test_loader).diag()
+    torch.cuda.reset_peak_memory_stats("cuda")
+    with torch.no_grad():
+        score = attributor.attribute(train_loader, test_loader).diag()
+    peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
+    print(f"Peak memory usage: {peak_memory} MB")
 
+    print(score.shape)
     _, indices = torch.sort(-score)
 
     cr = 0

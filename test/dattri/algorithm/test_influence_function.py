@@ -5,7 +5,7 @@ from torch import nn
 from torch.utils.data import TensorDataset
 
 from dattri.algorithm.influence_function import IFAttributor
-from dattri.benchmark.mnist import train_mnist_lr
+from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.func.utils import flatten_func
 
 

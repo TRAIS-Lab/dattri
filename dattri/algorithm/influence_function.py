@@ -91,6 +91,8 @@ class IFAttributor(BaseAttributor):
         self,
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
+        train_gradient_batch_size: Optional[int] = None,
+        test_gradient_batch_size: Optional[int] = None,
     ) -> torch.Tensor:
         """Calculate the influence of the training set on the test set.
 
@@ -103,10 +105,21 @@ class IFAttributor(BaseAttributor):
             test_dataloader (torch.utils.data.DataLoader): The dataloader for
                 test samples to calculate the influence. The dataloader should not\
                 be shuffled.
+            train_gradient_batch_size (int): The batch size for calculating the
+                gradient of the training set. Default is None, which means the
+                length of the training dataloader. The less the batch size, the
+                more memory efficient, while more time consuming.
+            test_gradient_batch_size (int): The batch size for calculating the
+                gradient of the test set. Default is None, which means the length
+                of the test dataloader. The less the batch size, the
+                more memory efficient, while more time consuming.
 
         Returns:
             torch.Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
+
+        Raises:
+            ValueError: If the batch size of the train and test dataloader is not 1.
         """
         super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
@@ -118,42 +131,83 @@ class IFAttributor(BaseAttributor):
                 stacklevel=1,
             )
 
+        if train_dataloader.batch_size != 1 or test_dataloader.batch_size != 1:
+            message = "The batch size of the train_dataloader\
+                        and test_dataloader should be 1."
+            raise ValueError(message)
+
         _check_shuffle(train_dataloader)
         _check_shuffle(test_dataloader)
 
-        # calculate gradient of training set
-        grad_train = []
-        for data in tqdm(
+        # TODO: the batch size should be set automatically.
+        if train_gradient_batch_size is None:
+            train_gradient_batch_size = len(train_dataloader)
+        if test_gradient_batch_size is None:
+            test_gradient_batch_size = len(test_dataloader)
+
+        score = []
+        grad_train_iter_list = []
+        grad_train_counter = 0
+        # TODO: sometimes the train dataloader could be swapped with the test dataloader
+        for train_data in tqdm(
             train_dataloader,
             desc="calculating gradient of training set...",
             leave=False,
         ):
-            loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
-            grad_train.append(self.grad_func(self.params, loader))
-        grad_train = torch.stack(grad_train, dim=0)
-
-        # calculate gradient of test set
-        grad_test = []
-        for data in tqdm(
-            test_dataloader,
-            desc="calculating gradient of test set...",
-            leave=False,
-        ):
-            loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
-            grad_test.append(self.grad_func(self.params, loader))
-        grad_test = torch.stack(grad_test, dim=0)
-
-        # calculate ihvp
-        ihvp = 0
-        for data in tqdm(
-            self.full_train_dataloader,
-            desc="calculating ihvp...",
-            leave=False,
-        ):
-            loader = list(zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)))
-            self.ihvp_func = self.ihvp_solver(
-                partial(self.target_func, dataloader=loader),
+            # TODO: currently, vmap is not used for the gradient calculation
+            train_loader = list(
+                zip(*tuple(x.to(self.device).unsqueeze(0) for x in train_data)),
             )
-            ihvp += self.ihvp_func((self.params,), grad_test).detach()
+            grad_train_iter_list.append(self.grad_func(self.params, train_loader))
+            grad_train_counter += 1
+            if len(
+                grad_train_iter_list,
+            ) < train_gradient_batch_size and grad_train_counter < len(
+                train_dataloader,
+            ):
+                continue
+            grad_train_iter = torch.stack(grad_train_iter_list, dim=0)
+            grad_train_iter_list = []
 
-        return grad_train @ ihvp.T
+            influence_train_iter_list = []
+            grad_test_iter_list = []
+            grad_test_counter = 0
+            for test_data in tqdm(
+                test_dataloader,
+                desc="calculating gradient of test set...",
+                leave=False,
+            ):
+                # TODO: currently, vmap is not used for the gradient calculation
+                test_loader = list(
+                    zip(*tuple(x.to(self.device).unsqueeze(0) for x in test_data)),
+                )
+                grad_test_iter_list.append(self.grad_func(self.params, test_loader))
+                grad_test_counter += 1
+                if len(
+                    grad_test_iter_list,
+                ) < test_gradient_batch_size and grad_test_counter < len(
+                    test_dataloader,
+                ):
+                    continue
+                grad_test_iter = torch.stack(grad_test_iter_list, dim=0)
+                grad_test_iter_list = []
+
+                ihvp = 0
+                for data in tqdm(
+                    self.full_train_dataloader,
+                    desc="calculating ihvp...",
+                    leave=False,
+                ):
+                    loader = list(
+                        zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)),
+                    )
+                    self.ihvp_func = self.ihvp_solver(
+                        partial(self.target_func, dataloader=loader),
+                    )
+                    ihvp += self.ihvp_func((self.params,), grad_test_iter).detach()
+
+                influence_train_iter_list.append(grad_train_iter @ ihvp.T)
+
+            score.append(torch.cat(influence_train_iter_list, dim=1))
+
+        return torch.cat(score, dim=0)
