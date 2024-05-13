@@ -217,6 +217,57 @@ def hvp_at_x(
     return _hvp_at_x_func
 
 
+def ihvp_explicit(
+    func: Callable,
+    argnums: int = 0,
+    regularization: float = 0.0,
+) -> Callable:
+    """IHVP via explicit Hessian calculation.
+
+    IHVP stands for inverse-hessian-vector product. For a given function
+    `func`, this method first calculates the Hessian matrix explicitly
+    and then wraps the Hessian in a function that uses `torch.linalg.solve` to
+    calculate the IHVP for any given vector.
+
+    Args:
+        func (Callable): A function taking one or more arguments and returning
+            a single-element Tensor. The Hessian will be calculated based on
+            this function.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian matrix. This is useful when the Hessian
+            matrix is singular or ill-conditioned. The regularization term is
+            `regularization * I`, where `I` is the identity matrix directly added
+            to the Hessian matrix.
+
+    Returns:
+        A function that takes a tuple of Tensor `x` and a vector `v` and returns
+        the IHVP of the Hessian of `func` and `v`.
+    """
+    hessian_func = hessian(func, argnums=argnums)
+
+    def _ihvp_explicit_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+        """The IHVP function using explicit hessian.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse hessian matrix with respect to these arguments.
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        hessian_tensor = hessian_func(*x)
+        return torch.linalg.solve(
+            hessian_tensor
+            + torch.eye(hessian_tensor.shape[0]).to(v.device) * regularization,
+            v.T,
+        ).T
+
+    return _ihvp_explicit_func
+
+
 def ihvp_at_x_explicit(
     func: Callable,
     *x,
