@@ -44,6 +44,7 @@ class BaseAttributor(ABC):
         self,
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
+
     ) -> torch.Tensor:
         """Attribute the influence of the training data on the test data.
 
