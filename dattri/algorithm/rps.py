@@ -13,11 +13,15 @@ if TYPE_CHECKING:
 
 import warnings
 
-from dattri.algorithm.utils import finetune_theta, get_rps_weight, rps_corr_check
+from dattri.algorithm.utils import (
+    _check_shuffle,
+    finetune_theta,
+    get_rps_weight,
+    rps_corr_check,
+)
 from dattri.model_utils.hook import get_final_layer_io
 
 from .base import BaseAttributor
-from .utils import _check_shuffle
 
 
 class RPSAttributor(BaseAttributor):
