@@ -1,4 +1,4 @@
-"""This module implement the influence function."""
+"""This module implement TracIn."""
 
 from __future__ import annotations
 
