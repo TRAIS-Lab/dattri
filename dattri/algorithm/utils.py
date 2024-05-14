@@ -11,7 +11,7 @@ from scipy.stats import pearsonr
 from torch import Tensor, optim
 from torch.autograd import Variable
 from torch.func import grad
-from torch.utils.data import RandomSampler
+
 
 
 def _check_shuffle(dataloader: torch.utils.data.DataLoader) -> None:
@@ -27,7 +27,6 @@ def _check_shuffle(dataloader: torch.utils.data.DataLoader) -> None:
                         calculation could not be interpreted in order.",
             stacklevel=1,
         )
-
 
 # The function is adapted from https://github.com/chihkuanyeh/Representer_Point_Selection/blob/master/compute_representer_vals.py
 # used by RPSAttributor
