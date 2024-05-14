@@ -19,7 +19,7 @@ from torch.nn.functional import normalize
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
-from .utlis import _check_shuffle
+from .utils import _check_shuffle
 
 
 class TracInAttributor(BaseAttributor):
