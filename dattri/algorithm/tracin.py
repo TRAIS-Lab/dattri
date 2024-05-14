@@ -135,7 +135,7 @@ class TracInAttributor(BaseAttributor):
                     )
 
                     train_batch_grad = self.train_random_project(
-                        self.grad_func(params, train_batch_data)
+                        self.grad_func(params, train_batch_data),
                     )
                 else:
                     train_batch_grad = self.grad_func(params, train_batch_data)
@@ -154,7 +154,7 @@ class TracInAttributor(BaseAttributor):
                         )
 
                         test_batch_grad = self.test_random_project(
-                            self.grad_func(params, test_batch_data)
+                            self.grad_func(params, test_batch_data),
                         )
                     else:
                         test_batch_grad = self.grad_func(params, test_batch_data)
