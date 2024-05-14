@@ -64,7 +64,6 @@ class TestTracInAttributor:
             projector_kwargs=projector_kwargs,
             device=torch.device(pytest_device),
         )
-        attributor.cache(train_loader)
         score = attributor.attribute(train_loader, test_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
@@ -112,7 +111,6 @@ class TestTracInAttributor:
             weight_list=torch.ones(len(params_list)),
             device=torch.device(pytest_device),
         )
-        attributor.cache(train_loader)
         score = attributor.attribute(train_loader, test_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
