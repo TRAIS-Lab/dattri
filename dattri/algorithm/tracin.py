@@ -65,12 +65,16 @@ class TracInAttributor(BaseAttributor):
         # these are projector kwargs shared by train/test projector
         self.projector_kwargs = projector_kwargs
         # set proj seed
-        self.proj_seed = self.projector_kwargs.get("proj_seed", 0)
+        if projector_kwargs is not None:
+            self.proj_seed = self.projector_kwargs.get("proj_seed", 0)
         self.normalized_grad = normalized_grad
         self.device = device
         self.full_train_dataloader = None
         # to get per-sample gradients for a mini-batch of train/test samples
         self.grad_func = vmap(jacrev(self.target_func), in_dims=(None, 0))
+
+    def cache(self) -> None:
+        """Precompute and cache some values for efficiency."""
 
     def attribute(
         self,
