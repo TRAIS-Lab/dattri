@@ -176,15 +176,15 @@ class TracInAttributor(BaseAttributor):
                         len(test_dataloader.dataset),
                     )
 
-                    # insert the TDA score in corresponding position
+                    # accumulate the TDA score in corresponding positions (blocks)
                     if self.normalized_grad:
-                        tda_output[row_st:row_ed, col_st:col_ed] = (
+                        tda_output[row_st:row_ed, col_st:col_ed] += (
                             normalize(train_batch_grad)
                             @ normalize(test_batch_grad).T
                             * params_weight
                         )
                     else:
-                        tda_output[row_st:row_ed, col_st:col_ed] = (
+                        tda_output[row_st:row_ed, col_st:col_ed] += (
                             train_batch_grad @ test_batch_grad.T * params_weight
                         )
 
