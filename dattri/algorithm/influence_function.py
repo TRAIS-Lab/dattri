@@ -14,13 +14,17 @@ import torch
 from torch.func import grad
 from tqdm import tqdm
 
-from dattri.func.ihvp import ihvp_cg, ihvp_explicit
+from dattri.func.ihvp import ihvp_arnoldi, ihvp_cg, ihvp_explicit
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
-SUPPORTED_IHVP_SOLVER = {"explicit": ihvp_explicit, "cg": ihvp_cg}
+SUPPORTED_IHVP_SOLVER = {
+    "explicit": ihvp_explicit,
+    "cg": ihvp_cg,
+    "arnoldi": ihvp_arnoldi,
+}
 SUPPORTED_PROJECTOR = {None: None}
 
 
