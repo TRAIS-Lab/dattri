@@ -14,13 +14,17 @@ import torch
 from torch.func import grad
 from tqdm import tqdm
 
-from dattri.func.ihvp import ihvp_cg, ihvp_explicit
+from dattri.func.ihvp import ihvp_arnoldi, ihvp_cg, ihvp_explicit
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
-SUPPORTED_IHVP_SOLVER = {"explicit": ihvp_explicit, "cg": ihvp_cg}
+SUPPORTED_IHVP_SOLVER = {
+    "explicit": ihvp_explicit,
+    "cg": ihvp_cg,
+    "arnoldi": ihvp_arnoldi,
+}
 SUPPORTED_PROJECTOR = {None: None}
 
 
@@ -60,7 +64,7 @@ class IFAttributor(BaseAttributor):
                 TODO: This should be changed to support a list of parameters or
                     paths for ensembling and memory efficiency.
             ihvp_solver (str): The solver for inverse hessian vector product
-                calculation, currently we only support "explicit" and "cg".
+                calculation, currently we only support "explicit", "cg" and "arnoldi".
             ihvp_kwargs (dict): The keyword arguments for the ihvp solver.
             projector (str): The projector for the inverse hessian vector product.
                 Currently it is not supported.

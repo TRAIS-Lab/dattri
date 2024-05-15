@@ -211,7 +211,6 @@ def hvp_at_x(
                 v_patched = tuple(v_patched)
             else:
                 v_patched = (v,)
-
             return jvp(grad_func, x, v_patched)[1] + regularization * v
 
     return _hvp_at_x_func
@@ -625,6 +624,7 @@ def ihvp_at_x_arnoldi(
         n_iters: int,
         norm_constant: float,
         tol: float,
+        device: str = "cpu",
     ) -> Tuple[Tensor, Tensor]:
         """Applies Arnoldi's algorithm.
 
@@ -634,6 +634,7 @@ def ihvp_at_x_arnoldi(
             n_iters (int): The number of iteration.
             norm_constant (float): The norm normalization for each projection.
             tol (float): A tolerance value used to terminate iteration early.
+            device (str): The device to run the algorithm. Defaults to "cpu".
 
         Returns:
             The result of the Arnoldi Iteration, containing a Hessenberg
@@ -644,7 +645,7 @@ def ihvp_at_x_arnoldi(
         n_iters = min(start_vec.shape[0] + 1, n_iters)
 
         proj = []
-        appr_mat = torch.zeros((n_iters, n_iters - 1))
+        appr_mat = torch.zeros((n_iters, n_iters - 1)).to(device)
 
         start_vec /= torch.norm(start_vec)
         proj.append(start_vec)
@@ -720,9 +721,16 @@ def ihvp_at_x_arnoldi(
 
         if v.ndim == 1:
             v = v.unsqueeze(0)
-        v0 = torch.rand(v.shape[1])
+        v0 = torch.rand(v.shape[1]).to(v.device)
 
-        appr_mat, proj = _arnoldi_iter(hvp_at_x_func, v0, max_iter, norm_constant, tol)
+        appr_mat, proj = _arnoldi_iter(
+            hvp_at_x_func,
+            v0,
+            max_iter,
+            norm_constant,
+            tol,
+            v.device,
+        )
         eigvals, eigvecs = _distill(appr_mat, proj, top_k)
 
         return ((v @ eigvecs.T) * 1.0 / eigvals.unsqueeze(0)) @ eigvecs
