@@ -64,7 +64,7 @@ class IFAttributor(BaseAttributor):
                 TODO: This should be changed to support a list of parameters or
                     paths for ensembling and memory efficiency.
             ihvp_solver (str): The solver for inverse hessian vector product
-                calculation, currently we only support "explicit" and "cg".
+                calculation, currently we only support "explicit", "cg" and "arnoldi".
             ihvp_kwargs (dict): The keyword arguments for the ihvp solver.
             projector (str): The projector for the inverse hessian vector product.
                 Currently it is not supported.
