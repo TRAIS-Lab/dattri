@@ -2,10 +2,14 @@
 
 __all__ = [
     "LogisticRegressionMnist",
+    "MLPMnist",
     "create_lr_model",
+    "create_mlp_model",
     "create_mnist_dataset",
     "loss_mnist_lr",
+    "loss_mnist_mlp",
     "train_mnist_lr",
+    "train_mnist_mlp",
 ]
 
 from .data import create_mnist_dataset
@@ -15,3 +19,4 @@ from .mnist_lr import (
     loss_mnist_lr,
     train_mnist_lr,
 )
+from .mnist_mlp import MLPMnist, create_mlp_model, loss_mnist_mlp, train_mnist_mlp

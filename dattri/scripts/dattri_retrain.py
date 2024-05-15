@@ -16,13 +16,18 @@ from dattri.benchmark.datasets.imagenet import (
     create_imagenet_dataset,
     train_imagenet_resnet18,
 )
-from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
+from dattri.benchmark.datasets.mnist import (
+    create_mnist_dataset,
+    train_mnist_lr,
+    train_mnist_mlp,
+)
 from dattri.model_utils.retrain import retrain_lds, retrain_loo
 
 SUPPORTED_MODELS = ["lr", "resnet18"]
 
 SUPPORTED_SETTINGS = {
     "mnist_lr": train_mnist_lr,
+    "mnist_mlp": train_mnist_mlp,
     "imagenet_resnet18": train_imagenet_resnet18,
 }
 SUPPORTED_RETRAINING_MODE = {"loo": retrain_loo, "lds": retrain_lds}
@@ -30,7 +35,7 @@ SUPPORTED_DATASETS = {
     "mnist": create_mnist_dataset,
     "imagenet": create_imagenet_dataset,
 }
-DEFAULT_BATCH_SIZE = {"mnist_lr": 32, "imagenet_resnet18": 256}
+DEFAULT_BATCH_SIZE = {"mnist_lr": 32, "mnist_mlp": 64, "imagenet_resnet18": 256}
 
 
 def partition_type(arg: str) -> List[int]:
