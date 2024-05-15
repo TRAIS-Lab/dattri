@@ -16,6 +16,7 @@ def train_mnist_mlp(
     dataloader: torch.utils.data.DataLoader,
     seed: int = 0,
     device: str = "cpu",
+    epoch_num: int = 50,
 ) -> MLPMnist:
     """Train a MLP model on the MNIST dataset.
 
@@ -23,6 +24,7 @@ def train_mnist_mlp(
         dataloader: The dataloader for the MNIST dataset.
         seed: The seed for training the model.
         device: The device to train the model on.
+        epoch_num: The number of epochs to train the model.
 
     Returns:
         The trained MLP model.
@@ -33,11 +35,10 @@ def train_mnist_mlp(
 
     model = create_mlp_model("mnist")
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     model.train()
     model.to(device)
-    epoch_num = 50
     for _ in range(epoch_num):
         for inputs, labels in dataloader:
             optimizer.zero_grad()
