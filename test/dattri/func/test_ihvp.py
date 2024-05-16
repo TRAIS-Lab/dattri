@@ -10,7 +10,9 @@ from dattri.func.ihvp import (
     ihvp_at_x_arnoldi,
     ihvp_at_x_cg,
     ihvp_at_x_explicit,
+    ihvp_at_x_lissa,
     ihvp_cg,
+    ihvp_lissa,
 )
 from dattri.func.utils import flatten_func, flatten_params
 
@@ -253,3 +255,89 @@ class TestIHVP:
             rtol=1e-02,
             atol=1e-05,
         )
+
+    def test_ihvp_lissa(self):
+        """Test ihvp_lissa/ihvp_lissa_at_x."""
+
+        def mse_loss(xs, ys, theta):
+            return torch.mean((xs @ theta - ys)**2)
+
+        # Create data
+        data_size = (500, 2)
+        theta = torch.randn(2)
+        xs = torch.randn(data_size)
+        noise = torch.normal(mean=torch.tensor(0),
+                             std=torch.tensor(0.05),
+                             size=(data_size[0],))
+        ys = xs @ theta + noise
+        vec = torch.randn(1, 2)
+
+        ihvp_lissa_func = ihvp_lissa(mse_loss,
+                                     argnums=2,
+                                     num_repeat=100,
+                                     recursion_depth=100)
+
+        ihvp_lissa_at_x_func = ihvp_at_x_lissa(mse_loss,
+                                               *(xs, ys, theta),
+                                               in_dims=(0, 0, None),
+                                               argnums=2,
+                                               num_repeat=100,
+                                               recursion_depth=100)
+
+        ihvp_explicit_at_x_func = ihvp_at_x_explicit(mse_loss,
+                                                     *(xs, ys, theta),
+                                                     argnums=2)
+
+        # Set a larger tolerance for LiSSA
+        assert torch.allclose(ihvp_lissa_at_x_func(vec),
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)
+        assert torch.allclose(ihvp_lissa_func((xs, ys, theta),
+                                              vec,
+                                              in_dims=(0, 0, None)),
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)
+
+    def test_ihvp_lissa_batch_size(self):
+        """Test ihvp_lissa/ihvp_lissa_at_x with different batch sizes."""
+
+        def mse_loss(xs, ys, theta):
+            return torch.mean((xs @ theta - ys)**2)
+
+        # Create data
+        data_size = (500, 2)
+        theta = torch.randn(2)
+        xs = torch.randn(data_size)
+        noise = torch.normal(mean=torch.tensor(0),
+                            std=torch.tensor(0.05),
+                            size=(data_size[0],))
+        ys = xs @ theta + noise
+        vec = torch.randn(1, 2)
+
+        ihvp_lissa_func = ihvp_lissa(mse_loss,
+                                     argnums=2,
+                                     batch_size=4,
+                                     num_repeat=10,
+                                     recursion_depth=100)
+
+        ihvp_lissa_at_x_func = ihvp_at_x_lissa(mse_loss,
+                                               *(xs, ys, theta),
+                                               in_dims=(0, 0, None),
+                                               argnums=2,
+                                               batch_size=4,
+                                               num_repeat=10,
+                                               recursion_depth=100)
+
+        ihvp_explicit_at_x_func = ihvp_at_x_explicit(mse_loss,
+                                                     *(xs, ys, theta),
+                                                     argnums=2)
+
+        # Set a larger tolerance for LiSSA
+        assert torch.allclose(ihvp_lissa_at_x_func(vec),
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)
+        assert torch.allclose(ihvp_lissa_func((xs, ys, theta),
+                                              vec,
+                                              in_dims=(0, 0, None)),
+                              ihvp_explicit_at_x_func(vec),
+                              atol=0.08)
