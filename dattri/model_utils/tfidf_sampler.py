@@ -1,9 +1,8 @@
 """TF-IDF Subset Sampler Module.
 
-This module provides function called tfidf_subset_sampler
-to sample subsets based on TF-IDF similarity and save the filterd train data
-and return the indices of orignial train set.
-The indices in return value represent the indices of blocks.
+This module provides functions to sample subsets based on TF-IDF similarity,
+save the filtered train data, and return the indices of the original train set.
+The indices in the return value represent the indices of blocks.
 """
 
 # ruff: noqa: S301, S403
@@ -17,7 +16,18 @@ from sklearn.metrics.pairwise import cosine_similarity
 
 
 def load_data(data_path: str) -> tuple:
-    """Load metadata, training, and validation data."""
+    """Load metadata, training, and validation data.
+
+    Args:
+        data_path (str): Path to the data directory.
+
+    Returns:
+        tuple: A tuple containing metadata (dict), encoded training data (np.ndarray),
+               and encoded validation data (np.ndarray).
+
+    Raises:
+        ValueError: If the metadata is not in the expected format.
+    """
     data_path = Path(data_path)
     meta_path = data_path / "meta.pkl"
     train_bin_path = data_path / "train.bin"
@@ -36,18 +46,43 @@ def load_data(data_path: str) -> tuple:
 
 
 def decode_data(encoded_data: np.ndarray, itos: dict) -> str:
-    """Decode the encoded data using the provided itos mapping."""
+    """Decode the encoded data using the provided itos mapping.
+
+    Args:
+        encoded_data (np.ndarray): The encoded data array.
+        itos (dict): A dictionary mapping indices to characters.
+
+    Returns:
+        str: The decoded string.
+    """
     return "".join(itos[i] for i in encoded_data)
 
 
 def split_blocks(data: str, block_size: int) -> list:
-    """Split data into blocks of specified size."""
+    """Split data into blocks of specified size.
+
+    Args:
+        data (str): The input data string.
+        block_size (int): The size of each block.
+
+    Returns:
+        list: A list of data blocks.
+    """
     return [data[i:i + block_size]
         for i in range(0, len(data) - block_size, block_size)]
 
 
 def compute_similarity(train_blocks: list, val_block: str, subset_num: int) -> tuple:
-    """Compute cosine similarity between train blocks and a validation block."""
+    """Compute cosine similarity between train blocks and a validation block.
+
+    Args:
+        train_blocks (list): A list of training data blocks.
+        val_block (str): The validation data block.
+        subset_num (int): The number of top similar blocks to return.
+
+    Returns:
+        tuple: A tuple containing the selected indices and the training blocks.
+    """
     vectorizer = TfidfVectorizer()
     train_tfidf_matrix = vectorizer.fit_transform(train_blocks)
     val_tfidf = vectorizer.transform([val_block])
@@ -67,6 +102,9 @@ def tfidf_subset_sampler(data_path: str,
         val_block_position (int): Position index of the validation block.
         block_size (int): Size of each text block.
         subset_num (int): Number of top similar blocks to return.
+
+    Returns:
+        list: A list of indices representing the selected similar training blocks.
     """
     meta, encoded_train_data, encoded_val_data = load_data(data_path)
     itos = meta["itos"]
