@@ -16,7 +16,8 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Tuple, Union
+    from typing import Optional, Tuple, Union
+
 
 import torch
 from torch import Tensor
@@ -736,6 +737,237 @@ def ihvp_at_x_arnoldi(
         return ((v @ eigvecs.T) * 1.0 / eigvals.unsqueeze(0)) @ eigvecs
 
     return _ihvp_at_x_arnoldi
+
+
+def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
+    """Check and return the size of input data.
+
+    Args:
+        *x: List of arguments to check. Each argument shoule be either:
+            1. A tensor with a batch size dimension. Each data point i
+            will take the i-th element along this dimension.
+            2. A tensor without a batch size dimension. Each data point will
+            share this tensor.
+        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
+            which dimension should be considered as batch size dimension. Take the
+            first dimension as batch size dimension by default.
+
+    Returns:
+        An integer indicating the number of input data.
+
+    Raises:
+        IHVPUsageError: if the input size is ambiguous or mismatches.
+    """
+    if in_dims is None:
+        in_dims = (0,) * len(x)
+
+    # Check batch size mismatch
+    batch_size = None
+    for i, (x_in, dim) in enumerate(zip(x, in_dims)):
+        if dim is None:
+            continue
+
+        if batch_size is None:
+            batch_size = x_in.shape[dim]
+        elif batch_size != x_in.shape[dim]:
+            message = (f"Input batch size mismatch! Expected {batch_size},"
+                       f"found {x_in.shape[dim]} for input tensor {i}.")
+            raise IHVPUsageError(message)
+
+    if batch_size is None:
+        message = "All inputs are identical for LiSSA ihvp!"
+        raise IHVPUsageError(message)
+
+    return batch_size
+
+
+def _sample_random_batch(*x,
+                         num_samples: int,
+                         in_dims: Optional[Tuple] = None,
+                         batch_size: int = 1) -> Tuple[torch.Tensor, ...]:
+    """Randomly sample a batch of `batch_size` from the input data, without replacement.
+
+    Args:
+        *x: List of arguments to check. Each argument shoule be either:
+            1. A tensor with a batch size dimension. Each data point i
+            will take the i-th element along this dimension.
+            2. A tensor without a batch size dimension. Each data point will
+            share this tensor.
+        num_samples (int): An integer, indicating the total number of samples.
+        batch_size (int): An integer default to 1, indicating the batch size.
+        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
+            which dimension should be considered as batch size dimension. Take the
+            first dimension as batch size dimension by default.
+
+    Returns:
+        An tuple of tensors corresponding to a batch of input data.
+    """
+    if in_dims is None:
+        in_dims = (0,) * len(x)
+
+    # Randomly sample and collate a batch
+    sampled_indices = torch.randperm(num_samples)[:batch_size]
+
+    return tuple(
+        x_in.index_select(dim, sampled_indices)
+        if dim is not None else x_in
+        for x_in, dim in zip(x, in_dims)
+    )
+
+
+def ihvp_lissa(func: Callable,
+               argnums: int = 0,
+               batch_size: int = 1,
+               num_repeat: int = 1,
+               recursion_depth: int = 5000,
+               damping: int = 0.0,
+               scaling: int = 50.0,
+               mode: str = "rev-rev") -> Callable:
+    """IHVP via LiSSA algorithm.
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    LiSSA algorithm approximates the ihvp function by averaging multiple samples.
+    The samples are estimated by recursion based on Taylor expansion.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be estimated on this function.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        batch_size (int): An integer default to 1. Specifies the batch size used
+            for LiSSA inner loop update.
+        num_repeat (int): An integer default to 1. Specifies the number of samples
+            of the hvp approximation to average on.
+        recursion_depth (int): A integer default to 5000. Specifies the number of
+            recursions used to estimate each ihvp sample.
+        damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
+        scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
+    Returns:
+        A function that takes a list of tuples of Tensor `x` and a vector `v` and
+        returns the IHVP of the Hessian of `func` and `v`.
+    """
+    hvp_func = hvp(func, argnums=argnums, mode=mode)
+
+    def _ihvp_lissa_func(x: Tuple[torch.Tensor, ...],
+                         v: Tensor,
+                         in_dims: Optional[Tuple] = None) -> Tensor:
+        """The IHVP function via LiSSA algorithm.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse hessian matrix with respect to these arguments.
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+            in_dims (Optional[Tuple]): A tuple with the same shape as *x. Indicating
+                which dimension should be considered as batch size dimension.
+
+        Returns:
+            The IHVP value.
+        """
+        num_samples = _check_input_size(*x, in_dims=in_dims)
+        if v.ndim == 1:
+            v = v.unsqueeze(0)
+
+        def _lissa_loop(vec: torch.Tensor) -> torch.Tensor:
+            ihvp_estimations = []
+            for _ in range(num_repeat):
+                curr_estimate = vec.detach().clone()  # No gradient on v
+                for _ in range(recursion_depth):
+                    sampled_input = _sample_random_batch(*x,
+                                                         batch_size=batch_size,
+                                                         num_samples=num_samples,
+                                                         in_dims=in_dims)
+                    hvp = hvp_func(sampled_input, curr_estimate)
+                    curr_estimate = (vec
+                                     + (1 - damping) * curr_estimate
+                                     - hvp / scaling)
+
+                ihvp_estimations.append(curr_estimate / scaling)
+
+            return torch.mean(torch.stack(ihvp_estimations), dim=0)
+
+        return torch.vmap(_lissa_loop, randomness="different")(v)
+
+    return _ihvp_lissa_func
+
+
+def ihvp_at_x_lissa(func: Callable,
+                    *x,
+                    in_dims: Optional[Tuple] = None,
+                    argnums: int = 0,
+                    batch_size: int = 1,
+                    num_repeat: int = 1,
+                    recursion_depth: int = 5000,
+                    damping: int = 0.0,
+                    scaling: int = 50.0,
+                    mode: str = "rev-rev") -> Callable:
+    """IHVP with fixed func inputs via LiSSA algorithm.
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    LiSSA algorithm approximates the ihvp function by averaging multiple samples.
+    The samples are estimated by recursion based on Taylor expansion.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be estimated on this function.
+        *x: List of arguments for `func`.
+        in_dims (Optional[Tuple]): A tuple with the same shape as *x, indicating
+            which dimension should be considered as batch size dimension. Take the
+            first dimension as batch size dimension by default.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        batch_size (int): An integer default to 1. Specifies the batch size used
+            for LiSSA inner loop update.
+        num_repeat (int): An integer default to 1. Specifies the number of samples
+            of the hvp approximation to average on.
+        recursion_depth (int): A integer default to 5000. Specifies the number of
+            recursions used to estimate each ihvp sample.
+        damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
+        scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
+        mode (str): The auto diff mode, which can have one of the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+
+    Returns:
+        A function that takes a vector `v` and returns the IHVP of the Hessian
+        of `func` and `v`.
+    """
+
+    def _ihvp_at_x_lissa_func(v: Tensor) -> Tensor:
+        """The IHVP function with fixed func inputs using LiSSA.
+
+        Args:
+            v (Tensor): The vector to be produced on the inverse hessian matrix.
+
+        Returns:
+            The IHVP value.
+        """
+        ihvp_lissa_func = ihvp_lissa(func,
+                                     argnums,
+                                     num_repeat,
+                                     batch_size,
+                                     recursion_depth,
+                                     damping,
+                                     scaling,
+                                     mode)
+        return ihvp_lissa_func(x, v, in_dims=in_dims)
+
+    return _ihvp_at_x_lissa_func
 
 
 class IHVPUsageError(Exception):
