@@ -28,7 +28,6 @@ class TestMaestro:
         """Test train_maestro_musictransformer."""
         model = train_maestro_musictransformer(
             self.train_dataloader,
-            self.train_dataloader,
             num_epoch=1,
         )
         assert isinstance(model, torch.nn.Module)
@@ -36,7 +35,6 @@ class TestMaestro:
     def test_loss_maestro_musictransformer(self):
         """Test loss_maestro_musictransformer."""
         model = train_maestro_musictransformer(
-            self.train_dataloader,
             self.train_dataloader,
             num_epoch=1,
         )
