@@ -9,7 +9,7 @@ from dattri.benchmark.models.MusicTransformer.dataset.e_piano import compute_epi
 
 
 # train_epoch
-def train_epoch(cur_epoch, model, dataloader, loss, opt, lr_scheduler=None, print_modulus=1):
+def train_epoch(cur_epoch, model, dataloader, loss, opt, lr_scheduler=None, print_modulus=1, device="cpu"):
     """
     ----------
     Author: Damon Gwinn

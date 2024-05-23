@@ -6,6 +6,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from dattri.benchmark.models.MusicTransformer.utilities.device import get_device
+
 if TYPE_CHECKING:
     from typing import Tuple
 
@@ -27,9 +29,6 @@ from dattri.benchmark.models.MusicTransformer.utilities.constants import (
     LR_DEFAULT_START,
     SCHEDULER_WARMUP_STEPS,
     TOKEN_PAD,
-)
-from dattri.benchmark.models.MusicTransformer.utilities.device import (
-    get_device,
 )
 from dattri.benchmark.models.MusicTransformer.utilities.lr_scheduling import (
     LrStepTracker,
@@ -102,19 +101,18 @@ def create_optimizer_and_scheduler(
 # main
 def train_maestro_musictransformer(
     train_dataloader: DataLoader,
-    val_dataloader: DataLoader,
     seed: int = 0,
     num_epoch: int = EPOCHS,
+    device: str = "cpu",
 ) -> MusicTransformer:
     """Train a MusicTransformer on the MAESTRO dataset.
 
     Args:
         train_dataloader (DataLoader): The dataloader to train
             on MAESTRO dataset.
-        val_dataloader (DataLoader): The dataloader to validate
-            on MAESTRO dataset.
         seed (int): The seed to train the model.
         num_epoch (int): The number of epochs to train the model.
+        device: The device to evaluate the model on.
 
     Returns:
         The trained MusicTransformer model.
@@ -172,11 +170,13 @@ def train_maestro_musictransformer(
                 opt,
                 lr_scheduler,
                 PRINT_MODOLUS,
+                device,
             )
 
         # Eval
         # removed train_loss, train_acc
-        eval_loss, eval_acc = eval_model(model, val_dataloader, eval_loss_func)
+        # evaluate on train_dataloader instead
+        eval_loss, eval_acc = eval_model(model, train_dataloader, eval_loss_func)
 
         # Learn rate
         # Removed lr = get_lr(opt)
