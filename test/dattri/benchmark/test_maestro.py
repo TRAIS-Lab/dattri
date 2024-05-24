@@ -32,7 +32,7 @@ class TestMaestro:
 
     def test_train_maestro_musictransformer(self):
         """Test train_maestro_musictransformer."""
-        model = train_maestro_musictransformer(self.test_dataloader, device="cuda")
+        model = train_maestro_musictransformer(self.test_dataloader, device="cpu")
         assert isinstance(model, torch.nn.Module)
 
     def test_loss_maestro_musictransformer(self):
@@ -40,7 +40,7 @@ class TestMaestro:
         model = train_maestro_musictransformer(
             self.train_dataloader,
             num_epoch=1,
-            device="cuda",
+            device="cpu",
         )
         torch.save(model.state_dict(), "test_model.pt")
         loss = loss_maestro_musictransformer("test_model.pt", self.test_dataloader)
