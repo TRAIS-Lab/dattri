@@ -1,18 +1,25 @@
 """Unit test for ihvp calculator."""
 
+import types
+
+import numpy as np
 import torch
 from torch.func import vmap
 
 from dattri.func.ihvp import (
+    KEY,
+    MLPCache,
     hvp,
     hvp_at_x,
     ihvp_arnoldi,
     ihvp_at_x_arnoldi,
     ihvp_at_x_cg,
+    ihvp_at_x_ekfac,
     ihvp_at_x_explicit,
     ihvp_at_x_lissa,
     ihvp_cg,
     ihvp_lissa,
+    manual,
 )
 from dattri.func.utils import flatten_func, flatten_params
 
@@ -341,3 +348,80 @@ class TestIHVP:
                                               in_dims=(0, 0, None)),
                               ihvp_explicit_at_x_func(vec),
                               atol=0.08)
+
+    def test_ihvp_lissa_batch_size(self):
+        """Test ihvp_ekfac_at_x."""
+        dim_in, dim_out = 100, 1
+        sample_size = 5000
+
+        class LinearModel(torch.nn.Module):
+            def __init__(self) -> None:
+                super(LinearModel, self).__init__()
+                self.linear = torch.nn.Linear(dim_in, dim_out, bias=False)
+
+            def forward(self, x: torch.Tensor) -> torch.Tensor:
+                x = x.view(x.shape[0], -1)
+                return self.linear(x)
+
+        @manual
+        def custom_forward_method(self, hidden_states):
+            if not hasattr(self, KEY):
+                # Normal forward pass
+                hidden_states = hidden_states.view(hidden_states.shape[0], -1)
+                return self.linear(hidden_states)
+
+            # Forward pass with caching i/o variables
+            cache = getattr(self, KEY)
+            x1 = hidden_states.view(hidden_states.shape[0], -1)
+            y1 = self.linear(x1)
+            cache.input_hidden_pairs.append((x1, y1))
+            return y1
+
+        model = LinearModel()
+        model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+
+        x = torch.randn(sample_size, dim_in)
+        y = torch.randn(sample_size, dim_out)
+        v = torch.randn(dim_out, dim_in)
+
+        @flatten_func(model, param_num=0)
+        def f(params):
+            logits = torch.func.functional_call(model, params, x)
+            return torch.mean((logits - y)**2)
+
+        @flatten_func(model, param_num=0)
+        def f_ekfac(params, x, y):
+            # The custom function should zero out gradient
+            with torch.no_grad():
+                for param in model.parameters():
+                    if param.grad is not None:
+                        param.grad.zero_()
+
+            logits = torch.func.functional_call(model, params, x)
+            return torch.mean((logits - y)**2, dim=-1)
+
+        ihvp_explicit_at_x_func = ihvp_at_x_explicit(
+            f,
+            flatten_params(model_params),
+            argnums=0,
+        )
+
+        ground_truth = ihvp_explicit_at_x_func(v.flatten())
+
+        model.forward = types.MethodType(custom_forward_method, model)
+        cache = MLPCache()
+        setattr(model, KEY, cache)
+
+        ihvp_at_x_ekfac_func = ihvp_at_x_ekfac(f_ekfac,
+                                               *(flatten_params(model_params),
+                                                 x, y),
+                                               in_dims=(None, 0, 0),
+                                               mlp_cache=cache,
+                                               batch_size=128,
+                                               damping=0.1)
+
+        estimation = ihvp_at_x_ekfac_func([[v]])[0][0].flatten()
+        corr = np.corrcoef(ground_truth.cpu().detach().numpy(),
+                           estimation.cpu().detach().numpy())[0, 1]
+
+        assert corr > 0.95
