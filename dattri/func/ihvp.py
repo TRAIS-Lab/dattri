@@ -1191,7 +1191,7 @@ def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
             # t = 1 if the given input is not sequential
             ds_curr = s_curr.grad
 
-            if a_prev.dim() == 2:  # noqa: PLR2004
+            if a_prev.ndim == 2:  # noqa: PLR2004
                 a_prev_reshaped = a_prev_masked.unsqueeze(1)
                 ds_curr_reshaped = ds_curr.unsqueeze(1)
             else:

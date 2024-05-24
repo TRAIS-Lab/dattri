@@ -349,7 +349,7 @@ class TestIHVP:
                               ihvp_explicit_at_x_func(vec),
                               atol=0.08)
 
-    def test_ihvp_lissa_batch_size(self):
+    def test_ihvp_ekfac(self):
         """Test ihvp_ekfac_at_x."""
         dim_in, dim_out = 100, 1
         sample_size = 5000
@@ -382,7 +382,7 @@ class TestIHVP:
 
         x = torch.randn(sample_size, dim_in)
         y = torch.randn(sample_size, dim_out)
-        v = torch.randn(dim_out, dim_in)
+        v = torch.randn(5, dim_out, dim_in)
 
         @flatten_func(model, param_num=0)
         def f(params):
@@ -406,7 +406,7 @@ class TestIHVP:
             argnums=0,
         )
 
-        ground_truth = ihvp_explicit_at_x_func(v.flatten())
+        ground_truth = ihvp_explicit_at_x_func(v.reshape(5, -1))
 
         model.forward = types.MethodType(custom_forward_method, model)
         cache = MLPCache()
@@ -420,8 +420,8 @@ class TestIHVP:
                                                batch_size=128,
                                                damping=0.1)
 
-        estimation = ihvp_at_x_ekfac_func([[v]])[0][0].flatten()
-        corr = np.corrcoef(ground_truth.cpu().detach().numpy(),
-                           estimation.cpu().detach().numpy())[0, 1]
-
-        assert corr > 0.95
+        estimation = ihvp_at_x_ekfac_func([[v]])[0][0]
+        for i in range(5):
+            corr = np.corrcoef(ground_truth[i].detach().numpy(),
+                               estimation[i].detach().numpy())[0, 1]
+            assert corr > 0.95
