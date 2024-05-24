@@ -48,7 +48,7 @@ if __name__ == "__main__":
     flip_index = get_cifar_indices_and_adjust_labels(train_dataset, range(1000))
 
     # simulate checkpoints
-    model_1 = train_cifar2_resnet9(train_loader, device="cuda", num_epochs=50)
+    model_1 = train_cifar2_resnet9(train_loader, device="cuda", num_epochs=20)
 
     # only need one model definition
     model_1.cuda()
@@ -69,7 +69,7 @@ if __name__ == "__main__":
         target_func=f,
         params_list=[model_params_1],
         weight_list=torch.tensor([0.01]),
-        normalized_grad=False,
+        normalized_grad=True,
         device=torch.device("cuda"),
     )
 
