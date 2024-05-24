@@ -85,4 +85,5 @@ def create_cifar2_dataset(
     test_dataset.targets = [
         full_test_dataset.targets[idx] for idx in cifar2_indices_test
     ]
+
     return train_dataset, test_dataset
