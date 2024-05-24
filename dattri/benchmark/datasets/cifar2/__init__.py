@@ -13,4 +13,3 @@ from .cifar2_resnet9 import (
     train_cifar2_resnet9,
 )
 from .data import create_cifar2_dataset
-
