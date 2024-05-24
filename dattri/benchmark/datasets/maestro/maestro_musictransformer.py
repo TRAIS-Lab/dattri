@@ -6,8 +6,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dattri.benchmark.models.MusicTransformer.utilities.device import get_device
-
 if TYPE_CHECKING:
     from typing import Tuple
 
@@ -133,8 +131,9 @@ def train_maestro_musictransformer(
     # Removed this session as we make dataset as input to the function
 
     # Model #####
-    model = create_musictransformer_model()
+    model = create_musictransformer_model(device)
     model.train()
+    model.to(device)
     # Lr Scheduler and Optimizer #####
     opt, lr_scheduler = create_optimizer_and_scheduler(model, train_dataloader)
 
@@ -168,15 +167,20 @@ def train_maestro_musictransformer(
                 train_dataloader,
                 train_loss_func,
                 opt,
+                device,
                 lr_scheduler,
                 PRINT_MODOLUS,
-                device,
             )
 
         # Eval
         # removed train_loss, train_acc
         # evaluate on train_dataloader instead
-        eval_loss, eval_acc = eval_model(model, train_dataloader, eval_loss_func)
+        eval_loss, eval_acc = eval_model(
+            model,
+            train_dataloader,
+            eval_loss_func,
+            device,
+        )
 
         # Learn rate
         # Removed lr = get_lr(opt)
@@ -210,27 +214,33 @@ def train_maestro_musictransformer(
 def loss_maestro_musictransformer(
     model_path: str,
     dataloader: DataLoader,
+    device: str = "cpu",
 ) -> float:
     """Calculate the loss of the MusicTransformer on the MAESTRO dataset.
 
     Args:
         model_path (str): The path to the saved model weights.
         dataloader (DataLoader): The dataloader for the MAESTRO dataset.
+        device: The device to evaluate the model on.
 
     Returns:
         The sum of loss of the model on the loader.
     """
     model = create_musictransformer_model()
-    model.load_state_dict(torch.load(Path(model_path), get_device()))
+    model.load_state_dict(torch.load(Path(model_path)))
+    model.to(device)
     # Not smoothing evaluation loss #####
     eval_loss_func = nn.CrossEntropyLoss(ignore_index=TOKEN_PAD)
-    eval_loss, _ = eval_model(model, dataloader, eval_loss_func)
+    eval_loss, _ = eval_model(model, dataloader, eval_loss_func, device)
 
     return eval_loss
 
 
-def create_musictransformer_model() -> MusicTransformer:
+def create_musictransformer_model(device: str = "cpu") -> MusicTransformer:
     """Create a MusicTransformer model.
+
+    Args:
+        device: The device to evaluate the model on.
 
     Returns:
         The MusicTransformer Model.
@@ -243,4 +253,5 @@ def create_musictransformer_model() -> MusicTransformer:
         dropout=DROPOUT,
         max_sequence=MAX_SEQUENCE,
         rpr=RPR,
-    ).to(get_device())
+        device=device,
+    )

@@ -54,3 +54,7 @@ dist
 
 # for teseting-related files
 *.slurm
+
+# for retraining-related files
+**/data/*
+**/experiment/*
