@@ -111,10 +111,9 @@ class TracInAttributor(BaseAttributor):
             raise ValueError(msg)
 
         # placeholder for the TDA result
-        # currently assume dataloaders have .dataset method
+        # should work for torch dataset without sampler
         tda_output = torch.zeros(
-            size=(len(train_dataloader.dataset), len(test_dataloader.dataset)),
-            device=self.device,
+            size=(len(train_dataloader.sampler), len(test_dataloader.sampler)),
         )
 
         # iterate over each checkpoint (each ensemble)
@@ -124,7 +123,11 @@ class TracInAttributor(BaseAttributor):
             # prepare a checkpoint-specific seed
             if self.projector_kwargs is not None:
                 ckpt_seed = self.proj_seed * int(1e5) + param_index
-            for train_batch_idx, train_batch_data in enumerate(train_dataloader):
+            for train_batch_idx, train_batch_data_ in enumerate(train_dataloader):
+                # move to device
+                train_batch_data = tuple(
+                    data.to(self.device) for data in train_batch_data_
+                )
                 # get gradient of train
 
                 if self.projector_kwargs is not None:
@@ -144,7 +147,11 @@ class TracInAttributor(BaseAttributor):
                 else:
                     train_batch_grad = self.grad_func(params, train_batch_data)
 
-                for test_batch_idx, test_batch_data in enumerate(test_dataloader):
+                for test_batch_idx, test_batch_data_ in enumerate(test_dataloader):
+                    # move to device
+                    test_batch_data = tuple(
+                        data.to(self.device) for data in test_batch_data_
+                    )
                     # get gradient of test
 
                     if self.projector_kwargs is not None:
@@ -167,25 +174,33 @@ class TracInAttributor(BaseAttributor):
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
                         (train_batch_idx + 1) * train_dataloader.batch_size,
-                        len(train_dataloader.dataset),
+                        len(train_dataloader.sampler),
                     )
 
                     col_st = test_batch_idx * test_dataloader.batch_size
                     col_ed = min(
                         (test_batch_idx + 1) * test_dataloader.batch_size,
-                        len(test_dataloader.dataset),
+                        len(test_dataloader.sampler),
                     )
 
                     # accumulate the TDA score in corresponding positions (blocks)
                     if self.normalized_grad:
                         tda_output[row_st:row_ed, col_st:col_ed] += (
-                            normalize(train_batch_grad)
-                            @ normalize(test_batch_grad).T
-                            * params_weight
+                            (
+                                normalize(train_batch_grad)
+                                @ normalize(test_batch_grad).T
+                                * params_weight
+                            )
+                            .clone()
+                            .detach()
+                            .cpu()
                         )
                     else:
                         tda_output[row_st:row_ed, col_st:col_ed] += (
-                            train_batch_grad @ test_batch_grad.T * params_weight
+                            (train_batch_grad @ test_batch_grad.T * params_weight)
+                            .clone()
+                            .detach()
+                            .cpu()
                         )
 
         return tda_output
