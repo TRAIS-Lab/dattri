@@ -6,10 +6,11 @@ import copy
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List, Set, Tuple, Union
+    from typing import Iterator, List, Set, Tuple, Union
 
 import numpy as np
 import torch
+from torch.utils.data import Sampler
 
 
 def _random_flip(label: int, label_space: Set[int], rng: np.random.default_rng) -> int:
@@ -31,9 +32,11 @@ def _random_flip(label: int, label_space: Set[int], rng: np.random.default_rng) 
     return target_label
 
 
-def flip_label(label: Union[np.ndarray, torch.Tensor],
-               label_space: Union[List, np.ndarray, torch.Tensor] = None,
-               p: float = 0.1) -> Tuple[Union[np.ndarray, torch.Tensor], List]:
+def flip_label(
+    label: Union[np.ndarray, torch.Tensor],
+    label_space: Union[List, np.ndarray, torch.Tensor] = None,
+    p: float = 0.1,
+) -> Tuple[Union[np.ndarray, torch.Tensor], List]:
     """Flip the label of the input label tensor with the probability `p`.
 
     The function will randomly select a new label from the `label_space` to replace
@@ -58,9 +61,7 @@ def flip_label(label: Union[np.ndarray, torch.Tensor],
 
     n_train = len(label)
     rng = np.random.default_rng()
-    noise_index = rng.choice(n_train,
-                            size=int(p * n_train),
-                            replace=False)
+    noise_index = rng.choice(n_train, size=int(p * n_train), replace=False)
 
     # Deep copy to avoid in-place modification
     flipped_label = copy.deepcopy(label)
@@ -77,3 +78,36 @@ def flip_label(label: Union[np.ndarray, torch.Tensor],
     flipped_label[noise_index] = noisy_data.long()
 
     return flipped_label, list(noise_index)
+
+
+class SubsetSampler(Sampler):
+    """Samples elements from a predefined list of indices.
+
+    Note that for training, the built-in PyTorch
+    SubsetRandomSampler should be used. This class is for
+    attributting process.
+    """
+
+    def __init__(self, indices: List[int]) -> None:
+        """Initialize the sampler.
+
+        Args:
+            indices (list): A list of indices to sample from.
+        """
+        self.indices = indices
+
+    def __iter__(self) -> Iterator[int]:
+        """Get an iterator for the sampler.
+
+        Returns:
+            An iterator for the sampler.
+        """
+        return iter(self.indices)
+
+    def __len__(self) -> int:
+        """Get the number of indices in the sampler.
+
+        Returns:
+            The number of indices in the sampler.
+        """
+        return len(self.indices)
