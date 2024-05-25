@@ -57,3 +57,25 @@ class TestInfluenceFunction:
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
+
+        # arnoldi
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="arnoldi",
+            ihvp_kwargs={"regularization": 1e-3},
+            device=torch.device("cpu"),
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # lissa
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="lissa",
+            ihvp_kwargs={"recursion_depth": 5, "batch_size": 2},
+            device=torch.device("cpu"),
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
