@@ -61,4 +61,9 @@ class TestDropout:
 
         # test wrong input
         with pytest.raises(AssertionError):
-            model = activate_dropout(model, ["dropout2", "fc1"], dropout_prob=0.1)
+            model = activate_dropout(
+                model,
+                ["dropout2", "fc1", "fc2"],
+                dropout_prob=0.1,
+            )
+        model = activate_dropout(model, ["dropout2", "fc1", "fc2"], dropout_prob=0.1)

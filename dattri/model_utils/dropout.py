@@ -28,7 +28,10 @@ def activate_dropout(
             specified, it will be defaulted as 0.1.
 
     Raises:
-        TypeError: The input should be a list.
+        ValueError: Some input layers do not contain nn.Dropout module.
+
+    Returns:
+        The dropout-enabled model.
     """
     # evaluate the model
     model.eval()
@@ -36,6 +39,7 @@ def activate_dropout(
     if layer_positions is None:
         layer_positions = []
 
+    invalid_layer_name = []
     if len(layer_positions) == 0:
         # activate all dropout layers found in the model
         for module in model.modules():
@@ -53,8 +57,12 @@ def activate_dropout(
                         module.p = dropout_prob
                         module.train()
                     else:
-                        msg = f"""Input layer name {layer_name} does not correspond\
-                        to a dropout module."""
-                        raise ValueError(msg)
+                        invalid_layer_name.append(layer_name)
+
+    if invalid_layer_name:
+        invalid_layers_str = ", ".join(invalid_layer_name)
+        msg = f"""Input layer names: {invalid_layers_str}
+            do not correspond to dropout modules."""
+        raise ValueError(msg)
 
     return model
