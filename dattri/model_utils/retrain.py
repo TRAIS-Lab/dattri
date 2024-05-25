@@ -23,7 +23,6 @@ def retrain_loo(
     train_func: Callable,
     dataloader: torch.utils.data.DataLoader,
     path: str,
-    data_length: Optional[int] = None,
     indices: Optional[List[int]] = None,
     seed: Optional[int] = None,
     **kwargs,
@@ -52,9 +51,6 @@ def retrain_loo(
                 return model
             ```
         dataloader (torch.utils.data.DataLoader): The dataloader used for training.
-        data_length (int): The length of the dataset. Default is None, which means
-            the length of the dataset is derived through the dataset, the parameter
-            is only useful when we want to use a subset of the dataloader.
         indices (List[int]): The indices to remove from the dataloader. Default is None.
             None means that each index in the dataloader will be removed in turn.
         seed (int): The random seed for the training process. Default is None,
@@ -94,17 +90,18 @@ def retrain_loo(
         # Manually set the seed.
         torch.manual_seed(seed)
 
-    if data_length is None:
-        all_indices = list(range(len(dataloader.dataset)))
+    if dataloader.sampler is not None:
+        all_indices = list(range(len(dataloader.sampler)))
     else:
-        all_indices = list(range(data_length))
+        all_indices = list(range(len(dataloader.dataset)))
+
     if indices is None:
         # If indices are not provided default to retrain with every data.
         indices = all_indices
 
     metadata = {
         "mode": "loo",
-        "data_length": data_length if data_length is not None else len(all_indices),
+        "data_length": len(all_indices),
         "train_func": train_func.__name__,
         "indices": indices,
         "map_index_dir": {},
@@ -138,7 +135,6 @@ def retrain_lds(
     train_func: Callable,
     dataloader: torch.utils.data.DataLoader,
     path: str,
-    data_length: Optional[int] = None,
     num_subsets: int = 100,
     subset_ratio: float = 0.5,
     num_runs_per_subset: int = 1,
@@ -191,9 +187,6 @@ def retrain_lds(
                         indices.txt
             ```
             where N is (num_subsets - 1) and M is (num_runs_per_subset - 1).
-        data_length (int): The length of the dataset. Default is None, which means
-            the length of the dataset is derived through the dataset, the parameter
-            is only useful when we want to use a subset of the dataloader.
         num_subsets (int): The number of subsets to retrain. Default is 100.
         subset_ratio (float): The ratio of the subset to the whole dataset.
             Default is 0.5.
@@ -227,7 +220,9 @@ def retrain_lds(
     if not path.exists():
         path.mkdir(parents=True)
 
-    if data_length is None:
+    if dataloader.sampler is not None:
+        data_length = len(dataloader.sampler)
+    else:
         data_length = len(dataloader.dataset)
     subset_length = int(data_length * subset_ratio)
 

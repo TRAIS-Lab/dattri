@@ -198,7 +198,6 @@ def main() -> None:
         train_func,
         dataloader=train_loader,
         path=args.save_path,
-        data_length=args.train_subset if args.train_subset > 0 else None,
         seed=args.seed,
         **kwargs,
     )
