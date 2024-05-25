@@ -92,6 +92,12 @@ class IFAttributor(BaseAttributor):
             ihvp_solver (str): The solver for inverse hessian vector product
                 calculation, currently we only support "explicit", "cg" and "arnoldi".
             ihvp_kwargs (Optional[Dict[str, Any]]): Keyword arguments for ihvp solver.
+                calculation, currently we only support "explicit", "cg", "arnoldi",
+                and "lissa".
+            projector (str): The projector for the inverse hessian vector product.
+                Currently it is not supported.
+            projector_kwargs (dict): The keyword arguments for the projector.
+                TODO: Enable the use of random projection for memory efficiency.
             device (str): The device to run the attributor. Default is cpu.
         """
         self.target_func = target_func
