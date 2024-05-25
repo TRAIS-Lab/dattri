@@ -1132,7 +1132,6 @@ def _estimate_covariance(curr_estimate: List[List[Tuple[torch.Tensor]]],
 
             # Calculate batch covariance matrix for S
             ds_curr = s_curr.grad
-            # if torch.isnan(ds_curr).any():
 
             ds_curr_reshaped = ds_curr.view(-1, s_curr.size(-1))
             batch_cov_s = ds_curr_reshaped.transpose(0, 1) @ ds_curr_reshaped
