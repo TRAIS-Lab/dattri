@@ -1,5 +1,6 @@
 """Test functions in dropout.py file."""
 
+import pytest
 import torch
 from torch import nn
 
@@ -43,7 +44,7 @@ class TestDropout:
         assert torch.allclose(before_result_1, before_result_2)
 
         # activate all
-        activate_dropout(model, dropout_prob=0.2)
+        model = activate_dropout(model, dropout_prob=0.2)
 
         after_result = model(test_data)
         assert not torch.allclose(before_result_1, after_result)
@@ -54,6 +55,10 @@ class TestDropout:
         assert torch.allclose(before_result_1, resume_result)
 
         # activate specific
-        activate_dropout(model, ["dropout2"], dropout_prob=0.2)
+        model = activate_dropout(model, ["dropout2"], dropout_prob=0.2)
         spec_result = model(test_data)
         assert not torch.allclose(before_result_1, spec_result)
+
+        # test wrong input
+        with pytest.raises(AssertionError):
+            model = activate_dropout(model, ["dropout2", "fc1"], dropout_prob=0.1)

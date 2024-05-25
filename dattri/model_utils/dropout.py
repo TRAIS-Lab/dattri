@@ -35,25 +35,26 @@ def activate_dropout(
     # activate dropout layers
     if layer_positions is None:
         layer_positions = []
-    if isinstance(layer_positions, list):
-        if len(layer_positions) == 0:
-            # activate all dropout layers found in the model
-            for module in model.modules():
-                if module.__class__.__name__.startswith("Dropout"):
-                    module.p = dropout_prob
-                    module.train()
-        else:
-            # activate all dropout layers in given positions
-            for name, module in model.named_modules():
-                for layer_name in layer_positions:
-                    # if the layer name (string) in name of modules,
-                    # then make dropout module in train mode
-                    if layer_name in name and module.__class__.__name__.startswith(
-                        "Dropout",
-                    ):
+
+    if len(layer_positions) == 0:
+        # activate all dropout layers found in the model
+        for module in model.modules():
+            if module.__class__.__name__.startswith("Dropout"):
+                module.p = dropout_prob
+                module.train()
+    else:
+        # activate all dropout layers in given positions
+        for name, module in model.named_modules():
+            for layer_name in layer_positions:
+                # if the layer name (string) in name of modules,
+                # then make dropout module in train mode
+                if layer_name in name:
+                    if module.__class__.__name__.startswith("Dropout"):
                         module.p = dropout_prob
                         module.train()
+                    else:
+                        msg = f"""Input layer name {layer_name} does not correspond\
+                        to a dropout module."""
+                        raise ValueError(msg)
 
-    else:
-        msg = "Input should be a list of layer names."
-        raise TypeError(msg)
+    return model
