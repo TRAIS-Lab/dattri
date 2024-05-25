@@ -981,12 +981,15 @@ KEY = "__cache"
 
 
 def manual(forward_func: Callable) -> Callable:
-    """Wrapper for caching the input, output and gradient information for a module.
+    """Decorator for caching the input, output and gradient information for a module.
 
     Manually rewrite the forward function to collect variables you are interested in.
 
     Args:
         forward_func: the forward function to wrap up.
+
+    Returns:
+        The forward function with caching.
 
     Examples:
         @manual

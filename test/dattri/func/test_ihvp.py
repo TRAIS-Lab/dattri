@@ -424,4 +424,4 @@ class TestIHVP:
         for i in range(5):
             corr = np.corrcoef(ground_truth[i].detach().numpy(),
                                estimation[i].detach().numpy())[0, 1]
-            assert corr > 0.95
+            assert corr > 0.95  # noqa: PLR2004
