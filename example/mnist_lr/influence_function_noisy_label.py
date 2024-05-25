@@ -7,7 +7,7 @@ from torch.utils.data import Sampler
 from torchvision import datasets, transforms
 
 from dattri.algorithm.influence_function import IFAttributor
-from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.benchmark.utils import flip_label
 from dattri.func.utils import flatten_func
 
@@ -55,7 +55,7 @@ if __name__ == "__main__":
         sampler=SubsetSampler(range(1000)),
     )
 
-    model = train_mnist_lr(train_loader_full)
+    model = train_mnist_mlp(train_loader_full)
     model.cuda()
     model.eval()
 
@@ -72,6 +72,7 @@ if __name__ == "__main__":
         target_func=f,
         params=model_params,
         ihvp_solver="cg",
+        # ihvp_kwargs={"recursion_depth": 100, "batch_size": 10},  # lissa
         ihvp_kwargs={"regularization": 1e-3},
         device=torch.device("cuda"),
     )

@@ -5,8 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Optional
+    from typing import Any, Callable, Dict, List, Optional, Tuple
 
+    from torch import Tensor
     from torch.utils.data import DataLoader
 
 import warnings
@@ -16,16 +17,42 @@ import torch
 from torch.func import grad, vmap
 from tqdm import tqdm
 
-from dattri.func.ihvp import ihvp_arnoldi, ihvp_cg, ihvp_explicit
+from dattri.func.ihvp import ihvp_arnoldi, ihvp_cg, ihvp_explicit, ihvp_lissa
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
+
+def _lissa_collate_fn(
+    sampled_input: List[Tensor],
+) -> Tuple[Tensor, List[Tuple[Tensor, ...]]]:
+    """Collate function for LISSA.
+
+    Args:
+        sampled_input (List[Tensor]): The sampled input from the dataloader.
+
+    Returns:
+        Tuple[Tensor, List[Tuple[Tensor, ...]]]: The collated input for the LISSA.
+    """
+    return (
+        sampled_input[0],
+        list(
+            zip(
+                *tuple(
+                    sampled_input[i].unsqueeze(0).float()
+                    for i in range(1, len(sampled_input))
+                ),
+            ),
+        ),
+    )
+
+
 SUPPORTED_IHVP_SOLVER = {
     "explicit": ihvp_explicit,
     "cg": ihvp_cg,
     "arnoldi": ihvp_arnoldi,
+    "lissa": partial(ihvp_lissa, collate_fn=_lissa_collate_fn),
 }
 
 
@@ -71,6 +98,7 @@ class IFAttributor(BaseAttributor):
         self.params = flatten_params(params)
         if ihvp_kwargs is None:
             ihvp_kwargs = {}
+        self.ihvp_solver_name = ihvp_solver
         self.ihvp_solver = partial(SUPPORTED_IHVP_SOLVER[ihvp_solver], **ihvp_kwargs)
         self.device = device
         self.full_train_dataloader = None
@@ -163,11 +191,20 @@ class IFAttributor(BaseAttributor):
                     # move to device
                     full_data = tuple(data.to(self.device) for data in full_data_)
 
-                    self.ihvp_func = self.ihvp_solver(
-                        partial(self.target_func, data_target_pair=full_data),
-                    )
-
-                    ihvp += self.ihvp_func((self.params,), test_batch_grad).detach()
+                    if self.ihvp_solver_name == "lissa":
+                        self.ihvp_func = self.ihvp_solver(
+                            self.target_func,
+                        )
+                        ihvp += self.ihvp_func(
+                            (self.params, *full_data),
+                            grad_test_iter,
+                            in_dims=(None, 0, 0),
+                        ).detach()
+                    else:
+                        self.ihvp_func = self.ihvp_solver(
+                            partial(self.target_func, data_target_pair=full_data),
+                        )
+                        ihvp += self.ihvp_func((self.params,), test_batch_grad).detach()
 
                 # results position based on batch info
                 row_st = train_batch_idx * train_dataloader.batch_size
