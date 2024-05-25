@@ -66,4 +66,3 @@ class TestDropout:
                 ["dropout2", "fc1", "fc2"],
                 dropout_prob=0.1,
             )
-        model = activate_dropout(model, ["dropout2", "fc1", "fc2"], dropout_prob=0.1)
