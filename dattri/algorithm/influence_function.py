@@ -204,7 +204,7 @@ class IFAttributor(BaseAttributor):
                         ihvp += self.ihvp_func(
                             (self.params, *full_data),
                             grad_test_iter,
-                            in_dims=(None, 0 * len(loader[0])),
+                            in_dims=(None,) + (0,) * len(loader[0]),
                         ).detach()
                     else:
                         self.ihvp_func = self.ihvp_solver(
