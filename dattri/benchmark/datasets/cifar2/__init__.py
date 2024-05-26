@@ -6,3 +6,11 @@ __all__ = [
     "loss_cifar2_resnet9",
     "train_cifar2_resnet9",
 ]
+
+
+from .cifar2_resnet9 import (
+    create_resnet9_model,
+    loss_cifar2_resnet9,
+    train_cifar2_resnet9,
+)
+from .data import create_cifar2_dataset
