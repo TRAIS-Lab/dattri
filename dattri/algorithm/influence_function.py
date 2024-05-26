@@ -106,8 +106,6 @@ class IFAttributor(BaseAttributor):
             torch.Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
 
-        Raises:
-            ValueError: If the batch size of the train and test dataloader is not 1.
         """
         super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
