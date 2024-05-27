@@ -9,19 +9,16 @@ import numpy as np
 import torch
 from torch import nn
 
-from dattri.benchmark.models.logistic_regression import (
-    LogisticRegressionMnist,
-    create_lr_model,
-)
+from dattri.benchmark.models.mlp import MLPMnist, create_mlp_model
 
 
-def train_mnist_lr(
+def train_mnist_mlp(
     dataloader: torch.utils.data.DataLoader,
     seed: int = 0,
     device: str = "cpu",
-    epoch_num: int = 20,
-) -> LogisticRegressionMnist:
-    """Train a logistic regression model on the MNIST dataset.
+    epoch_num: int = 50,
+) -> MLPMnist:
+    """Train a MLP model on the MNIST dataset.
 
     Args:
         dataloader: The dataloader for the MNIST dataset.
@@ -30,15 +27,15 @@ def train_mnist_lr(
         epoch_num: The number of epochs to train the model.
 
     Returns:
-        The trained logistic regression model.
+        The trained MLP model.
     """
     torch.manual_seed(seed)
     np.random.seed(seed)  # noqa: NPY002
     random.seed(seed)
 
-    model = create_lr_model("mnist")
+    model = create_mlp_model("mnist")
     criterion = nn.CrossEntropyLoss()
-    optimizer = torch.optim.SGD(model.parameters(), lr=0.01)
+    optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
 
     model.train()
     model.to(device)
@@ -53,12 +50,12 @@ def train_mnist_lr(
     return model
 
 
-def loss_mnist_lr(
+def loss_mnist_mlp(
     model_path: str,
     dataloader: torch.utils.data.DataLoader,
     device: str = "cpu",
 ) -> float:
-    """Calculate the loss of the logistic regression model on the MNIST dataset.
+    """Calculate the loss of the MLP model on the MNIST dataset.
 
     Args:
         model_path: The path to the saved model weights.
@@ -69,7 +66,7 @@ def loss_mnist_lr(
         The sum of loss of the model on the loader.
     """
     criterion = nn.CrossEntropyLoss(reduction="sum")
-    model = create_lr_model("mnist")
+    model = create_mlp_model("mnist")
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
     total_loss = 0

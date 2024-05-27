@@ -7,8 +7,11 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.benchmark.datasets.mnist import (
     LogisticRegressionMnist,
+    MLPMnist,
     loss_mnist_lr,
+    loss_mnist_mlp,
     train_mnist_lr,
+    train_mnist_mlp,
 )
 
 
@@ -30,11 +33,26 @@ class TestMnist:
         model = train_mnist_lr(self.train_dataloader)
         assert isinstance(model, LogisticRegressionMnist)
 
+    def test_train_mnist_mlp(self):
+        """Test train_mnist_mlp."""
+        model = train_mnist_mlp(self.train_dataloader)
+        assert isinstance(model, MLPMnist)
+
     def test_loss_mnist_lr(self):
         """Test loss_mnist_lr."""
         model = train_mnist_lr(self.train_dataloader)
         torch.save(model.state_dict(), "test_model.pt")
         loss = loss_mnist_lr("test_model.pt", self.test_dataloader)
+        assert isinstance(loss, float)
+
+        # remove the saved model for clean up
+        Path("test_model.pt").unlink(missing_ok=True)
+
+    def test_loss_mnist_mlp(self):
+        """Test loss_mnist_mlp."""
+        model = train_mnist_mlp(self.train_dataloader)
+        torch.save(model.state_dict(), "test_model.pt")
+        loss = loss_mnist_mlp("test_model.pt", self.test_dataloader)
         assert isinstance(loss, float)
 
         # remove the saved model for clean up
