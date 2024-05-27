@@ -1368,7 +1368,7 @@ def ihvp_at_x_ekfac(func: Callable,
             for _v, _lambda, (q_a, q_s) in zip(layer_v, layer_lambda, layer_q):
                 _ihvp = q_s.T @ (
                     (q_s @ _v @ q_a.T) /
-                    (_lambda * (1.0 + damping))
+                    (_lambda + damping)
                     ) @ q_a
                 layer_ihvp.append(_ihvp)
         return ihvp
