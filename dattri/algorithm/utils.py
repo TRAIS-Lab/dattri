@@ -44,7 +44,7 @@ def rps_finetune_model(
     Returns:
         x*\Theta^T and frobenius-norm of \Theta.
     """
-    phi = torch.matmul(x, theta.transpose(0, 1))
+    phi = torch.matmul(theta, x.T).T
     theta1 = torch.squeeze(theta)
     l2_norm = torch.sum(torch.mul(theta1, theta1))
     return phi, l2_norm
@@ -100,21 +100,23 @@ def backtracking_line_search(
 def finetune_theta(
     x: Tensor,
     y: Tensor,
-    init_theta: torch.autograd.Variable,
+    init_theta: Tensor,
     loss_func: Callable,
     lambda_l2: float,
     num_epoch: int,
+    device: str = "cpu",
 ) -> Tensor:
     """To fine-tune the last layer of the model with l2-regularization.
 
     Args:
         x (Tensor): The input data.
         y (Tensor): The pre-trained model output.
-        init_theta (torch.autograd.Variable): The initial last layer weight.
+        init_theta (Tensor): The initial last layer weight.
         loss_func (Callable): The loss function used for prediction.
             Typically, BCELoss or CEloss.
         lambda_l2 (float): The l2-regularization strength.
         num_epoch (int): The number of epoch used for training.
+        device (str): The device used for training.
 
     Returns:
         The optimized last layer weight.
@@ -125,17 +127,17 @@ def finetune_theta(
 
     min_loss = 10000.0
     # define a trainable last layer
-    theta = Variable(init_theta, requires_grad=True)
+    theta = Variable(init_theta.to(device), requires_grad=True)
+
     optimizer = optim.SGD([theta], lr=1.0)
     for epoch in range(num_epoch):
         phi_loss = 0
         optimizer.zero_grad()
         # get the loss of the model
         phi, l2_norm = rps_finetune_model(x, theta)
-
         # loss func: currently either BCE or CE
-        loss = l2_norm * lambda_l2 + loss_func(phi.float(), y.float())
-        phi_loss += loss_func(phi.float(), y.float()).data.cpu().numpy()
+        loss = l2_norm * lambda_l2 + loss_func(phi, y)
+        phi_loss += loss_func(phi, y).data.cpu().numpy()
         loss.backward()
 
         # Theta should have size (n * class_num)
@@ -168,6 +170,7 @@ def get_rps_weight(
     loss_func: Callable,
     x_train: Tensor,
     y_train: Tensor,
+    y_ground_truth: Tensor,
     lambda_l2: float,
 ) -> Tensor:
     r"""Compute the decomposed RPS weight.
@@ -178,6 +181,7 @@ def get_rps_weight(
             Typically, BCELoss or CEloss.
         x_train (Tensor): The input feature of the training set.
         y_train (Tensor): The pre-trained model output of the training set.
+        y_ground_truth (Tensor): The ground-truth of the training set.
         lambda_l2 (float): The l2-regularization strength.
 
     Returns:
@@ -186,8 +190,17 @@ def get_rps_weight(
     n = len(y_train)
     # caluculate theta1 based on the representer theorem's decomposition
     pre_activation_value = torch.matmul(x_train, Variable(best_theta).transpose(0, 1))
+    print("preactivation value shape: ", pre_activation_value.shape)
     alpha = grad(loss_func)(pre_activation_value, y_train) / (-2.0 * lambda_l2 * n)
-    return torch.t(x_train) @ alpha
+    print("alpha shape: ", alpha.shape)
+    if best_theta.shape[1] > 1:
+        # if multi class, we only want the "correct class prob." to represent alpha
+        # (otherwise it will be a n by c vector by definition)
+        print("y gt shape: ", y_ground_truth.shape)
+        alpha_correct_class = alpha[torch.arange(alpha.shape[0]), y_ground_truth]
+        print("alpha correct shape: ", alpha_correct_class.shape)
+        return x_train * alpha_correct_class.unsqueeze(1)
+    return x_train * alpha
 
 
 # The function is adapted from https://github.com/chihkuanyeh/Representer_Point_Selection/blob/master/compute_representer_vals.py
@@ -202,7 +215,8 @@ def rps_corr_check(rps_weight: Tensor, x: Tensor, y: Tensor) -> None:
         y (Tensor): The pre-trained model output.
     """
     print("--------pre activation sanity check--------")
-    pre_activation_value = x @ rps_weight
+    pre_activation_value = rps_weight @ x.T
+    print("representer matrix shape: ", pre_activation_value.shape)
     pre_y = y.data.cpu().numpy()
     y_p = pre_activation_value.data.cpu().numpy()
     print("L1 diff between gt and rps prediction per class")
@@ -212,27 +226,5 @@ def rps_corr_check(rps_weight: Tensor, x: Tensor, y: Tensor) -> None:
     corr_list = []
     for i in range(y.shape[1]):
         corr, _ = pearsonr(pre_y[:, i].flatten(), y_p[:, i].flatten())
-        corr_list.append(corr)
-    print(corr_list)
-
-    print("--------post activation sanity check--------")
-    # activate the prediction y_p (input is raw logits)
-    # depending on the number of classes
-    if rps_weight.shape[1] == 1:
-        activated_value = torch.nn.functional.sigmoid(x @ rps_weight)
-        y = torch.nn.functional.sigmoid(y)
-    else:
-        activated_value = torch.nn.functional.softmax(x @ rps_weight, dim=1)
-        y = torch.nn.functional.softmax(y, dim=1)
-
-    y_p = activated_value.data.cpu().numpy()
-    print("L1 diff between gt and rps prediction per class")
-    print(np.mean(np.abs(y.data.cpu().numpy() - y_p), axis=0))
-
-    print("pearson corr between gt and rps prediction data per class")
-    corr_list = []
-    y = y.data.cpu().numpy()
-    for i in range(y.shape[1]):
-        corr, _ = pearsonr(y[:, i].flatten(), y_p[:, i].flatten())
         corr_list.append(corr)
     print(corr_list)

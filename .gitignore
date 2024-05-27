@@ -48,5 +48,14 @@ build
 dist
 
 # maestro dataset related files/directories
-/test/dattri/benchmark/maestro-v2.0.0
-/test/dattri/benchmark/maestro-v2.0.0-processed
+**/maestro-v2.0.0/*
+**/maestro-v2.0.0-processed/*
+**/maestro-v2.0.0-midi.zip
+
+# for testing-related products/artifacts
+*.slurm
+
+
+# for retraining-related files
+**/data/*
+**/experiment/*

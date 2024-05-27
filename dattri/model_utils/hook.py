@@ -107,7 +107,7 @@ def get_final_layer_io(
     # perform a forward pass through the dataloader
     with torch.no_grad():
         for x, _ in dataloader:
-            _ = model(x)
+            _ = model(x.to(device))
 
     hook_handle.remove()
     return torch.cat(feature_list, dim=0).to(device), torch.cat(output_list, dim=0).to(

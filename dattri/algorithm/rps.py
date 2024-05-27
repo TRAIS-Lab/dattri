@@ -17,7 +17,6 @@ from dattri.algorithm.utils import (
     _check_shuffle,
     finetune_theta,
     get_rps_weight,
-    rps_corr_check,
 )
 from dattri.model_utils.hook import get_final_layer_io
 
@@ -54,7 +53,7 @@ class RPSAttributor(BaseAttributor):
                 ```.
                 This examples calculates the loss of the model on the dataloader.
             model (torch.nn.Module): The model to attribute. RPS will extract
-                secon-to-last layer results and the final fc layer's parameter. The
+                second-to-last layer results and the final fc layer's parameter. The
                 second one will be used for the initialization of the l2-finetuning.
                 That is, model output = fc(second-to-last feature).
             final_linear_layer_name (str): The name of the final linear layer's name
@@ -117,11 +116,13 @@ class RPSAttributor(BaseAttributor):
             self.model,
             self.final_linear_layer_name,
             train_dataloader,
+            device=self.device,
         )
-        intermediate_x_test, y_pred_test = get_final_layer_io(
+        intermediate_x_test, _ = get_final_layer_io(
             self.model,
             self.final_linear_layer_name,
             test_dataloader,
+            device=self.device,
         )
 
         # get the initial weight parameter for the final linear layer
@@ -134,20 +135,19 @@ class RPSAttributor(BaseAttributor):
             loss_func=self.target_func,
             lambda_l2=self.l2_strength,
             num_epoch=self.epoch,
+            device=self.device,
         )
 
+        # get ground-truth in the data-loader
+        y_gt = train_dataloader.dataset.targets[train_dataloader.sampler.indices]
         # compute the RPS weight
         weight = get_rps_weight(
             best_theta,
             self.target_func,
             intermediate_x_train,
             y_pred_train,
+            y_gt,
             self.l2_strength,
         )
 
-        # check corr for train
-        rps_corr_check(weight, intermediate_x_train, y_pred_train)
-        # check corr for test
-        rps_corr_check(weight, intermediate_x_test, y_pred_test)
-
-        return
+        return weight @ intermediate_x_test.T

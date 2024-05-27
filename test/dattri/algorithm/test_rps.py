@@ -10,6 +10,7 @@
 
 import torch
 from torch import nn
+from torch.nn import functional
 from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.rps import RPSAttributor
@@ -53,7 +54,7 @@ class TestRPS:
 
         # define the loss function
         def f(pre_activation_list, label_list):
-            return torch.nn.functional.cross_entropy(pre_activation_list, label_list)
+            return functional.cross_entropy(pre_activation_list, label_list)
 
         # define the RPS attributor
         attributor = RPSAttributor(
@@ -75,7 +76,7 @@ class TestRPS:
         test_loader = DataLoader(dataset, batch_size=1)
 
         def f(pre_activation_list, label_list):
-            return torch.nn.functional.binary_cross_entropy_with_logits(
+            return functional.binary_cross_entropy_with_logits(
                 pre_activation_list,
                 label_list,
             )
