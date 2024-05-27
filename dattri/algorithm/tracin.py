@@ -1,25 +1,25 @@
-"""This module implement the influence function."""
+"""This module implement TracIn."""
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any, Dict, Union
 
 if TYPE_CHECKING:
     from typing import Callable, List, Optional
 
     from torch.utils.data import DataLoader
 
-import warnings
 
 import torch
 from torch import Tensor
-from torch.func import grad
+from torch.func import jacrev, vmap
 from torch.nn.functional import normalize
 
+from dattri.func.random_projection import random_project
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
-from .utlis import _check_shuffle
+from .utils import _check_shuffle
 
 
 class TracInAttributor(BaseAttributor):
@@ -28,10 +28,10 @@ class TracInAttributor(BaseAttributor):
     def __init__(
         self,
         target_func: Callable,
-        params_list: List[dict],
+        params_list: Union[List[dict]],
         weight_list: Tensor,
         normalized_grad: bool,
-        projector_list: Optional[List[Callable]] = None,
+        projector_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
     ) -> None:
         """TracIn attributor initialization.
@@ -39,48 +39,42 @@ class TracInAttributor(BaseAttributor):
         Args:
             target_func (Callable): The target function to be attributed.
                 The function can be quite flexible, but it should take the parameters
-                and the dataloader as input. A typical example is as follows:
+                and the (data, label) as input. A typical example is as follows:
                 ```python
                 @flatten_func(model)
-                def f(params, dataloader):
+                def f(params, image, label):
                     loss = nn.CrossEntropyLoss()
-                    loss_val = 0
-                    for image, label in dataloader:
-                        yhat = torch.func.functional_call(model, params, image)
-                        loss_val += loss(yhat, label)
-                    return loss_val
+                    yhat = torch.func.functional_call(model, params, image)
+                    return loss(yhat, label)
                 ```.
-                This examples calculates the loss of the model on the dataloader.
-            params_list (List[dict]): The parameters of the target function. The key is
-                the name of a parameter and the value is the parameter tensor.
-                TODO: This should be changed to support a list of paths.
+                This examples calculates the loss of the model on input data-label pair.
+            params_list (Union[List[dict], List[str]]): The parameters of the target
+                function. The input should be a list of dictionaries, where the keys
+                indicate the name of a parameter and the value is the parameter tensor.
             weight_list (Tensor): The weight used for the "weighted sum". For
                 TracIn/CosIn, this will contain a list of learning rates at each ckpt;
                 for Grad-Dot/Grad-Cos, this will be a list of ones.
             normalized_grad (bool): Whether to apply normalization to gradients.
-            projector_list (List[Callable]): A list of projectors used for gradient
-                random projection. The length will equal len(params_list). These
-                projecctors will typically have the same ProjectorType but can have
-                different random seeds.
+            projector_kwargs (Optional[Dict[str, Any]]): The keyword arguments for the
+                projector.
             device (str): The device to run the attributor. Default is cpu.
         """
         self.target_func = target_func
         self.params_list = [flatten_params(params) for params in params_list]
         self.weight_list = weight_list
-        self.projector_list = projector_list
+        # these are projector kwargs shared by train/test projector
+        self.projector_kwargs = projector_kwargs
+        # set proj seed
+        if projector_kwargs is not None:
+            self.proj_seed = self.projector_kwargs.get("proj_seed", 0)
         self.normalized_grad = normalized_grad
         self.device = device
         self.full_train_dataloader = None
-        self.grad_func = grad(self.target_func)
+        # to get per-sample gradients for a mini-batch of train/test samples
+        self.grad_func = vmap(jacrev(self.target_func), in_dims=(None, 0))
 
-    def cache(self, full_train_dataloader: torch.utils.data.DataLoader) -> None:
-        """Cache the dataset for inverse hessian calculation.
-
-        Args:
-            full_train_dataloader (torch.utils.data.DataLoader): The dataloader
-                with full training samples for inverse hessian calculation.
-        """
-        self.full_train_dataloader = full_train_dataloader
+    def cache(self) -> None:
+        """Precompute and cache some values for efficiency."""
 
     def attribute(
         self,
@@ -100,75 +94,76 @@ class TracInAttributor(BaseAttributor):
                 be shuffled.
 
         Raises:
-            ValueError: Either two of the length of params_list, weight_list or
-                project_list don't match.
+            ValueError: The length of params_list and weight_list don't match.
 
         Returns:
             Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
         """
         super().attribute(train_dataloader, test_dataloader)
-        if self.full_train_dataloader is None:
-            self.full_train_dataloader = train_dataloader
-            warnings.warn(
-                "The full training data loader was NOT cached. \
-                           Treating the train_dataloader as the full training \
-                           data loader.",
-                stacklevel=1,
-            )
 
         _check_shuffle(train_dataloader)
         _check_shuffle(test_dataloader)
 
-        # check the length match between params, weight, and projector list
+        # check the length match between params list and weight list
         if len(self.params_list) != len(self.weight_list):
             msg = "the length of params, weights lists don't match."
             raise ValueError(msg)
 
-        if self.projector_list is not None and len(self.weight_list) != len(
-            self.projector_list,
-        ):
-            msg = "the length of params, weights and projector lists don't match."
-            raise ValueError(msg)
-
         # placeholder for the TDA result
+        # currently assume dataloaders have .dataset method
         tda_output = torch.zeros(
-            size=(len(train_dataloader), len(test_dataloader)),
+            size=(len(train_dataloader.dataset), len(test_dataloader.dataset)),
             device=self.device,
         )
 
         # iterate over each checkpoint (each ensemble)
-        for index, (params, params_weight) in enumerate(
+        for param_index, (params, params_weight) in enumerate(
             zip(self.params_list, self.weight_list),
         ):
+            # prepare a checkpoint-specific seed
+            if self.projector_kwargs is not None:
+                ckpt_seed = self.proj_seed * int(1e5) + param_index
             for train_batch_idx, train_batch_data in enumerate(train_dataloader):
-                train_batch = list(
-                    zip(
-                        *tuple(
-                            x.to(self.device).unsqueeze(0) for x in train_batch_data
-                        ),
-                    ),
-                )
                 # get gradient of train
-                train_batch_grad = self.grad_func(params, train_batch).unsqueeze(0)
-                if self.projector_list is not None:
-                    train_batch_grad = self.projector_list[index](train_batch_grad)
+
+                if self.projector_kwargs is not None:
+                    # insert checkpoint-specific seed for the projector
+                    self.projector_kwargs["proj_seed"] = ckpt_seed
+                    # define the projector for this batch of data
+                    self.train_random_project = random_project(
+                        self.grad_func(params, train_batch_data),
+                        # get the batch size, prevent edge case
+                        train_batch_data[0].shape[0],
+                        **self.projector_kwargs,
+                    )
+
+                    train_batch_grad = self.train_random_project(
+                        self.grad_func(params, train_batch_data),
+                    )
+                else:
+                    train_batch_grad = self.grad_func(params, train_batch_data)
 
                 for test_batch_idx, test_batch_data in enumerate(test_dataloader):
-                    test_batch = list(
-                        zip(
-                            *tuple(
-                                x.to(self.device).unsqueeze(0) for x in test_batch_data
-                            ),
-                        ),
-                    )
-                    # get gradient of train
-                    test_batch_grad = self.grad_func(params, test_batch).unsqueeze(0)
-                    if self.projector_list is not None:
-                        test_batch_grad = self.projector_list[index](test_batch_grad)
+                    # get gradient of test
+
+                    if self.projector_kwargs is not None:
+                        # insert checkpoint-specific seed for the projector
+                        self.projector_kwargs["proj_seed"] = ckpt_seed
+                        # define the projector for this batch of data
+                        self.test_random_project = random_project(
+                            self.grad_func(params, test_batch_data),
+                            test_batch_data[0].shape[0],
+                            **self.projector_kwargs,
+                        )
+
+                        test_batch_grad = self.test_random_project(
+                            self.grad_func(params, test_batch_data),
+                        )
+                    else:
+                        test_batch_grad = self.grad_func(params, test_batch_data)
 
                     # results position based on batch info
-                    # note that here batch_size always equal to 1
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
                         (train_batch_idx + 1) * train_dataloader.batch_size,
@@ -181,15 +176,15 @@ class TracInAttributor(BaseAttributor):
                         len(test_dataloader.dataset),
                     )
 
-                    # insert the TDA score in corresponding position
+                    # accumulate the TDA score in corresponding positions (blocks)
                     if self.normalized_grad:
-                        tda_output[row_st:row_ed, col_st:col_ed] = (
+                        tda_output[row_st:row_ed, col_st:col_ed] += (
                             normalize(train_batch_grad)
                             @ normalize(test_batch_grad).T
                             * params_weight
                         )
                     else:
-                        tda_output[row_st:row_ed, col_st:col_ed] = (
+                        tda_output[row_st:row_ed, col_st:col_ed] += (
                             train_batch_grad @ test_batch_grad.T * params_weight
                         )
 
