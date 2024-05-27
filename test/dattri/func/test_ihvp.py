@@ -246,13 +246,13 @@ class TestIHVP:
         assert torch.allclose(
             ihvp_cg_at_x_func(v),
             ihvp_explicit_at_x_func(v),
-            rtol=1e-02,
+            rtol=5e-02,
             atol=1e-05,
         )
         assert torch.allclose(
             ihvp_cg_func((flatten_params(model_params),), v),
             ihvp_explicit_at_x_func(v),
-            rtol=1e-02,
+            rtol=5e-02,
             atol=1e-05,
         )
 

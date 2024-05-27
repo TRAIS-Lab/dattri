@@ -90,14 +90,18 @@ def retrain_loo(
         # Manually set the seed.
         torch.manual_seed(seed)
 
-    all_indices = list(range(len(dataloader.dataset)))
+    if dataloader.sampler is not None:
+        all_indices = list(range(len(dataloader.sampler)))
+    else:
+        all_indices = list(range(len(dataloader.dataset)))
+
     if indices is None:
         # If indices are not provided default to retrain with every data.
         indices = all_indices
 
     metadata = {
         "mode": "loo",
-        "data_length": len(dataloader),
+        "data_length": len(all_indices),
         "train_func": train_func.__name__,
         "indices": indices,
         "map_index_dir": {},
@@ -216,7 +220,10 @@ def retrain_lds(
     if not path.exists():
         path.mkdir(parents=True)
 
-    data_length = len(dataloader.dataset)
+    if dataloader.sampler is not None:
+        data_length = len(dataloader.sampler)
+    else:
+        data_length = len(dataloader.dataset)
     subset_length = int(data_length * subset_ratio)
 
     subset_dir_map = {}

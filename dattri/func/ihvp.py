@@ -770,6 +770,7 @@ def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
         if batch_size is None:
             batch_size = x_in.shape[dim]
         elif batch_size != x_in.shape[dim]:
+
             message = (
                 f"Input batch size mismatch! Expected {batch_size},"
                 f"found {x_in.shape[dim]} for input tensor {i}."
@@ -868,6 +869,7 @@ def ihvp_lissa(
         v: Tensor,
         in_dims: Optional[Tuple] = None,
     ) -> Tensor:
+
         """The IHVP function via LiSSA algorithm.
 
         Args:
@@ -919,6 +921,7 @@ def ihvp_at_x_lissa(
     scaling: int = 50.0,
     mode: str = "rev-rev",
 ) -> Callable:
+
     """IHVP with fixed func inputs via LiSSA algorithm.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -966,6 +969,7 @@ def ihvp_at_x_lissa(
         Returns:
             The IHVP value.
         """
+        
         ihvp_lissa_func = ihvp_lissa(
             func,
             argnums,
@@ -976,6 +980,7 @@ def ihvp_at_x_lissa(
             scaling,
             mode,
         )
+
         return ihvp_lissa_func(x, v, in_dims=in_dims)
 
     return _ihvp_at_x_lissa_func

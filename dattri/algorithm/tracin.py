@@ -114,6 +114,7 @@ class TracInAttributor(BaseAttributor):
         # should work for torch dataset without sampler
         tda_output = torch.zeros(
             size=(len(train_dataloader.sampler), len(test_dataloader.sampler)),
+
         )
 
         # iterate over each checkpoint (each ensemble)
@@ -123,11 +124,13 @@ class TracInAttributor(BaseAttributor):
             # prepare a checkpoint-specific seed
             if self.projector_kwargs is not None:
                 ckpt_seed = self.proj_seed * int(1e5) + param_index
+
             for train_batch_idx, train_batch_data_ in enumerate(train_dataloader):
                 # move to device
                 train_batch_data = tuple(
                     data.to(self.device) for data in train_batch_data_
                 )
+
                 # get gradient of train
 
                 if self.projector_kwargs is not None:
@@ -152,6 +155,7 @@ class TracInAttributor(BaseAttributor):
                     test_batch_data = tuple(
                         data.to(self.device) for data in test_batch_data_
                     )
+
                     # get gradient of test
 
                     if self.projector_kwargs is not None:
@@ -186,6 +190,7 @@ class TracInAttributor(BaseAttributor):
                     # accumulate the TDA score in corresponding positions (blocks)
                     if self.normalized_grad:
                         tda_output[row_st:row_ed, col_st:col_ed] += (
+
                             (
                                 normalize(train_batch_grad)
                                 @ normalize(test_batch_grad).T
@@ -201,6 +206,7 @@ class TracInAttributor(BaseAttributor):
                             .clone()
                             .detach()
                             .cpu()
+
                         )
 
         return tda_output
