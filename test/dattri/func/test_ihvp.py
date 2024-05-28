@@ -417,7 +417,7 @@ class TestIHVP:
         vect["layer1"] = v
         reg = _compute_damping(vect, get_test_grad(random_data, weights, labels))
         gt = ihvp_at_x_explicit(loss_func,
-                                *(weights, random_data, labels, reg),
+                                *(weights, random_data, labels, reg[0]),
                                 argnums=0)
         ihvp_func = ihvp_at_x_datainf(get_test_grad, 1,
                                         reg,
