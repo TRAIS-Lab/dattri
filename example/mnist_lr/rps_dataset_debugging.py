@@ -68,10 +68,9 @@ def train_mnist_lr(
     return model
 
 
-def get_mnist_indices_and_adjust_labels(dataset):
-    dataset.targets, flip_index = flip_label(dataset.targets, p=0.1)
+def get_mnist_indices_and_adjust_labels(dataset, subset_indice, p=0.1):
+    dataset.targets, flip_index = flip_label(torch.tensor(dataset.targets)[subset_indice], p=p)
     return flip_index
-
 
 class SubsetSampler(Sampler):
     def __init__(self, indices):
@@ -93,23 +92,20 @@ if __name__ == "__main__":
     )
     dataset = datasets.MNIST("../data", train=True, download=True, transform=transform)
 
-    flip_index = get_mnist_indices_and_adjust_labels(dataset)
 
+    subset_size = 5000
     train_loader_full = torch.utils.data.DataLoader(
         dataset,
-        batch_size=64,
-        sampler=SubsetSampler(range(1000)),
+        batch_size=subset_size,
+        sampler=SubsetSampler(range(subset_size)),
     )
     train_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=64,
-        sampler=SubsetSampler(range(1000)),
+        sampler=SubsetSampler(range(subset_size)),
     )
-    test_loader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=64,
-        sampler=SubsetSampler(range(1000)),
-    )
+
+    flip_index = get_mnist_indices_and_adjust_labels(dataset, range(subset_size))
 
 
     model = train_mnist_lr(train_loader_full)
@@ -133,7 +129,7 @@ if __name__ == "__main__":
     attributor.cache(train_loader_full)
     start_attribute = time.time()
     torch.cuda.reset_peak_memory_stats("cuda")
-    score = attributor.attribute(train_loader, test_loader).diag()
+    score = attributor.attribute(train_loader, train_loader).diag().abs()
     peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
     print(f"Peak memory usage: {peak_memory} MB")
     end_attribute = time.time()
@@ -144,8 +140,8 @@ if __name__ == "__main__":
     cr = 0
     cr_list = []
     for idx, index in enumerate(indices):
-        if idx % 100 == 0:
-            cr_list.append((idx, cr))
+        if (idx+1) % 1000 == 0:
+            cr_list.append((idx+1, cr))
         if int(index) in set(flip_index):
             cr += 1
     print(cr_list)

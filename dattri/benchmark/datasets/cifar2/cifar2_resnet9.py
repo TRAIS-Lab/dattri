@@ -40,12 +40,15 @@ def train_cifar2_resnet9(
     model.to(device)
 
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
 
     for epoch in range(num_epochs):
         running_loss = 0.0
         for i, (images, labels) in enumerate(dataloader):
-            images_t, labels_t = images.to(device), labels.to(device)
+            images_t, labels_t = (
+                images.to(device),
+                labels.float().to(device).unsqueeze(1),
+            )
             optimizer.zero_grad()
             outputs = model(images_t)
             loss = criterion(outputs, labels_t)
@@ -78,7 +81,7 @@ def loss_cifar2_resnet9(
     Returns:
         float: The sum of loss of the model on the loader.
     """
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.BCEWithLogitsLoss()
     model = create_resnet9_model()
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
@@ -86,7 +89,10 @@ def loss_cifar2_resnet9(
     total_samples = 0
     with torch.no_grad():
         for images, labels in dataloader:
-            images_t, labels_t = images.to(device), labels.to(device)
+            images_t, labels_t = (
+                images.to(device),
+                labels.float().to(device).unsqueeze(1),
+            )
             outputs = model(images_t)
             loss = criterion(outputs, labels_t)
             total_loss += loss.item() * images_t.shape[0]

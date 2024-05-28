@@ -44,7 +44,7 @@ class BasicBlock(nn.Module):
         return out
 
 class ResNet9(nn.Module):
-    def __init__(self, num_classes=2, dropout_rate=0.1):
+    def __init__(self, num_classes=1, dropout_rate=0.1):
         super(ResNet9, self).__init__()
         self.in_planes = 64
 

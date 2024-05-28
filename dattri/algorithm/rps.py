@@ -7,11 +7,12 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Callable
 
-    import torch
     from torch import Tensor
     from torch.utils.data import DataLoader
 
 import warnings
+
+import torch
 
 from dattri.algorithm.utils import (
     _check_shuffle,
@@ -118,12 +119,6 @@ class RPSAttributor(BaseAttributor):
             train_dataloader,
             device=self.device,
         )
-        intermediate_x_test, _ = get_final_layer_io(
-            self.model,
-            self.final_linear_layer_name,
-            test_dataloader,
-            device=self.device,
-        )
 
         # get the initial weight parameter for the final linear layer
         init_theta = getattr(self.model, self.final_linear_layer_name).weight.data
@@ -138,16 +133,22 @@ class RPSAttributor(BaseAttributor):
             device=self.device,
         )
 
-        # get ground-truth in the data-loader
-        y_gt = train_dataloader.dataset.targets[train_dataloader.sampler.indices]
+        # get ground-truth in the dataloader
+        # Iterate over the test data loader
+        # RPS only care about test data's class label
+        test_targets = []
+        for _, target in test_dataloader:
+            test_targets.extend(target.tolist())
+        # Convert the list to a tensor
+        y_test = torch.tensor(test_targets)
+
         # compute the RPS weight
-        weight = get_rps_weight(
+
+        return get_rps_weight(
             best_theta,
             self.target_func,
             intermediate_x_train,
             y_pred_train,
-            y_gt,
+            y_test,
             self.l2_strength,
         )
-
-        return weight @ intermediate_x_test.T

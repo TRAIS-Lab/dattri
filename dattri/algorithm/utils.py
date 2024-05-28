@@ -169,8 +169,8 @@ def get_rps_weight(
     best_theta: Tensor,
     loss_func: Callable,
     x_train: Tensor,
-    y_train: Tensor,
-    y_ground_truth: Tensor,
+    y_pred_train: Tensor,
+    y_test: Tensor,
     lambda_l2: float,
 ) -> Tensor:
     r"""Compute the decomposed RPS weight.
@@ -180,27 +180,25 @@ def get_rps_weight(
         loss_func (Callable): The loss function used for prediction.
             Typically, BCELoss or CEloss.
         x_train (Tensor): The input feature of the training set.
-        y_train (Tensor): The pre-trained model output of the training set.
-        y_ground_truth (Tensor): The ground-truth of the training set.
+        y_pred_train (Tensor): The pre-trained model output of the training set.
+        y_test (Tensor): The ground-truth of the testing set.
         lambda_l2 (float): The l2-regularization strength.
 
     Returns:
         The decomposed RPS weight (\Theta^*_1 in the paper notation).
     """
-    n = len(y_train)
+    n = len(y_pred_train)
     # caluculate theta1 based on the representer theorem's decomposition
     pre_activation_value = torch.matmul(x_train, Variable(best_theta).transpose(0, 1))
-    print("preactivation value shape: ", pre_activation_value.shape)
-    alpha = grad(loss_func)(pre_activation_value, y_train) / (-2.0 * lambda_l2 * n)
-    print("alpha shape: ", alpha.shape)
-    if best_theta.shape[1] > 1:
-        # if multi class, we only want the "correct class prob." to represent alpha
-        # (otherwise it will be a n by c vector by definition)
-        print("y gt shape: ", y_ground_truth.shape)
-        alpha_correct_class = alpha[torch.arange(alpha.shape[0]), y_ground_truth]
-        print("alpha correct shape: ", alpha_correct_class.shape)
-        return x_train * alpha_correct_class.unsqueeze(1)
-    return x_train * alpha
+
+    alpha = grad(loss_func)(pre_activation_value, y_pred_train) / (-2.0 * lambda_l2 * n)
+    # if multi-class
+    if best_theta.shape[0] > 1:
+        train_size = x_train.shape[0]
+        y_test_reshaped = y_test.repeat(train_size, 1)
+        return alpha[torch.arange(train_size).unsqueeze(1), y_test_reshaped]
+
+    return alpha
 
 
 # The function is adapted from https://github.com/chihkuanyeh/Representer_Point_Selection/blob/master/compute_representer_vals.py
