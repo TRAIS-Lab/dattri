@@ -412,6 +412,7 @@ class TestIHVP:
         weights = torch.randn(3 * 20, requires_grad=True)
         labels = torch.randint(0, 3, (500,))
         v = torch.randn(60)
+        tol = 0.9
 
         vect = {}
         vect["layer1"] = v
@@ -423,4 +424,4 @@ class TestIHVP:
                                         weights,
                                         labels)
         datainf = ihvp_func(vect)
-        assert corr(gt, datainf["layer1"]) > 0.9
+        assert corr(gt, datainf["layer1"]) > tol

@@ -834,6 +834,7 @@ def ihvp_at_x_datainf(
     grad_dict = func(*x)
     layer_cnt = len(grad_dict[0].keys())
     keys = list(grad_dict[0].keys())
+
     def _ihvp_datainf_func(v: Dict[str, torch.Tensor]) -> torch.Tensor:
         """The IHVP function using datainf.
 
