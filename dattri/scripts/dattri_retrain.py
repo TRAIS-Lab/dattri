@@ -11,6 +11,7 @@ import argparse
 from pathlib import Path
 
 import torch
+from torch.utils.data import SubsetRandomSampler
 
 from dattri.benchmark.datasets.cifar2 import (
     create_cifar2_dataset,
@@ -111,6 +112,14 @@ def main() -> None:
                It should be one of {SUPPORTED_MODELS}.",
     )
     parser.add_argument(
+        "--train_subset",
+        type=int,
+        default=5000,
+        help="The number of training samples to use,\
+              for retraining. Default to 5000, set to\
+              -1 to use all the data.",
+    )
+    parser.add_argument(
         "--mode",
         type=str,
         choices=SUPPORTED_RETRAINING_MODE.keys(),
@@ -175,10 +184,17 @@ def main() -> None:
         path.mkdir(parents=True)
 
     dataset_train, _ = dataset_func(args.data_path)
+
+    if args.train_subset > 0:
+        sampler = SubsetRandomSampler(list(range(args.train_subset)))
+    else:
+        sampler = None
+
     train_loader = torch.utils.data.DataLoader(
         dataset_train,
         batch_size=DEFAULT_BATCH_SIZE[setting],
-        shuffle=True,
+        shuffle=sampler is None,
+        sampler=sampler,
     )
 
     if args.partition[1] is None:
