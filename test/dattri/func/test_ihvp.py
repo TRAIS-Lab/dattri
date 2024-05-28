@@ -1,8 +1,10 @@
 """Unit test for ihvp calculator."""
 
+import sys
+
 import torch
 from torch.func import vmap
-import sys
+
 sys.path.append("./dattri")
 from dattri.func.ihvp import (
     hvp,
@@ -10,12 +12,12 @@ from dattri.func.ihvp import (
     ihvp_arnoldi,
     ihvp_at_x_arnoldi,
     ihvp_at_x_cg,
+    ihvp_at_x_datainf,
     ihvp_at_x_explicit,
     ihvp_at_x_lissa,
-    ihvp_at_x_datainf,
-    test_ihvp_gt,
     ihvp_cg,
     ihvp_lissa,
+    test_ihvp_gt,
 )
 from dattri.func.utils import flatten_func, flatten_params
 
@@ -364,22 +366,23 @@ class TestIHVP:
             ihvp_explicit_at_x_func(vec),
             atol=0.08,
         )
-    
-        def test_ihvp_datainf(self):
+
+    def test_ihvp_datainf(self):
+        """Testing datainf functionality."""
         def loss_func(weight, inputs, labels, reg):
             weights_resized = weight.view(3, 20)
             pred = inputs @ weights_resized.T
             loss = torch.nn.CrossEntropyLoss()
-            return loss(pred, labels) + reg * torch.sum(weight**2)
+            return loss(pred, labels) + reg * torch.sum(weight ** 2)
 
         def _compute_damping(avg_grad_dict, train_grad_dict, lambda_const_param=10):
             regularization = []
             for weight_name in avg_grad_dict:
-                S = torch.zeros(len(train_grad_dict))
+                s = torch.zeros(len(train_grad_dict))
                 for tr_id in range(len(train_grad_dict)):
                     tmp_grad = train_grad_dict[tr_id][weight_name]
-                    S[tr_id] = torch.mean(tmp_grad**2)
-                lambda_const = torch.mean(S) / lambda_const_param
+                    s[tr_id] = torch.mean(tmp_grad**2)
+                lambda_const = torch.mean(s) / lambda_const_param
                 regularization.append(lambda_const)
             return regularization
 
@@ -387,20 +390,20 @@ class TestIHVP:
             mean1 = torch.mean(tensor1)
             mean2 = torch.mean(tensor2)
             covariance = torch.mean((tensor1 - mean1) * (tensor2 - mean2))
-            variance1 = torch.mean((tensor1 - mean1) ** 2)
-            variance2 = torch.mean((tensor2 - mean2) ** 2)
-            correlation = covariance / (torch.sqrt(variance1) * torch.sqrt(variance2))
-            return correlation
+            variance1 = torch.mean((tensor1 - mean1)**2)
+            variance2 = torch.mean((tensor2 - mean2)**2)
+            return covariance / (torch.sqrt(variance1)
+                                    * torch.sqrt(variance2))
 
         def get_test_grad(random_data, weights, labels):
             size = random_data.shape[0]
             grads = []
             for i in range(size):
                 if weights.grad is not None:
-                    weights.grad.zero_()  # Zero out the previous gradients
+                    weights.grad.zero_()
                 loss = loss_func(weights, random_data[i], labels[i], reg=0)
                 loss.backward()
-                grad_dict = dict()
+                grad_dict = {}
                 grad_dict["layer1"] = weights.grad.flatten()
                 grads.append(grad_dict)
             return grads
@@ -408,16 +411,16 @@ class TestIHVP:
         random_data = torch.randn(500, 20)
         weights = torch.randn(3 * 20, requires_grad=True)
         labels = torch.randint(0, 3, (500,))
-        v = torch.randn(
-            60,
-        )
+        v = torch.randn(60)
 
-        vect = dict()
+        vect = {}
         vect["layer1"] = v
         reg = _compute_damping(vect, get_test_grad(random_data, weights, labels))
         gt = test_ihvp_gt(random_data, weights, labels, v.T, reg[0])
-        ihvp_func = ihvp_at_x_datainf(
-            get_test_grad, 1, reg, random_data, weights, labels
-        )
+        ihvp_func = ihvp_at_x_datainf(get_test_grad, 1,
+                                        reg,
+                                        random_data,
+                                        weights,
+                                        labels)
         datainf = ihvp_func(vect)
         assert corr(gt, datainf["layer1"]) > 0.9

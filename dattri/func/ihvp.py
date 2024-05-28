@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Optional, Tuple, Union, List, Dict
+    from typing import Dict, List, Optional, Tuple, Union
 
 
 import torch
@@ -741,8 +741,8 @@ def ihvp_at_x_arnoldi(
 
 def ihvp_datainf(
     func: Callable,
+    regularization: Optional[List[float]],
     argnums: int = 0,
-    regularization: List[float] = [0.0],
 ) -> Callable:
     """DataInf ihvp algorithm function.
 
@@ -756,24 +756,28 @@ def ihvp_datainf(
     Args:
         func (Callable): A Python function that takes one or more arguments.
             Must return a list of dictionary of gradients. For each element in the list,
-            the keys should be the layer name and the value should be corresponding gradients.
-            Example: grad_dict[0] = {'layer1':Tensor, 'layer2':Tensor,...} , grad_dict[1]...
+            the keys should be the layer name and the value should be corresponding
+            gradients.Example: grad_dict[0] = {'layer1':Tensor, 'layer2':Tensor,...} ,
+            grad_dict[1]...
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute layer-wise gradients with respect to.
         regularization (List [float]): A list of floats default to 0.0. Specifies the
-            regularization term to be added to the Hessian matrix in each layer. This is useful
-            when the Hessian matrix is singular or ill-conditioned. The regularization
-            term is `regularization * I`, where `I` is the identity matrix directly
-            added to the Hessian matrix. The list is of length L, where L is the total number of
-            layers.
+            regularization term to be added to the Hessian matrix in each layer.
+            This is useful when the Hessian matrix is singular or ill-conditioned.
+            The regularization term is `regularization * I`, where `I` is the
+            identity matrix directly added to the Hessian matrix. The list is
+            of length L, where L is the total number of layers.
 
     Returns:
-        A function that takes a list of tuples of Tensor `x` and a vector `v` and returns
-        the approximated IHVP of the approximated Hessian of `func` and `v`.
+        A function that takes a list of tuples of Tensor `x` and a vector `v`
+        and returns the approximated IHVP of the approximated Hessian of
+        `func` and `v`.
     """
+    if regularization is None:
+        regularization = [0.0]
 
     def _ihvp_datainf_func(
-        x: Tuple[torch.Tensor, ...], v: Dict[str, torch.Tensor]
+        x: Tuple[torch.Tensor, ...], v: Dict[str, torch.Tensor],
     ) -> torch.Tensor:
         """The IHVP function using CG.
 
@@ -797,7 +801,7 @@ def ihvp_datainf(
 
 
 def ihvp_at_x_datainf(
-    func: Callable, argnums: int = 0, regularization: List[float] = [0.0], *x
+    func: Callable, regularization: Optional[List[float]], *x,
 ) -> Callable:
     """DataInf ihvp algorithm function (with fixed x).
 
@@ -810,14 +814,14 @@ def ihvp_at_x_datainf(
     Args:
         func (Callable): A Python function that takes one or more arguments.
             Must return a list of dictionary of gradients. For each element in the list,
-            the keys should be the layer name and the value should be corresponding gradients.
-        argnums (int): An integer default to 0. Specifies which argument of func
-            to compute layer-wise gradients with respect to.
+            the keys should be the layer name and the value should be corresponding
+            gradients.
         regularization (List [float]): A list of floats default to 0.0. Specifies the
-            regularization term to be added to the Hessian matrix in each layer. This is useful
-            when the Hessian matrix is singular or ill-conditioned. The regularization
-            term is `regularization * I`, where `I` is the identity matrix directly
-            added to the Hessian matrix. The list is of length L, where L is the total number of
+            regularization term to be added to the Hessian matrix in each layer.
+            This is useful when the Hessian matrix is singular or ill-conditioned.
+            The regularization term is `regularization * I`, where `I` is the
+            identity matrix directly added to the Hessian matrix.
+            The list is of length L, where L is the total number of
             layers.
         *x: List of arguments for `func`.
 
@@ -825,11 +829,11 @@ def ihvp_at_x_datainf(
         A function that takes a dict `v` and returns the IHVP of the Hessian
         of `func` and `v`.
     """
+    if regularization is None:
+        regularization = [0.0]
     grad_dict = func(*x)
     layer_cnt = len(grad_dict[0].keys())
-    assert len(regularization) == layer_cnt
     keys = list(grad_dict[0].keys())
-
     def _ihvp_datainf_func(v: Dict[str, torch.Tensor]) -> torch.Tensor:
         """The IHVP function using datainf.
 
@@ -840,7 +844,7 @@ def ihvp_at_x_datainf(
         Returns:
             The IHVP value dictionary, with keys corresponding to layer names.
         """
-        layer_ihvp = dict()
+        layer_ihvp = {}
         n = len(grad_dict)
         for layer in range(layer_cnt):
             weight_name = keys[layer]
@@ -861,6 +865,7 @@ def ihvp_at_x_datainf(
         return layer_ihvp
 
     return _ihvp_datainf_func
+
 
 def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
     """Check and return the size of input data.
