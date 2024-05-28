@@ -1,15 +1,94 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "dattri"
+description = "A library for data attribution tools and benchmarks."
+version = "0.0.1.dev0"
+readme = "README.md"
 requires-python = ">=3.8"
+authors = [
+    {name = "TRAIS-Lab", email = "jiaqima.mle@gmail.com"}
+]
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: Implementation :: CPython",
+]
+dependencies = [
+    "numpy>=1.25",
+    "scipy>=1.11",
+    "torch>=2.2.0",
+    "pyyaml",
+]
+
+[project.urls]
+homepage = "https://github.com/TRAIS-Lab/dattri"
+
+[project.optional-dependencies]
+fast = ["fast_jl"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests"]
+
+[tool.setuptools]
+packages = ["dattri"]
+include-package-data = true
+
+[project.entry-points.console_scripts]
+dattri_retrain="dattri.scripts.dattri_retrain:main"
+dattri_retrain_nanogpt="dattri.scripts.dattri_retrain_nanogpt:main"
+
+[tool.setuptools.package-data]
+dattri = ["py.typed"]
+
+[tool.ruff]
+exclude = [
+    "docs/",
+    "dattri/benchmark/datasets/shakespeare_char",
+    "dattri/benchmark/datasets/tinystories",
+    "dattri/benchmark/models",
+    "example/"
+]
 
 [tool.ruff.lint]
+preview = true
 select = ["ALL"]
-ignore = ["ANN002", "D203", "D213", "D407", "UP", "TD002", "TD003", "FIX002"]  # ignores: ANN002 (unnecessarily strict rule), D203 (conflict with D211), D213 (conflict with D212), D407 (supporting Google style docstrings), UP (compatibility with Python 3.8), TD002 (Missing author in TODO), TD003 (Missing issue link), FIX002 (TODO needs to be fixed)
+ignore = [
+    "ANN101",  # strict rule on .self type annotation
+    "ANN002",  # unnecessarily strict rule
+    "ANN003",  # unnecessarily strict rule
+    "D203",    # conflict with D211
+    "D213",    # conflict with D212
+    "D407",    # supporting Google style docstrings
+    "PLR0913", # strict rule on #args in function
+    "UP",      # compatibility with Python 3.8
+    "TD002",   # Missing author in TODO
+    "TD003",   # Missing issue link in TODO
+    "FIX002",  # TODO needs to be fixed
+    "CPY001",  # Missing copyright notice at top of file
+    "PLR0917", # Too many positional arguments
+    "PLR6201", # Use a `set` literal when testing for membership
+    "FBT001",  # Boolean-typed positional argument in function definition
+    "FBT002",  # Boolean default positional argument in function definition
+    "PLC0415", # strict rule on postion of importing modules
+    "C901",    # too many parameters in function
+]
 
 [tool.ruff.lint.extend-per-file-ignores]
-"__init__.py" = ["E401", "E402"]
-"setup.py" = ["ANN"]
-"**/test/**/*.py" = ["S101", "INP001", "ANN"] # ignores: S101 (assert is fine in tests), INP001 (no need for __init__.py in test), ANN (don't need type annotation for tests)
+"__init__.py" = [
+    "E401", # Multiple imports on one line
+    "E402", # Module level import not at top of cell
+]
+"setup.py" = [
+    "ANN", # don't need type annotation for setup
+]
+"**/test/**/*.py" = [
+    "S101",    # assert is fine in tests
+    "INP001",  # no need for __init__.py in test
+    "ANN",     # don't need type annotation for tests
+    "PLR6301", # Checks for the presence of unused self parameter
+]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

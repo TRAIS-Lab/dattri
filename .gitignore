@@ -46,3 +46,7 @@ __pycache__
 target
 build
 dist
+
+# maestro dataset related files/directories
+/test/dattri/benchmark/maestro-v2.0.0
+/test/dattri/benchmark/maestro-v2.0.0-processed
