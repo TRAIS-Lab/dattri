@@ -17,7 +17,6 @@ from dattri.func.ihvp import (
     ihvp_at_x_lissa,
     ihvp_cg,
     ihvp_lissa,
-    test_ihvp_gt,
 )
 from dattri.func.utils import flatten_func, flatten_params
 
@@ -417,11 +416,13 @@ class TestIHVP:
         vect = {}
         vect["layer1"] = v
         reg = _compute_damping(vect, get_test_grad(random_data, weights, labels))
-        gt = test_ihvp_gt(random_data, weights, labels, v.T, reg[0])
+        gt = ihvp_at_x_explicit(loss_func,
+                                *(weights, random_data, labels, reg),
+                                argnums=0)
         ihvp_func = ihvp_at_x_datainf(get_test_grad, 1,
                                         reg,
                                         random_data,
                                         weights,
                                         labels)
         datainf = ihvp_func(vect)
-        assert corr(gt, datainf["layer1"]) > tol
+        assert corr(gt(v), datainf["layer1"]) > tol
