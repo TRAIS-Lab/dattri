@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
 
 import torch
-from torch.func import jacrev, vmap
+from torch.func import grad, vmap
 from tqdm import tqdm
 
 from dattri.func.random_projection import random_project
@@ -86,7 +86,7 @@ class TRAKAttributor(BaseAttributor):
             self.projector_kwargs.update(projector_kwargs)
         self.target_func = target_func
         self.device = device
-        self.grad_func = vmap(jacrev(self.target_func), in_dims=(None, 0))
+        self.grad_func = vmap(grad(self.target_func), in_dims=(None, 0))
         self.correct_possibility_func = vmap(
             correct_possibility_func,
             in_dims=(None, 0),
