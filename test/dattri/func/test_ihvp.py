@@ -374,17 +374,6 @@ class TestIHVP:
             loss = torch.nn.CrossEntropyLoss()
             return loss(pred, labels) + reg * torch.sum(weight ** 2)
 
-        def _compute_damping(avg_grad_dict, train_grad_dict, lambda_const_param=10):
-            regularization = []
-            for weight_name in avg_grad_dict:
-                s = torch.zeros(len(train_grad_dict))
-                for tr_id in range(len(train_grad_dict)):
-                    tmp_grad = train_grad_dict[tr_id][weight_name]
-                    s[tr_id] = torch.mean(tmp_grad**2)
-                lambda_const = torch.mean(s) / lambda_const_param
-                regularization.append(lambda_const)
-            return regularization
-
         def corr(tensor1, tensor2):
             mean1 = torch.mean(tensor1)
             mean2 = torch.mean(tensor2)
@@ -415,12 +404,11 @@ class TestIHVP:
 
         vect = {}
         vect["layer1"] = v
-        reg = _compute_damping(vect, get_test_grad(random_data, weights, labels))
         gt = ihvp_at_x_explicit(loss_func,
-                                *(weights, random_data, labels, reg[0]),
+                                *(weights, random_data, labels, 0.05),
                                 argnums=0)
         ihvp_func = ihvp_at_x_datainf(get_test_grad, 1,
-                                        reg,
+                                        0.05,
                                         random_data,
                                         weights,
                                         labels)
