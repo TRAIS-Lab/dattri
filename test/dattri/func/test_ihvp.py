@@ -1,11 +1,8 @@
 """Unit test for ihvp calculator."""
 
-import sys
-
 import torch
 from torch.func import vmap
 
-sys.path.append("./dattri")
 from dattri.func.ihvp import (
     hvp,
     hvp_at_x,
@@ -383,12 +380,12 @@ class TestIHVP:
             return covariance / (torch.sqrt(variance1)
                                     * torch.sqrt(variance2))
 
-        def get_test_grad(random_data, weights, labels, argnums=0):
+        def get_test_grad(random_data, weights, labels):
             size = random_data.shape[0]
             grads = []
             for i in range(size):
-                if weights.grad is not None and argnums == 1:
-                    weights.grad.zero_()  # Zero out the previous gradients
+                if weights.grad is not None:
+                    weights.grad.zero_()
                 loss = loss_func(weights, random_data[i], labels[i], reg=0)
                 loss.backward()
                 grad_dict = {}
@@ -407,7 +404,7 @@ class TestIHVP:
         gt = ihvp_at_x_explicit(loss_func,
                                 *(weights, random_data, labels, 0.05),
                                 argnums=0)
-        ihvp_func = ihvp_at_x_datainf(get_test_grad, 1,
+        ihvp_func = ihvp_at_x_datainf(get_test_grad,
                                         [0.05],
                                         random_data,
                                         weights,
