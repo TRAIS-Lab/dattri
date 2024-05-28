@@ -123,7 +123,7 @@ class TracInAttributor(BaseAttributor):
             # prepare a checkpoint-specific seed
             if self.projector_kwargs is not None:
                 ckpt_seed = self.proj_seed * int(1e5) + param_index
-          
+
             for train_batch_idx, train_batch_data_ in enumerate(train_dataloader):
                 # move to device
                 train_batch_data = tuple(
