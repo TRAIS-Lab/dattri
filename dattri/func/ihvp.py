@@ -785,7 +785,8 @@ def ihvp_datainf(
             x (Tuple[torch.Tensor, ...]): The function will computed the
                 inverse hessian matrix with respect to these arguments.
             v: Dict[str, torch.Tensor]: Dictionary of gradients from which ihvp will be
-                computed. Example : v = {'weights_layer1': Tensor, "weights_layer2": Tensor}
+                computed. Example : v = {'weights_layer1': Tensor,
+                "weights_layer2": Tensor}
 
         Returns:
             The IHVP value.
@@ -839,8 +840,9 @@ def ihvp_at_x_datainf(
         """The IHVP function using datainf.
 
         Args:
-            v: Dict[str, torch.Tensor]: Dictionary of gradients from which ihvp will be
-                computed. Example : v = {'weights_layer1': Tensor, "weights_layer2": Tensor}
+            v: Dict[str, torch.Tensor]: Dictionary of gradients from which ihvp
+                will be computed. Example : v = {'weights_layer1': Tensor,
+                "weights_layer2": Tensor}
 
         Returns:
             The IHVP value dictionary, with keys corresponding to layer names.
