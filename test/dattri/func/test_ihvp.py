@@ -365,55 +365,59 @@ class TestIHVP:
             atol=0.08,
         )
     
-    def test_ihvp_datainf(self):
-        def loss_func(weight, inputs,labels,reg):
-            weights_resized = weight.view(3,20)
+        def test_ihvp_datainf(self):
+        def loss_func(weight, inputs, labels, reg):
+            weights_resized = weight.view(3, 20)
             pred = inputs @ weights_resized.T
             loss = torch.nn.CrossEntropyLoss()
-            return loss(pred,labels) + reg * torch.sum(weight ** 2)
-        
-        def _compute_damping(avg_grad_dict,train_grad_dict,lambda_const_param=10):
+            return loss(pred, labels) + reg * torch.sum(weight**2)
+
+        def _compute_damping(avg_grad_dict, train_grad_dict, lambda_const_param=10):
             regularization = []
             for weight_name in avg_grad_dict:
-                S=torch.zeros(len(train_grad_dict))
+                S = torch.zeros(len(train_grad_dict))
                 for tr_id in range(len(train_grad_dict)):
                     tmp_grad = train_grad_dict[tr_id][weight_name]
-                    S[tr_id]=torch.mean(tmp_grad**2)
+                    S[tr_id] = torch.mean(tmp_grad**2)
                 lambda_const = torch.mean(S) / lambda_const_param
                 regularization.append(lambda_const)
             return regularization
-        
-        def corr(tensor1,tensor2):
+
+        def corr(tensor1, tensor2):
             mean1 = torch.mean(tensor1)
             mean2 = torch.mean(tensor2)
             covariance = torch.mean((tensor1 - mean1) * (tensor2 - mean2))
-            variance1 = torch.mean((tensor1 - mean1)**2)
-            variance2 = torch.mean((tensor2 - mean2)**2)
-            correlation = covariance / (torch.sqrt(variance1) * torch.sqrt(variance2))  
+            variance1 = torch.mean((tensor1 - mean1) ** 2)
+            variance2 = torch.mean((tensor2 - mean2) ** 2)
+            correlation = covariance / (torch.sqrt(variance1) * torch.sqrt(variance2))
             return correlation
-        
-        def get_test_grad(random_data,weights,labels):
+
+        def get_test_grad(random_data, weights, labels):
             size = random_data.shape[0]
             grads = []
             for i in range(size):
                 if weights.grad is not None:
                     weights.grad.zero_()  # Zero out the previous gradients
-                loss = loss_func(weights,random_data[i],labels[i],reg=0)
+                loss = loss_func(weights, random_data[i], labels[i], reg=0)
                 loss.backward()
                 grad_dict = dict()
-                grad_dict['layer1'] = weights.grad.flatten()
+                grad_dict["layer1"] = weights.grad.flatten()
                 grads.append(grad_dict)
             return grads
-        
-        random_data = torch.randn(500,20)
+
+        random_data = torch.randn(500, 20)
         weights = torch.randn(3 * 20, requires_grad=True)
         labels = torch.randint(0, 3, (500,))
-        v = torch.randn(60,)
+        v = torch.randn(
+            60,
+        )
 
         vect = dict()
-        vect['layer1'] = v
-        reg = _compute_damping(vect,get_test_grad(random_data,weights,labels))
-        gt = test_ihvp_gt(random_data,weights,labels,v.T,reg[0])
-        ihvp_func = ihvp_at_x_datainf(get_test_grad,1,reg,random_data,weights,labels)
+        vect["layer1"] = v
+        reg = _compute_damping(vect, get_test_grad(random_data, weights, labels))
+        gt = test_ihvp_gt(random_data, weights, labels, v.T, reg[0])
+        ihvp_func = ihvp_at_x_datainf(
+            get_test_grad, 1, reg, random_data, weights, labels
+        )
         datainf = ihvp_func(vect)
-        assert corr(gt,datainf['layer1']) > 0.9
+        assert corr(gt, datainf["layer1"]) > 0.9

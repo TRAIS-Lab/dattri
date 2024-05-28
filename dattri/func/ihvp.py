@@ -739,11 +739,12 @@ def ihvp_at_x_arnoldi(
     return _ihvp_at_x_arnoldi
 
 
-def ihvp_datainf(func: Callable,
-                argnums: int = 0,
-                regularization: List [float] = [0.0],
-                 ) -> Callable:
-    ''' DataInf ihvp algorithm function.
+def ihvp_datainf(
+    func: Callable,
+    argnums: int = 0,
+    regularization: List[float] = [0.0],
+) -> Callable:
+    """DataInf ihvp algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -763,14 +764,17 @@ def ihvp_datainf(func: Callable,
             regularization term to be added to the Hessian matrix in each layer. This is useful
             when the Hessian matrix is singular or ill-conditioned. The regularization
             term is `regularization * I`, where `I` is the identity matrix directly
-            added to the Hessian matrix. The list is of length L, where L is the total number of 
+            added to the Hessian matrix. The list is of length L, where L is the total number of
             layers.
 
     Returns:
         A function that takes a list of tuples of Tensor `x` and a vector `v` and returns
         the approximated IHVP of the approximated Hessian of `func` and `v`.
-''' 
-    def _ihvp_datainf_func(x: Tuple[torch.Tensor, ...], v: Dict[str, torch.Tensor]) -> torch.Tensor:
+    """
+
+    def _ihvp_datainf_func(
+        x: Tuple[torch.Tensor, ...], v: Dict[str, torch.Tensor]
+    ) -> torch.Tensor:
         """The IHVP function using CG.
 
         Args:
@@ -788,14 +792,14 @@ def ihvp_datainf(func: Callable,
             argnums=argnums,
             regularization=regularization,
         )(v)
+
     return _ihvp_datainf_func
 
 
-def ihvp_at_x_datainf(func: Callable,
-                argnums: int = 0,
-                regularization: List [float] = [0.0],
-                *x) -> Callable:
-    '''DataInf ihvp algorithm function (with fixed x).
+def ihvp_at_x_datainf(
+    func: Callable, argnums: int = 0, regularization: List[float] = [0.0], *x
+) -> Callable:
+    """DataInf ihvp algorithm function (with fixed x).
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -813,18 +817,19 @@ def ihvp_at_x_datainf(func: Callable,
             regularization term to be added to the Hessian matrix in each layer. This is useful
             when the Hessian matrix is singular or ill-conditioned. The regularization
             term is `regularization * I`, where `I` is the identity matrix directly
-            added to the Hessian matrix. The list is of length L, where L is the total number of 
+            added to the Hessian matrix. The list is of length L, where L is the total number of
             layers.
         *x: List of arguments for `func`.
 
     Returns:
         A function that takes a dict `v` and returns the IHVP of the Hessian
         of `func` and `v`.
-    '''
+    """
     grad_dict = func(*x)
     layer_cnt = len(grad_dict[0].keys())
     assert len(regularization) == layer_cnt
     keys = list(grad_dict[0].keys())
+
     def _ihvp_datainf_func(v: Dict[str, torch.Tensor]) -> torch.Tensor:
         """The IHVP function using datainf.
 
@@ -841,8 +846,17 @@ def ihvp_at_x_datainf(func: Callable,
             weight_name = keys[layer]
             ihvp_layer = torch.zeros(grad_dict[0][weight_name].shape)
             for i in range(n):
-                coef = v[weight_name].T @ grad_dict[i][weight_name] / (regularization[layer] + torch.sum(grad_dict[i][weight_name] ** 2))
-                ihvp_layer += (v[weight_name] - coef * grad_dict[i][weight_name]) / (n * regularization[layer])
+                coef = (
+                    v[weight_name].T
+                    @ grad_dict[i][weight_name]
+                    / (
+                        regularization[layer]
+                        + torch.sum(grad_dict[i][weight_name] ** 2)
+                    )
+                )
+                ihvp_layer += (v[weight_name] - coef * grad_dict[i][weight_name]) / (
+                    n * regularization[layer]
+                )
             layer_ihvp[weight_name] = ihvp_layer
         return layer_ihvp
 
