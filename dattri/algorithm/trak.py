@@ -171,6 +171,14 @@ class TRAKAttributor(BaseAttributor):
             test_dataloader (torch.utils.data.DataLoader): The dataloader for
                 test samples to calculate the influence. The dataloader should not\
                 be shuffled.
+
+        Returns:
+            torch.Tensor: The influence of the training set on the test set, with
+                the shape of (num_train_samples, num_test_samples).
+
+        Raises:
+            ValueError: If the train_dataloader is not None and the full training
+                dataloader is cached.
         """
         running_xinv_XTX_XT = 0
         running_Q = 0
