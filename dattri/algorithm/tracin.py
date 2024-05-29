@@ -192,14 +192,12 @@ class TracInAttributor(BaseAttributor):
                                 @ normalize(test_batch_grad).T
                                 * params_weight
                             )
-                            .clone()
                             .detach()
                             .cpu()
                         )
                     else:
                         tda_output[row_st:row_ed, col_st:col_ed] += (
                             (train_batch_grad @ test_batch_grad.T * params_weight)
-                            .clone()
                             .detach()
                             .cpu()
                         )
