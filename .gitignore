@@ -52,10 +52,16 @@ dist
 **/maestro-v2.0.0-processed/*
 **/maestro-v2.0.0-midi.zip
 
+<<<<<<< add-tracin-example
 # for testing-related products/artifacts
 *.slurm
 
 
+=======
+# for teseting-related files
+*.slurm
+
+>>>>>>> main
 # for retraining-related files
 **/data/*
 **/experiment/*
