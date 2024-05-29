@@ -77,4 +77,13 @@ def create_cifar2_dataset(
     # get the subset of the original CIFAR-10 dataset
     train_dataset = Subset(full_train_dataset, cifar2_indices)
     test_dataset = Subset(full_test_dataset, cifar2_indices_test)
+
+    # give "data" and "targets" method
+    train_dataset.data = full_train_dataset.data[cifar2_indices]
+    train_dataset.targets = [full_train_dataset.targets[idx] for idx in cifar2_indices]
+    test_dataset.data = full_test_dataset.data[cifar2_indices_test]
+    test_dataset.targets = [
+        full_test_dataset.targets[idx] for idx in cifar2_indices_test
+    ]
+
     return train_dataset, test_dataset

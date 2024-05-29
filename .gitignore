@@ -52,7 +52,7 @@ dist
 **/maestro-v2.0.0-processed/*
 **/maestro-v2.0.0-midi.zip
 
-# for teseting-related files
+# for testing-related files
 *.slurm
 
 # for retraining-related files

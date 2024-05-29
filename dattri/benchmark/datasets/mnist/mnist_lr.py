@@ -19,6 +19,7 @@ def train_mnist_lr(
     dataloader: torch.utils.data.DataLoader,
     seed: int = 0,
     device: str = "cpu",
+    epoch_num: int = 20,
 ) -> LogisticRegressionMnist:
     """Train a logistic regression model on the MNIST dataset.
 
@@ -26,6 +27,7 @@ def train_mnist_lr(
         dataloader: The dataloader for the MNIST dataset.
         seed: The seed for training the model.
         device: The device to train the model on.
+        epoch_num: The number of epochs to train the model.
 
     Returns:
         The trained logistic regression model.
@@ -40,7 +42,6 @@ def train_mnist_lr(
 
     model.train()
     model.to(device)
-    epoch_num = 20
     for _ in range(epoch_num):
         for inputs, labels in dataloader:
             optimizer.zero_grad()
