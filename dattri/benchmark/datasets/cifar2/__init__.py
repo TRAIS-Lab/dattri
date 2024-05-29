@@ -7,7 +7,6 @@ __all__ = [
     "train_cifar2_resnet9",
 ]
 
-
 from .cifar2_resnet9 import (
     create_resnet9_model,
     loss_cifar2_resnet9,

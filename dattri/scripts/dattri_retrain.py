@@ -11,10 +11,19 @@ import argparse
 from pathlib import Path
 
 import torch
+from torch.utils.data import SubsetRandomSampler
 
+from dattri.benchmark.datasets.cifar2 import (
+    create_cifar2_dataset,
+    train_cifar2_resnet9,
+)
 from dattri.benchmark.datasets.imagenet import (
     create_imagenet_dataset,
     train_imagenet_resnet18,
+)
+from dattri.benchmark.datasets.maestro import (
+    create_maestro_datasets,
+    train_maestro_musictransformer,
 )
 from dattri.benchmark.datasets.mnist import (
     create_mnist_dataset,
@@ -23,19 +32,29 @@ from dattri.benchmark.datasets.mnist import (
 )
 from dattri.model_utils.retrain import retrain_lds, retrain_loo
 
-SUPPORTED_MODELS = ["lr", "resnet18"]
+SUPPORTED_MODELS = ["lr", "resnet18", "resnet9", "musictransformer"]
 
 SUPPORTED_SETTINGS = {
     "mnist_lr": train_mnist_lr,
     "mnist_mlp": train_mnist_mlp,
     "imagenet_resnet18": train_imagenet_resnet18,
+    "cifar2_resnet9": train_cifar2_resnet9,
+    "maestro_musictransformer": train_maestro_musictransformer,
 }
 SUPPORTED_RETRAINING_MODE = {"loo": retrain_loo, "lds": retrain_lds}
 SUPPORTED_DATASETS = {
     "mnist": create_mnist_dataset,
     "imagenet": create_imagenet_dataset,
+    "cifar2": create_cifar2_dataset,
+    "maestro": create_maestro_datasets,
 }
-DEFAULT_BATCH_SIZE = {"mnist_lr": 32, "mnist_mlp": 64, "imagenet_resnet18": 256}
+DEFAULT_BATCH_SIZE = {
+    "mnist_lr": 32,
+    "mnist_mlp": 64,
+    "imagenet_resnet18": 256,
+    "cifar2_resnet9": 64,
+    "maestro_musictransformer": 64,
+}
 
 
 def partition_type(arg: str) -> List[int]:
@@ -91,6 +110,14 @@ def main() -> None:
         choices=SUPPORTED_MODELS,
         help=f"The dataset to use for retraining.\
                It should be one of {SUPPORTED_MODELS}.",
+    )
+    parser.add_argument(
+        "--train_subset",
+        type=int,
+        default=5000,
+        help="The number of training samples to use,\
+              for retraining. Default to 5000, set to\
+              -1 to use all the data.",
     )
     parser.add_argument(
         "--mode",
@@ -157,10 +184,17 @@ def main() -> None:
         path.mkdir(parents=True)
 
     dataset_train, _ = dataset_func(args.data_path)
+
+    if args.train_subset > 0:
+        sampler = SubsetRandomSampler(list(range(args.train_subset)))
+    else:
+        sampler = None
+
     train_loader = torch.utils.data.DataLoader(
         dataset_train,
         batch_size=DEFAULT_BATCH_SIZE[setting],
-        shuffle=True,
+        shuffle=sampler is None,
+        sampler=sampler,
     )
 
     if args.partition[1] is None:
