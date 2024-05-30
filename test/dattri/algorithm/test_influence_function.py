@@ -32,7 +32,7 @@ class TestInfluenceFunction:
             image, label = data_target_pair
             loss = nn.CrossEntropyLoss()
             yhat = torch.func.functional_call(model, params, image)
-            return loss(yhat, label)
+            return loss(yhat, label.long())
 
         model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
 
@@ -53,6 +53,28 @@ class TestInfluenceFunction:
             params=model_params,
             ihvp_solver="cg",
             ihvp_kwargs={"regularization": 1e-3},
+            device=torch.device("cpu"),
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # arnoldi
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="arnoldi",
+            ihvp_kwargs={"regularization": 1e-3},
+            device=torch.device("cpu"),
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # lissa
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="lissa",
+            ihvp_kwargs={"recursion_depth": 5, "batch_size": 2},
             device=torch.device("cpu"),
         )
         attributor.cache(train_loader)
