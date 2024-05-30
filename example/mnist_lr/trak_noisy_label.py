@@ -89,7 +89,7 @@ if __name__ == "__main__":
                                 device=torch.device("cuda"),
                                 projector_kwargs=projector_kwargs)
 
-    attributor.cache(train_loader, less_memory=False)
+    attributor.cache(train_loader)
     torch.cuda.reset_peak_memory_stats("cuda")
     with torch.no_grad():
         score = attributor.attribute(test_loader).diag()

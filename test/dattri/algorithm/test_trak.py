@@ -71,19 +71,6 @@ class TestTRAK:
         score2 = attributor.attribute(test_loader)
         assert torch.allclose(score, score2)
 
-        # trak w/ cache and less memory
-        attributor = TRAKAttributor(
-            f,
-            m,
-            [model_params],
-            device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
-        )
-        attributor.cache(train_loader, less_memory=True)
-        score = attributor.attribute(test_loader)
-        score2 = attributor.attribute(test_loader)
-        assert torch.allclose(score, score2)
-
         # trak w/ multiple model params
         attributor = TRAKAttributor(
             f,

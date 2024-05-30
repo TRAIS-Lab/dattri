@@ -97,7 +97,6 @@ class TRAKAttributor(BaseAttributor):
     def cache(
         self,
         full_train_dataloader: torch.utils.data.DataLoader,
-        less_memory: bool = False,
     ) -> None:
         """Cache the dataset for inverse hessian calculation.
 
@@ -109,51 +108,47 @@ class TRAKAttributor(BaseAttributor):
                 be calculated and cached.
         """
         self.full_train_dataloader = full_train_dataloader
-        self.less_memory = less_memory
-        if not self.less_memory:
-            inv_XTX_XT_list = []
-            running_Q = 0
-            running_count = 0
-            for ckpt_seed, params in enumerate(self.params):
-                full_train_projected_grad = []
-                Q = []
-                for train_data in tqdm(
-                    self.full_train_dataloader,
-                    desc="calculating gradient of training set...",
-                    leave=False,
-                ):
-                    train_batch_data = tuple(
-                        data.to(self.device) for data in train_data
-                    )
-                    grad_t = self.grad_func(flatten_params(params), train_batch_data)
-                    self.projector_kwargs["proj_seed"] = ckpt_seed
-                    grad_p = random_project(
-                        grad_t,
-                        train_batch_data[0].shape[0],
-                        **self.projector_kwargs,
-                    )(grad_t)
-                    full_train_projected_grad.append(grad_p)
-                    Q.append(
-                        torch.ones(train_batch_data[0].shape[0]).to(self.device)
-                        - self.correct_possibility_func(
-                            flatten_params(params),
-                            train_batch_data,
-                        ).flatten(),
-                    )
-                full_train_projected_grad = torch.cat(full_train_projected_grad, dim=0)
-                Q = torch.cat(Q, dim=0)
-                inv_XTX_XT = (
-                    torch.linalg.inv(
-                        full_train_projected_grad.T @ full_train_projected_grad,
-                    )
-                    @ full_train_projected_grad.T
+        inv_XTX_XT_list = []
+        running_Q = 0
+        running_count = 0
+        for ckpt_seed, params in enumerate(self.params):
+            full_train_projected_grad = []
+            Q = []
+            for train_data in tqdm(
+                self.full_train_dataloader,
+                desc="calculating gradient of training set...",
+                leave=False,
+            ):
+                train_batch_data = tuple(data.to(self.device) for data in train_data)
+                grad_t = self.grad_func(flatten_params(params), train_batch_data)
+                self.projector_kwargs["proj_seed"] = ckpt_seed
+                grad_p = random_project(
+                    grad_t,
+                    train_batch_data[0].shape[0],
+                    **self.projector_kwargs,
+                )(grad_t)
+                full_train_projected_grad.append(grad_p)
+                Q.append(
+                    torch.ones(train_batch_data[0].shape[0]).to(self.device)
+                    - self.correct_possibility_func(
+                        flatten_params(params),
+                        train_batch_data,
+                    ).flatten(),
                 )
-                inv_XTX_XT_list.append(inv_XTX_XT)
-                running_Q = running_Q * running_count + Q
-                running_count += 1  # noqa: SIM113
-                running_Q /= running_count
-            self.inv_XTX_XT_list = inv_XTX_XT_list
-            self.Q = running_Q
+            full_train_projected_grad = torch.cat(full_train_projected_grad, dim=0)
+            Q = torch.cat(Q, dim=0)
+            inv_XTX_XT = (
+                torch.linalg.inv(
+                    full_train_projected_grad.T @ full_train_projected_grad,
+                )
+                @ full_train_projected_grad.T
+            )
+            inv_XTX_XT_list.append(inv_XTX_XT)
+            running_Q = running_Q * running_count + Q
+            running_count += 1  # noqa: SIM113
+            running_Q /= running_count
+        self.inv_XTX_XT_list = inv_XTX_XT_list
+        self.Q = running_Q
 
     def attribute(
         self,
@@ -191,8 +186,11 @@ class TRAKAttributor(BaseAttributor):
                        .attribute() and directly use index to select the corresponding\
                        scores."
             raise ValueError(message)
-        if self.less_memory:
-            train_dataloader = self.full_train_dataloader
+        if train_dataloader is None and self.full_train_dataloader is None:
+            message = "You did not state a training loader in .attribute() and you\
+                       did not cache a training loader by .cache(). Please provide a\
+                       training loader or cache a training loader."
+            raise ValueError(message)
         for ckpt_seed, params in enumerate(self.params):
             if train_dataloader is not None:
                 train_projected_grad = []
