@@ -1,4 +1,4 @@
-"""This module implement the influence function."""
+"""This module implement the TRAK."""
 
 # ruff: noqa: N806
 
@@ -34,7 +34,7 @@ class TRAKAttributor(BaseAttributor):
     def __init__(
         self,
         target_func: Callable,
-        correct_possibility_func: Callable,
+        correct_probability_func: Callable,
         params: List[dict],
         projector_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
@@ -57,8 +57,8 @@ class TRAKAttributor(BaseAttributor):
                         return loss(yhat, label_t)
                 ```.
                 This examples calculates the loss of the model on the dataloader.
-            correct_possibility_func (Callable): The function to calculate the
-                possibility to correctly predict the label of the input data.
+            correct_probability_func (Callable): The function to calculate the
+                probability to correctly predict the label of the input data.
                 A typical example is as follows:
                 ```python
                 @flatten_func(model)
@@ -87,8 +87,8 @@ class TRAKAttributor(BaseAttributor):
         self.target_func = target_func
         self.device = device
         self.grad_func = vmap(grad(self.target_func), in_dims=(None, 0))
-        self.correct_possibility_func = vmap(
-            correct_possibility_func,
+        self.correct_probability_func = vmap(
+            correct_probability_func,
             in_dims=(None, 0),
         )
         self.full_train_dataloader = None
@@ -98,11 +98,11 @@ class TRAKAttributor(BaseAttributor):
         self,
         full_train_dataloader: torch.utils.data.DataLoader,
     ) -> None:
-        """Cache the dataset for inverse hessian calculation.
+        """Cache the dataset for gradient calculation.
 
         Args:
             full_train_dataloader (torch.utils.data.DataLoader): The dataloader
-                with full training samples for inverse hessian calculation.
+                with full training samples for gradient calculation.
             less_memory (bool): Whether to use less memory for the calculation, default
                 is False. If set to True, the gradient to the full training set will
                 be calculated and cached.
@@ -130,7 +130,7 @@ class TRAKAttributor(BaseAttributor):
                 full_train_projected_grad.append(grad_p)
                 Q.append(
                     torch.ones(train_batch_data[0].shape[0]).to(self.device)
-                    - self.correct_possibility_func(
+                    - self.correct_probability_func(
                         flatten_params(params),
                         train_batch_data,
                     ).flatten(),
@@ -213,7 +213,7 @@ class TRAKAttributor(BaseAttributor):
                     train_projected_grad.append(grad_p)
                     Q.append(
                         torch.ones(train_batch_data[0].shape[0]).to(self.device)
-                        - self.correct_possibility_func(
+                        - self.correct_probability_func(
                             flatten_params(params),
                             train_batch_data,
                         ),
