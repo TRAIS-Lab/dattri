@@ -32,7 +32,7 @@ class TestInfluenceFunction:
             image, label = data_target_pair
             loss = nn.CrossEntropyLoss()
             yhat = torch.func.functional_call(model, params, image)
-            return loss(yhat, label)
+            return loss(yhat, label.long())
 
         model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
 

@@ -37,14 +37,7 @@ def _lissa_collate_fn(
     """
     return (
         sampled_input[0],
-        list(
-            zip(
-                *tuple(
-                    sampled_input[i].unsqueeze(0).float()
-                    for i in range(1, len(sampled_input))
-                ),
-            ),
-        ),
+        tuple(sampled_input[i].float() for i in range(1, len(sampled_input))),
     )
 
 
@@ -203,8 +196,8 @@ class IFAttributor(BaseAttributor):
                         )
                         ihvp += self.ihvp_func(
                             (self.params, *full_data),
-                            grad_test_iter,
-                            in_dims=(None,) + (0,) * len(loader[0]),
+                            test_batch_grad,
+                            in_dims=(None,) + (0,) * len(full_data),
                         ).detach()
                     else:
                         self.ihvp_func = self.ihvp_solver(
