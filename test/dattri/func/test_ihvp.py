@@ -13,6 +13,7 @@ from dattri.func.ihvp import (
     ihvp_at_x_explicit,
     ihvp_at_x_lissa,
     ihvp_cg,
+    ihvp_datainf,
     ihvp_lissa,
 )
 from dattri.func.utils import flatten_func, flatten_params
@@ -363,51 +364,59 @@ class TestIHVP:
             atol=0.08,
         )
 
-    def test_ihvp_datainf(self):
-        """Testing datainf functionality."""
-        def loss_func(weight, inputs, labels, reg):
-            weights_resized = weight.view(3, 20)
-            pred = inputs @ weights_resized.T
-            loss = torch.nn.CrossEntropyLoss()
-            return loss(pred, labels) + reg * torch.sum(weight ** 2)
 
-        def corr(tensor1, tensor2):
-            mean1 = torch.mean(tensor1)
-            mean2 = torch.mean(tensor2)
-            covariance = torch.mean((tensor1 - mean1) * (tensor2 - mean2))
-            variance1 = torch.mean((tensor1 - mean1)**2)
-            variance2 = torch.mean((tensor2 - mean2)**2)
-            return covariance / (torch.sqrt(variance1)
-                                    * torch.sqrt(variance2))
+def test_ihvp_datainf():
+    """Testing datainf functionality."""
+    def loss_func(weight, inputs, labels, reg):
+        weights_resized = weight.view(3, 20)
+        pred = inputs @ weights_resized.T
+        loss = torch.nn.CrossEntropyLoss()
+        return loss(pred, labels) + reg * torch.sum(weight ** 2)
 
-        def get_test_grad(random_data, weights, labels):
-            size = random_data.shape[0]
-            grads = []
-            for i in range(size):
-                if weights.grad is not None:
-                    weights.grad.zero_()
-                loss = loss_func(weights, random_data[i], labels[i], reg=0)
-                loss.backward()
-                grad_dict = {}
-                grad_dict["layer1"] = weights.grad.flatten()
-                grads.append(grad_dict)
-            return grads
+    def corr(tensor1, tensor2):
+        mean1 = torch.mean(tensor1)
+        mean2 = torch.mean(tensor2)
+        covariance = torch.mean((tensor1 - mean1) * (tensor2 - mean2))
+        variance1 = torch.mean((tensor1 - mean1)**2)
+        variance2 = torch.mean((tensor2 - mean2)**2)
+        return covariance / (torch.sqrt(variance1)
+                                * torch.sqrt(variance2))
 
-        random_data = torch.randn(500, 20)
-        weights = torch.randn(3 * 20, requires_grad=True)
-        labels = torch.randint(0, 3, (500,))
-        v = torch.randn(60)
-        tol = 0.9
+    def get_test_grad(weights, random_data, labels):
+        size = random_data.shape[0]
+        grads = []
+        for i in range(size):
+            if weights.grad is not None:
+                weights.grad.zero_()
+            loss = loss_func(weights, random_data[i], labels[i], reg=0)
+            loss.backward()
+            grad_dict = {}
+            grad_dict["layer1"] = weights.grad.flatten()
+            grads.append(grad_dict)
+        return grads
 
-        vect = {}
-        vect["layer1"] = v
-        gt = ihvp_at_x_explicit(loss_func,
-                                *(weights, random_data, labels, 0.05),
-                                argnums=0)
-        ihvp_func = ihvp_at_x_datainf(get_test_grad,
-                                        [0.05],
-                                        random_data,
-                                        weights,
-                                        labels)
-        datainf = ihvp_func(vect)
-        assert corr(gt(v), datainf["layer1"]) > tol
+    random_data = torch.randn(500, 20)
+    weights = torch.randn(3 * 20, requires_grad=True)
+    labels = torch.randint(0, 3, (500,))
+    v = torch.randn(60)
+    tol = 0.9
+
+    vect = {}
+    vect["layer1"] = v
+    gt = ihvp_at_x_explicit(loss_func,
+                            *(weights, random_data, labels, 0.05),
+                            argnums=0)
+
+    ihvp_datainf_func = ihvp_datainf(
+        get_test_grad,
+        [0.05],
+    )
+    ihvp2 = ihvp_datainf_func((weights, random_data, labels), vect,
+                                )
+    ihvp_datainf_at_x_func = ihvp_at_x_datainf(get_test_grad,
+                                    [0.05],
+                                    weights,
+                                    random_data,
+                                    labels)
+    assert corr(gt(v), datainf=ihvp_datainf_at_x_func(vect)["layer1"]) > tol
+    assert corr(gt(v), ihvp2["layer1"]) > tol
