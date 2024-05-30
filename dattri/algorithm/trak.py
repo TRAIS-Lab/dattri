@@ -103,9 +103,6 @@ class TRAKAttributor(BaseAttributor):
         Args:
             full_train_dataloader (torch.utils.data.DataLoader): The dataloader
                 with full training samples for gradient calculation.
-            less_memory (bool): Whether to use less memory for the calculation, default
-                is False. If set to True, the gradient to the full training set will
-                be calculated and cached.
         """
         self.full_train_dataloader = full_train_dataloader
         inv_XTX_XT_list = []
@@ -173,7 +170,7 @@ class TRAKAttributor(BaseAttributor):
 
         Raises:
             ValueError: If the train_dataloader is not None and the full training
-                dataloader is cached.
+                dataloader is cached or no train_loader is provided in both cases.
         """
         running_xinv_XTX_XT = 0
         running_Q = 0
