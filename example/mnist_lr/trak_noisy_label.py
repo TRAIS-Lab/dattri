@@ -7,24 +7,13 @@ from torchvision import datasets, transforms
 
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
-from dattri.benchmark.utils import flip_label
+from dattri.benchmark.utils import flip_label, SubsetSampler
 from dattri.func.utils import flatten_func
 
 
 def get_mnist_indices_and_adjust_labels(dataset):
     dataset.targets, flip_index = flip_label(dataset.targets, p=0.1)
     return flip_index
-
-
-class SubsetSampler(Sampler):
-    def __init__(self, indices):
-        self.indices = indices
-
-    def __iter__(self):
-        return iter(self.indices)
-
-    def __len__(self):
-        return len(self.indices)
 
 
 if __name__ == "__main__":
