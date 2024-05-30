@@ -85,6 +85,7 @@ def loss_cifar2_resnet9(
     model = create_resnet9_model()
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
+    model.to(device)
     total_loss = 0
     total_samples = 0
     with torch.no_grad():

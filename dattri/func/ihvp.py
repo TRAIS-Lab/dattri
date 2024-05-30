@@ -813,7 +813,9 @@ def _sample_random_batch(
     sampled_indices = torch.randperm(num_samples)[:batch_size]
 
     return tuple(
-        x_in.index_select(dim, sampled_indices) if dim is not None else x_in
+        x_in.index_select(dim, sampled_indices.to(x_in.device))
+        if dim is not None
+        else x_in
         for x_in, dim in zip(x, in_dims)
     )
 
@@ -826,6 +828,7 @@ def ihvp_lissa(
     recursion_depth: int = 5000,
     damping: int = 0.0,
     scaling: int = 50.0,
+    collate_fn: Optional[Callable] = None,
     mode: str = "rev-rev",
 ) -> Callable:
     """IHVP via LiSSA algorithm.
@@ -850,6 +853,9 @@ def ihvp_lissa(
             recursions used to estimate each ihvp sample.
         damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
         scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
+        collate_fn (Optional[Callable]): A function to collate the input data to fit
+            the input of `func`. If None, the input data will be directly passed to
+            `func`. This is useful when `func` has some nested input structure.
         mode (str): The auto diff mode, which can have one of the following values:
             - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
                        better compatibility while cost more memory.
@@ -895,7 +901,11 @@ def ihvp_lissa(
                         num_samples=num_samples,
                         in_dims=in_dims,
                     )
-                    hvp = hvp_func(sampled_input, curr_estimate)
+
+                    if collate_fn is None:
+                        hvp = hvp_func(sampled_input, curr_estimate)
+                    else:
+                        hvp = hvp_func(collate_fn(sampled_input), curr_estimate)
                     curr_estimate = vec + (1 - damping) * curr_estimate - hvp / scaling
 
                 ihvp_estimations.append(curr_estimate / scaling)
@@ -917,6 +927,7 @@ def ihvp_at_x_lissa(
     recursion_depth: int = 5000,
     damping: int = 0.0,
     scaling: int = 50.0,
+    collate_fn: Optional[Callable] = None,
     mode: str = "rev-rev",
 ) -> Callable:
     """IHVP with fixed func inputs via LiSSA algorithm.
@@ -945,6 +956,9 @@ def ihvp_at_x_lissa(
             recursions used to estimate each ihvp sample.
         damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
         scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
+        collate_fn (Optional[Callable]): A function to collate the input data to fit
+            the input of `func`. If None, the input data will be directly passed to
+            `func`. This is useful when `func` has some nested input structure.
         mode (str): The auto diff mode, which can have one of the following values:
             - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
                        better compatibility while cost more memory.
@@ -974,6 +988,7 @@ def ihvp_at_x_lissa(
             recursion_depth,
             damping,
             scaling,
+            collate_fn,
             mode,
         )
 
