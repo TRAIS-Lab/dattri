@@ -92,7 +92,6 @@ class TRAKAttributor(BaseAttributor):
             in_dims=(None, 0),
         )
         self.full_train_dataloader = None
-        self.less_memory = None
 
     def cache(
         self,
