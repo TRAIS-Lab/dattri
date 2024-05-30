@@ -742,7 +742,6 @@ def ihvp_at_x_arnoldi(
 def ihvp_datainf(
     func: Callable,
     regularization: Optional[List[float]],
-    argnums: int = 0,
 ) -> Callable:
     """DataInf ihvp algorithm function.
 
@@ -759,8 +758,6 @@ def ihvp_datainf(
             the keys should be the layer name and the value should be corresponding
             gradients.Example: grad_dict[0] = {'layer1':Tensor, 'layer2':Tensor,...} ,
             grad_dict[1]...
-        argnums (int): An integer default to 0. Specifies which argument of func
-            to compute layer-wise gradients with respect to.
         regularization (List [float]): A list of floats default to 0.0. Specifies the
             regularization term to be added to the Hessian matrix in each layer.
             This is useful when the Hessian matrix is singular or ill-conditioned.
@@ -775,7 +772,6 @@ def ihvp_datainf(
     """
     if regularization is None:
         regularization = [0.0]
-
     def _ihvp_datainf_func(
         x: Tuple[torch.Tensor, ...], v: Dict[str, torch.Tensor],
     ) -> torch.Tensor:
@@ -791,15 +787,25 @@ def ihvp_datainf(
         Returns:
             The IHVP value.
         """
-        return ihvp_at_x_datainf(
-            func,
-            *x,
-            argnums=argnums,
-            regularization=regularization,
-        )(v)
+        grad_dict = func(*x)
+        layer_cnt = len(grad_dict[0].keys())
+        keys = list(grad_dict[0].keys())
+        layer_ihvp = {}
+        n = len(grad_dict)
+        for layer in range(layer_cnt):
+            weight_name = keys[layer]
+            ihvp_layer = torch.zeros(grad_dict[0][weight_name].shape)
 
+            def _single_datainf_ihvp(v, grad, regularization):
+                coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
+                return (v - coef * grad) / regularization
+            
+            grads = torch.stack([grad[weight_name] for grad in grad_dict])
+            ihvp_contributions = torch.func.vmap(lambda grad: _single_datainf_ihvp(v[weight_name], grad, regularization[layer]))(grads)
+            ihvp_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
+            layer_ihvp[weight_name] = ihvp_layer
+        return layer_ihvp
     return _ihvp_datainf_func
-
 
 def ihvp_at_x_datainf(
     func: Callable, regularization: Optional[List[float]], *x,
@@ -852,18 +858,14 @@ def ihvp_at_x_datainf(
         for layer in range(layer_cnt):
             weight_name = keys[layer]
             ihvp_layer = torch.zeros(grad_dict[0][weight_name].shape)
-            for i in range(n):
-                coef = (
-                    v[weight_name].T
-                    @ grad_dict[i][weight_name]
-                    / (
-                        regularization[layer]
-                        + torch.sum(grad_dict[i][weight_name] ** 2)
-                    )
-                )
-                ihvp_layer += (v[weight_name] - coef * grad_dict[i][weight_name]) / (
-                    n * regularization[layer]
-                )
+
+            def _single_datainf_ihvp(v, grad, regularization):
+                coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
+                return (v - coef * grad) / regularization
+            
+            grads = torch.stack([grad[weight_name] for grad in grad_dict])
+            ihvp_contributions = torch.func.vmap(lambda grad: _single_datainf_ihvp(v[weight_name], grad, regularization[layer]))(grads)
+            ihvp_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
             layer_ihvp[weight_name] = ihvp_layer
         return layer_ihvp
 
