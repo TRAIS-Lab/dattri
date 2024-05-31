@@ -93,7 +93,7 @@ if __name__ == "__main__":
     dataset = datasets.MNIST("../data", train=True, download=True, transform=transform)
 
 
-    subset_size = 5000
+    subset_size = 1000
     train_loader_full = torch.utils.data.DataLoader(
         dataset,
         batch_size=subset_size,
@@ -120,9 +120,10 @@ if __name__ == "__main__":
 
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
     attributor = RPSAttributor(
-        target_func=f,
+        loss_func=f,
         model=model,
         final_linear_layer_name="fc3",
+        nomralize_preactivate=True,
         device=torch.device("cuda"),
     )
 
@@ -140,7 +141,7 @@ if __name__ == "__main__":
     cr = 0
     cr_list = []
     for idx, index in enumerate(indices):
-        if (idx+1) % 1000 == 0:
+        if (idx+1) % 100 == 0:
             cr_list.append((idx+1, cr))
         if int(index) in set(flip_index):
             cr += 1
