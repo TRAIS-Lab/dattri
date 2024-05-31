@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Dict, List, Optional, Tuple, Union
+    from typing import List, Optional, Tuple, Union
 
 
 import torch
@@ -860,7 +860,7 @@ def ihvp_at_x_datainf(
         return torch.func.grad(func, argnums=argnums)(*args)
     grad_dict = torch.func.vmap(_per_sample_grad, in_dims=in_dims)(*x)
 
-    def _ihvp_datainf_func(v: Tuple[torch.Tensor, ...]
+    def _ihvp_datainf_func(v: Tuple[torch.Tensor, ...],
     ) -> List[torch.Tensor]:
         """The IHVP function using datainf.
 
