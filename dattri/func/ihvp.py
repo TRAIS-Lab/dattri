@@ -781,8 +781,8 @@ def ihvp_datainf(
         regularization = [0.0]
 
     def _ihvp_datainf_func(
-        x: Tuple[torch.Tensor, ...], v: Dict[str, torch.Tensor],
-    ) -> torch.Tensor:
+        x: Tuple[torch.Tensor, ...], v: Tuple[torch.Tensor, ...],
+    ) -> List[torch.Tensor]:
         """The IHVP function using CG.
 
         Args:
@@ -798,9 +798,9 @@ def ihvp_datainf(
         def _per_sample_grad(*args) -> torch.Tensor:
             return torch.func.grad(func, argnums=argnums)(*args)
         grad_dict = torch.func.vmap(_per_sample_grad, in_dims=in_dims)(*x)
-        layer_ihvp = []
+        ihvps = []
         for layer in range(len(grad_dict)):
-            ihvp_layer = torch.zeros(grad_dict[layer].shape[1])
+            ihvp_at_layer = torch.zeros(grad_dict[layer].shape[1])
 
             def _single_datainf_ihvp(v: torch.Tensor,
                                      grad: torch.Tensor,
@@ -812,9 +812,9 @@ def ihvp_datainf(
                                                  _single_datainf_ihvp(v[layer],
                                                                       grad,
                                                                       regularization[layer]))(grads_layer)
-            ihvp_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
-            layer_ihvp.append(ihvp_layer)
-        return layer_ihvp
+            ihvp_at_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
+            ihvps.append(ihvp_at_layer)
+        return ihvps
     return _ihvp_datainf_func
 
 
@@ -860,7 +860,8 @@ def ihvp_at_x_datainf(
         return torch.func.grad(func, argnums=argnums)(*args)
     grad_dict = torch.func.vmap(_per_sample_grad, in_dims=in_dims)(*x)
 
-    def _ihvp_datainf_func(v: Dict[str, torch.Tensor]) -> torch.Tensor:
+    def _ihvp_datainf_func(v: Tuple[torch.Tensor, ...]
+    ) -> List[torch.Tensor]:
         """The IHVP function using datainf.
 
         Args:
@@ -871,9 +872,9 @@ def ihvp_at_x_datainf(
         Returns:
             The IHVP value dictionary, with keys corresponding to layer names.
         """
-        layer_ihvp = []
+        ihvps = []
         for layer in range(len(grad_dict)):
-            ihvp_layer = torch.zeros(grad_dict[layer].shape[1])
+            ihvp_at_layer = torch.zeros(grad_dict[layer].shape[1])
 
             def _single_datainf_ihvp(v: torch.Tensor,
                                      grad: torch.Tensor,
@@ -885,9 +886,9 @@ def ihvp_at_x_datainf(
                                                  _single_datainf_ihvp(v[layer],
                                                                       grad,
                                                                       regularization[layer]))(grads_layer)
-            ihvp_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
-            layer_ihvp.append(ihvp_layer)
-        return layer_ihvp
+            ihvp_at_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
+            ihvps.append(ihvp_at_layer)
+        return ihvps
 
     return _ihvp_datainf_func
 
