@@ -427,17 +427,17 @@ def test_ihvp_datainf():
 
 
 def test_ihvp_datainf_nn():
-    """Testing datainf for a nn forwarding function."""
+    """Testing Datainf Functionality for a nn.Module."""
     model = torch.nn.Sequential(
-            torch.nn.Linear(20, 6, bias=False),
+            torch.nn.Linear(20, 6, bias=True),
             torch.nn.ReLU(),
-            torch.nn.Linear(6, 3, bias=False),
-        )
+            torch.nn.Linear(6, 3, bias=True),
+    )
     model.eval()
     inputs = torch.randn((500, 20))
     labels = torch.randint(0, 3, (500,))
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
-    v = (torch.randn(120), torch.randn(18))
+    v = (torch.randn(126), torch.randn(21))
     v_all = torch.cat(v, dim=0)
 
     @flatten_func(model, param_num=0)
@@ -464,7 +464,8 @@ def test_ihvp_datainf_nn():
             ce,
             0,
             (None, 0, 0),
-            [0.15, 0.15],
+            [0.15, 0.15, 0.15, 0.15],
+            param_layer_map=[0, 0, 1, 1],
     )
 
     def corr(tensor1, tensor2):
@@ -478,5 +479,5 @@ def test_ihvp_datainf_nn():
     params = tuple([param.flatten() for param in model_params.values()])
     ihvp = ihvp_datainf_func((params, inputs, labels), v)
     tol = 0.9
-    assert (corr(ihvp[0], ihvp_explicit_at_x_func(v_all)[:120]) > tol)
-    # Correlation for layer 1
+    assert (corr(ihvp[0], ihvp_explicit_at_x_func(v_all)[:126]) > tol)
+    # For layer 1 weights & biases

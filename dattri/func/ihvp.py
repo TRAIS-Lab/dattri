@@ -744,6 +744,7 @@ def ihvp_datainf(
     argnums: int,
     in_dims: Tuple[Union[None, int], ...],
     regularization: Optional[List[float]] = None,
+    param_layer_map: Optional[List[int]] = None,
 ) -> Callable:
     """DataInf ihvp algorithm function.
 
@@ -770,6 +771,10 @@ def ihvp_datainf(
             The regularization term is `regularization * I`, where `I` is the
             identity matrix directly added to the Hessian matrix. The list is
             of length L, where L is the total number of layers.
+        param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
+            into layers. Should be the same length as parameters tuple. For example,
+            for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
+            param_layer_map should be [0,0,1,1],resulting in two layers as expected.
 
     Returns:
         A function that takes a list of tuples of Tensor `x` and a tuple of tensors
@@ -800,8 +805,19 @@ def ihvp_datainf(
             Layer-wise IHVP values.
         """
         grads = batch_grad_func(*x)
-        ihvps = []
         layer_cnt = len(grads)
+        if param_layer_map is not None:
+            grouped = []
+            max_layer = max(param_layer_map)
+            for group in range(max_layer + 1):
+                grouped_layers = tuple([grads[layer] for layer in
+                                        range(len(param_layer_map))
+                                        if param_layer_map[layer] == group])
+                concated_grads = torch.concat(grouped_layers, dim=1)
+                grouped.append(concated_grads)
+            grads = tuple(grouped)
+            layer_cnt = max_layer + 1  # Assuming count starts from 0
+        ihvps = []
         for layer in range(layer_cnt):
             grad_layer = grads[layer]
             reg = 0.0 if regularization is None else regularization[layer]
@@ -821,6 +837,7 @@ def ihvp_at_x_datainf(
     in_dims: Tuple[Union[None, int], ...],
     regularization: Optional[List[float]] = None,
     *x,
+    param_layer_map: Optional[List[int]] = None,
 ) -> Callable:
     """DataInf ihvp algorithm function (with fixed x).
 
@@ -847,6 +864,10 @@ def ihvp_at_x_datainf(
             identity matrix directly added to the Hessian matrix.
             The list is of length L, where L is the total number of
             layers.
+        param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
+            into layers. Should be the same length as parameters tuple. For example,
+            for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
+            param_layer_map should be (0,0,1,1),resulting in two layers as expected.
         *x: List of arguments for `func`.
 
     Returns:
@@ -857,6 +878,17 @@ def ihvp_at_x_datainf(
         return grad(func, argnums=argnums)(*args)
     grads = vmap(_per_sample_grad, in_dims=in_dims)(*x)
     layer_cnt = len(grads)
+    if param_layer_map is not None:
+        grouped = []
+        max_layer = max(param_layer_map)
+        for group in range(max_layer + 1):
+            grouped_layers = tuple([grads[layer] for layer
+                                    in range(len(param_layer_map))
+                                    if param_layer_map[layer] == group])
+            concated_grads = torch.concat(grouped_layers, dim=1)
+            grouped.append(concated_grads)
+        grads = tuple(grouped)
+        layer_cnt = max_layer + 1  # Assuming count starts from 0
 
     def _ihvp_datainf_func(v: Tuple[torch.Tensor, ...],
     ) -> Tuple[torch.Tensor]:
