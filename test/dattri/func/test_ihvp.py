@@ -424,3 +424,59 @@ def test_ihvp_datainf():
                  ihvp_datainf_at_x_func((v_layer1, v_layer2))[0]) > tol)
     assert (corr(gt(v_flattened)[30:],
                  ihvp_datainf_at_x_func((v_layer1, v_layer2))[1]) > tol)
+
+
+def test_ihvp_datainf_nn():
+    """Testing datainf for a nn forwarding function."""
+    model = torch.nn.Sequential(
+            torch.nn.Linear(20, 6, bias=False),
+            torch.nn.ReLU(),
+            torch.nn.Linear(6, 3, bias=False),
+        )
+    model.eval()
+    inputs = torch.randn((500, 20))
+    labels = torch.randint(0, 3, (500,))
+    model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+    v = (torch.randn(120), torch.randn(18))
+    v_all = torch.cat(v, dim=0)
+
+    @flatten_func(model, param_num=0)
+    def f(params):
+        yhat = torch.func.functional_call(model, params, inputs)
+        loss = torch.nn.CrossEntropyLoss()
+        return loss(yhat, labels)
+
+    def ce(params, inputs, labels):
+        param_dict = {}
+        keys = list(model_params.keys())
+        for i in range(len(keys)):
+            param_dict[keys[i]] = params[i].view(model_params[keys[i]].shape)
+        yhat = torch.func.functional_call(model, param_dict, inputs)
+        loss = torch.nn.CrossEntropyLoss()
+        return loss(yhat, labels)
+    ihvp_explicit_at_x_func = ihvp_at_x_explicit(
+            f,
+            flatten_params(model_params),
+            argnums=0,
+            regularization=0.15,
+    )
+    ihvp_datainf_func = ihvp_datainf(
+            ce,
+            0,
+            (None, 0, 0),
+            [0.15, 0.15],
+    )
+
+    def corr(tensor1, tensor2):
+        mean1 = torch.mean(tensor1)
+        mean2 = torch.mean(tensor2)
+        covariance = torch.mean((tensor1 - mean1) * (tensor2 - mean2))
+        variance1 = torch.mean((tensor1 - mean1)**2)
+        variance2 = torch.mean((tensor2 - mean2)**2)
+        return covariance / (torch.sqrt(variance1)
+                                * torch.sqrt(variance2))
+    params = tuple([param.flatten() for param in model_params.values()])
+    ihvp = ihvp_datainf_func((params, inputs, labels), v)
+    tol = 0.9
+    assert (corr(ihvp[0], ihvp_explicit_at_x_func(v_all)[:120]) > tol)
+    # Correlation for layer 1
