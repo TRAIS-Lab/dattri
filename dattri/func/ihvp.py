@@ -743,7 +743,7 @@ def ihvp_datainf(
     func: Callable,
     argnums: int,
     in_dims: Tuple[Union[None, int], ...],
-    regularization: Optional[List[float]],
+    regularization: Optional[List[float]] = None,
 ) -> Callable:
     """DataInf ihvp algorithm function.
 
@@ -777,12 +777,17 @@ def ihvp_datainf(
         and returns the approximated IHVP of the approximated Hessian of
         `func` and `v`.
     """
-    if regularization is None:
-        regularization = [0.0]
+    batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
+
+    def _single_datainf_ihvp(v: torch.Tensor,
+                                     grad: torch.Tensor,
+                                     regularization: float) -> torch.Tensor:
+        coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
+        return (v - coef * grad) / regularization
 
     def _ihvp_datainf_func(
         x: Tuple[torch.Tensor, ...], v: Tuple[torch.Tensor, ...],
-    ) -> List[torch.Tensor]:
+    ) -> Tuple[torch.Tensor]:
         """The IHVP function using CG.
 
         Args:
@@ -795,18 +800,13 @@ def ihvp_datainf(
         Returns:
             The IHVP value.
         """
-        def _per_sample_grad(*args) -> torch.Tensor:
-            return torch.func.grad(func, argnums=argnums)(*args)
-        grad_dict = torch.func.vmap(_per_sample_grad, in_dims=in_dims)(*x)
+        grad_dict = batch_grad_func(*x)
         ihvps = []
-        for layer in range(len(grad_dict)):
-            ihvp_at_layer = torch.zeros(grad_dict[layer].shape[1])
-
-            def _single_datainf_ihvp(v: torch.Tensor,
-                                     grad: torch.Tensor,
-                                     regularization: float) -> torch.Tensor:
-                coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
-                return (v - coef * grad) / regularization
+        layer_cnt = len(grad_dict)
+        nonlocal regularization
+        if regularization is None:
+            regularization = [0.0] * layer_cnt
+        for layer in range(layer_cnt):
             grads_layer = grad_dict[layer]
             ihvp_contributions = torch.func.vmap(lambda grad, layer=layer:
                                                  _single_datainf_ihvp(v[layer],
@@ -814,7 +814,7 @@ def ihvp_datainf(
                                                                       regularization[layer]))(grads_layer)
             ihvp_at_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
             ihvps.append(ihvp_at_layer)
-        return ihvps
+        return tuple(ihvps)
     return _ihvp_datainf_func
 
 
@@ -822,7 +822,7 @@ def ihvp_at_x_datainf(
     func: Callable,
     argnums: int,
     in_dims: Tuple[Union[None, int], ...],
-    regularization: Optional[List[float]],
+    regularization: Optional[List[float]] = None,
     *x,
 ) -> Callable:
     """DataInf ihvp algorithm function (with fixed x).
@@ -857,11 +857,11 @@ def ihvp_at_x_datainf(
         of `func` and `v`.
     """
     def _per_sample_grad(*args) -> torch.Tensor:
-        return torch.func.grad(func, argnums=argnums)(*args)
-    grad_dict = torch.func.vmap(_per_sample_grad, in_dims=in_dims)(*x)
+        return grad(func, argnums=argnums)(*args)
+    grad_dict = vmap(_per_sample_grad, in_dims=in_dims)(*x)
 
     def _ihvp_datainf_func(v: Tuple[torch.Tensor, ...],
-    ) -> List[torch.Tensor]:
+    ) -> Tuple[torch.Tensor]:
         """The IHVP function using datainf.
 
         Args:
@@ -872,8 +872,12 @@ def ihvp_at_x_datainf(
         Returns:
             The IHVP value dictionary, with keys corresponding to layer names.
         """
+        layer_cnt = len(grad_dict)
+        nonlocal regularization
+        if regularization is None:
+            regularization = [0.0] * layer_cnt
         ihvps = []
-        for layer in range(len(grad_dict)):
+        for layer in range(layer_cnt):
             ihvp_at_layer = torch.zeros(grad_dict[layer].shape[1])
 
             def _single_datainf_ihvp(v: torch.Tensor,
@@ -888,7 +892,7 @@ def ihvp_at_x_datainf(
                                                                       regularization[layer]))(grads_layer)
             ihvp_at_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
             ihvps.append(ihvp_at_layer)
-        return ihvps
+        return tuple(ihvps)
 
     return _ihvp_datainf_func
 
