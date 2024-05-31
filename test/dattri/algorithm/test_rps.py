@@ -1,19 +1,12 @@
 """Test for RPS."""
 
-# need to test binary clasification
-# need to test multi-class classification
-
-# test/dattri/algorithm/test_rps
-# given the weight_matrix return by attribute
-# function: check corr between gt and prediction by RPS for train
-# function: check corr between gt and prediction by RPS for test
-
 import torch
 from torch import nn
 from torch.nn import functional
 from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.rps import RPSAttributor
+from dattri.benchmark.utils import SubsetSampler
 
 
 class MLP(nn.Module):
@@ -49,22 +42,38 @@ class TestRPS:
         # init the model
         model = MLP(num_classes=10)
         dataset = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 10, (10,)))
-        train_loader = DataLoader(dataset, batch_size=1)
-        test_loader = DataLoader(dataset, batch_size=1)
+        full_train_loader = DataLoader(dataset, batch_size=2)
+        test_loader = DataLoader(dataset, batch_size=2)
+        train_loader = DataLoader(
+            dataset,
+            batch_size=2,
+            sampler=SubsetSampler(range(4)),
+        )
 
         # define the loss function
         def f(pre_activation_list, label_list):
             return functional.cross_entropy(pre_activation_list, label_list)
 
-        # define the RPS attributor
+        # define the RPS attributor w/ cache
         attributor = RPSAttributor(
-            target_func=f,
+            loss_func=f,
+            model=model,
+            final_linear_layer_name="fc3",
+            epoch=10,
+        )
+        attributor.cache(full_train_loader)
+        result = attributor.attribute(train_loader, test_loader)
+        assert result.shape == (4, 10)
+
+        # define the RPS attributor w/o cache
+        attributor = RPSAttributor(
+            loss_func=f,
             model=model,
             final_linear_layer_name="fc3",
             epoch=100,
         )
-        attributor.cache(train_loader)
-        _ = attributor.attribute(train_loader, test_loader)
+        result = attributor.attribute(train_loader, test_loader)
+        assert result.shape == (4, 10)
 
     def test_rps_binary(self):
         """Test for RPS."""
@@ -72,8 +81,13 @@ class TestRPS:
         # init the model
         model = MLP(num_classes=1)
         dataset = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 2, (10,)))
-        train_loader = DataLoader(dataset, batch_size=1)
-        test_loader = DataLoader(dataset, batch_size=1)
+        full_train_loader = DataLoader(dataset, batch_size=2)
+        test_loader = DataLoader(dataset, batch_size=2)
+        train_loader = DataLoader(
+            dataset,
+            batch_size=2,
+            sampler=SubsetSampler(range(4)),
+        )
 
         def f(pre_activation_list, label_list):
             return functional.binary_cross_entropy_with_logits(
@@ -81,11 +95,28 @@ class TestRPS:
                 label_list,
             )
 
+        # define the RPS attributor w/ cache
         attributor = RPSAttributor(
-            target_func=f,
+            loss_func=f,
             model=model,
             final_linear_layer_name="fc3",
-            epoch=100,
+            epoch=10,
         )
-        attributor.cache(train_loader)
-        _ = attributor.attribute(train_loader, test_loader)
+        attributor.cache(full_train_loader)
+        result = attributor.attribute(train_loader, test_loader)
+        assert result.shape == (4, 10)
+
+        # define the RPS attributor w/o cache
+        attributor = RPSAttributor(
+            loss_func=f,
+            model=model,
+            final_linear_layer_name="fc3",
+            epoch=10,
+        )
+        result = attributor.attribute(train_loader, test_loader)
+        assert result.shape == (4, 10)
+
+
+s = TestRPS()
+s.test_rps_multi()
+s.test_rps_binary()

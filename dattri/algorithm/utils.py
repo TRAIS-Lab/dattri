@@ -97,7 +97,7 @@ def backtracking_line_search(
 # The function is adapted from https://github.com/chihkuanyeh/Representer_Point_Selection/blob/master/compute_representer_vals.py
 # used by RPSAttributor
 # Fine tune the last layer
-def finetune_theta(
+def rps_finetune_theta(
     x: Tensor,
     y: Tensor,
     init_theta: Tensor,
@@ -148,7 +148,7 @@ def finetune_theta(
             if epoch == 0:
                 init_grad = grad_loss_theta
             min_loss = grad_loss_theta
-            best_theta = temp_theta
+            finetuned_theta = temp_theta
             if min_loss < init_grad / 200:
                 break
         theta = backtracking_line_search(
@@ -160,13 +160,13 @@ def finetune_theta(
             loss,
             lambda_l2,
         )
-    return best_theta
+    return finetuned_theta
 
 
 # The function is adapted from https://github.com/chihkuanyeh/Representer_Point_Selection/blob/master/compute_representer_vals.py
 # used by RPSAttributor
 def get_rps_weight(
-    best_theta: Tensor,
+    finetuned_theta: Tensor,
     loss_func: Callable,
     x_train: Tensor,
     y_pred_train: Tensor,
@@ -176,10 +176,10 @@ def get_rps_weight(
     r"""Compute the decomposed RPS weight.
 
     Args:
-        best_theta (Tensor): The optimized last layer weight.
+        finetuned_theta (Tensor): The optimized last layer weight.
         loss_func (Callable): The loss function used for prediction.
-            Typically, BCELoss or CEloss.
-        x_train (Tensor): The input feature of the training set.
+            Typically, should be BCELoss or CEloss.
+        x_train (Tensor): The intermediate feature of the training set.
         y_pred_train (Tensor): The pre-trained model output of the training set.
         y_test (Tensor): The ground-truth of the testing set.
         lambda_l2 (float): The l2-regularization strength.
@@ -189,11 +189,15 @@ def get_rps_weight(
     """
     n = len(y_pred_train)
     # caluculate theta1 based on the representer theorem's decomposition
-    pre_activation_value = torch.matmul(x_train, Variable(best_theta).transpose(0, 1))
+    pre_activation_value = torch.matmul(
+        x_train,
+        Variable(finetuned_theta).transpose(0, 1),
+    )
 
     alpha = grad(loss_func)(pre_activation_value, y_pred_train) / (-2.0 * lambda_l2 * n)
-    # if multi-class
-    if best_theta.shape[0] > 1:
+    print("pre alpha shape: ", alpha.shape)
+    # if multi-class, then focus on the test samples' class labels
+    if finetuned_theta.shape[0] > 1:
         train_size = x_train.shape[0]
         y_test_reshaped = y_test.repeat(train_size, 1)
         return alpha[torch.arange(train_size).unsqueeze(1), y_test_reshaped]
