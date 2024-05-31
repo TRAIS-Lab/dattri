@@ -881,7 +881,7 @@ def ihvp_at_x_datainf(
                 coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
                 return (v - coef * grad) / regularization
             grad_layer = grads[layer]
-            ihvp_contributions = torch.func.vmap(lambda grad, layer=layer, reg=reg:
+            ihvp_contributions = vmap(lambda grad, layer=layer, reg=reg:
                                                  _single_datainf_ihvp(v[layer],
                                                                       grad,
                                                                       regularization=reg))(grad_layer)
