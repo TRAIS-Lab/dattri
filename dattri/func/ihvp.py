@@ -756,10 +756,9 @@ def ihvp_datainf(
 
     Args:
         func (Callable): A Python function that takes one or more arguments.
-            Must return a list of dictionary of gradients. For each element in the list,
-            the keys should be the layer name and the value should be corresponding
-            gradients.Example: grad_dict[0] = {'layer1':Tensor, 'layer2':Tensor,...} ,
-            grad_dict[1]...
+            Must return a single-element Tensor. The layer-wise gradients will
+            be calculated on this function. Note that datainf expects the loss
+            to be cross-entropy.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
@@ -773,8 +772,8 @@ def ihvp_datainf(
             of length L, where L is the total number of layers.
 
     Returns:
-        A function that takes a list of tuples of Tensor `x` and a vector `v`
-        and returns the approximated IHVP of the approximated Hessian of
+        A function that takes a list of tuples of Tensor `x` and a tuple of tensors
+        `v`(layer-wise) and returns the approximated IHVP of the approximated Hessian of
         `func` and `v`.
     """
     batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
@@ -791,28 +790,26 @@ def ihvp_datainf(
         """The IHVP function using CG.
 
         Args:
-            x (Tuple[torch.Tensor, ...]): The function will computed the
+            x (Tuple[torch.Tensor, ...]): The function will compute the
                 inverse hessian matrix with respect to these arguments.
-            v: Dict[str, torch.Tensor]: Dictionary of gradients from which ihvp will be
-                computed. Example : v = {'weights_layer1': Tensor,
-                "weights_layer2": Tensor}
+            v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
+                which ihvp will becomputed. For example layer-wise gradients
+                of test samples.
 
         Returns:
-            The IHVP value.
+            Layer-wise IHVP values.
         """
-        grad_dict = batch_grad_func(*x)
+        grads = batch_grad_func(*x)
         ihvps = []
-        layer_cnt = len(grad_dict)
-        nonlocal regularization
-        if regularization is None:
-            regularization = [0.0] * layer_cnt
+        layer_cnt = len(grads)
         for layer in range(layer_cnt):
-            grads_layer = grad_dict[layer]
-            ihvp_contributions = torch.func.vmap(lambda grad, layer=layer:
+            grad_layer = grads[layer]
+            reg = 0.0 if regularization is None else regularization[layer]
+            ihvp_contributions = torch.func.vmap(lambda grad, layer=layer, reg=reg:
                                                  _single_datainf_ihvp(v[layer],
                                                                       grad,
-                                                                      regularization[layer]))(grads_layer)
-            ihvp_at_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
+                                                                      reg))(grad_layer)
+            ihvp_at_layer = ihvp_contributions.mean(dim=0)
             ihvps.append(ihvp_at_layer)
         return tuple(ihvps)
     return _ihvp_datainf_func
@@ -835,9 +832,9 @@ def ihvp_at_x_datainf(
 
     Args:
         func (Callable): A Python function that takes one or more arguments.
-            Must return a list of dictionary of gradients. For each element in the list,
-            the keys should be the layer name and the value should be corresponding
-            gradients.
+            Must return a single-element Tensor. The layer-wise gradients will
+            be calculated on this function. Note that datainf expects the loss
+            to be cross-entropy.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
@@ -853,44 +850,42 @@ def ihvp_at_x_datainf(
         *x: List of arguments for `func`.
 
     Returns:
-        A function that takes a dict `v` and returns the IHVP of the Hessian
+        A function that takes a tuple `v` and returns the tuple of IHVPs of the Hessian
         of `func` and `v`.
     """
     def _per_sample_grad(*args) -> torch.Tensor:
         return grad(func, argnums=argnums)(*args)
-    grad_dict = vmap(_per_sample_grad, in_dims=in_dims)(*x)
+    grads = vmap(_per_sample_grad, in_dims=in_dims)(*x)
+    layer_cnt = len(grads)
 
     def _ihvp_datainf_func(v: Tuple[torch.Tensor, ...],
     ) -> Tuple[torch.Tensor]:
         """The IHVP function using datainf.
 
         Args:
-            v: Dict[str, torch.Tensor]: Dictionary of gradients from which ihvp
-                will be computed. Example : v = {'weights_layer1': Tensor,
-                "weights_layer2": Tensor}
+            v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
+                which ihvp will becomputed. For example layer-wise gradients
+                of test samples.
 
         Returns:
             The IHVP value dictionary, with keys corresponding to layer names.
         """
-        layer_cnt = len(grad_dict)
-        nonlocal regularization
-        if regularization is None:
-            regularization = [0.0] * layer_cnt
         ihvps = []
         for layer in range(layer_cnt):
-            ihvp_at_layer = torch.zeros(grad_dict[layer].shape[1])
+            ihvp_at_layer = torch.zeros(grads[layer].shape[1])
+            reg = 0.0 if regularization is None else regularization[layer]
 
             def _single_datainf_ihvp(v: torch.Tensor,
                                      grad: torch.Tensor,
                                      regularization: float) -> torch.Tensor:
                 coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
                 return (v - coef * grad) / regularization
-            grads_layer = grad_dict[layer]
-            ihvp_contributions = torch.func.vmap(lambda grad, layer=layer:
+            grad_layer = grads[layer]
+            ihvp_contributions = torch.func.vmap(lambda grad, layer=layer, reg=reg:
                                                  _single_datainf_ihvp(v[layer],
                                                                       grad,
-                                                                      regularization[layer]))(grads_layer)
-            ihvp_at_layer = ihvp_contributions.sum(dim=0) / len(grad_dict)
+                                                                      regularization=reg))(grad_layer)
+            ihvp_at_layer = ihvp_contributions.mean(dim=0)
             ihvps.append(ihvp_at_layer)
         return tuple(ihvps)
 
