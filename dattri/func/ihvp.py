@@ -779,8 +779,8 @@ def ihvp_datainf(
     batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
 
     def _single_datainf_ihvp(v: torch.Tensor,
-                                     grad: torch.Tensor,
-                                     regularization: float) -> torch.Tensor:
+                             grad: torch.Tensor,
+                             regularization: float) -> torch.Tensor:
         coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
         return (v - coef * grad) / regularization
 
@@ -805,7 +805,7 @@ def ihvp_datainf(
         for layer in range(layer_cnt):
             grad_layer = grads[layer]
             reg = 0.0 if regularization is None else regularization[layer]
-            ihvp_contributions = torch.func.vmap(lambda grad, layer=layer, reg=reg:
+            ihvp_contributions = vmap(lambda grad, layer=layer, reg=reg:
                                                  _single_datainf_ihvp(v[layer],
                                                                       grad,
                                                                       reg))(grad_layer)
@@ -872,7 +872,6 @@ def ihvp_at_x_datainf(
         """
         ihvps = []
         for layer in range(layer_cnt):
-            ihvp_at_layer = torch.zeros(grads[layer].shape[1])
             reg = 0.0 if regularization is None else regularization[layer]
 
             def _single_datainf_ihvp(v: torch.Tensor,
