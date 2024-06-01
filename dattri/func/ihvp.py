@@ -977,10 +977,10 @@ def ihvp_at_x_lissa(func: Callable,
     return _ihvp_at_x_lissa_func
 
 
-KEY = "__cache"
+EKFAC_CACHE_KEY = "__cache"
 
 
-def manual(forward_func: Callable) -> Callable:
+def manual_cache_forward(forward_func: Callable) -> Callable:
     """Decorator for caching the input, output and gradient information for a module.
 
     Manually rewrite the forward function to collect variables you are interested in.
@@ -994,13 +994,13 @@ def manual(forward_func: Callable) -> Callable:
     Examples:
         @manual
         def custom_forward_method(self, hidden_states):
-            if not hasattr(self, KEY):
+            if not hasattr(self, EKFAC_CACHE_KEY):
                 # Normal forward pass
                 hidden_states = hidden_states.view(hidden_states.shape[0], -1)
                 return self.linear(hidden_states)
 
             # Forward pass with caching i/o variables
-            cache = getattr(self, KEY)
+            cache = getattr(self, EKFAC_CACHE_KEY)
             x1 = hidden_states.view(hidden_states.shape[0], -1)
             y1 = self.linear(x1)
             cache.input_hidden_pairs.append((x1, y1))
@@ -1008,9 +1008,9 @@ def manual(forward_func: Callable) -> Callable:
     """
     @wraps(forward_func)
     def cached_forward(self: torch.nn.Module, *args, **kwrds) -> torch.Tensor:
-        if not hasattr(self, KEY):
+        if not hasattr(self, EKFAC_CACHE_KEY):
             return forward_func(self, *args, **kwrds)
-        cache = getattr(self, KEY)
+        cache = getattr(self, EKFAC_CACHE_KEY)
         cache.clear()
         outputs = forward_func(self, *args, **kwrds)
         cache.check_type()

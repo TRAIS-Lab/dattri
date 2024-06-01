@@ -7,7 +7,7 @@ import torch
 from torch.func import vmap
 
 from dattri.func.ihvp import (
-    KEY,
+    EKFAC_CACHE_KEY,
     MLPCache,
     hvp,
     hvp_at_x,
@@ -19,7 +19,7 @@ from dattri.func.ihvp import (
     ihvp_at_x_lissa,
     ihvp_cg,
     ihvp_lissa,
-    manual,
+    manual_cache_forward,
 )
 from dattri.func.utils import flatten_func, flatten_params
 
@@ -383,15 +383,15 @@ class TestIHVP:
                 x = x.view(x.shape[0], -1)
                 return self.linear(x)
 
-        @manual
+        @manual_cache_forward
         def custom_forward_method(self, hidden_states):
-            if not hasattr(self, KEY):
+            if not hasattr(self, EKFAC_CACHE_KEY):
                 # Normal forward pass
                 hidden_states = hidden_states.view(hidden_states.shape[0], -1)
                 return self.linear(hidden_states)
 
             # Forward pass with caching i/o variables
-            cache = getattr(self, KEY)
+            cache = getattr(self, EKFAC_CACHE_KEY)
             x1 = hidden_states.view(hidden_states.shape[0], -1)
             y1 = self.linear(x1)
             cache.input_hidden_pairs.append((x1, y1))
@@ -430,7 +430,7 @@ class TestIHVP:
 
         model.forward = types.MethodType(custom_forward_method, model)
         cache = MLPCache()
-        setattr(model, KEY, cache)
+        setattr(model, EKFAC_CACHE_KEY, cache)
 
         ihvp_at_x_ekfac_func = ihvp_at_x_ekfac(f_ekfac,
                                                *(flatten_params(model_params),
