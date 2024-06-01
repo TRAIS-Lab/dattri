@@ -1166,16 +1166,18 @@ def _estimate_covariance(curr_estimate: List[List[Tuple[torch.Tensor]]],
             batch_cov_s /= batch_samples
 
             # Update the running covariance matrices for A and S
-            if idx <= len(layer_cov):
+            if idx >= len(layer_cov):
                 # First time initializartion
                 layer_cov.append((batch_cov_a, batch_cov_s))
             else:
                 old_weight = total_samples / (total_samples + batch_samples)
                 new_weight = batch_samples / (total_samples + batch_samples)
-                layer_cov[idx][0] = (old_weight * layer_cov[idx][0] +
-                                     new_weight * batch_cov_a)
-                layer_cov[idx][1] = (old_weight * layer_cov[idx][1] +
-                                     new_weight * batch_cov_s)
+                new_cov_a = (old_weight * layer_cov[idx][0] +
+                             new_weight * batch_cov_a)
+                new_cov_s = (old_weight * layer_cov[idx][1] +
+                             new_weight * batch_cov_s)
+                
+                layer_cov[idx] = (new_cov_a, new_cov_s)
 
     return curr_estimate
 
@@ -1251,7 +1253,7 @@ def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
             batch_lambda = torch.square(q_s @ batch_dtheta @ q_a.T).mean(axis=0)
 
             # Update the running eigenvalue estimation
-            if idx <= len(layer_lambda):
+            if idx >= len(layer_lambda):
                 # First time initializartion
                 layer_lambda.append(batch_lambda)
             else:
