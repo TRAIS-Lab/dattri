@@ -1312,6 +1312,9 @@ def ihvp_at_x_ekfac(func: Callable,
     if not isinstance(mlp_cache, list):
         mlp_cache = [mlp_cache]
 
+    if max_iter is None:
+        max_iter = (num_samples + batch_size - 1) // batch_size
+
     # 1. Use random batch to estimate covariance matrices S and A
     dataloader = _random_batch_iterator(*x,
                                         num_samples=num_samples,
@@ -1338,7 +1341,7 @@ def ihvp_at_x_ekfac(func: Callable,
                                                 mask)
 
         total_samples += int(mask.sum())
-        if max_iter is not None and i == max_iter - 1:
+        if i == max_iter - 1:
             break
 
     # 2. Calculate the eigenvalue decomposition of S and A
@@ -1374,7 +1377,7 @@ def ihvp_at_x_ekfac(func: Callable,
                                               total_samples,
                                               mask)
         total_samples += len(losses)
-        if max_iter is not None and i == max_iter - 1:
+        if i == max_iter - 1:
             break
 
     # Clear unused data from cache
