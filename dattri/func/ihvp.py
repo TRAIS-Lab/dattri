@@ -1176,7 +1176,6 @@ def _estimate_covariance(curr_estimate: List[List[Tuple[torch.Tensor]]],
                              new_weight * batch_cov_a)
                 new_cov_s = (old_weight * layer_cov[idx][1] +
                              new_weight * batch_cov_s)
-                
                 layer_cov[idx] = (new_cov_a, new_cov_s)
 
     return curr_estimate
