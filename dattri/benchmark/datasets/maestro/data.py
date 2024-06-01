@@ -1,9 +1,13 @@
 """This module contains functions for data processing on MAESTRO dataset."""
 
+# ruff: noqa: PLR1702
 from __future__ import annotations
 
+import zipfile
 from pathlib import Path
 from typing import TYPE_CHECKING
+
+import requests
 
 if TYPE_CHECKING:
     from typing import Tuple
@@ -30,25 +34,44 @@ def create_maestro_datasets(
     """Create MAESTRO dataset.
 
     Args:
-        dataset_path (str): Root directory of the MAESTRO Dataset. Should be
-            downloaded from https://magenta.tensorflow.org/datasets/maestro#v200.
-            The data is called "maestro-v2.0.0-midi.zip". Please unzip the file.
+        dataset_path (str): Root directory of the MAESTRO Dataset. The data source
+            is https://magenta.tensorflow.org/datasets/maestro#v200. If the processed
+            dataset is not found, this funtion will download the dataset automatically
+            to this path, unzip and pre-process it. The processed data will be at
+            "dataset_path/maestro-v2.0.0-processed".
 
     Returns:
         Tuple[Dataset, Dataset, Dataset]: The training, validate and testing
             MAESTRO datasets.
     """
-    # read unzipped files and preprocess the files
-    processed_path = f"{dataset_path}-processed"
-    processed_dir = Path(dataset_path).parent / processed_path
-    if not processed_dir.exists():
-        # will create dir called maestro-v2.0.0-midi-processed
-        prep_maestro_midi(dataset_path, processed_dir)
+    # define the dir name
+    processed_dataset_dir = Path(dataset_path) / "maestro-v2.0.0-processed"
+    unzip_dataset_dir = Path(dataset_path) / "maestro-v2.0.0"
 
-    train_dataset, val_dataset, test_dataset = create_epiano_datasets(
-        processed_path,
+    # if no processed dir
+    if not processed_dataset_dir.exists():
+        # first get the zip file
+        zip_dataset_file = Path(dataset_path) / "maestro-v2.0.0-midi.zip"
+        dataset_urls = "https://storage.googleapis.com/magentadata/datasets/maestro/v2.0.0/maestro-v2.0.0-midi.zip"
+        response = requests.get(dataset_urls, stream=True, timeout=20)
+        with zip_dataset_file.open("wb") as midi:
+            for chunk in response.iter_content(chunk_size=1024):
+                if chunk:
+                    midi.write(chunk)
+
+        # then unzip the file
+        with zipfile.ZipFile(zip_dataset_file, "r") as zip_ref:
+            for file_info in zip_ref.infolist():
+                zip_ref.extract(file_info, dataset_path)
+
+        # then pre-process the unzipped file
+        prep_maestro_midi(unzip_dataset_dir, processed_dataset_dir)
+
+    # create the train datasets from pre-processed data
+    train_dataset, val_dataset, _ = create_epiano_datasets(
+        processed_dataset_dir,
         MAX_SEQUENCE,
         full_version=FULL_VERSION,
     )
 
-    return train_dataset, val_dataset, test_dataset
+    return train_dataset, val_dataset

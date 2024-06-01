@@ -6,7 +6,6 @@ from torch.nn.modules.normalization import LayerNorm
 import random
 
 from dattri.benchmark.models.MusicTransformer.utilities.constants import *
-from dattri.benchmark.models.MusicTransformer.utilities.device import get_device
 
 from .positional_encoding import PositionalEncoding
 from .rpr import TransformerEncoderRPR, TransformerEncoderLayerRPR
@@ -33,7 +32,7 @@ class MusicTransformer(nn.Module):
     """
 
     def __init__(self, n_layers=6, num_heads=8, d_model=512, dim_feedforward=1024,
-                 dropout=0.1, max_sequence=2048, rpr=False):
+                 dropout=0.1, max_sequence=2048, rpr=False, device="cpu"):
         super(MusicTransformer, self).__init__()
 
         self.dummy      = DummyDecoder()
@@ -45,6 +44,7 @@ class MusicTransformer(nn.Module):
         self.dropout    = dropout
         self.max_seq    = max_sequence
         self.rpr        = rpr
+        self.device     = device
 
         # Input embedding
         self.embedding = nn.Embedding(VOCAB_SIZE, self.d_model)
@@ -91,7 +91,7 @@ class MusicTransformer(nn.Module):
         """
 
         if(mask is True):
-            mask = self.transformer.generate_square_subsequent_mask(x.shape[1]).to(get_device())
+            mask = self.transformer.generate_square_subsequent_mask(x.shape[1]).to(self.device)
         else:
             mask = None
 
@@ -134,10 +134,10 @@ class MusicTransformer(nn.Module):
 
         print("Generating sequence of max length:", target_seq_length)
 
-        gen_seq = torch.full((1,target_seq_length), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=get_device())
+        gen_seq = torch.full((1,target_seq_length), TOKEN_PAD, dtype=TORCH_LABEL_TYPE, device=self.device)
 
         num_primer = len(primer)
-        gen_seq[..., :num_primer] = primer.type(TORCH_LABEL_TYPE).to(get_device())
+        gen_seq[..., :num_primer] = primer.type(TORCH_LABEL_TYPE).to(self.device)
 
 
         # print("primer:",primer)
