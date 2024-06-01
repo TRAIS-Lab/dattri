@@ -1190,7 +1190,9 @@ def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
 
     Args:
         curr_estimate (List[List[torch.Tensor]]): A list of lists of tensors,
-            storing the running estimation of the layer-wise lambdas.
+            storing the running estimation of the layer-wise lambdas. The list
+            has the same length as `mlp_cache` in the main function, and each
+            of the member has the same length as the list in the cache.
         mlp_cache (List[MLPCache]): A list of `MLPCache` passed to the main
             EK-FAC function.
         cached_q (List[List[Tuple[torch.Tensor]]]): A list of lists of tuples
@@ -1201,6 +1203,8 @@ def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
         mask (torch.Tensor): A tensor of shape (batch_size, t), where 1's
             indicate that the ihvp will be estimated on these input positions and
             0's indicate that these positions are irrelevant (e.g. padding tokens).
+            t is the number of steps, or sequence length of the input data. If the
+            input data are non-sequential, t should be set to 1.
         max_steps_for_vec (int): An integer default to 10. Controls the maximum
             number of input steps that is allowed for vectorized calculation of
             `dtheta`.
