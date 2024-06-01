@@ -4,16 +4,17 @@ import time
 import torch
 from torch import nn
 from torch.utils.data import Sampler
-from torchvision import datasets, transforms
+from torchvision import transforms
 
 from dattri.algorithm.influence_function import IFAttributor
-from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
+from dattri.benchmark.datasets.cifar2 import create_cifar2_dataset, train_cifar2_resnet9
 from dattri.benchmark.utils import flip_label
 from dattri.func.utils import flatten_func
 
 
-def get_mnist_indices_and_adjust_labels(dataset):
-    dataset.targets, flip_index = flip_label(dataset.targets, p=0.1)
+def get_cifar_indices_and_adjust_labels(dataset, subset_indice):
+
+    dataset.targets, flip_index = flip_label(torch.tensor(dataset.targets)[subset_indice], p=0.1)
     return flip_index
 
 
@@ -29,33 +30,30 @@ class SubsetSampler(Sampler):
 
 
 if __name__ == "__main__":
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,)),
-        ],
-    )
-    dataset = datasets.MNIST("../data", train=True, download=True, transform=transform)
+    transform = transforms.Compose([transforms.ToTensor(),
+                                    transforms.Normalize((0.5, 0.5, 0.5),
+                                                         (0.5, 0.5, 0.5))])
+    train_dataset, _ = create_cifar2_dataset("./data")
 
-    flip_index = get_mnist_indices_and_adjust_labels(dataset)
+    flip_index = get_cifar_indices_and_adjust_labels(train_dataset, range(1000))
 
     train_loader_full = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=1000,
+        train_dataset,
+        batch_size=64,
         sampler=SubsetSampler(range(1000)),
     )
     train_loader = torch.utils.data.DataLoader(
-        dataset,
+        train_dataset,
         batch_size=64,
         sampler=SubsetSampler(range(1000)),
     )
     test_loader = torch.utils.data.DataLoader(
-        dataset,
+        train_dataset,
         batch_size=64,
         sampler=SubsetSampler(range(1000)),
     )
 
-    model = train_mnist_mlp(train_loader_full)
+    model = train_cifar2_resnet9(train_loader, device="cuda", num_epochs=20)
     model.cuda()
     model.eval()
 
@@ -68,11 +66,11 @@ if __name__ == "__main__":
 
 
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+
     attributor = IFAttributor(
         target_func=f,
         params=model_params,
         ihvp_solver="cg",
-        # ihvp_kwargs={"recursion_depth": 100, "batch_size": 10},  # lissa
         ihvp_kwargs={"regularization": 1e-3},
         device=torch.device("cuda"),
     )

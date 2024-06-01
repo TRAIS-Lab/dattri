@@ -2,7 +2,7 @@
 
 import torch
 from torch import nn
-from torch.utils.data import TensorDataset
+from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.influence_function import IFAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
@@ -14,21 +14,25 @@ class TestInfluenceFunction:
 
     def test_influence_function(self):
         """Test for influence function."""
-        dataset = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 10, (10,)))
-
-        train_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
-        test_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+        test_dataset = TensorDataset(
+            torch.randn(10, 1, 28, 28),
+            torch.randint(0, 10, (10,)),
+        )
+        train_loader = DataLoader(train_dataset, batch_size=4)
+        test_loader = DataLoader(test_dataset, batch_size=2)
 
         model = train_mnist_lr(train_loader)
 
         @flatten_func(model)
-        def f(params, dataloader):
+        def f(params, data_target_pair):
+            image, label = data_target_pair
             loss = nn.CrossEntropyLoss()
-            loss_val = 0
-            for image, label in dataloader:
-                yhat = torch.func.functional_call(model, params, image)
-                loss_val += loss(yhat, label)
-            return loss_val
+            yhat = torch.func.functional_call(model, params, image)
+            return loss(yhat, label.long())
 
         model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
 
@@ -49,6 +53,28 @@ class TestInfluenceFunction:
             params=model_params,
             ihvp_solver="cg",
             ihvp_kwargs={"regularization": 1e-3},
+            device=torch.device("cpu"),
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # arnoldi
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="arnoldi",
+            ihvp_kwargs={"regularization": 1e-3},
+            device=torch.device("cpu"),
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # lissa
+        attributor = IFAttributor(
+            target_func=f,
+            params=model_params,
+            ihvp_solver="lissa",
+            ihvp_kwargs={"recursion_depth": 5, "batch_size": 2},
             device=torch.device("cpu"),
         )
         attributor.cache(train_loader)

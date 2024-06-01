@@ -1,19 +1,18 @@
 """This example shows how to use the IF to detect noisy labels in the MNIST."""
 
-import time
 import torch
 from torch import nn
 from torch.utils.data import Sampler
 from torchvision import datasets, transforms
 
-from dattri.algorithm.influence_function import IFAttributor
-from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
+from dattri.algorithm.tracin import TracInAttributor
+from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.benchmark.utils import flip_label
 from dattri.func.utils import flatten_func
 
 
-def get_mnist_indices_and_adjust_labels(dataset):
-    dataset.targets, flip_index = flip_label(dataset.targets, p=0.1)
+def get_mnist_indices_and_adjust_labels(dataset, subset_indice):
+    dataset.targets, flip_index = flip_label(dataset.targets[subset_indice], p=0.1)
     return flip_index
 
 
@@ -37,13 +36,6 @@ if __name__ == "__main__":
     )
     dataset = datasets.MNIST("../data", train=True, download=True, transform=transform)
 
-    flip_index = get_mnist_indices_and_adjust_labels(dataset)
-
-    train_loader_full = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=1000,
-        sampler=SubsetSampler(range(1000)),
-    )
     train_loader = torch.utils.data.DataLoader(
         dataset,
         batch_size=64,
@@ -55,37 +47,41 @@ if __name__ == "__main__":
         sampler=SubsetSampler(range(1000)),
     )
 
-    model = train_mnist_mlp(train_loader_full)
-    model.cuda()
-    model.eval()
+    flip_index = get_mnist_indices_and_adjust_labels(dataset, range(1000))
 
-    @flatten_func(model)
-    def f(params, data_target_pair):
-        image, label = data_target_pair
+    # simulate checkpoints
+    model_1 = train_mnist_lr(train_loader, epoch_num=20)
+
+    # only need one model definition
+    model_1.cuda()
+    model_1.eval()
+
+
+    @flatten_func(model_1)
+    def f(params, image_label_pair):
+        image, label = image_label_pair
+        image_t = image.unsqueeze(0)
+        label_t = label.unsqueeze(0)
         loss = nn.CrossEntropyLoss()
-        yhat = torch.func.functional_call(model, params, image)
-        return loss(yhat, label)
+        yhat = torch.func.functional_call(model_1, params, image_t)
+        return loss(yhat, label_t)
 
-
-    model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
-    attributor = IFAttributor(
+    # simulate checkpoints
+    model_params_1 = {k: p for k, p in model_1.named_parameters() if p.requires_grad}
+    attributor = TracInAttributor(
         target_func=f,
-        params=model_params,
-        ihvp_solver="cg",
-        # ihvp_kwargs={"recursion_depth": 100, "batch_size": 10},  # lissa
-        ihvp_kwargs={"regularization": 1e-3},
+        params_list=[model_params_1],
+        weight_list=torch.tensor([0.01]),
+        normalized_grad=False,
         device=torch.device("cuda"),
     )
 
-    attributor.cache(train_loader_full)
-    start_attribute = time.time()
     torch.cuda.reset_peak_memory_stats("cuda")
     with torch.no_grad():
         score = attributor.attribute(train_loader, test_loader).diag()
     peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
     print(f"Peak memory usage: {peak_memory} MB")
-    end_attribute = time.time()
-    print("Attribution time: ", end_attribute - start_attribute)
+
     print(score.shape)
     _, indices = torch.sort(-score)
 

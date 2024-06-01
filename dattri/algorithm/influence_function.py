@@ -5,27 +5,48 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Optional
+    from typing import Any, Callable, Dict, List, Optional, Tuple
+
+    from torch import Tensor
+    from torch.utils.data import DataLoader
 
 import warnings
 from functools import partial
 
 import torch
-from torch.func import grad
+from torch.func import grad, vmap
 from tqdm import tqdm
 
-from dattri.func.ihvp import ihvp_arnoldi, ihvp_cg, ihvp_explicit
+from dattri.func.ihvp import ihvp_arnoldi, ihvp_cg, ihvp_explicit, ihvp_lissa
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
+
+def _lissa_collate_fn(
+    sampled_input: List[Tensor],
+) -> Tuple[Tensor, List[Tuple[Tensor, ...]]]:
+    """Collate function for LISSA.
+
+    Args:
+        sampled_input (List[Tensor]): The sampled input from the dataloader.
+
+    Returns:
+        Tuple[Tensor, List[Tuple[Tensor, ...]]]: The collated input for the LISSA.
+    """
+    return (
+        sampled_input[0],
+        tuple(sampled_input[i].float() for i in range(1, len(sampled_input))),
+    )
+
+
 SUPPORTED_IHVP_SOLVER = {
     "explicit": ihvp_explicit,
     "cg": ihvp_cg,
     "arnoldi": ihvp_arnoldi,
+    "lissa": partial(ihvp_lissa, collate_fn=_lissa_collate_fn),
 }
-SUPPORTED_PROJECTOR = {None: None}
 
 
 class IFAttributor(BaseAttributor):
@@ -37,8 +58,6 @@ class IFAttributor(BaseAttributor):
         params: dict,
         ihvp_solver: str = "explicit",
         ihvp_kwargs: Optional[Dict[str, Any]] = None,
-        projector: Optional[str, None] = None,  # noqa: ARG002
-        projector_kwargs: Optional[Dict[str, Any]] = None,  # noqa: ARG002
         device: str = "cpu",
     ) -> None:
         """Influence function attributor.
@@ -65,65 +84,51 @@ class IFAttributor(BaseAttributor):
                     paths for ensembling and memory efficiency.
             ihvp_solver (str): The solver for inverse hessian vector product
                 calculation, currently we only support "explicit", "cg" and "arnoldi".
-            ihvp_kwargs (dict): The keyword arguments for the ihvp solver.
-            projector (str): The projector for the inverse hessian vector product.
-                Currently it is not supported.
-            projector_kwargs (dict): The keyword arguments for the projector.
-                TODO: Enable the use of random projection for memory efficiency.
+            ihvp_kwargs (Optional[Dict[str, Any]]): Keyword arguments for ihvp solver.
+                calculation, currently we only support "explicit", "cg", "arnoldi",
+                and "lissa".
             device (str): The device to run the attributor. Default is cpu.
         """
         self.target_func = target_func
         self.params = flatten_params(params)
         if ihvp_kwargs is None:
             ihvp_kwargs = {}
+        self.ihvp_solver_name = ihvp_solver
         self.ihvp_solver = partial(SUPPORTED_IHVP_SOLVER[ihvp_solver], **ihvp_kwargs)
-        self.projector = None
         self.device = device
         self.full_train_dataloader = None
-        self.grad_func = grad(self.target_func)
+        self.grad_func = vmap(grad(self.target_func), in_dims=(None, 1))
 
-    def cache(self, full_train_dataloader: torch.utils.data.DataLoader) -> None:
+    def cache(self, full_train_dataloader: DataLoader) -> None:
         """Cache the dataset for inverse hessian calculation.
 
         Args:
-            full_train_dataloader (torch.utils.data.DataLoader): The dataloader
+            full_train_dataloader (DataLoader): The dataloader
                 with full training samples for inverse hessian calculation.
         """
         self.full_train_dataloader = full_train_dataloader
 
     def attribute(
         self,
-        train_dataloader: torch.utils.data.DataLoader,
-        test_dataloader: torch.utils.data.DataLoader,
-        train_gradient_batch_size: Optional[int] = None,
-        test_gradient_batch_size: Optional[int] = None,
+        train_dataloader: DataLoader,
+        test_dataloader: DataLoader,
     ) -> torch.Tensor:
         """Calculate the influence of the training set on the test set.
 
         Args:
-            train_dataloader (torch.utils.data.DataLoader): The dataloader for
+            train_dataloader (DataLoader): The dataloader for
                 training samples to calculate the influence. It can be a subset
                 of the full training set if `cache` is called before. A subset
                 means that only a part of the training set's influence is calculated.
                 The dataloader should not be shuffled.
-            test_dataloader (torch.utils.data.DataLoader): The dataloader for
+            test_dataloader (DataLoader): The dataloader for
                 test samples to calculate the influence. The dataloader should not\
                 be shuffled.
-            train_gradient_batch_size (int): The batch size for calculating the
-                gradient of the training set. Default is None, which means the
-                length of the training dataloader. The less the batch size, the
-                more memory efficient, while more time consuming.
-            test_gradient_batch_size (int): The batch size for calculating the
-                gradient of the test set. Default is None, which means the length
-                of the test dataloader. The less the batch size, the
-                more memory efficient, while more time consuming.
 
         Returns:
             torch.Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
 
-        Raises:
-            ValueError: If the batch size of the train and test dataloader is not 1.
         """
         super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
@@ -135,83 +140,80 @@ class IFAttributor(BaseAttributor):
                 stacklevel=1,
             )
 
-        if train_dataloader.batch_size != 1 or test_dataloader.batch_size != 1:
-            message = "The batch size of the train_dataloader\
-                        and test_dataloader should be 1."
-            raise ValueError(message)
-
         _check_shuffle(train_dataloader)
         _check_shuffle(test_dataloader)
 
-        # TODO: the batch size should be set automatically.
-        if train_gradient_batch_size is None:
-            train_gradient_batch_size = len(train_dataloader)
-        if test_gradient_batch_size is None:
-            test_gradient_batch_size = len(test_dataloader)
+        tda_output = torch.zeros(
+            size=(len(train_dataloader.sampler), len(test_dataloader.sampler)),
+            device=self.device,
+        )
 
-        score = []
-        grad_train_iter_list = []
-        grad_train_counter = 0
         # TODO: sometimes the train dataloader could be swapped with the test dataloader
-        for train_data in tqdm(
-            train_dataloader,
-            desc="calculating gradient of training set...",
-            leave=False,
-        ):
-            # TODO: currently, vmap is not used for the gradient calculation
-            train_loader = list(
-                zip(*tuple(x.to(self.device).unsqueeze(0) for x in train_data)),
-            )
-            grad_train_iter_list.append(self.grad_func(self.params, train_loader))
-            grad_train_counter += 1
-            if len(
-                grad_train_iter_list,
-            ) < train_gradient_batch_size and grad_train_counter < len(
-                train_dataloader,
-            ):
-                continue
-            grad_train_iter = torch.stack(grad_train_iter_list, dim=0)
-            grad_train_iter_list = []
+        # prepare a checkpoint-specific seed
 
-            influence_train_iter_list = []
-            grad_test_iter_list = []
-            grad_test_counter = 0
-            for test_data in tqdm(
-                test_dataloader,
-                desc="calculating gradient of test set...",
+        for train_batch_idx, train_batch_data_ in enumerate(
+            tqdm(
+                train_dataloader,
+                desc="calculating gradient of training set...",
                 leave=False,
-            ):
-                # TODO: currently, vmap is not used for the gradient calculation
-                test_loader = list(
-                    zip(*tuple(x.to(self.device).unsqueeze(0) for x in test_data)),
-                )
-                grad_test_iter_list.append(self.grad_func(self.params, test_loader))
-                grad_test_counter += 1
-                if len(
-                    grad_test_iter_list,
-                ) < test_gradient_batch_size and grad_test_counter < len(
+            ),
+        ):
+            # get gradient of train
+            train_batch_data = tuple(
+                data.to(self.device).unsqueeze(0) for data in train_batch_data_
+            )
+
+            train_batch_grad = self.grad_func(self.params, train_batch_data)
+
+            for test_batch_idx, test_batch_data_ in enumerate(
+                tqdm(
                     test_dataloader,
-                ):
-                    continue
-                grad_test_iter = torch.stack(grad_test_iter_list, dim=0)
-                grad_test_iter_list = []
+                    desc="calculating gradient of training set...",
+                    leave=False,
+                ),
+            ):
+                # get gradient of test
+                test_batch_data = tuple(
+                    data.to(self.device).unsqueeze(0) for data in test_batch_data_
+                )
+
+                test_batch_grad = self.grad_func(self.params, test_batch_data)
 
                 ihvp = 0
-                for data in tqdm(
-                    self.full_train_dataloader,
-                    desc="calculating ihvp...",
-                    leave=False,
-                ):
-                    loader = list(
-                        zip(*tuple(x.to(self.device).unsqueeze(0) for x in data)),
-                    )
-                    self.ihvp_func = self.ihvp_solver(
-                        partial(self.target_func, dataloader=loader),
-                    )
-                    ihvp += self.ihvp_func((self.params,), grad_test_iter).detach()
+                # currently full-batch is considered
+                # so only one iteration
+                for full_data_ in self.full_train_dataloader:
+                    # move to device
+                    full_data = tuple(data.to(self.device) for data in full_data_)
 
-                influence_train_iter_list.append(grad_train_iter @ ihvp.T)
+                    if self.ihvp_solver_name == "lissa":
+                        self.ihvp_func = self.ihvp_solver(
+                            self.target_func,
+                        )
+                        ihvp += self.ihvp_func(
+                            (self.params, *full_data),
+                            test_batch_grad,
+                            in_dims=(None,) + (0,) * len(full_data),
+                        ).detach()
+                    else:
+                        self.ihvp_func = self.ihvp_solver(
+                            partial(self.target_func, data_target_pair=full_data),
+                        )
+                        ihvp += self.ihvp_func((self.params,), test_batch_grad).detach()
 
-            score.append(torch.cat(influence_train_iter_list, dim=1))
+                # results position based on batch info
+                row_st = train_batch_idx * train_dataloader.batch_size
+                row_ed = min(
+                    (train_batch_idx + 1) * train_dataloader.batch_size,
+                    len(train_dataloader.sampler),
+                )
 
-        return torch.cat(score, dim=0)
+                col_st = test_batch_idx * test_dataloader.batch_size
+                col_ed = min(
+                    (test_batch_idx + 1) * test_dataloader.batch_size,
+                    len(test_dataloader.sampler),
+                )
+
+                tda_output[row_st:row_ed, col_st:col_ed] += train_batch_grad @ ihvp.T
+
+        return tda_output
