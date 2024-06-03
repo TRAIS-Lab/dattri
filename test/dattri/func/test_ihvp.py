@@ -14,10 +14,12 @@ from dattri.func.ihvp import (
     ihvp_arnoldi,
     ihvp_at_x_arnoldi,
     ihvp_at_x_cg,
+    ihvp_at_x_datainf,
     ihvp_at_x_ekfac,
     ihvp_at_x_explicit,
     ihvp_at_x_lissa,
     ihvp_cg,
+    ihvp_datainf,
     ihvp_lissa,
     manual_cache_forward,
 )
@@ -368,6 +370,124 @@ class TestIHVP:
             ihvp_explicit_at_x_func(vec),
             atol=0.08,
         )
+
+
+def test_ihvp_datainf():
+    """Testing datainf functionality."""
+    def loss_func(weight, inputs, labels):
+        weights_resized = weight.view(3, 20)
+        pred = inputs @ weights_resized.T
+        loss = torch.nn.CrossEntropyLoss()
+        return loss(pred, labels)
+
+    def ce_single(weights, inputs, label):
+        concatenated_weights = torch.cat(weights, dim=0)
+        weights_resized = concatenated_weights.view(3, 20)
+        pred = inputs @ weights_resized.T
+        loss_fn = torch.nn.CrossEntropyLoss()
+        return loss_fn(pred.unsqueeze(0), label.unsqueeze(0))
+
+    def corr(tensor1, tensor2):
+        mean1 = torch.mean(tensor1)
+        mean2 = torch.mean(tensor2)
+        covariance = torch.mean((tensor1 - mean1) * (tensor2 - mean2))
+        variance1 = torch.mean((tensor1 - mean1)**2)
+        variance2 = torch.mean((tensor2 - mean2)**2)
+        return covariance / (torch.sqrt(variance1)
+                                * torch.sqrt(variance2))
+
+    random_data = torch.randn(500, 20)
+    weights_layer1 = torch.randn(30, requires_grad=True)
+    weights_layer2 = torch.randn(30, requires_grad=True)
+    weights_flattened = torch.concat((weights_layer1, weights_layer2), dim=0)
+    labels = torch.randint(0, 3, (500,))
+    v_layer1 = torch.randn(30)
+    v_layer2 = torch.randn(30)
+    v_flattened = torch.concat((v_layer1, v_layer2), dim=0)
+    tol = 0.9
+    gt = ihvp_at_x_explicit(loss_func,
+                            *(weights_flattened, random_data, labels),
+                            argnums=0,
+                            regularization=0.07)
+    ihvp_datainf_func = ihvp_datainf(
+        ce_single,
+        0,
+        (None, 0, 0),
+        [0.07, 0.07],
+    )
+    ihvp = ihvp_datainf_func(((weights_layer1, weights_layer2),
+                              random_data, labels),
+                              (v_layer1, v_layer2))
+    ihvp_datainf_at_x_func = ihvp_at_x_datainf(ce_single,
+                                    0,
+                                    (None, 0, 0),
+                                    [0.07, 0.07],
+                                    (weights_layer1, weights_layer2),
+                                    random_data,
+                                    labels)
+    assert (corr(gt(v_flattened)[:30], ihvp[0]) > tol)
+    assert (corr(gt(v_flattened)[30:], ihvp[1]) > tol)
+    assert (corr(gt(v_flattened)[:30],
+                 ihvp_datainf_at_x_func((v_layer1, v_layer2))[0]) > tol)
+    assert (corr(gt(v_flattened)[30:],
+                 ihvp_datainf_at_x_func((v_layer1, v_layer2))[1]) > tol)
+
+
+def test_ihvp_datainf_nn():
+    """Testing Datainf Functionality for a nn.Module."""
+    model = torch.nn.Sequential(
+            torch.nn.Linear(20, 6, bias=True),
+            torch.nn.ReLU(),
+            torch.nn.Linear(6, 3, bias=True),
+    )
+    model.eval()
+    inputs = torch.randn((500, 20))
+    labels = torch.randint(0, 3, (500,))
+    model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+    v = (torch.randn(126), torch.randn(21))
+    v_all = torch.cat(v, dim=0)
+
+    @flatten_func(model, param_num=0)
+    def f(params):
+        yhat = torch.func.functional_call(model, params, inputs)
+        loss = torch.nn.CrossEntropyLoss()
+        return loss(yhat, labels)
+
+    def ce(params, inputs, labels):
+        param_dict = {}
+        keys = list(model_params.keys())
+        for i in range(len(keys)):
+            param_dict[keys[i]] = params[i].view(model_params[keys[i]].shape)
+        yhat = torch.func.functional_call(model, param_dict, inputs)
+        loss = torch.nn.CrossEntropyLoss()
+        return loss(yhat, labels)
+    ihvp_explicit_at_x_func = ihvp_at_x_explicit(
+            f,
+            flatten_params(model_params),
+            argnums=0,
+            regularization=0.15,
+    )
+    ihvp_datainf_func = ihvp_datainf(
+            ce,
+            0,
+            (None, 0, 0),
+            [0.15, 0.15, 0.15, 0.15],
+            param_layer_map=[0, 0, 1, 1],
+    )
+
+    def corr(tensor1, tensor2):
+        mean1 = torch.mean(tensor1)
+        mean2 = torch.mean(tensor2)
+        covariance = torch.mean((tensor1 - mean1) * (tensor2 - mean2))
+        variance1 = torch.mean((tensor1 - mean1)**2)
+        variance2 = torch.mean((tensor2 - mean2)**2)
+        return covariance / (torch.sqrt(variance1)
+                                * torch.sqrt(variance2))
+    params = tuple([param.flatten() for param in model_params.values()])
+    ihvp = ihvp_datainf_func((params, inputs, labels), v)
+    tol = 0.9
+    assert (corr(ihvp[0], ihvp_explicit_at_x_func(v_all)[:126]) > tol)
+    # For layer 1 weights & biases
 
     def test_ihvp_ekfac(self):
         """Test ihvp_ekfac_at_x."""
