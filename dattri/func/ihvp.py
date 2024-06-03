@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import List, ClassVar, Generator, List, Optional, Tuple, Union
+    from typing import ClassVar, Generator, List, Optional, Tuple, Union
 
 
 import warnings
