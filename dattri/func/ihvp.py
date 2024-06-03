@@ -876,6 +876,12 @@ def ihvp_at_x_datainf(
     """
     def _per_sample_grad(*args) -> torch.Tensor:
         return grad(func, argnums=argnums)(*args)
+
+    def _single_datainf_ihvp(v: torch.Tensor,
+                                     grad: torch.Tensor,
+                                     regularization: float) -> torch.Tensor:
+        coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
+        return (v - coef * grad) / regularization
     grads = vmap(_per_sample_grad, in_dims=in_dims)(*x)
     layer_cnt = len(grads)
     if param_layer_map is not None:
@@ -890,7 +896,7 @@ def ihvp_at_x_datainf(
         grads = tuple(grouped)
         layer_cnt = max_layer + 1  # Assuming count starts from 0
 
-    def _ihvp_datainf_func(v: Tuple[torch.Tensor, ...],
+    def _ihvp_at_x_datainf_func(v: Tuple[torch.Tensor, ...],
     ) -> Tuple[torch.Tensor]:
         """The IHVP function using datainf.
 
@@ -905,12 +911,6 @@ def ihvp_at_x_datainf(
         ihvps = []
         for layer in range(layer_cnt):
             reg = 0.0 if regularization is None else regularization[layer]
-
-            def _single_datainf_ihvp(v: torch.Tensor,
-                                     grad: torch.Tensor,
-                                     regularization: float) -> torch.Tensor:
-                coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
-                return (v - coef * grad) / regularization
             grad_layer = grads[layer]
             ihvp_contributions = vmap(lambda grad, layer=layer, reg=reg:
                                                  _single_datainf_ihvp(v[layer],
@@ -920,7 +920,7 @@ def ihvp_at_x_datainf(
             ihvps.append(ihvp_at_layer)
         return tuple(ihvps)
 
-    return _ihvp_datainf_func
+    return _ihvp_at_x_datainf_func
 
 
 def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
