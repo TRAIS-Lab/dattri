@@ -65,7 +65,6 @@ if __name__ == "__main__":
             device=torch.device("cuda"),
         )
 
-        attributor.cache(train_loader_full)
         start_attribute = time.time()
         torch.cuda.reset_peak_memory_stats("cuda")
         score = attributor.attribute(train_loader, train_loader).diag().abs()
