@@ -62,7 +62,7 @@ if __name__ == "__main__":
     @flatten_func(model)
     def f(params, data_target_pair):
         image, label = data_target_pair
-        loss = nn.CrossEntropyLoss()
+        loss = nn.CrossEntropyLoss(reduction="sum")
         yhat = torch.func.functional_call(model, params, image)
         return loss(yhat, label)
 

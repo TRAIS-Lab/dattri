@@ -194,8 +194,13 @@ def get_rps_weight(
         Variable(finetuned_theta).transpose(0, 1),
     )
 
+    y_pred_train = (
+        torch.sigmoid(y_pred_train)
+        if finetuned_theta.shape[0] == 1
+        else torch.softmax(y_pred_train, dim=1)
+    )
+
     alpha = grad(loss_func)(pre_activation_value, y_pred_train) / (-2.0 * lambda_l2 * n)
-    print("pre alpha shape: ", alpha.shape)
     # if multi-class, then focus on the test samples' class labels
     if finetuned_theta.shape[0] > 1:
         train_size = x_train.shape[0]
@@ -217,7 +222,7 @@ def rps_corr_check(rps_weight: Tensor, x: Tensor, y: Tensor) -> None:
         y (Tensor): The pre-trained model output.
     """
     print("--------pre activation sanity check--------")
-    pre_activation_value = rps_weight @ x.T
+    pre_activation_value = x @ x.T @ rps_weight
     print("representer matrix shape: ", pre_activation_value.shape)
     pre_y = y.data.cpu().numpy()
     y_p = pre_activation_value.data.cpu().numpy()
