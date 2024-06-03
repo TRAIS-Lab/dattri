@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Optional, Tuple, Union
+    from typing import List, Optional, Tuple, Union
 
 
 import torch
@@ -737,6 +737,190 @@ def ihvp_at_x_arnoldi(
         return ((v @ eigvecs.T) * 1.0 / eigvals.unsqueeze(0)) @ eigvecs
 
     return _ihvp_at_x_arnoldi
+
+
+def ihvp_datainf(
+    func: Callable,
+    argnums: int,
+    in_dims: Tuple[Union[None, int], ...],
+    regularization: Optional[List[float]] = None,
+    param_layer_map: Optional[List[int]] = None,
+) -> Callable:
+    """DataInf ihvp algorithm function.
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    DataInf assume the loss to be cross-entropy and thus derive a closed form
+    ihvp without having to approximate the hessian. Implementation for reference:
+    https://github.com/ykwon0407/DataInf/blob/main/src/influence.py
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The layer-wise gradients will
+            be calculated on this function. Note that datainf expects the loss
+            to be cross-entropy.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
+            batched layer-wise gradients. Example: inputs, weights, labels corresponds
+            to (0,None,0).
+        regularization (List [float]): A list of floats default to 0.0. Specifies the
+            regularization term to be added to the Hessian matrix in each layer.
+            This is useful when the Hessian matrix is singular or ill-conditioned.
+            The regularization term is `regularization * I`, where `I` is the
+            identity matrix directly added to the Hessian matrix. The list is
+            of length L, where L is the total number of layers.
+        param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
+            into layers. Should be the same length as parameters tuple. For example,
+            for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
+            param_layer_map should be [0,0,1,1],resulting in two layers as expected.
+
+    Returns:
+        A function that takes a list of tuples of Tensor `x` and a tuple of tensors
+        `v`(layer-wise) and returns the approximated IHVP of the approximated Hessian of
+        `func` and `v`.
+    """
+    batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
+
+    def _single_datainf_ihvp(v: torch.Tensor,
+                             grad: torch.Tensor,
+                             regularization: float) -> torch.Tensor:
+        coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
+        return (v - coef * grad) / regularization
+
+    def _ihvp_datainf_func(
+        x: Tuple[torch.Tensor, ...], v: Tuple[torch.Tensor, ...],
+    ) -> Tuple[torch.Tensor]:
+        """The IHVP function using CG.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will compute the
+                inverse hessian matrix with respect to these arguments.
+            v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
+                which ihvp will becomputed. For example layer-wise gradients
+                of test samples.
+
+        Returns:
+            Layer-wise IHVP values.
+        """
+        grads = batch_grad_func(*x)
+        layer_cnt = len(grads)
+        if param_layer_map is not None:
+            grouped = []
+            max_layer = max(param_layer_map)
+            for group in range(max_layer + 1):
+                grouped_layers = tuple([grads[layer] for layer in
+                                        range(len(param_layer_map))
+                                        if param_layer_map[layer] == group])
+                concated_grads = torch.concat(grouped_layers, dim=1)
+                grouped.append(concated_grads)
+            grads = tuple(grouped)
+            layer_cnt = max_layer + 1  # Assuming count starts from 0
+        ihvps = []
+        for layer in range(layer_cnt):
+            grad_layer = grads[layer]
+            reg = 0.0 if regularization is None else regularization[layer]
+            ihvp_contributions = vmap(lambda grad, layer=layer, reg=reg:
+                                                 _single_datainf_ihvp(v[layer],
+                                                                      grad,
+                                                                      reg))(grad_layer)
+            ihvp_at_layer = ihvp_contributions.mean(dim=0)
+            ihvps.append(ihvp_at_layer)
+        return tuple(ihvps)
+    return _ihvp_datainf_func
+
+
+def ihvp_at_x_datainf(
+    func: Callable,
+    argnums: int,
+    in_dims: Tuple[Union[None, int], ...],
+    regularization: Optional[List[float]] = None,
+    *x,
+    param_layer_map: Optional[List[int]] = None,
+) -> Callable:
+    """DataInf ihvp algorithm function (with fixed x).
+
+    Standing for the inverse-hessian-vector product, returns a function that,
+    when given vectors, computes the product of inverse-hessian and vector.
+
+    DataInf assume the loss to be cross-entropy and thus derive a closed form
+    ihvp without having to approximate the hessian.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The layer-wise gradients will
+            be calculated on this function. Note that datainf expects the loss
+            to be cross-entropy.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse hessian with respect to.
+        in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
+            batched layer-wise gradients. Example: inputs, weights, labels corresponds
+            to (0,None,0).
+        regularization (List [float]): A list of floats default to 0.0. Specifies the
+            regularization term to be added to the Hessian matrix in each layer.
+            This is useful when the Hessian matrix is singular or ill-conditioned.
+            The regularization term is `regularization * I`, where `I` is the
+            identity matrix directly added to the Hessian matrix.
+            The list is of length L, where L is the total number of
+            layers.
+        param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
+            into layers. Should be the same length as parameters tuple. For example,
+            for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
+            param_layer_map should be (0,0,1,1),resulting in two layers as expected.
+        *x: List of arguments for `func`.
+
+    Returns:
+        A function that takes a tuple `v` and returns the tuple of IHVPs of the Hessian
+        of `func` and `v`.
+    """
+    def _per_sample_grad(*args) -> torch.Tensor:
+        return grad(func, argnums=argnums)(*args)
+
+    def _single_datainf_ihvp(v: torch.Tensor,
+                                     grad: torch.Tensor,
+                                     regularization: float) -> torch.Tensor:
+        coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
+        return (v - coef * grad) / regularization
+    grads = vmap(_per_sample_grad, in_dims=in_dims)(*x)
+    layer_cnt = len(grads)
+    if param_layer_map is not None:
+        grouped = []
+        max_layer = max(param_layer_map)
+        for group in range(max_layer + 1):
+            grouped_layers = tuple([grads[layer] for layer
+                                    in range(len(param_layer_map))
+                                    if param_layer_map[layer] == group])
+            concated_grads = torch.concat(grouped_layers, dim=1)
+            grouped.append(concated_grads)
+        grads = tuple(grouped)
+        layer_cnt = max_layer + 1  # Assuming count starts from 0
+
+    def _ihvp_at_x_datainf_func(v: Tuple[torch.Tensor, ...],
+    ) -> Tuple[torch.Tensor]:
+        """The IHVP function using datainf.
+
+        Args:
+            v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
+                which ihvp will becomputed. For example layer-wise gradients
+                of test samples.
+
+        Returns:
+            The IHVP value dictionary, with keys corresponding to layer names.
+        """
+        ihvps = []
+        for layer in range(layer_cnt):
+            reg = 0.0 if regularization is None else regularization[layer]
+            grad_layer = grads[layer]
+            ihvp_contributions = vmap(lambda grad, layer=layer, reg=reg:
+                                                 _single_datainf_ihvp(v[layer],
+                                                                      grad,
+                                                                      regularization=reg))(grad_layer)
+            ihvp_at_layer = ihvp_contributions.mean(dim=0)
+            ihvps.append(ihvp_at_layer)
+        return tuple(ihvps)
+
+    return _ihvp_at_x_datainf_func
 
 
 def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
