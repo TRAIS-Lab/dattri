@@ -2,11 +2,14 @@
 
 <!-- add some demos, list of methods and benchmark settings available, benchmark results, and some development plan -->
 
-`dattri` is a PyTorch library for deploying, developing and benchmarking **efficient data attribution algorithms**. You may use `dattri` to
+`dattri` is a PyTorch library for **deploying, developing and benchmarking efficient data attribution algorithms**. You may use `dattri` to
 
-- Deploy existing data attribution methods (e.g., Influence Function, TracIN, RPS, TRAK, ...) to PyTorch models.
-- Develop new data attribution methods with efficient implementation of low-level utility functions (e.g., HVP/IHVP, random projection, dropout ensembling, ...).
-- Benchmark data attribution methods with standard benchmark settings (e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MusicTransformer+MAESTRO, NanoGPT+Shakespeare/tinystories, ImageNet+ResNet-18, ...).
+- Deploy existing data attribution methods to PyTorch models
+  - e.g., Influence Function, TracIN, RPS, TRAK, ...
+- Develop new data attribution methods with efficient implementation of low-level utility functions
+  - e.g., HVP/IHVP, random projection, dropout ensembling, ...
+- Benchmark data attribution methods with standard benchmark settings
+  - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MusicTransformer+MAESTRO, NanoGPT+Shakespeare/tinystories, ImageNet+ResNet-18, ...
 
 ## Quick Start
 
@@ -22,9 +25,17 @@ If you want to use all features on CUDA and accelerate the library, you may inst
 pip install dattri[all]
 ```
 
+> [!NOTE]
+> It's highly recommended to use a device support CUDA to run `dattri`, especially for moderately large or larger models or datasets. And it's required to have CUDA if you want to install the full version `dattri`.
+
 ### Apply Data Attribution methods on Existing PyTorch Models
 
-One can apply different data attribution methods on existing PyTorch Models. One only need to define a target function (e.g., `f`), a trained model parameter (e.g., `model_params`) and the data loader for training samples and test samples (e.g., `train_loader`, `test_loader`).
+One can apply different data attribution methods on existing PyTorch Models. One only need to define.
+1. target function (e.g., `f`)
+2. a trained model parameter (e.g., `model_params`)
+3. the data loader for training samples and test samples (e.g., `train_loader`, `test_loader`).
+
+Following is an example to use the well-defined `Attributor` to apply data attribution to your trained model.
 
 ```python
 from dattri.algorithm import IFAttributor, TracInAttributor, TRAKAttributor, RPSAttributor
@@ -50,8 +61,9 @@ score = attributor.attribute(train_loader, test_loader)
 
 ### Use low-level utility functions to build data attribution methods
 
-#### IHVP
-This example shows how to use the CG implementation of the IHVP implementation.
+#### HVP/IHVP
+Hessian-vector product (HVP), inverse-Hessian-vector product
+(IHVP) are widely used in data attribution methods. `dattri` provides efficient implementation to these operators by `torch.func`. This example shows how to use the CG implementation of the IHVP implementation.
 
 ```python
 from dattri.func.ihvp import ihvp_cg, ihvp_at_x_cg
@@ -73,6 +85,36 @@ ihvp_result_2 = ihvp_at_x_func(v) # only v as the input
 assert torch.allclose(ihvp_result_1, ihvp_result_2)
 ```
 
+#### Random Projection
+It has been shown that long vectors will retain most of their relative information when projected down to a smaller feature dimension. To reduce the computational cost, random projection is widely used in data attribution methods. Following is an example to use `random_project`.
+
+```python
+from dattri.func.random_projection import random_project
+
+# initialize the projector based on users' needs
+project_func = random_project(tensor, tensor.size(0), proj_dim=512)
+
+# obtain projected tensors
+projected_tensor = project_func(torch.full_like(tensor))
+```
+
+#### Dropout Ensemble
+Some literatures found that a couple of ensemble methods can significantly improve the performance of data attribution, [DROPOUT ENSEMBLE](https://arxiv.org/pdf/2405.17293) is one of these ensemble methods. One may prepare their model with
+
+```python
+from dattri.model_utils.dropout import activate_dropout
+
+# initialize a torch.nn.Module model
+model = MLP()
+
+# (option 1) activate all dropout layers
+model = activate_dropout(model, dropout_prob=0.2)
+
+# (option 2) activate specific dropout layers
+# here "dropout1" and "dropout2" are the names of dropout layers within the model
+model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
+```
+
 ## Algorithms Supported
 | Family |               Algorithms              |
 |:------:|:-------------------------------------:|
@@ -80,6 +122,8 @@ assert torch.allclose(ihvp_result_1, ihvp_result_2)
 |        |       [CG](https://www.cs.toronto.edu/~jmartens/docs/Deep_HessianFree.pdf)      |
 |        |    [LiSSA](https://arxiv.org/abs/1602.03943)    |
 |        |  [Arnoldi](https://arxiv.org/abs/2112.03052)  |
+| | [Datainf](https://arxiv.org/abs/2310.00902)|
+| | [EK-FAC](https://arxiv.org/abs/2011.13609) |
 | [TracIn](https://arxiv.org/abs/2002.08484) | [TracInCP](https://arxiv.org/abs/2002.08484) |
 |        |   [Grad-Dot](https://arxiv.org/abs/2102.05262)  |
 |        |   [Grad-Cos](https://arxiv.org/abs/2102.05262)  |
@@ -97,6 +141,23 @@ assert torch.allclose(ihvp_result_1, ihvp_result_2)
 | Shakespeare |      NanoGPT      |    Text Generation   |        (3921,435)        |      10.7M     |     LDS     |     [link](https://github.com/eniompw/nanoGPTshakespeare)    |
 
 ## Benchmark Results
+### MNIST+LR/MLP
 ![mnist-result](assets/images/benchmark-result-mnist.png)
 
+### LDS performance on larger models
+![larger-lds-result](assets/images/benchmark-result-larger-lds.png)
+
+### AUC performance
+![larger-lds-result](assets/images/benchmark-result-auc.png)
+
 ## Develop Plan
+- More (larger) benchmark settings to come
+  - ImageNet + ResNet-18
+  - NanoGPT + Tinystories
+  - Comparison with other libraries
+- More algorithms and low-level utility functions to come
+  - KNN filter
+  - TF-IDF filter
+  - RelativeIF
+- Better documentation
+  - Quick start colab notebooks
