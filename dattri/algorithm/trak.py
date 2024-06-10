@@ -82,7 +82,7 @@ class TRAKAttributor(BaseAttributor):
         if not isinstance(params, list):
             params = [params]
         self.params = params
-        self.norm_scaler = sum(p.numel() for _, p in self.params[0].items())
+        self.norm_scaler = (sum(p.numel() for _, p in self.params[0].items())) ** 0.5
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
             self.projector_kwargs.update(projector_kwargs)
