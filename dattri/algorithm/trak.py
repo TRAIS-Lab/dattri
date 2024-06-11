@@ -18,6 +18,7 @@ from dattri.func.random_projection import random_project
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
+from .utils import _check_shuffle
 
 DEFAULT_PROJECTOR_KWARGS = {
     "proj_dim": 512,
@@ -81,6 +82,7 @@ class TRAKAttributor(BaseAttributor):
         if not isinstance(params, list):
             params = [params]
         self.params = params
+        self.norm_scaler = (sum(p.numel() for _, p in self.params[0].items())) ** 0.5
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
             self.projector_kwargs.update(projector_kwargs)
@@ -103,6 +105,7 @@ class TRAKAttributor(BaseAttributor):
             full_train_dataloader (torch.utils.data.DataLoader): The dataloader
                 with full training samples for gradient calculation.
         """
+        _check_shuffle(full_train_dataloader)
         self.full_train_dataloader = full_train_dataloader
         inv_XTX_XT_list = []
         running_Q = 0
@@ -117,19 +120,29 @@ class TRAKAttributor(BaseAttributor):
             ):
                 train_batch_data = tuple(data.to(self.device) for data in train_data)
                 grad_t = self.grad_func(flatten_params(params), train_batch_data)
+                grad_t = torch.nan_to_num(grad_t, nan=0.0)
+                grad_t /= self.norm_scaler
                 self.projector_kwargs["proj_seed"] = ckpt_seed
-                grad_p = random_project(
-                    grad_t,
-                    train_batch_data[0].shape[0],
-                    **self.projector_kwargs,
-                )(grad_t)
+                grad_p = (
+                    random_project(
+                        grad_t,
+                        train_batch_data[0].shape[0],
+                        **self.projector_kwargs,
+                    )(grad_t)
+                    .clone()
+                    .detach()
+                )
                 full_train_projected_grad.append(grad_p)
                 Q.append(
-                    torch.ones(train_batch_data[0].shape[0]).to(self.device)
-                    - self.correct_probability_func(
-                        flatten_params(params),
-                        train_batch_data,
-                    ).flatten(),
+                    (
+                        torch.ones(train_batch_data[0].shape[0]).to(self.device)
+                        - self.correct_probability_func(
+                            flatten_params(params),
+                            train_batch_data,
+                        ).flatten()
+                    )
+                    .clone()
+                    .detach(),
                 )
             full_train_projected_grad = torch.cat(full_train_projected_grad, dim=0)
             Q = torch.cat(Q, dim=0)
@@ -171,6 +184,10 @@ class TRAKAttributor(BaseAttributor):
             ValueError: If the train_dataloader is not None and the full training
                 dataloader is cached or no train_loader is provided in both cases.
         """
+        _check_shuffle(test_dataloader)
+        if train_dataloader is not None:
+            _check_shuffle(train_dataloader)
+
         running_xinv_XTX_XT = 0
         running_Q = 0
         running_count = 0
@@ -200,19 +217,29 @@ class TRAKAttributor(BaseAttributor):
                         data.to(self.device) for data in train_data
                     )
                     grad_t = self.grad_func(flatten_params(params), train_batch_data)
+                    grad_t = torch.nan_to_num(grad_t, nan=0.0)
+                    grad_t /= self.norm_scaler
                     self.projector_kwargs["proj_seed"] = ckpt_seed
-                    grad_p = random_project(
-                        grad_t,
-                        train_batch_data[0].shape[0],
-                        **self.projector_kwargs,
-                    )(grad_t)
+                    grad_p = (
+                        random_project(
+                            grad_t,
+                            train_batch_data[0].shape[0],
+                            **self.projector_kwargs,
+                        )(grad_t)
+                        .clone()
+                        .detach()
+                    )
                     train_projected_grad.append(grad_p)
                     Q.append(
-                        torch.ones(train_batch_data[0].shape[0]).to(self.device)
-                        - self.correct_probability_func(
-                            flatten_params(params),
-                            train_batch_data,
-                        ),
+                        (
+                            torch.ones(train_batch_data[0].shape[0]).to(self.device)
+                            - self.correct_probability_func(
+                                flatten_params(params),
+                                train_batch_data,
+                            )
+                        )
+                        .clone()
+                        .detach(),
                     )
                 train_projected_grad = torch.cat(train_projected_grad, dim=0)
                 Q = torch.cat(Q, dim=0)
@@ -225,12 +252,18 @@ class TRAKAttributor(BaseAttributor):
             ):
                 test_batch_data = tuple(data.to(self.device) for data in test_data)
                 grad_t = self.grad_func(flatten_params(params), test_batch_data)
+                grad_t = torch.nan_to_num(grad_t, nan=0.0)
+                grad_t /= self.norm_scaler
                 self.projector_kwargs["proj_seed"] = ckpt_seed
-                grad_p = random_project(
-                    grad_t,
-                    test_batch_data[0].shape[0],
-                    **self.projector_kwargs,
-                )(grad_t)
+                grad_p = (
+                    random_project(
+                        grad_t,
+                        test_batch_data[0].shape[0],
+                        **self.projector_kwargs,
+                    )(grad_t)
+                    .clone()
+                    .detach()
+                )
                 test_projected_grad.append(grad_p)
             test_projected_grad = torch.cat(test_projected_grad, dim=0)
 
@@ -255,5 +288,5 @@ class TRAKAttributor(BaseAttributor):
             running_xinv_XTX_XT /= running_count
 
         if train_dataloader is not None:
-            return running_xinv_XTX_XT @ running_Q.diag().to(self.device)
-        return running_xinv_XTX_XT @ self.Q.diag().to(self.device)
+            return (running_xinv_XTX_XT @ running_Q.diag().to(self.device)).T
+        return (running_xinv_XTX_XT @ self.Q.diag().to(self.device)).T
