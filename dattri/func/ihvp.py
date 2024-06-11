@@ -1186,7 +1186,7 @@ def ihvp_at_x_lissa(
     return _ihvp_at_x_lissa_func
 
 
-EKFAC_CACHE_KEY = "__cache"
+EKFAC_CACHE_KEY = "__ekfac_cache"
 
 
 def manual_cache_forward(forward_func: Callable) -> Callable:
