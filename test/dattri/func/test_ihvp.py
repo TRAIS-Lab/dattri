@@ -508,7 +508,9 @@ class TestIHVP:
 
         ihvp_explicit_at_x_func = ihvp_at_x_explicit(
             f,
-            flatten_params(model_params),
+            model_params["linear.weight"].flatten(),
+            model_params["conv.weight"],
+            model_params["conv.bias"],
             argnums=0,
         )
 
@@ -531,6 +533,7 @@ class TestIHVP:
             corr = np.corrcoef(ground_truth[i].detach().numpy(),
                                estimation[i].detach().numpy())[0, 1]
             assert corr > 0.95  # noqa: PLR2004
+
 
 def test_ihvp_datainf():
     """Testing datainf functionality."""
