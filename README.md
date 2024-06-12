@@ -2,7 +2,7 @@
 
 <!-- add some demos, list of methods and benchmark settings available, benchmark results, and some development plan -->
 
-`dattri` is a PyTorch library for **deploying, developing and benchmarking efficient data attribution algorithms**. You may use `dattri` to
+`dattri` is a PyTorch library for **developing, benchmarking, and deploying efficient data attribution algorithms**. You may use `dattri` to
 
 - Deploy existing data attribution methods to PyTorch models
   - e.g., Influence Function, TracIn, RPS, TRAK, ...
@@ -28,14 +28,14 @@ pip install dattri[all]
 > [!NOTE]
 > It's highly recommended to use a device support CUDA to run `dattri`, especially for moderately large or larger models or datasets. And it's required to have CUDA if you want to install the full version `dattri`.
 
-### Apply Data Attribution methods on Existing PyTorch Models
+### Apply Data Attribution methods on PyTorch Models
 
-One can apply different data attribution methods on existing PyTorch Models. One only need to define.
-1. target function (e.g., `f`)
-2. a trained model parameter (e.g., `model_params`)
-3. the data loader for training samples and test samples (e.g., `train_loader`, `test_loader`).
+One can apply different data attribution methods on PyTorch Models. One only needs to define:
+1. a target function (e.g., `f`)
+2. trained model parameters (e.g., `model_params`)
+3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
 
-Following is an example to use the well-defined `Attributor` to apply data attribution to your trained model.
+The following is an example to use `Attributor` to apply data attribution to a PyTorch model.
 
 ```python
 from dattri.algorithm import IFAttributor, TracInAttributor, TRAKAttributor, RPSAttributor
@@ -59,7 +59,7 @@ attributor.cache(train_loader) # optional pre-processing to accelerate the attri
 score = attributor.attribute(train_loader, test_loader)
 ```
 
-### Use low-level utility functions to build data attribution methods
+### Use low-level utility functions to develop new data attribution methods
 
 #### HVP/IHVP
 Hessian-vector product (HVP), inverse-Hessian-vector product
@@ -86,7 +86,7 @@ assert torch.allclose(ihvp_result_1, ihvp_result_2)
 ```
 
 #### Random Projection
-It has been shown that long vectors will retain most of their relative information when projected down to a smaller feature dimension. To reduce the computational cost, random projection is widely used in data attribution methods. Following is an example to use `random_project`.
+It has been shown that long vectors will retain most of their relative information when projected down to a smaller feature dimension. To reduce the computational cost, random projection is widely used in data attribution methods. Following is an example to use `random_project`. The implementation leaverges [`fast_jl`](https://pypi.org/project/fast-jl/).
 
 ```python
 from dattri.func.random_projection import random_project
@@ -101,7 +101,7 @@ projected_tensor = project_func(torch.full_like(tensor))
 Normally speaking, `tensor` is probably the gradient of target function and has a large dimension (i.e., the number of parameters).
 
 #### Dropout Ensemble
-Some literatures found that a couple of ensemble methods can significantly improve the performance of data attribution, [DROPOUT ENSEMBLE](https://arxiv.org/pdf/2405.17293) is one of these ensemble methods. One may prepare their model with
+Recent studies found that ensemble methods can significantly improve the performance of data attribution, [DROPOUT ENSEMBLE](https://arxiv.org/pdf/2405.17293) is one of these ensemble methods. One may prepare their model with
 
 ```python
 from dattri.model_utils.dropout import activate_dropout
@@ -157,7 +157,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 ### AUC performance
 ![larger-lds-result](assets/images/benchmark-result-auc.png)
 
-## Develop Plan
+## Development Plan
 - More (larger) benchmark settings to come
   - ImageNet + ResNet-18
   - Tinystories + nanoGPT
