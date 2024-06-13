@@ -511,7 +511,7 @@ class TestIHVP:
 
         estimation = ihvp_at_x_ekfac_func([[v]])[0][0]
 
-        ## TODO: the current test is only checking whether the implementation
+        # TODO: the current test is only checking whether the implementation
         # is error-free. More tests could be added.
 
 
