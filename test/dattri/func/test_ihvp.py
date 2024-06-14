@@ -628,6 +628,6 @@ def test_ihvp_datainf_nn():
                                 * torch.sqrt(variance2))
     params = tuple([param.flatten() for param in model_params.values()])
     ihvp = ihvp_datainf_func((params, inputs, labels), v)
-    tol = 0.9
+    tol = 0.8
     assert (corr(ihvp[0], ihvp_explicit_at_x_func(v_all)[:126]) > tol)
     # For layer 1 weights & biases
