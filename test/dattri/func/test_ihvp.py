@@ -509,7 +509,7 @@ class TestIHVP:
                                                batch_size=128,
                                                damping=0.1)
 
-        ihvp_at_x_ekfac_func([[v]])[0][0]
+        ihvp_at_x_ekfac_func([[v]])
 
         # TODO: the current test is only checking whether the implementation
         # is error-free. More tests could be added.
