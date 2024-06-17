@@ -1,15 +1,15 @@
 <!doctype html>
-<html class="no-js" lang="en" data-content_root="./">
+<html class="no-js" lang="en" data-content_root="../">
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="genindex.html" /><link rel="search" title="Search" href="search.html" /><link rel="next" title="Attributors" href="api/algorithm.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Dropout Ensemble" href="dropout.html" /><link rel="prev" title="HVP/IHVP" href="hvp_ihvp.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.01.29 -->
-        <title>Dattri documentation</title>
-      <link rel="stylesheet" type="text/css" href="_static/pygments.css?v=a746c00c" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo.css?v=135e06be" />
-    <link rel="stylesheet" type="text/css" href="_static/styles/furo-extensions.css?v=36a5483c" />
+        <title>Random Projection - Dattri documentation</title>
+      <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
     
     
 
@@ -123,7 +123,7 @@
       </label>
     </div>
     <div class="header-center">
-      <a href="#"><div class="brand">Dattri  documentation</div></a>
+      <a href="../index.html"><div class="brand">Dattri  documentation</div></a>
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
@@ -143,12 +143,12 @@
   <aside class="sidebar-drawer">
     <div class="sidebar-container">
       
-      <div class="sidebar-sticky"><a class="sidebar-brand" href="#">
+      <div class="sidebar-sticky"><a class="sidebar-brand" href="../index.html">
   
   
   <span class="sidebar-brand-text">Dattri  documentation</span>
   
-</a><form class="sidebar-search-container" method="get" action="search.html" role="search">
+</a><form class="sidebar-search-container" method="get" action="../search.html" role="search">
   <input class="sidebar-search" placeholder="Search" name="q" aria-label="Search">
   <input type="hidden" name="check_keywords" value="yes">
   <input type="hidden" name="area" value="default">
@@ -156,18 +156,18 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Attribution Methods:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api/algorithm.html">Attributors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/helper.html">Target Function Helpers</a></li>
+<li class="toctree-l1"><a class="reference internal" href="algorithm.html">Attributors</a></li>
+<li class="toctree-l1"><a class="reference internal" href="helper.html">Target Function Helpers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Low-level Utility Functions:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api/hvp_ihvp.html">HVP/IHVP</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/random_projection.html">Random Projection</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/dropout.html">Dropout Ensemble</a></li>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="hvp_ihvp.html">HVP/IHVP</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Random Projection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="dropout.html">Dropout Ensemble</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Benchmark:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api/benchmark.html">Benchmark Functions</a></li>
+<li class="toctree-l1"><a class="reference internal" href="benchmark.html">Benchmark Functions</a></li>
 </ul>
 
 </div>
@@ -202,46 +202,39 @@
           </label>
         </div>
         <article role="main">
-          <section id="dattri-a-library-for-efficient-data-attribution">
-<h1><cite>dattri</cite>: A Library for Efficient Data Attribution<a class="headerlink" href="#dattri-a-library-for-efficient-data-attribution" title="Link to this heading">¶</a></h1>
-<p><cite>dattri</cite> is a PyTorch library for <strong>developing, benchmarking, and deploying efficient data attribution algorithms</strong>. You may use <cite>dattri</cite> to</p>
-<ul class="simple">
-<li><p>Deploy existing data attribution methods to PyTorch models
-- e.g., Influence Function, TracIn, RPS, TRAK, …</p></li>
-<li><p>Develop new data attribution methods with efficient implementation of low-level utility functions
-- e.g., HVP/IHVP, random projection, dropout ensembling, …</p></li>
-<li><p>Benchmark data attribution methods with standard benchmark settings
-- e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, …</p></li>
+          <section id="random-projection">
+<h1>Random Projection<a class="headerlink" href="#random-projection" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.random_projection.random_project">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.random_projection.</span></span><span class="sig-name descname"><span class="pre">random_project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_max_batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_half_precision</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.random_projection.random_project" title="Link to this definition">¶</a></dt>
+<dd><p>Randomly projects the features to a smaller dimension.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>feature</strong> (<em>Union</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Tensor</em><em>]</em><em>, </em><em>Tensor</em><em>]</em>) – The feature needs to be
+projected. This can simple be a tensor with size [feature_batch_size,
+feature_dim]. Or typically, if the this is gradient of some
+torch.nn.Module models, it will have the structure similar to the
+result of model.named_parameters().</p></li>
+<li><p><strong>feature_batch_size</strong> (<em>int</em>) – The batch size of each tensor in the feature
+about to be projected. The typical type of feature are gradients of
+torch.nn.Module model but can restricted to this.</p></li>
+<li><p><strong>proj_dim</strong> (<em>int</em>) – Dimension of the projected feature.</p></li>
+<li><p><strong>proj_max_batch_size</strong> (<em>int</em>) – The maximum batch size used by fast_jl if the
+CudaProjector is used. Must be a multiple of 8. The maximum
+batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – “cuda” or “cpu”.</p></li>
+<li><p><strong>proj_seed</strong> (<em>int</em>) – Random seed used by the projector. Defaults to 0.</p></li>
+<li><p><strong>use_half_precision</strong> (<em>bool</em>) – If True, torch.float16 will be used for all
+computations and arrays will be stored in torch.float16.</p></li>
 </ul>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Attribution Methods:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api/algorithm.html">Attributors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/helper.html">Target Function Helpers</a></li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Low-level Utility Functions:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api/hvp_ihvp.html">HVP/IHVP</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/random_projection.html">Random Projection</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/dropout.html">Dropout Ensemble</a></li>
-</ul>
-</div>
-<div class="toctree-wrapper compound">
-<p class="caption" role="heading"><span class="caption-text">Benchmark:</span></p>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="api/benchmark.html">Benchmark Functions</a></li>
-</ul>
-</div>
-</section>
-<section id="indices-and-tables">
-<h1>Indices and tables<a class="headerlink" href="#indices-and-tables" title="Link to this heading">¶</a></h1>
-<ul class="simple">
-<li><p><a class="reference internal" href="genindex.html"><span class="std std-ref">Index</span></a></p></li>
-<li><p><a class="reference internal" href="py-modindex.html"><span class="std std-ref">Module Index</span></a></p></li>
-<li><p><a class="reference internal" href="search.html"><span class="std std-ref">Search Page</span></a></p></li>
-</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes projects feature to a smaller dimension.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
         </article>
@@ -249,16 +242,26 @@
       <footer>
         
         <div class="related-pages">
-          <a class="next-page" href="api/algorithm.html">
+          <a class="next-page" href="dropout.html">
               <div class="page-info">
                 <div class="context">
                   <span>Next</span>
                 </div>
-                <div class="title">Attributors</div>
+                <div class="title">Dropout Ensemble</div>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          
+          <a class="prev-page" href="hvp_ihvp.html">
+              <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
+              <div class="page-info">
+                <div class="context">
+                  <span>Previous</span>
+                </div>
+                
+                <div class="title">HVP/IHVP</div>
+                
+              </div>
+            </a>
         </div>
         <div class="bottom-of-page">
           <div class="left-details">
@@ -289,10 +292,10 @@
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#"><cite>dattri</cite>: A Library for Efficient Data Attribution</a><ul>
+<li><a class="reference internal" href="#">Random Projection</a><ul>
+<li><a class="reference internal" href="#dattri.func.random_projection.random_project"><code class="docutils literal notranslate"><span class="pre">random_project()</span></code></a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#indices-and-tables">Indices and tables</a></li>
 </ul>
 
           </div>
@@ -302,9 +305,9 @@
       
     </aside>
   </div>
-</div><script src="_static/documentation_options.js?v=5929fcd5"></script>
-    <script src="_static/doctools.js?v=9a2dae69"></script>
-    <script src="_static/sphinx_highlight.js?v=dc90522c"></script>
-    <script src="_static/scripts/furo.js?v=32e29ea5"></script>
+</div><script src="../_static/documentation_options.js?v=5929fcd5"></script>
+    <script src="../_static/doctools.js?v=9a2dae69"></script>
+    <script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+    <script src="../_static/scripts/furo.js?v=32e29ea5"></script>
     </body>
 </html>
