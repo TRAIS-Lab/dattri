@@ -3,17 +3,38 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Welcome to Dattri's documentation!
+`dattri`: A Library for Efficient Data Attribution
 ==================================
 
+`dattri` is a PyTorch library for **developing, benchmarking, and deploying efficient data attribution algorithms**. You may use `dattri` to
+
+- Deploy existing data attribution methods to PyTorch models
+  - e.g., Influence Function, TracIn, RPS, TRAK, ...
+- Develop new data attribution methods with efficient implementation of low-level utility functions
+  - e.g., HVP/IHVP, random projection, dropout ensembling, ...
+- Benchmark data attribution methods with standard benchmark settings
+  - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
+
 .. toctree::
-   :maxdepth: 2
-   :caption: Contents:
+   :maxdepth: 1
+   :caption: Attribution Methods:
 
-Example
-=======
-.. autofunction:: dattri.func.ihvp.ihvp_explicit
+   api/algorithm.rst
+   api/helper.rst
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Low-level Utility Functions:
+
+   api/hvp_ihvp.rst
+   api/random_projection.rst
+   api/dropout.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Benchmark:
+
+   api/benchmark.rst
 
 Indices and tables
 ==================
