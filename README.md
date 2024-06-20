@@ -166,5 +166,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
   - KNN filter
   - TF-IDF filter
   - RelativeIF
+  - KNN Shapley
+  - In-Run Shapley
 - Better documentation
   - Quick start colab notebooks
