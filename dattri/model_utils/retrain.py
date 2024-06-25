@@ -220,10 +220,7 @@ def retrain_lds(
     if not path.exists():
         path.mkdir(parents=True)
 
-    if dataloader.sampler is not None:
-        data_length = len(dataloader.sampler)
-    else:
-        data_length = len(dataloader.dataset)
+    data_length = len(dataloader.sampler)
     subset_length = int(data_length * subset_ratio)
 
     subset_dir_map = {}
