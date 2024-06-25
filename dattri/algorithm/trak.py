@@ -23,7 +23,7 @@ from .utils import _check_shuffle
 DEFAULT_PROJECTOR_KWARGS = {
     "proj_dim": 512,
     "proj_max_batch_size": 32,
-    "proj_seed": 42,
+    "proj_seed": 0,
     "device": "cpu",
     "use_half_precision": False,
 }
@@ -36,7 +36,8 @@ class TRAKAttributor(BaseAttributor):
         self,
         target_func: Callable,
         correct_probability_func: Callable,
-        params: List[dict],
+        model: torch.nn.Module,
+        params: List[str],
         projector_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
     ) -> None:
@@ -72,9 +73,9 @@ class TRAKAttributor(BaseAttributor):
                     p = torch.exp(-loss(yhat, label_t))
                     return p
                 ```.
-            params (List[dict]): The parameters of the model, should be a list of
-                dictionaries, where the key is the name of the parameter and the
-                value is the parameter tensor.
+            model (nn.Module): The PyTorch model to be attributed.
+            params (List[str]): The parameters of the model, should be a list of
+                string, indicating the stored model parameters' paths.
             projector_kwargs (Optional[Dict[str, Any]], optional): The kwargs for the
                 random projection. Defaults to None.
             device (str): The device to run the attributor. Default is cpu.
@@ -82,7 +83,8 @@ class TRAKAttributor(BaseAttributor):
         if not isinstance(params, list):
             params = [params]
         self.params = params
-        self.norm_scaler = (sum(p.numel() for _, p in self.params[0].items())) ** 0.5
+        self.model = model
+        self.norm_scaler = sum(p.numel() for p in self.model.parameters()) ** 0.5
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
             self.projector_kwargs.update(projector_kwargs)
@@ -111,6 +113,12 @@ class TRAKAttributor(BaseAttributor):
         running_Q = 0
         running_count = 0
         for ckpt_seed, params in enumerate(self.params):
+            # load checkpoint to the model
+            self.model.load_state_dict(torch.load(params))
+            self.model.eval()
+            # get the model parameter
+            parameters = {k: v.detach() for k, v in self.model.named_parameters()}
+
             full_train_projected_grad = []
             Q = []
             for train_data in tqdm(
@@ -119,16 +127,15 @@ class TRAKAttributor(BaseAttributor):
                 leave=False,
             ):
                 train_batch_data = tuple(data.to(self.device) for data in train_data)
-                grad_t = self.grad_func(flatten_params(params), train_batch_data)
-                grad_t = torch.nan_to_num(grad_t, nan=0.0)
+                grad_t = self.grad_func(flatten_params(parameters), train_batch_data)
+                grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
-                self.projector_kwargs["proj_seed"] = ckpt_seed
                 grad_p = (
                     random_project(
                         grad_t,
                         train_batch_data[0].shape[0],
                         **self.projector_kwargs,
-                    )(grad_t)
+                    )(grad_t, ensemble_id=ckpt_seed)
                     .clone()
                     .detach()
                 )
@@ -137,7 +144,7 @@ class TRAKAttributor(BaseAttributor):
                     (
                         torch.ones(train_batch_data[0].shape[0]).to(self.device)
                         - self.correct_probability_func(
-                            flatten_params(params),
+                            flatten_params(parameters),
                             train_batch_data,
                         ).flatten()
                     )
@@ -205,6 +212,12 @@ class TRAKAttributor(BaseAttributor):
                        training loader or cache a training loader."
             raise ValueError(message)
         for ckpt_seed, params in enumerate(self.params):
+            # load checkpoint to the model
+            self.model.load_state_dict(torch.load(params))
+            self.model.eval()
+            # get the model parameter
+            parameters = {k: v.detach() for k, v in self.model.named_parameters()}
+
             if train_dataloader is not None:
                 train_projected_grad = []
                 Q = []
@@ -216,16 +229,17 @@ class TRAKAttributor(BaseAttributor):
                     train_batch_data = tuple(
                         data.to(self.device) for data in train_data
                     )
-                    grad_t = self.grad_func(flatten_params(params), train_batch_data)
-                    grad_t = torch.nan_to_num(grad_t, nan=0.0)
+                    grad_t = self.grad_func(flatten_params(parameters),
+                                            train_batch_data)
+                    grad_t = torch.nan_to_num(grad_t)
                     grad_t /= self.norm_scaler
-                    self.projector_kwargs["proj_seed"] = ckpt_seed
+
                     grad_p = (
                         random_project(
                             grad_t,
                             train_batch_data[0].shape[0],
                             **self.projector_kwargs,
-                        )(grad_t)
+                        )(grad_t, ensemble_id=ckpt_seed)
                         .clone()
                         .detach()
                     )
@@ -234,7 +248,7 @@ class TRAKAttributor(BaseAttributor):
                         (
                             torch.ones(train_batch_data[0].shape[0]).to(self.device)
                             - self.correct_probability_func(
-                                flatten_params(params),
+                                flatten_params(parameters),
                                 train_batch_data,
                             )
                         )
@@ -251,16 +265,16 @@ class TRAKAttributor(BaseAttributor):
                 leave=False,
             ):
                 test_batch_data = tuple(data.to(self.device) for data in test_data)
-                grad_t = self.grad_func(flatten_params(params), test_batch_data)
-                grad_t = torch.nan_to_num(grad_t, nan=0.0)
+                grad_t = self.grad_func(flatten_params(parameters), test_batch_data)
+                grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
-                self.projector_kwargs["proj_seed"] = ckpt_seed
+
                 grad_p = (
                     random_project(
                         grad_t,
                         test_batch_data[0].shape[0],
                         **self.projector_kwargs,
-                    )(grad_t)
+                    )(grad_t, ensemble_id=ckpt_seed)
                     .clone()
                     .detach()
                 )

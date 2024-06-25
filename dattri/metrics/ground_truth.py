@@ -179,7 +179,7 @@ def calculate_lds_ground_truth(
     indices = torch.tensor(indices)
 
     # Calculate the target values for each test sample under each model.
-    target_values = torch.zeros(num_subsets, len(test_dataloader.dataset))
+    target_values = torch.zeros(num_subsets, len(test_dataloader.sampler))
     for i in range(num_subsets):
         for j in range(num_runs_per_subset):
             ckpt_path = Path(subset_dir_map[i]) / f"model_weights_{j}.pt"
