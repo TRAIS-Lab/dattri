@@ -127,7 +127,7 @@ def retrain_loo(
         torch.save(model, weights_dir)
 
     metadata_file = Path(path) / "metadata.yml"
-    with Path(metadata_file).open("w", encoding="utf-8") as file:
+    with Path(metadata_file).open("w", encoding="utf-8", encoding="utf-8") as file:
         yaml.dump(metadata, file)
 
 
@@ -225,6 +225,11 @@ def retrain_lds(
 
     subset_dir_map = {}
     rng = np.random.default_rng(seed)  # this can also handle seed=None
+
+    # seed control
+    torch.manual_seed(seed)
+    torch.cuda.manual_seed_all(seed)
+    torch.backends.cudnn.deterministic = True
 
     # seed control
     if seed is not None:
