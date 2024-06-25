@@ -1,5 +1,8 @@
 """Test for TracIn."""
 
+import shutil
+from pathlib import Path
+
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -40,9 +43,15 @@ class TestTracInAttributor:
             return loss(yhat, label_t)
 
         # to simlulate multiple checkpoints
-        model_params_1 = {k: p.detach() for k, p in model.named_parameters()}
-        model_params_2 = {k: p.detach() for k, p in model.named_parameters()}
-        params_list = [model_params_1, model_params_2]
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        params_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         # train and test always share the same projector
         # checkpoints need to have differnt projectors
@@ -58,6 +67,7 @@ class TestTracInAttributor:
         # test with projector list
         attributor = TracInAttributor(
             target_func=f,
+            model=model,
             params_list=params_list,
             normalized_grad=True,
             weight_list=torch.ones(len(params_list)),
@@ -69,6 +79,8 @@ class TestTracInAttributor:
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
             test_loader.dataset,
         )
+
+        shutil.rmtree(path)
 
     def test_tracin(self):
         """Test for TracIn without projectors."""
@@ -98,14 +110,21 @@ class TestTracInAttributor:
             return loss(yhat, label_t)
 
         # to simlulate multiple checkpoints
-        model_params_1 = {k: p.detach() for k, p in model.named_parameters()}
-        model_params_2 = {k: p.detach() for k, p in model.named_parameters()}
-        params_list = [model_params_1, model_params_2]
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        params_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         pytest_device = "cpu"
         # test with no projector list
         attributor = TracInAttributor(
             target_func=f,
+            model=model,
             params_list=params_list,
             normalized_grad=True,
             weight_list=torch.ones(len(params_list)),
@@ -116,3 +135,5 @@ class TestTracInAttributor:
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
             test_loader.dataset,
         )
+
+        shutil.rmtree(path)
