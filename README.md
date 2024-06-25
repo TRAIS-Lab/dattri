@@ -125,7 +125,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 |        |    [LiSSA](https://arxiv.org/abs/1602.03943)    |
 |        |  [Arnoldi](https://arxiv.org/abs/2112.03052)  |
 | | [DataInf](https://arxiv.org/abs/2310.00902)|
-| | [EK-FAC](https://arxiv.org/abs/2011.13609) |
+| | [EK-FAC](https://arxiv.org/abs/2308.03296) |
 | [TracIn](https://arxiv.org/abs/2002.08484) | [TracInCP](https://arxiv.org/abs/2002.08484) |
 |        |   [Grad-Dot](https://arxiv.org/abs/2102.05262)  |
 |        |   [Grad-Cos](https://arxiv.org/abs/2102.05262)  |
@@ -166,5 +166,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
   - KNN filter
   - TF-IDF filter
   - RelativeIF
+  - KNN Shapley
+  - In-Run Shapley
 - Better documentation
   - Quick start colab notebooks
