@@ -227,9 +227,10 @@ def retrain_lds(
     rng = np.random.default_rng(seed)  # this can also handle seed=None
 
     # seed control
-    torch.manual_seed(seed)
-    torch.cuda.manual_seed_all(seed)
-    torch.backends.cudnn.deterministic = True
+    if seed is not None:
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed_all(seed)
+        torch.backends.cudnn.deterministic = True
 
     # seed control
     if seed is not None:
