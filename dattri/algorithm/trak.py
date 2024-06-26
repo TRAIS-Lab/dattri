@@ -37,7 +37,7 @@ class TRAKAttributor(BaseAttributor):
         target_func: Callable,
         correct_probability_func: Callable,
         model: torch.nn.Module,
-        params: List[str],
+        checkpoint_list: List[str],
         projector_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
     ) -> None:
@@ -74,15 +74,15 @@ class TRAKAttributor(BaseAttributor):
                     return p
                 ```.
             model (nn.Module): The PyTorch model to be attributed.
-            params (List[str]): The parameters of the model, should be a list of
-                string, indicating the stored model parameters' paths.
+            checkpoint_list (List[str]): The checkpoints of the model, should be a list
+                of string, indicating the stored model checkpoints' paths.
             projector_kwargs (Optional[Dict[str, Any]], optional): The kwargs for the
                 random projection. Defaults to None.
             device (str): The device to run the attributor. Default is cpu.
         """
-        if not isinstance(params, list):
-            params = [params]
-        self.params = params
+        if not isinstance(checkpoint_list, list):
+            checkpoint_list = [checkpoint_list]
+        self.checkpoint_list = checkpoint_list
         self.model = model
         self.norm_scaler = sum(p.numel() for p in self.model.parameters()) ** 0.5
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
@@ -112,9 +112,9 @@ class TRAKAttributor(BaseAttributor):
         inv_XTX_XT_list = []
         running_Q = 0
         running_count = 0
-        for ckpt_seed, params in enumerate(self.params):
+        for ckpt_seed, ckpt in enumerate(self.checkpoint_list):
             # load checkpoint to the model
-            self.model.load_state_dict(torch.load(params))
+            self.model.load_state_dict(torch.load(ckpt))
             self.model.eval()
             # get the model parameter
             parameters = {k: v.detach() for k, v in self.model.named_parameters()}
@@ -211,9 +211,9 @@ class TRAKAttributor(BaseAttributor):
                        did not cache a training loader by .cache(). Please provide a\
                        training loader or cache a training loader."
             raise ValueError(message)
-        for ckpt_seed, params in enumerate(self.params):
+        for ckpt_seed, ckpt in enumerate(self.checkpoint_list):
             # load checkpoint to the model
-            self.model.load_state_dict(torch.load(params))
+            self.model.load_state_dict(torch.load(ckpt))
             self.model.eval()
             # get the model parameter
             parameters = {k: v.detach() for k, v in self.model.named_parameters()}
@@ -229,8 +229,10 @@ class TRAKAttributor(BaseAttributor):
                     train_batch_data = tuple(
                         data.to(self.device) for data in train_data
                     )
-                    grad_t = self.grad_func(flatten_params(parameters),
-                                            train_batch_data)
+                    grad_t = self.grad_func(
+                        flatten_params(parameters),
+                        train_batch_data,
+                    )
                     grad_t = torch.nan_to_num(grad_t)
                     grad_t /= self.norm_scaler
 

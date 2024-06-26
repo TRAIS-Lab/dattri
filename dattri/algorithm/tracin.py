@@ -27,7 +27,7 @@ class TracInAttributor(BaseAttributor):
         self,
         target_func: Callable,
         model: torch.nn.Module,
-        params_list: List[str],
+        checkpoint_list: List[str],
         weight_list: Tensor,
         normalized_grad: bool,
         projector_kwargs: Optional[Dict[str, Any]] = None,
@@ -48,8 +48,8 @@ class TracInAttributor(BaseAttributor):
                 ```.
                 This examples calculates the loss of the model on input data-label pair.
             model (torch.nn.Module): The PyTorch model to be attibuted.
-            params_list (List[str]): The parameters of the model, should be a list of
-                string, indicating the stored model parameters' paths.
+            checkpoint_list (List[str]): The checkpoints of the model, should be a list
+                of string, indicating the stored model checkpoints' paths.
             weight_list (Tensor): The weight used for the "weighted sum". For
                 TracIn/CosIn, this will contain a list of learning rates at each ckpt;
                 for Grad-Dot/Grad-Cos, this will be a list of ones.
@@ -60,7 +60,7 @@ class TracInAttributor(BaseAttributor):
         """
         self.target_func = target_func
         self.model = model
-        self.params_list = params_list
+        self.checkpoint_list = checkpoint_list
         self.weight_list = weight_list
         # these are projector kwargs shared by train/test projector
         self.projector_kwargs = projector_kwargs
@@ -103,9 +103,9 @@ class TracInAttributor(BaseAttributor):
         _check_shuffle(test_dataloader)
         _check_shuffle(train_dataloader)
 
-        # check the length match between params list and weight list
-        if len(self.params_list) != len(self.weight_list):
-            msg = "the length of params, weights lists don't match."
+        # check the length match between checkpoint list and weight list
+        if len(self.checkpoint_list) != len(self.weight_list):
+            msg = "the length of checkpoints and weights lists don't match."
             raise ValueError(msg)
 
         # placeholder for the TDA result
@@ -115,27 +115,28 @@ class TracInAttributor(BaseAttributor):
         )
 
         # iterate over each checkpoint (each ensemble)
-        for param_index, (params, params_weight) in enumerate(
-            zip(self.params_list, self.weight_list),
+        for ckpt_index, (ckpt, ckpt_weight) in enumerate(
+            zip(self.checkpoint_list, self.weight_list),
         ):
             # load checkpoint to the model
-            self.model.load_state_dict(torch.load(params))
+            self.model.load_state_dict(torch.load(ckpt))
             self.model.eval()
             # get the model parameter
             parameters = {k: v.detach() for k, v in self.model.named_parameters()}
 
-            for train_batch_idx, train_batch_data_ in enumerate(tqdm(
+            for train_batch_idx, train_batch_data_ in enumerate(
+                tqdm(
                     train_dataloader,
                     desc="calculating gradient of training set...",
                     leave=False,
-                )):
+                ),
+            ):
                 # move to device
                 train_batch_data = tuple(
                     data.to(self.device) for data in train_batch_data_
                 )
                 # get gradient of train
-                grad_t = self.grad_func(flatten_params(parameters),
-                                            train_batch_data)
+                grad_t = self.grad_func(flatten_params(parameters), train_batch_data)
                 if self.projector_kwargs is not None:
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
@@ -147,16 +148,18 @@ class TracInAttributor(BaseAttributor):
                     # param index as ensemble id
                     train_batch_grad = self.train_random_project(
                         torch.nan_to_num(grad_t),
-                        ensemble_id=param_index,
+                        ensemble_id=ckpt_index,
                     )
                 else:
                     train_batch_grad = torch.nan_to_num(grad_t)
 
-                for test_batch_idx, test_batch_data_ in enumerate(tqdm(
-                    test_dataloader,
-                    desc="calculating gradient of training set...",
-                    leave=False,
-                )):
+                for test_batch_idx, test_batch_data_ in enumerate(
+                    tqdm(
+                        test_dataloader,
+                        desc="calculating gradient of training set...",
+                        leave=False,
+                    ),
+                ):
                     # move to device
                     test_batch_data = tuple(
                         data.to(self.device) for data in test_batch_data_
@@ -173,7 +176,7 @@ class TracInAttributor(BaseAttributor):
 
                         test_batch_grad = self.test_random_project(
                             torch.nan_to_num(grad_t),
-                            ensemble_id=param_index,
+                            ensemble_id=ckpt_index,
                         )
                     else:
                         test_batch_grad = torch.nan_to_num(grad_t)
@@ -196,14 +199,14 @@ class TracInAttributor(BaseAttributor):
                             (
                                 normalize(train_batch_grad)
                                 @ normalize(test_batch_grad).T
-                                * params_weight
+                                * ckpt_weight
                             )
                             .detach()
                             .cpu()
                         )
                     else:
                         tda_output[row_st:row_ed, col_st:col_ed] += (
-                            (train_batch_grad @ test_batch_grad.T * params_weight)
+                            (train_batch_grad @ test_batch_grad.T * ckpt_weight)
                             .detach()
                             .cpu()
                         )
