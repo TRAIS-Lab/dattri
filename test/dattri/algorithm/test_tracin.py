@@ -51,7 +51,7 @@ class TestTracInAttributor:
         torch.save(model_1.state_dict(), path / "model_1.pt")
         torch.save(model_2.state_dict(), path / "model_2.pt")
 
-        params_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         # train and test always share the same projector
         # checkpoints need to have differnt projectors
@@ -68,9 +68,9 @@ class TestTracInAttributor:
         attributor = TracInAttributor(
             target_func=f,
             model=model,
-            params_list=params_list,
+            checkpoint_list=checkpoint_list,
             normalized_grad=True,
-            weight_list=torch.ones(len(params_list)),
+            weight_list=torch.ones(len(checkpoint_list)),
             projector_kwargs=projector_kwargs,
             device=torch.device(pytest_device),
         )
@@ -118,16 +118,16 @@ class TestTracInAttributor:
         torch.save(model_1.state_dict(), path / "model_1.pt")
         torch.save(model_2.state_dict(), path / "model_2.pt")
 
-        params_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         pytest_device = "cpu"
         # test with no projector list
         attributor = TracInAttributor(
             target_func=f,
             model=model,
-            params_list=params_list,
+            checkpoint_list=checkpoint_list,
             normalized_grad=True,
-            weight_list=torch.ones(len(params_list)),
+            weight_list=torch.ones(len(checkpoint_list)),
             device=torch.device(pytest_device),
         )
         score = attributor.attribute(train_loader, test_loader)

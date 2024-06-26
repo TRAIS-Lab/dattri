@@ -50,7 +50,7 @@ class TestTRAK:
         torch.save(model_1.state_dict(), path / "model_1.pt")
         torch.save(model_2.state_dict(), path / "model_2.pt")
 
-        params_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         projector_kwargs = {
             "device": "cpu",
@@ -62,7 +62,7 @@ class TestTRAK:
             f,
             m,
             model=model,
-            params=["ckpts/model_1.pt"],
+            checkpoint_list=["ckpts/model_1.pt"],
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
@@ -75,7 +75,7 @@ class TestTRAK:
             f,
             m,
             model=model,
-            params=["ckpts/model_1.pt"],
+            checkpoint_list=["ckpts/model_1.pt"],
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
@@ -89,7 +89,7 @@ class TestTRAK:
             f,
             m,
             model=model,
-            params=params_list,
+            checkpoint_list=checkpoint_list,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
