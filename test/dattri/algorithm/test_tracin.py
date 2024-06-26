@@ -69,8 +69,8 @@ class TestTracInAttributor:
             target_func=f,
             model=model,
             checkpoint_list=checkpoint_list,
-            normalized_grad=True,
             weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
             projector_kwargs=projector_kwargs,
             device=torch.device(pytest_device),
         )
@@ -126,8 +126,8 @@ class TestTracInAttributor:
             target_func=f,
             model=model,
             checkpoint_list=checkpoint_list,
-            normalized_grad=True,
             weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
             device=torch.device(pytest_device),
         )
         score = attributor.attribute(train_loader, test_loader)
