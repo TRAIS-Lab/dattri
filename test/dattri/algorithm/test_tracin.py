@@ -11,8 +11,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.tracin import TracInAttributor
 from dattri.benchmark.datasets.cifar2.cifar2_resnet9 import train_cifar2_resnet9
-from dattri.benchmark.datasets.mnist import train_mnist_lr
-from dattri.benchmark.datasets.mnist.mnist_mlp import train_mnist_mlp
+from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.func.utils import flatten_func, flatten_params
 
 
