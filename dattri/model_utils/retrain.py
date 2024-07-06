@@ -127,7 +127,7 @@ def retrain_loo(
         torch.save(model, weights_dir)
 
     metadata_file = Path(path) / "metadata.yml"
-    with Path(metadata_file).open("w") as file:
+    with Path(metadata_file).open("w", encoding="utf-8") as file:
         yaml.dump(metadata, file)
 
 
