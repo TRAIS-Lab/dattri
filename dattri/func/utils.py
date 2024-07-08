@@ -9,7 +9,7 @@ import numpy as np
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any, Dict, Optional
+    from typing import Any, Dict, Optional, Tuple
 
 import functools
 
@@ -184,6 +184,19 @@ def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Te
     return dict(zip(model_params.keys(), generator()))
 
 
+def _unflatten_params_layerwise(
+    tensors: Tuple[torch.Tensor, ...],
+    model: torch.nn.Module,
+) -> Tuple[torch.Tensor, ...]:
+    """Unflatten a tuple of tensors into a dictionaries of tensors."""
+    model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+    keys = list(model_params.keys())
+    param_dict = {}
+    for i in range(len(keys)):
+        param_dict[keys[i]] = tensors[i].view(model_params[keys[i]].shape)
+    return param_dict
+
+
 def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
     """A decorator that flattens the parameters of a function at a specified index.
 
@@ -214,7 +227,13 @@ def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
         @functools.wraps(function)
         def _function_flattened(*args, **kwargs: Dict[str, Any]) -> torch.Tensor:
             new_args = list(args)
-            new_args[param_num] = _unflatten_params(args[param_num], model)
+            if isinstance(args[param_num], tuple):
+                new_args[param_num] = _unflatten_params_layerwise(
+                    args[param_num],
+                    model,
+                )
+            else:
+                new_args[param_num] = _unflatten_params(args[param_num], model)
             return function(*new_args, **kwargs)
 
         return _function_flattened

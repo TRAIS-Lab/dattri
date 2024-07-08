@@ -5,99 +5,142 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional, Tuple
+    from typing import Any, Dict, List, Optional, Tuple
 
     from torch import Tensor
     from torch.utils.data import DataLoader
 
+    from dattri.task import AttributionTask
+
 import warnings
+from abc import abstractmethod
 from functools import partial
 
 import torch
-from torch.func import grad, vmap
 from tqdm import tqdm
-
-from dattri.func.ihvp import ihvp_arnoldi, ihvp_cg, ihvp_explicit, ihvp_lissa
-from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
 
-def _lissa_collate_fn(
-    sampled_input: List[Tensor],
-) -> Tuple[Tensor, List[Tuple[Tensor, ...]]]:
-    """Collate function for LISSA.
-
-    Args:
-        sampled_input (List[Tensor]): The sampled input from the dataloader.
-
-    Returns:
-        Tuple[Tensor, List[Tuple[Tensor, ...]]]: The collated input for the LISSA.
-    """
-    return (
-        sampled_input[0],
-        tuple(sampled_input[i].float() for i in range(1, len(sampled_input))),
-    )
-
-
-SUPPORTED_IHVP_SOLVER = {
-    "explicit": ihvp_explicit,
-    "cg": ihvp_cg,
-    "arnoldi": ihvp_arnoldi,
-    "lissa": partial(ihvp_lissa, collate_fn=_lissa_collate_fn),
-}
-
-
-class IFAttributor(BaseAttributor):
-    """Influence function attributor."""
+class BaseInnerProductAttributor(BaseAttributor):
+    """The base class for inner product attributor."""
 
     def __init__(
         self,
-        target_func: Callable,
-        params: dict,
-        ihvp_solver: str = "explicit",
-        ihvp_kwargs: Optional[Dict[str, Any]] = None,
-        device: str = "cpu",
+        task: AttributionTask,
+        device: Optional[str] = "cpu",
+        **transformation_kwargs: Dict[str, Any],
     ) -> None:
-        """Influence function attributor.
+        """Initialize the attributor.
 
         Args:
-            target_func (Callable): The target function to be attributed.
-                The function can be quite flexible in terms of what is calculate,
-                but it should take the parameters and the dataloader as input.
-                A typical example is as follows:
-                ```python
-                @flatten_func(model)
-                def f(params, dataloader):
-                    loss = nn.CrossEntropyLoss()
-                    loss_val = 0
-                    for image, label in dataloader:
-                        yhat = torch.func.functional_call(model, params, image)
-                        loss_val += loss(yhat, label)
-                    return loss_val
-                ```.
-                This examples calculates the loss of the model on the dataloader.
-            params (dict): The parameters of the target function. The key is the
-                name of a parameter and the value is the parameter tensor.
-                TODO: This should be changed to support a list of parameters or
-                    paths for ensembling and memory efficiency.
-            ihvp_solver (str): The solver for inverse hessian vector product
-                calculation, currently we only support "explicit", "cg" and "arnoldi".
-            ihvp_kwargs (Optional[Dict[str, Any]]): Keyword arguments for ihvp solver.
-                calculation, currently we only support "explicit", "cg", "arnoldi",
-                and "lissa".
-            device (str): The device to run the attributor. Default is cpu.
+            task (AttributionTask): The task to be attributed. The task should
+                be an instance of `AttributionTask`.
+            transformation_kwargs (Optional[Dict[str, Any]]): The keyword arguments for
+                the transformation function.
+            device (str): The device to run the attributor.
         """
-        self.target_func = target_func
-        self.params = flatten_params(params)
-        if ihvp_kwargs is None:
-            ihvp_kwargs = {}
-        self.ihvp_solver_name = ihvp_solver
-        self.ihvp_solver = partial(SUPPORTED_IHVP_SOLVER[ihvp_solver], **ihvp_kwargs)
+        self.task = task
+        self.transformation_kwargs = transformation_kwargs or {}
         self.device = device
-        self.full_train_dataloader = None
-        self.grad_func = vmap(grad(self.target_func), in_dims=(None, 1))
+        self.index = 0
+
+    def _set_test_data(self, dataloader: torch.utils.data.DataLoader) -> None:
+        """Set test dataloader."""
+        # This function may be overrided by the subclass
+        self.test_dataloader = dataloader
+
+    def _set_train_data(self, dataloader: torch.utils.data.DataLoader) -> None:
+        """Set train dataloader to be attributed."""
+        # This function may be overrided by the subclass
+        self.train_dataloader = dataloader
+
+    def _set_full_train_data(self, dataloader: torch.utils.data.DataLoader) -> None:
+        """Set train dataloader for full training set."""
+        # This function may be overrided by the subclass
+        self.full_train_dataloader = dataloader
+
+    def generate_test_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+    ) -> torch.Tensor:
+        """Calculating the query based on the test data.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model
+                parameters.
+            data (Tuple[Tensor]): The test data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+
+        Returns:
+            torch.Tensor: The query based on the test data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+        """
+        model_params, _ = self.task.get_param(index)
+        return self.task.get_grad_target_func()(model_params, data)
+
+    def generate_train_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+    ) -> torch.Tensor:
+        """Calculating the query based on the train data.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model
+                parameters.
+            data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+
+        Returns:
+            torch.Tensor: The query based on the train data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+        """
+        model_params, _ = self.task.get_param(index)
+        return self.task.get_grad_target_func()(model_params, data)
+
+    @abstractmethod
+    def transformation_on_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+        query: torch.Tensor,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the query.
+
+        Inner product attributor calculates the inner product between the
+        test query and the transformation of the test query. This function
+        calculates the transformation of the test query based on the train data.
+
+        Normally speaking, this function may return any transformation on the query.
+        Hessian Matrix and Fisher Information Matrix are two common transformations.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+            query (torch.Tensor): The query based on the test data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+
+        Returns:
+            torch.Tensor: The transformation on the query. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, transformed_dimension).
+        """
 
     def cache(self, full_train_dataloader: DataLoader) -> None:
         """Cache the dataset for inverse hessian calculation.
@@ -106,7 +149,7 @@ class IFAttributor(BaseAttributor):
             full_train_dataloader (DataLoader): The dataloader
                 with full training samples for inverse hessian calculation.
         """
-        self.full_train_dataloader = full_train_dataloader
+        self._set_full_train_data(full_train_dataloader)
 
     def attribute(
         self,
@@ -122,7 +165,7 @@ class IFAttributor(BaseAttributor):
                 means that only a part of the training set's influence is calculated.
                 The dataloader should not be shuffled.
             test_dataloader (DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not\
+                test samples to calculate the influence. The dataloader should not
                 be shuffled.
 
         Returns:
@@ -163,7 +206,10 @@ class IFAttributor(BaseAttributor):
                 data.to(self.device).unsqueeze(0) for data in train_batch_data_
             )
 
-            train_batch_grad = self.grad_func(self.params, train_batch_data)
+            train_batch_grad = self.generate_train_query(
+                index=self.index,
+                data=train_batch_data,
+            )
 
             for test_batch_idx, test_batch_data_ in enumerate(
                 tqdm(
@@ -177,29 +223,21 @@ class IFAttributor(BaseAttributor):
                     data.to(self.device).unsqueeze(0) for data in test_batch_data_
                 )
 
-                test_batch_grad = self.grad_func(self.params, test_batch_data)
+                test_batch_grad = self.generate_test_query(
+                    index=self.index,
+                    data=test_batch_data,
+                )
 
-                ihvp = 0
-                # currently full-batch is considered
-                # so only one iteration
+                vector_product = 0
                 for full_data_ in self.full_train_dataloader:
                     # move to device
                     full_data = tuple(data.to(self.device) for data in full_data_)
-
-                    if self.ihvp_solver_name == "lissa":
-                        self.ihvp_func = self.ihvp_solver(
-                            self.target_func,
-                        )
-                        ihvp += self.ihvp_func(
-                            (self.params, *full_data),
-                            test_batch_grad,
-                            in_dims=(None,) + (0,) * len(full_data),
-                        ).detach()
-                    else:
-                        self.ihvp_func = self.ihvp_solver(
-                            partial(self.target_func, data_target_pair=full_data),
-                        )
-                        ihvp += self.ihvp_func((self.params,), test_batch_grad).detach()
+                    vector_product += self.transformation_on_query(
+                        index=self.index,
+                        data=full_data,
+                        query=test_batch_grad,
+                        **self.transformation_kwargs,
+                    )
 
                 # results position based on batch info
                 row_st = train_batch_idx * train_dataloader.batch_size
@@ -214,6 +252,244 @@ class IFAttributor(BaseAttributor):
                     len(test_dataloader.sampler),
                 )
 
-                tda_output[row_st:row_ed, col_st:col_ed] += train_batch_grad @ ihvp.T
+                tda_output[row_st:row_ed, col_st:col_ed] += (
+                    train_batch_grad @ vector_product.T
+                )
 
         return tda_output
+
+
+class IFAttributorExplicit(BaseInnerProductAttributor):
+    """The inner product attributor with explicit inverse hessian transformation."""
+
+    def transformation_on_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+        query: torch.Tensor,
+        **transformation_kwargs,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the query through ihvp_explicit.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+            query (torch.Tensor): The query based on the test data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+            transformation_kwargs (Dict[str, Any]): The keyword arguments for
+                the transformation function.
+
+        Returns:
+            torch.Tensor: The transformation on the query. Normally it is a 2-d
+                dimensional tensor with the shape of (batchsize, transformed_dimension).
+        """
+        from dattri.func.ihvp import ihvp_explicit
+
+        self.ihvp_func = ihvp_explicit(
+            partial(self.task.get_target_func(), data_target_pair=data),
+            **transformation_kwargs,
+        )
+        model_params, _ = self.task.get_param(index)
+        return self.ihvp_func((model_params,), query).detach()
+
+
+class IFAttributorCG(BaseInnerProductAttributor):
+    """The inner product attributor with CG inverse hessian transformation."""
+
+    def transformation_on_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+        query: torch.Tensor,
+        **transformation_kwargs,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the query through ihvp_cg.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+            query (torch.Tensor): The query based on the test data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+            transformation_kwargs (Dict[str, Any]): The keyword arguments for
+                the transformation function.
+
+        Returns:
+            torch.Tensor: The transformation on the query. Normally it is a 2-d
+                dimensional tensor with the shape of (batchsize, transformed_dimension).
+        """
+        from dattri.func.ihvp import ihvp_cg
+
+        self.ihvp_func = ihvp_cg(
+            partial(self.task.get_target_func(), data_target_pair=data),
+            **transformation_kwargs,
+        )
+        model_params, _ = self.task.get_param(index)
+        return self.ihvp_func((model_params,), query).detach()
+
+
+class IFAttributorArnoldi(BaseInnerProductAttributor):
+    """The inner product attributor with Arnoldi inverse hessian transformation."""
+
+    def transformation_on_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+        query: torch.Tensor,
+        **transformation_kwargs,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the query through ihvp_arnoldi.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+            query (torch.Tensor): The query based on the test data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+            transformation_kwargs (Dict[str, Any]): The keyword arguments for
+                the transformation function.
+
+        Returns:
+            torch.Tensor: The transformation on the query. Normally it is a 2-d
+                dimensional tensor with the shape of (batchsize, transformed_dimension).
+        """
+        from dattri.func.ihvp import ihvp_arnoldi
+
+        self.ihvp_func = ihvp_arnoldi(
+            partial(self.task.get_target_func(), data_target_pair=data),
+            **transformation_kwargs,
+        )
+        model_params, _ = self.task.get_param(index)
+        return self.ihvp_func((model_params,), query).detach()
+
+
+class IFAttributorLiSSA(BaseInnerProductAttributor):
+    """The inner product attributor with LiSSA inverse hessian transformation."""
+
+    def transformation_on_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+        query: torch.Tensor,
+        **transformation_kwargs,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the query through ihvp_lissa.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+            query (torch.Tensor): The query based on the test data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+            transformation_kwargs (Dict[str, Any]): The keyword arguments for
+                the transformation function.
+
+        Returns:
+            torch.Tensor: The transformation on the query. Normally it is a 2-d
+                dimensional tensor with the shape of (batchsize, transformed_dimension).
+        """
+        from dattri.func.ihvp import ihvp_lissa
+
+        self.ihvp_func = ihvp_lissa(
+            self.task.get_target_func(),
+            collate_fn=IFAttributorLiSSA.lissa_collate_fn,
+            **transformation_kwargs,
+        )
+        model_params, _ = self.task.get_param(index)
+        return self.ihvp_func(
+            (model_params, *data),
+            query,
+            in_dims=(None,) + (0,) * len(data),
+        ).detach()
+
+    @staticmethod
+    def lissa_collate_fn(
+        sampled_input: List[Tensor],
+    ) -> Tuple[Tensor, List[Tuple[Tensor, ...]]]:
+        """Collate function for LISSA.
+
+        Args:
+            sampled_input (List[Tensor]): The sampled input from the dataloader.
+
+        Returns:
+            Tuple[Tensor, List[Tuple[Tensor, ...]]]: The collated input for the LISSA.
+        """
+        return (
+            sampled_input[0],
+            tuple(sampled_input[i].float() for i in range(1, len(sampled_input))),
+        )
+
+
+class IFAttributorDataInf(BaseInnerProductAttributor):
+    """The inner product attributor with DataInf inverse hessian transformation."""
+
+    def transformation_on_query(
+        self,
+        index: int,
+        data: Tuple[torch.Tensor, ...],
+        query: torch.Tensor,
+        **transformation_kwargs,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the query through ihvp_datainf.
+
+        Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+            query (torch.Tensor): The query based on the test data. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+            transformation_kwargs (Dict[str, Any]): The keyword arguments for
+                the transformation function.
+
+        Returns:
+            torch.Tensor: The transformation on the query. Normally it is a 2-d
+                dimensional tensor with the shape of (batchsize, transformed_dimension).
+        """
+        from dattri.func.ihvp import ihvp_datainf
+
+        model_params, param_layer_map = self.task.get_param(index, layer_split=True)
+
+        self.ihvp_func = ihvp_datainf(
+            self.task.get_target_func(),
+            0,
+            (None, 0),
+            param_layer_map=param_layer_map,
+            **transformation_kwargs,
+        )
+
+        split_index = [0] * (param_layer_map[-1] + 1)
+        for idx, layer_index in enumerate(param_layer_map):
+            split_index[layer_index] += model_params[idx].shape[0]
+
+        current_idx = 0
+        query_split = []
+        for i in range(len(split_index)):
+            query_split.append(query[:, current_idx : split_index[i] + current_idx])
+            current_idx += split_index[i]
+
+        res = self.ihvp_func(
+            (model_params, (data[0], data[1].view(-1, 1).float())),
+            query_split,
+        )
+        return torch.cat(res, dim=1).detach()

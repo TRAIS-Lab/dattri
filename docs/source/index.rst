@@ -19,6 +19,7 @@
    :maxdepth: 1
    :caption: Attribution Methods:
 
+   api/task.rst
    api/algorithm.rst
    api/helper.rst
 
