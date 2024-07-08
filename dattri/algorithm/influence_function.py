@@ -47,17 +47,29 @@ class BaseInnerProductAttributor(BaseAttributor):
         self.index = 0
 
     def _set_test_data(self, dataloader: torch.utils.data.DataLoader) -> None:
-        """Set test dataloader."""
+        """Set test dataloader.
+
+        Args:
+            dataloader (DataLoader): The dataloader for test samples to be attributed.
+        """
         # This function may be overrided by the subclass
         self.test_dataloader = dataloader
 
     def _set_train_data(self, dataloader: torch.utils.data.DataLoader) -> None:
-        """Set train dataloader to be attributed."""
+        """Set train dataloader to be attributed.
+
+        Args:
+            dataloader (DataLoader): The dataloader for train samples to be attributed.
+        """
         # This function may be overrided by the subclass
         self.train_dataloader = dataloader
 
     def _set_full_train_data(self, dataloader: torch.utils.data.DataLoader) -> None:
-        """Set train dataloader for full training set."""
+        """Set train dataloader for full training set.
+
+        Args:
+            dataloader (DataLoader): The dataloader for full training samples.
+        """
         # This function may be overrided by the subclass
         self.full_train_dataloader = dataloader
 

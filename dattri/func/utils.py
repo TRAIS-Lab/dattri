@@ -188,7 +188,17 @@ def _unflatten_params_layerwise(
     tensors: Tuple[torch.Tensor, ...],
     model: torch.nn.Module,
 ) -> Tuple[torch.Tensor, ...]:
-    """Unflatten a tuple of tensors into a dictionaries of tensors."""
+    """Unflatten a tuple of tensors into a dictionaries of tensors.
+
+    Args:
+        tensors: A tuple of tensors containing the flattened parameters.
+        model: A torch.nn.Module object, providing the shape information and the names
+            of the parameters.
+
+    Returns:
+        (Tuple[torch.Tensor, ...]): A tuple of tensors containing the unflattened
+            parameters.
+    """
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
     keys = list(model_params.keys())
     param_dict = {}

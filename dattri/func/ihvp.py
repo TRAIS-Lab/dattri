@@ -775,7 +775,6 @@ def ihvp_datainf(
             The regularization term is `regularization * I`, where `I` is the
             identity matrix directly added to the Hessian matrix. The list is
             of length L, where L is the total number of layers.
-        TODO: param_layer_map should not be optional.
         param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
             into layers. Should be the same length as parameters tuple. For example,
             for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
@@ -786,6 +785,8 @@ def ihvp_datainf(
         `v`(layer-wise) and returns the approximated IHVP of the approximated Hessian of
         `func` and `v`.
     """
+    # TODO: param_layer_map should not be optional.
+
     batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
     if regularization is not None and not isinstance(regularization, list):
         regularization = [regularization] * len(param_layer_map)
