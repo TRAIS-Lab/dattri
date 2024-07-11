@@ -5,7 +5,8 @@ import unittest
 import torch
 from torch import nn
 
-from dattri.func.random_projection import (
+from dattri.func.projection import (
+    ArnoldiProjector,
     BasicProjector,
     ChunkedCudaProjector,
     CudaProjector,
@@ -130,6 +131,44 @@ class TestChunkedCudaProjector(unittest.TestCase):
         projected_grads = self.chunked_projector.project(grads, ensemble_id)
 
         assert projected_grads.shape == (self.feature_batch_size, self.proj_dim)
+
+
+class TestArnoldiProjector(unittest.TestCase):
+    """Test Arnoldi projector functions."""
+
+    def setUp(self):
+        """Set up variables for testing."""
+        self.feature_dim = 10
+        self.vec_dim = 20
+        self.proj_dim = 10
+        self.device = "cpu"
+        self.projector = None
+
+    def test_arnoldi_projector(self):
+        """Test ArnoldiProjector functionality and shape."""
+
+        def target(x):
+            return torch.sin(x).sum()
+
+        x = torch.randn(self.feature_dim)
+
+        self.projector = ArnoldiProjector(
+            self.feature_dim,
+            self.proj_dim,
+            target,
+            x,
+        )
+
+        vec = torch.randn(self.vec_dim, self.feature_dim)
+        projected_grads = self.projector.project(vec)
+
+        assert torch.allclose(
+            projected_grads,
+            (torch.diag(-1 / x.sin()) @ vec.T).T,
+            rtol=1e-02,
+            atol=1e-05,
+        )
+        assert projected_grads.shape == (self.vec_dim, self.feature_dim)
 
 
 class SmallModel(nn.Module):
