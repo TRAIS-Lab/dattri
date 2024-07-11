@@ -18,7 +18,10 @@ from dattri.benchmark.datasets.cifar2 import (
     create_cifar2_dataset,
     train_cifar2_resnet9,
 )
-from dattri.benchmark.datasets.cifar2.cifar2_resnet9 import create_resnet9_model, loss_cifar2_resnet9
+from dattri.benchmark.datasets.cifar2.cifar2_resnet9 import (
+    create_resnet9_model,
+    loss_cifar2_resnet9,
+)
 from dattri.benchmark.utils import SubsetSampler
 from dattri.func.utils import flatten_func
 from dattri.metrics.metrics import lds
@@ -147,12 +150,14 @@ if __name__ == "__main__":
             peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
             print(f"Peak memory usage: {peak_memory} MB")
 
-            target_values = torch.load(
-                "/scratch/bbyo/tli3/cifar2_lds/groundtruth/target_values.pt"
+            # get retrained models' location
+            # replace by your own retrain path
+            retrain_dir = None
+            # get model output and indices
+            target_values, indices = calculate_lds_ground_truth(
+                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
             )
-            indices = torch.load(
-                "/scratch/bbyo/tli3/cifar2_lds/groundtruth/training_indices.pt"
-            )
+
             print(score.shape)
             loo_corr_v = lds(
                 score.cpu().T, (-target_values[lds_eval_size:], indices[lds_eval_size:])
@@ -187,10 +192,12 @@ if __name__ == "__main__":
                 "device": "cuda",
             }
             params = []
-            
+
             # collect retrained models' paths
+            # replace by your own model path
+            model_path = None
             for i in range(ensemble):
-                params.append(f"/home/shared/dattri-dataset/cifar2_lds_test/models/{i}/model_weights_0.pt")
+                params.append(model_path + f"/{i}/model_weights_0.pt")
 
             attributor = TRAKAttributor(
                 f_0,
@@ -208,9 +215,13 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
 
             # get retrained models' location
-            retrain_dir = "/home/shared/dattri-dataset/cifar2_lds_test/models"
+            # replace by your own model path
+            model_path = None
+            retrain_dir = model_path
             # get model output and indices
-            target_values, indices = calculate_lds_ground_truth(partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader)
+            target_values, indices = calculate_lds_ground_truth(
+                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+            )
             # compute LDS value
             lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
             # compute average LDS
@@ -241,8 +252,10 @@ if __name__ == "__main__":
             print("ensemble, normalize grad: ", ensemble, normalized_grad)
             ensemble = ensemble
             params = []
+            # replace by your own model path
+            model_path = None
             for i in range(ensemble):
-                params.append(f"/home/shared/dattri-dataset/cifar2_lds_test/models/{i}/model_weights_0.pt")
+                params.append(model_path + f"/{i}/model_weights_0.pt")
 
             proj_kwargs = {
                 "proj_dim": 512,
@@ -267,9 +280,13 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
 
             # get retrained models' location
-            retrain_dir = "/home/shared/dattri-dataset/cifar2_lds_test/models"
+            # replace by your own model path
+            model_path = None
+            retrain_dir = model_path
             # get model output and indices
-            target_values, indices = calculate_lds_ground_truth(partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader)
+            target_values, indices = calculate_lds_ground_truth(
+                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+            )
             # compute LDS value
             lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
 
@@ -284,23 +301,17 @@ if __name__ == "__main__":
             print(sum_val, counter)
             if counter == 0:
                 continue
-            # if sum_val / counter > best_result:
-            #     best_result = sum_val / counter
-            #     best_config = (proj_dim, ensemble)
             print(sum_val / counter)
 
             print("complete\n")
-            # print(args.method, "RESULT:", best_config, "lds:", best_result)
 
     if args.method == "RPS":
         model = train_cifar2_resnet9(train_loader, device="cuda")
         model.eval()
         model.to("cuda")
-        model.load_state_dict(
-            torch.load(
-                f"/scratch/bbyo/tli3/cifar2-checkpoints/checkpoint_without_dropout/checkpoint_0.pt"
-            )
-        )
+        # replace by your own model path
+        model_path = None
+        model.load_state_dict(torch.load(model_path + f"/{i}/model_weights_0.pt"))
 
         for l2 in [1, 1e-1, 1e-2, 1e-3, 1e-4]:
             attributor = RPSAttributor(
@@ -319,46 +330,24 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
             end_attribute = time.time()
             print("Attribution time: ", end_attribute - start_attribute)
-            # print(score.shape)
 
-            index_to_value_dict = {value: idx for idx, value in enumerate(all_index)}
-            indices = []
-            # for i in range(50,100):
-            for i in range(50):
-                file_name = f"/scratch/bbyo/tli3/cifar2-checkpoints/checkpoint_without_dropout/selected_indices_seed_{i}.txt"
-                with open(file_name, "r") as f:
-                    contents = f.read()
-                    numbers = contents.splitlines()
-                    indice = torch.tensor(
-                        [index_to_value_dict[int(num)] for num in numbers]
-                    )
-                    # print("indice: ", indice)
-                    indices.append(indice)
-            indices = torch.stack(indices)
-            # print("indices shape: ", indices.shape)
-            print("indices: ", indices)
-
-            target_values = []
-            # for i in range(50,100):
-            for i in range(50):
-                file_name = f"/scratch/bbyo/tli3/cifar2-checkpoints/checkpoint_without_dropout/model_output_checkpoint_{i}.pt"
-                target_value = torch.load(file_name).detach().cpu()
-                # print("target: ", target_value)
-                target_values.append(target_value)
-            target_values = torch.stack(target_values)
-            # print("target value shape: ", target_values.shape)
-            print("target value: ", target_values)
-
-            print(score.shape)
-            # loo_corr_v = lds(score.cpu().T, (-target_values[50:], indices[50:]))[0]
-            loo_corr_v = lds(score.cpu().T, (-target_values, indices))[0]
+            # get retrained models' location
+            # replace by your own model path
+            model_path = None
+            retrain_dir = model_path
+            # get model output and indices
+            target_values, indices = calculate_lds_ground_truth(
+                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+            )
+            # compute LDS value
+            lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
 
             sum_val = 0
             counter = 0
-            for i in range(500):
-                if np.isnan(loo_corr_v[i]):
+            for i in range(test_size):
+                if np.isnan(lds_value[i]):
                     continue
-                sum_val += loo_corr_v[i]
+                sum_val += lds_value[i]
                 counter += 1
             print(sum_val, counter)
             if counter == 0:
