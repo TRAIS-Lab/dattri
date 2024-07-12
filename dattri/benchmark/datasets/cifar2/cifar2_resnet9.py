@@ -38,7 +38,6 @@ def train_cifar2_resnet9(
     model = create_resnet9_model()
     model.train()
     model.to(device)
-
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
     criterion = nn.CrossEntropyLoss()
 
@@ -56,7 +55,7 @@ def train_cifar2_resnet9(
                 f"Epoch {epoch + 1}/{num_epochs}, Step: {i}, Step Loss: {loss.item()}"
             )
             logging.info(message)
-        epoch_loss = running_loss / len(dataloader.dataset)
+        epoch_loss = running_loss / len(dataloader)
         message = f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss}"
         logging.info(message)
 
@@ -76,23 +75,21 @@ def loss_cifar2_resnet9(
         device (str): The device to evaluate the model on.
 
     Returns:
-        float: The sum of loss of the model on the loader.
+        float: The per-example loss of the model on the loader.
     """
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(reduction="none")
     model = create_resnet9_model()
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
     model.to(device)
-    total_loss = 0
-    total_samples = 0
+    loss_list = []
     with torch.no_grad():
         for images, labels in dataloader:
             images_t, labels_t = images.to(device), labels.to(device)
             outputs = model(images_t)
             loss = criterion(outputs, labels_t)
-            total_loss += loss.item() * images_t.shape[0]
-            total_samples += images_t.shape[0]
-    return total_loss / total_samples
+            loss_list.append(loss.clone().detach().cpu())
+    return torch.cat(loss_list)
 
 
 def create_resnet9_model() -> ResNet9:
@@ -101,4 +98,4 @@ def create_resnet9_model() -> ResNet9:
     Returns:
         The ResNet9 model.
     """
-    return ResNet9(dropout_rate=0.1)
+    return ResNet9(dropout_rate=0.0)
