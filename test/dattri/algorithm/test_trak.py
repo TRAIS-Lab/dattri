@@ -1,5 +1,8 @@
 """Test for influence function."""
 
+import shutil
+from pathlib import Path
+
 import torch
 from torch import nn
 from torch.utils.data import TensorDataset
@@ -16,8 +19,8 @@ class TestTRAK:
         """Test for influence function."""
         dataset = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 10, (10,)))
 
-        train_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
-        test_loader = torch.utils.data.DataLoader(dataset, batch_size=1)
+        train_loader = torch.utils.data.DataLoader(dataset, batch_size=4)
+        test_loader = torch.utils.data.DataLoader(dataset, batch_size=2)
 
         model = train_mnist_lr(train_loader)
 
@@ -39,7 +42,15 @@ class TestTRAK:
             yhat = torch.func.functional_call(model, params, image_t)
             return torch.exp(-loss(yhat, label_t))
 
-        model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         projector_kwargs = {
             "device": "cpu",
@@ -50,7 +61,8 @@ class TestTRAK:
         attributor = TRAKAttributor(
             f,
             m,
-            [model_params],
+            model=model,
+            checkpoint_list=["ckpts/model_1.pt"],
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
@@ -62,7 +74,8 @@ class TestTRAK:
         attributor = TRAKAttributor(
             f,
             m,
-            [model_params],
+            model=model,
+            checkpoint_list=["ckpts/model_1.pt"],
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
@@ -75,10 +88,13 @@ class TestTRAK:
         attributor = TRAKAttributor(
             f,
             m,
-            [model_params, model_params],
+            model=model,
+            checkpoint_list=checkpoint_list,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
         attributor.cache(train_loader)
         score = attributor.attribute(test_loader)
         assert not torch.allclose(score, score2)
+
+        shutil.rmtree(path)

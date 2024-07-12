@@ -15,6 +15,7 @@ from dattri.algorithm.influence_function import IFAttributor
 from dattri.algorithm.tracin import TracInAttributor
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.algorithm.rps import RPSAttributor
+
 from dattri.benchmark.datasets.cifar2 import (
     create_cifar2_dataset,
     train_cifar2_resnet9,

@@ -206,6 +206,7 @@ def main() -> None:
         kwargs = {}
         kwargs["num_subsets"] = int(args.partition[1]) - int(args.partition[0])
         kwargs["total_num_subsets"] = int(args.partition[2])
+        kwargs["start_id"] = int(args.partition[0])
     if args.mode == "loo":
         kwargs = {}
         kwargs["indices"] = list(range(int(args.partition[0]), int(args.partition[1])))
