@@ -917,22 +917,22 @@ def arnoldi_project(
             be calculated on this function. The positional arguments to func
             must all be Tensors.
         *x: List of arguments for `func`.
-        argnums (int, optional):
+        argnums (int):
             An integer default to 0. Specifies which argument of func
             to compute hessian with respect to.
-        max_iter (int, optional):
+        max_iter (int):
             An integer default 100. Specifies the maximum iteration
             to calculate the ihvp through Conjugate Gradient Descent.
-        norm_constant (float, optional):
+        norm_constant (float):
             A float default to 1.0. Specifies a constant value
             for the norm of each projection. In some situations (e.g. with a large
             numbers of parameters) it might be advisable to set norm_constant > 1
             to avoid dividing projection components by a large normalization factor.
-        tol (float, optional):
+        tol (float):
             A float default to 1e-7. Specifies the break condition that
             decide if the algorithm has converged. If the torch.norm of residual
             is less than tol, then the algorithm is truncated.
-        mode (str, optional):
+        mode (str):
             Defaults to "rev-fwd". The auto diff mode, which can have one of
             the following values:
             - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
@@ -940,13 +940,13 @@ def arnoldi_project(
             - rev-fwd: calculate the hessian with the composing of reverse-mode and
                        forward-mode. It's more memory-efficient but may not be supported
                        by some operator.
-        regularization (float, optional):
+        regularization (float):
             A float default to 0.0. Specifies the regularization
             term to be added to the Hessian vector product, which is useful for the
             later inverse calculation if the Hessian matrix is singular or
             ill-conditioned. Specifically, the regularization term is
             `regularization * v`.
-        seed (int, optional): Random seed used by the projector. Defaults to 0.
+        seed (int): Random seed used by the projector. Defaults to 0.
         device (torch.device, optional): "cuda" or "cpu".. Defaults to "cpu".
 
     Returns:
