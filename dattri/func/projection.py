@@ -957,7 +957,7 @@ def arnoldi_project(
         feature_dim,
         proj_dim,
         func,
-        *x,
+        x,
         argnums,
         max_iter,
         norm_constant,

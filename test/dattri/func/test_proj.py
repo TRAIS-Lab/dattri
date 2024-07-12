@@ -10,6 +10,7 @@ from dattri.func.projection import (
     BasicProjector,
     ChunkedCudaProjector,
     CudaProjector,
+    arnoldi_project,
     random_project,
 )
 
@@ -138,9 +139,9 @@ class TestArnoldiProjector(unittest.TestCase):
 
     def setUp(self):
         """Set up variables for testing."""
-        self.feature_dim = 10
-        self.vec_dim = 20
-        self.proj_dim = 10
+        self.feature_dim = 5
+        self.vec_dim = 10
+        self.proj_dim = 5
         self.device = "cpu"
         self.projector = None
 
@@ -492,6 +493,29 @@ class TestGetProjection(unittest.TestCase):
 
         result = project(test_tensor)
         assert result.shape == (test_batch_size, self.proj_dim)
+
+    def test_arnoldi_project(self):
+        """Test the funcitonality of arnoldi_project."""
+        feature_dim = 10
+        proj_dim = 5
+        vec_dim = 20
+
+        def target(x):
+            return torch.sin(x).sum()
+
+        x = torch.randn(feature_dim)
+        vec = torch.randn(vec_dim, feature_dim)
+
+        projector = arnoldi_project(
+            feature_dim,
+            proj_dim,
+            target,
+            x,
+        )
+
+        result = projector(vec)
+
+        assert result.shape == (vec_dim, feature_dim)
 
 
 if __name__ == "__main__":
