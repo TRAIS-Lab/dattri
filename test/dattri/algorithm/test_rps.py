@@ -56,7 +56,7 @@ class TestRPS:
 
         # define the RPS attributor w/ cache
         attributor = RPSAttributor(
-            loss_func=f,
+            target_func=f,
             model=model,
             final_linear_layer_name="fc3",
             epoch=10,
@@ -67,7 +67,7 @@ class TestRPS:
 
         # define the RPS attributor w/o cache
         attributor = RPSAttributor(
-            loss_func=f,
+            target_func=f,
             model=model,
             final_linear_layer_name="fc3",
             epoch=100,
@@ -97,7 +97,7 @@ class TestRPS:
 
         # define the RPS attributor w/ cache
         attributor = RPSAttributor(
-            loss_func=f,
+            target_func=f,
             model=model,
             final_linear_layer_name="fc3",
             epoch=10,
@@ -108,7 +108,7 @@ class TestRPS:
 
         # define the RPS attributor w/o cache
         attributor = RPSAttributor(
-            loss_func=f,
+            target_func=f,
             model=model,
             final_linear_layer_name="fc3",
             epoch=10,
