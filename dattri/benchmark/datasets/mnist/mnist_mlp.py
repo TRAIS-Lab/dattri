@@ -36,7 +36,6 @@ def train_mnist_mlp(
     model = create_mlp_model("mnist")
     criterion = nn.CrossEntropyLoss()
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
-
     model.train()
     model.to(device)
     for _ in range(epoch_num):
@@ -65,16 +64,14 @@ def loss_mnist_mlp(
     Returns:
         The sum of loss of the model on the loader.
     """
-    criterion = nn.CrossEntropyLoss(reduction="sum")
+    criterion = nn.CrossEntropyLoss(reduction="none")
     model = create_mlp_model("mnist")
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
-    total_loss = 0
-    total_samples = 0
+    loss_list = []
     with torch.no_grad():
         for inputs, labels in dataloader:
             outputs = model(inputs.to(device))
             loss = criterion(outputs, labels.to(device))
-            total_loss += loss.item() * inputs.shape[0]
-            total_samples += inputs.shape[0]
-    return total_loss / total_samples
+            loss_list.append(loss.clone().detach().cpu())
+    return torch.cat(loss_list)
