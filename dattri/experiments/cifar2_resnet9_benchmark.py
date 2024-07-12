@@ -1,4 +1,4 @@
-"""This script shows how to use dattri algorithms for benchmarking CIFAR-2."""
+"""This example shows how to use the IF to detect noisy labels in the MNIST."""
 
 # ruff: noqa
 import argparse
@@ -151,12 +151,14 @@ if __name__ == "__main__":
             peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
             print(f"Peak memory usage: {peak_memory} MB")
 
-            target_values = torch.load(
-                "/scratch/bbyo/tli3/cifar2_lds/groundtruth/target_values.pt"
+            # get retrained models' location
+            # replace by your own retrain path
+            retrain_dir = None
+            # get model output and indices
+            target_values, indices = calculate_lds_ground_truth(
+                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
             )
-            indices = torch.load(
-                "/scratch/bbyo/tli3/cifar2_lds/groundtruth/training_indices.pt"
-            )
+
             print(score.shape)
             loo_corr_v = lds(
                 score.cpu().T, (-target_values[lds_eval_size:], indices[lds_eval_size:])
@@ -193,10 +195,10 @@ if __name__ == "__main__":
             params = []
 
             # collect retrained models' paths
+            # replace by your own model path
+            model_path = None
             for i in range(ensemble):
-                params.append(
-                    f"/home/shared/dattri-dataset/cifar2_lds_test/models/{i}/model_weights_0.pt"
-                )
+                params.append(model_path + f"/{i}/model_weights_0.pt")
 
             attributor = TRAKAttributor(
                 f_0,
@@ -214,7 +216,9 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
 
             # get retrained models' location
-            retrain_dir = "/home/shared/dattri-dataset/cifar2_lds_test/models"
+            # replace by your own model path
+            model_path = None
+            retrain_dir = model_path
             # get model output and indices
             target_values, indices = calculate_lds_ground_truth(
                 partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
@@ -249,10 +253,10 @@ if __name__ == "__main__":
             print("ensemble, normalize grad: ", ensemble, normalized_grad)
             ensemble = ensemble
             params = []
+            # replace by your own model path
+            model_path = None
             for i in range(ensemble):
-                params.append(
-                    f"/home/shared/dattri-dataset/cifar2_lds_test/models/{i}/model_weights_0.pt"
-                )
+                params.append(model_path + f"/{i}/model_weights_0.pt")
 
             proj_kwargs = {
                 "proj_dim": 512,
@@ -277,7 +281,9 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
 
             # get retrained models' location
-            retrain_dir = "/home/shared/dattri-dataset/cifar2_lds_test/models"
+            # replace by your own model path
+            model_path = None
+            retrain_dir = model_path
             # get model output and indices
             target_values, indices = calculate_lds_ground_truth(
                 partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
@@ -296,70 +302,60 @@ if __name__ == "__main__":
             print(sum_val, counter)
             if counter == 0:
                 continue
-            # if sum_val / counter > best_result:
-            #     best_result = sum_val / counter
-            #     best_config = (proj_dim, ensemble)
             print(sum_val / counter)
 
             print("complete\n")
-            # print(args.method, "RESULT:", best_config, "lds:", best_result)
 
     if args.method == "RPS":
-        model = create_resnet9_model()
+        model = train_cifar2_resnet9(train_loader, device="cuda")
         model.eval()
         model.to("cuda")
-        model.load_state_dict(
-            torch.load(
-                f"/home/shared/dattri-dataset/cifar2_lds_test/models/0/model_weights_0.pt"
+        # replace by your own model path
+        model_path = None
+        model.load_state_dict(torch.load(model_path + f"/{i}/model_weights_0.pt"))
+
+        for l2 in [1, 1e-1, 1e-2, 1e-3, 1e-4]:
+            attributor = RPSAttributor(
+                f_rps,
+                model=model,
+                final_linear_layer_name="linear",
+                nomralize_preactivate="True",
+                l2_strength=l2,
+                device="cuda",
             )
-        )
+            # attributor.cache(train_loader)
+            start_attribute = time.time()
+            torch.cuda.reset_peak_memory_stats("cuda")
+            score = attributor.attribute(train_loader, test_loader)
+            peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
+            print(f"Peak memory usage: {peak_memory} MB")
+            end_attribute = time.time()
+            print("Attribution time: ", end_attribute - start_attribute)
 
-        for l2 in [10, 1, 1e-1, 1e-2, 1e-3, 1e-4]:
-            for norm in [True, False]:
-                print("l2 strength, normalize preactivate: ", l2, norm)
-                attributor = RPSAttributor(
-                    f_rps,
-                    model=model,
-                    final_linear_layer_name="linear",
-                    nomralize_preactivate=norm,
-                    l2_strength=l2,
-                    device="cuda",
-                )
-                start_attribute = time.time()
-                torch.cuda.reset_peak_memory_stats("cuda")
-                score = attributor.attribute(train_loader, test_loader)
-                peak_memory = (
-                    torch.cuda.max_memory_allocated("cuda") / 1e6
-                )  # Convert to MB
-                print(f"Peak memory usage: {peak_memory} MB")
-                end_attribute = time.time()
-                print("Attribution time: ", end_attribute - start_attribute)
+            # get retrained models' location
+            # replace by your own model path
+            model_path = None
+            retrain_dir = model_path
+            # get model output and indices
+            target_values, indices = calculate_lds_ground_truth(
+                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+            )
+            # compute LDS value
+            lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
 
-                # get retrained models' location
-                retrain_dir = "/home/shared/dattri-dataset/cifar2_lds_test/models"
-                # get model output and indices
-                target_values, indices = calculate_lds_ground_truth(
-                    partial(loss_cifar2_resnet9, device="cuda"),
-                    retrain_dir,
-                    test_loader,
-                )
-                # compute LDS value
-                lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
-
-                # compute average LDS
-                sum_val = 0
-                counter = 0
-                for i in range(test_size):
-                    if np.isnan(lds_value[i]):
-                        continue
-                    sum_val += lds_value[i]
-                    counter += 1
-                print(sum_val, counter)
-                if counter == 0:
+            sum_val = 0
+            counter = 0
+            for i in range(test_size):
+                if np.isnan(lds_value[i]):
                     continue
-                if sum_val / counter > best_result:
-                    best_result = sum_val / counter
-                    best_config = (l2, norm)
-                print(sum_val / counter)
-                print("complete\n")
-                print(args.method, "RESULT:", best_config, "lds:", best_result)
+                sum_val += lds_value[i]
+                counter += 1
+            print(sum_val, counter)
+            if counter == 0:
+                continue
+            if sum_val / counter > best_result:
+                best_result = sum_val / counter
+                best_config = l2
+            print(sum_val / counter)
+            print("complete\n")
+            print(args.method, "RESULT:", best_config, "lds:", best_result)

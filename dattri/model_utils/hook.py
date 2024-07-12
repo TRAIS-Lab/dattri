@@ -15,56 +15,6 @@ import torch
 from torch import Tensor
 
 
-def _get_layer_feature(
-    model: torch.nn.Module,
-    layer_name: str,
-    dataloader: DataLoader,
-    device: str = "cpu",
-) -> Tuple[Tensor, Tensor]:
-    """Get the feature at layer_name for data passing through a model.
-
-    Args:
-        model (torch.nn.Module): The model used for forward-passing.
-        layer_name (str): The location that we want to extract the feauture.
-            A typical usage is to extract the last intermediate layer feature,
-            which corresponds to the "final feature" used for prediction.
-        dataloader (DataLoader): The dataloader that contains
-            the data points in interest to obtain the feature at layer_name.
-        device (str): The device for the output.
-
-    Returns:
-        A tuple containing (1)the output feature of the data at the specific layer
-            of the model and (2)the model output.
-    """
-    feature_list: List[Tensor] = []
-    output_list: List[Tensor] = []
-
-    def _forward_hook(_model: torch.nn.Module, _input: Tuple, output: Tensor) -> None:
-        """Forward hook function to extract layer features.
-
-        Args:
-            _model (torch.nn.Module): The PyTorch model in interest. Will not
-                be used in this function.
-            _input (Tuple): Input tensors to the module. Will not be used in
-                this function.
-            output (Tensor): The output tensor of the module.
-        """
-        feature_list.append(output.detach())
-
-    model_layer = getattr(model, layer_name)
-    hook_handle = model_layer.register_forward_hook(_forward_hook)
-
-    with torch.no_grad():
-        for x, _ in dataloader:
-            out = model(x)
-            output_list.append(out.detach())
-
-    hook_handle.remove()
-    return torch.cat(feature_list, dim=0).to(device), torch.cat(output_list, dim=0).to(
-        device,
-    )
-
-
 def get_final_layer_io(
     model: torch.nn.Module,
     final_linear_layer_name: str,
@@ -74,7 +24,9 @@ def get_final_layer_io(
     """Get input and output of the final layer for data passing through a model.
 
     Args:
-        model (torch.nn.Module): The model used for forward-passing.
+        model (torch.nn.Module): The model used for forward-passing. Notice that we
+            assume the model to have a final linear layer. Typically, this linear
+            layer is used for classification problems.
         final_linear_layer_name (str): The layer name of the final linear layer.
             The input of this layer should be the output of the "prediction model"
             mentioned in the RPS paper.

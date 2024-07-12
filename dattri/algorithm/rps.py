@@ -30,7 +30,7 @@ class RPSAttributor(BaseAttributor):
 
     def __init__(
         self,
-        loss_func: Callable,
+        target_func: Callable,
         model: torch.nn.Module,
         final_linear_layer_name: str,
         nomralize_preactivate: bool = False,
@@ -41,13 +41,14 @@ class RPSAttributor(BaseAttributor):
         """Representer point selection attributor.
 
         Args:
-            loss_func (Callable): The loss function to be attributed. The inputs are
+            target_func (Callable): The target function to be attributed. The inputs are
                 list of pre-activation values (f_i in the paper) and list of labels.
-                Typical examples are BCELoss and CELoss.
-            model (torch.nn.Module): The model to attribute. RPS will extract
-                second-to-last layer results and the final fc layer's parameter. The
-                second one will be used for the initialization of the l2-finetuning.
-                That is, model output = fc(second-to-last feature).
+                Typical examples are loss functions such as BCELoss and CELoss.
+            model (torch.nn.Module): The model to attribute. Notice that we
+                assume the model to have a final linear layer. RPS will extract
+                the final linear layer's input and its parameter. The parameteres will
+                be used for the initialization of the l2-finetuning. That is, model
+                output = linear(second-to-last feature).
             final_linear_layer_name (str): The name of the final linear layer's name
                 in the model.
             nomralize_preactivate (bool): If set to true, then the intermediate layer
@@ -57,7 +58,7 @@ class RPSAttributor(BaseAttributor):
             epoch (int): The number of epoch used to fine-tune the last layer.
             device (str): The device to run the attributor. Default is cpu.
         """
-        self.target_func = loss_func
+        self.target_func = target_func
         self.model = model
         self.final_linear_layer_name = final_linear_layer_name
         self.nomralize_preactivate = nomralize_preactivate
