@@ -746,7 +746,7 @@ def ihvp_datainf(
     func: Callable,
     argnums: int,
     in_dims: Tuple[Union[None, int], ...],
-    regularization: Optional[List[float]] = None,
+    regularization: Optional[Union[float, List[float]]] = None,
     param_layer_map: Optional[List[int]] = None,
 ) -> Callable:
     """DataInf ihvp algorithm function.
@@ -768,7 +768,8 @@ def ihvp_datainf(
         in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
             batched layer-wise gradients. Example: inputs, weights, labels corresponds
             to (0,None,0).
-        regularization (List [float]): A list of floats default to 0.0. Specifies the
+        regularization (List [float]): A float or list of floats default to 0.0.
+            Specifies the
             regularization term to be added to the Hessian matrix in each layer.
             This is useful when the Hessian matrix is singular or ill-conditioned.
             The regularization term is `regularization * I`, where `I` is the
@@ -783,19 +784,36 @@ def ihvp_datainf(
         A function that takes a list of tuples of Tensor `x` and a tuple of tensors
         `v`(layer-wise) and returns the approximated IHVP of the approximated Hessian of
         `func` and `v`.
-    """
-    batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
 
-    def _single_datainf_ihvp(v: torch.Tensor,
-                             grad: torch.Tensor,
-                             regularization: float) -> torch.Tensor:
-        coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
-        return (v - coef * grad) / regularization
+    Raises:
+        IHVPUsageError: If the length of regularization is not the same as the number
+            of layers.
+    """
+    # TODO: param_layer_map should not be optional.
+
+    batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
+    if regularization is not None and not isinstance(regularization, list):
+        regularization = [regularization] * len(param_layer_map)
+
+    if param_layer_map is not None and len(regularization) != len(param_layer_map):
+        error_msg = "The length of regularization should\
+                     be the same as the number of layers."
+        raise IHVPUsageError(error_msg)
+
+    def _single_datainf_ihvp(
+        v: torch.Tensor,
+        grad: torch.Tensor,
+        regularization: float,
+    ) -> torch.Tensor:
+        # TODO: docstring
+        coef = (v @ grad) / (regularization + torch.sum(grad**2))
+        return (v - coef.reshape(-1, 1) @ grad.reshape(1, -1)) / regularization
 
     def _ihvp_datainf_func(
-        x: Tuple[torch.Tensor, ...], v: Tuple[torch.Tensor, ...],
+        x: Tuple[torch.Tensor, ...],
+        v: Tuple[torch.Tensor, ...],
     ) -> Tuple[torch.Tensor]:
-        """The IHVP function using CG.
+        """The IHVP function using DataInf.
 
         Args:
             x (Tuple[torch.Tensor, ...]): The function will compute the
@@ -813,9 +831,13 @@ def ihvp_datainf(
             grouped = []
             max_layer = max(param_layer_map)
             for group in range(max_layer + 1):
-                grouped_layers = tuple([grads[layer] for layer in
-                                        range(len(param_layer_map))
-                                        if param_layer_map[layer] == group])
+                grouped_layers = tuple(
+                    [
+                        grads[layer]
+                        for layer in range(len(param_layer_map))
+                        if param_layer_map[layer] == group
+                    ],
+                )
                 concated_grads = torch.concat(grouped_layers, dim=1)
                 grouped.append(concated_grads)
             grads = tuple(grouped)
@@ -824,13 +846,17 @@ def ihvp_datainf(
         for layer in range(layer_cnt):
             grad_layer = grads[layer]
             reg = 0.0 if regularization is None else regularization[layer]
-            ihvp_contributions = vmap(lambda grad, layer=layer, reg=reg:
-                                                 _single_datainf_ihvp(v[layer],
-                                                                      grad,
-                                                                      reg))(grad_layer)
+            ihvp_contributions = vmap(
+                lambda grad, layer=layer, reg=reg: _single_datainf_ihvp(
+                    v[layer],
+                    grad,
+                    reg,
+                ),
+            )(grad_layer)
             ihvp_at_layer = ihvp_contributions.mean(dim=0)
             ihvps.append(ihvp_at_layer)
         return tuple(ihvps)
+
     return _ihvp_datainf_func
 
 
@@ -877,29 +903,39 @@ def ihvp_at_x_datainf(
         A function that takes a tuple `v` and returns the tuple of IHVPs of the Hessian
         of `func` and `v`.
     """
+
     def _per_sample_grad(*args) -> torch.Tensor:
         return grad(func, argnums=argnums)(*args)
 
-    def _single_datainf_ihvp(v: torch.Tensor,
-                                     grad: torch.Tensor,
-                                     regularization: float) -> torch.Tensor:
-        coef = (v.T @ grad) / (regularization + torch.sum(grad ** 2))
+    def _single_datainf_ihvp(
+        v: torch.Tensor,
+        grad: torch.Tensor,
+        regularization: float,
+    ) -> torch.Tensor:
+        # TODO: same as the `_single_datainf_ihvp` defined in `ihvp_datainf`.
+        coef = (v.T @ grad) / (regularization + torch.sum(grad**2))
         return (v - coef * grad) / regularization
+
     grads = vmap(_per_sample_grad, in_dims=in_dims)(*x)
     layer_cnt = len(grads)
     if param_layer_map is not None:
         grouped = []
         max_layer = max(param_layer_map)
         for group in range(max_layer + 1):
-            grouped_layers = tuple([grads[layer] for layer
-                                    in range(len(param_layer_map))
-                                    if param_layer_map[layer] == group])
+            grouped_layers = tuple(
+                [
+                    grads[layer]
+                    for layer in range(len(param_layer_map))
+                    if param_layer_map[layer] == group
+                ],
+            )
             concated_grads = torch.concat(grouped_layers, dim=1)
             grouped.append(concated_grads)
         grads = tuple(grouped)
         layer_cnt = max_layer + 1  # Assuming count starts from 0
 
-    def _ihvp_at_x_datainf_func(v: Tuple[torch.Tensor, ...],
+    def _ihvp_at_x_datainf_func(
+        v: Tuple[torch.Tensor, ...],
     ) -> Tuple[torch.Tensor]:
         """The IHVP function using datainf.
 
@@ -911,14 +947,19 @@ def ihvp_at_x_datainf(
         Returns:
             The IHVP value dictionary, with keys corresponding to layer names.
         """
+        # TODO: seems to be redundant if we have `_ihvp_datainf_func``
+        # some code might be reused.
         ihvps = []
         for layer in range(layer_cnt):
             reg = 0.0 if regularization is None else regularization[layer]
             grad_layer = grads[layer]
-            ihvp_contributions = vmap(lambda grad, layer=layer, reg=reg:
-                                                 _single_datainf_ihvp(v[layer],
-                                                                      grad,
-                                                                      regularization=reg))(grad_layer)
+            ihvp_contributions = vmap(
+                lambda grad, layer=layer, reg=reg: _single_datainf_ihvp(
+                    v[layer],
+                    grad,
+                    regularization=reg,
+                ),
+            )(grad_layer)
             ihvp_at_layer = ihvp_contributions.mean(dim=0)
             ihvps.append(ihvp_at_layer)
         return tuple(ihvps)
@@ -1215,6 +1256,7 @@ def manual_cache_forward(forward_func: Callable) -> Callable:
             cache.input_hidden_pairs.append((x1, y1))
             return y1
     """
+
     @wraps(forward_func)
     def cached_forward(self: torch.nn.Module, *args, **kwrds) -> torch.Tensor:
         if not hasattr(self, EKFAC_CACHE_KEY):
@@ -1225,11 +1267,13 @@ def manual_cache_forward(forward_func: Callable) -> Callable:
         cache.check_type()
         cache.retain_grad()
         return outputs
+
     return cached_forward
 
 
 class MLPCache:
     """Cache of input and output variables in a MLP layer."""
+
     input_hidden_pairs: ClassVar[List[Tuple[torch.Tensor, ...]]] = []
 
     def clear(self) -> None:
@@ -1257,18 +1301,22 @@ class MLPCache:
             IHVPUsageError: if any type of cached varibales is not torch.Tensor.
         """
         for inputs, hiddens in self.input_hidden_pairs:
-            if not (isinstance(inputs, torch.Tensor) and
-                    isinstance(hiddens, torch.Tensor)):
-                message = ("Incorrect type of variable is cached in `MLPCache`. "
-                           "Only `torch.Tensor` is supported.")
+            if not (
+                isinstance(inputs, torch.Tensor) and isinstance(hiddens, torch.Tensor)
+            ):
+                message = (
+                    "Incorrect type of variable is cached in `MLPCache`. "
+                    "Only `torch.Tensor` is supported."
+                )
                 raise IHVPUsageError(message)
 
 
-def _random_batch_iterator(*x,
-                           num_samples: int,
-                           in_dims: Optional[Tuple] = None,
-                           batch_size: int = 1,
-                           ) -> Generator[Tuple[torch.Tensor, ...], None, None]:
+def _random_batch_iterator(
+    *x,
+    num_samples: int,
+    in_dims: Optional[Tuple] = None,
+    batch_size: int = 1,
+) -> Generator[Tuple[torch.Tensor, ...], None, None]:
     """Randomly sample a batch of `batch_size` from the input data, without replacement.
 
        This iterator basically does the same thing as `torch.utils.data.DataLoader`,
@@ -1292,8 +1340,10 @@ def _random_batch_iterator(*x,
     """
     if batch_size > num_samples:
         batch_size = num_samples
-        message = ("`batch_size` is larger than total number of samples. "
-                   "Use `num_Samples` instead.")
+        message = (
+            "`batch_size` is larger than total number of samples. "
+            "Use `num_Samples` instead."
+        )
         warnings.warn(message, stacklevel=2)
 
     if in_dims is None:
@@ -1305,18 +1355,21 @@ def _random_batch_iterator(*x,
         # Randomly sample and collate a batch
         begin_idx = i * batch_size
         end_idx = min(num_samples, (i + 1) * batch_size)
-        sampled_indices = random_perm[begin_idx: end_idx]
+        sampled_indices = random_perm[begin_idx:end_idx]
         yield tuple(
             x_in.index_select(dim, sampled_indices.to(x_in.device))
-            if dim is not None else x_in
+            if dim is not None
+            else x_in
             for x_in, dim in zip(x, in_dims)
         )
 
 
-def _estimate_covariance(curr_estimate: List[List[Tuple[torch.Tensor]]],
-                         mlp_cache: List[MLPCache],
-                         total_samples: int,
-                         mask: torch.Tensor) -> List[List[Tuple[torch.Tensor]]]:
+def _estimate_covariance(
+    curr_estimate: List[List[Tuple[torch.Tensor]]],
+    mlp_cache: List[MLPCache],
+    total_samples: int,
+    mask: torch.Tensor,
+) -> List[List[Tuple[torch.Tensor]]]:
     """Estimate the 'covariance' matrices S and A in EK-FAC ihvp.
 
     Args:
@@ -1356,21 +1409,21 @@ def _estimate_covariance(curr_estimate: List[List[Tuple[torch.Tensor]]],
             else:
                 old_weight = total_samples / (total_samples + batch_samples)
                 new_weight = batch_samples / (total_samples + batch_samples)
-                new_cov_a = (old_weight * layer_cov[idx][0] +
-                             new_weight * batch_cov_a)
-                new_cov_s = (old_weight * layer_cov[idx][1] +
-                             new_weight * batch_cov_s)
+                new_cov_a = old_weight * layer_cov[idx][0] + new_weight * batch_cov_a
+                new_cov_s = old_weight * layer_cov[idx][1] + new_weight * batch_cov_s
                 layer_cov[idx] = (new_cov_a, new_cov_s)
 
     return curr_estimate
 
 
-def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
-                     mlp_cache: List[MLPCache],
-                     cached_q: List[List[Tuple[torch.Tensor]]],
-                     total_samples: int,
-                     mask: torch.Tensor,
-                     max_steps_for_vec: int = 10) -> List[List[torch.Tensor]]:
+def _estimate_lambda(
+    curr_estimate: List[List[torch.Tensor]],
+    mlp_cache: List[MLPCache],
+    cached_q: List[List[Tuple[torch.Tensor]]],
+    total_samples: int,
+    mask: torch.Tensor,
+    max_steps_for_vec: int = 10,
+) -> List[List[torch.Tensor]]:
     """Estimate the corrected eigenvalues in EK-FAC ihvp.
 
     Args:
@@ -1399,7 +1452,8 @@ def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
     """
     for cache, layer_lambda, layer_q in zip(mlp_cache, curr_estimate, cached_q):
         for idx, ((a_prev, s_curr), (q_a, q_s)) in enumerate(
-            zip(cache.input_hidden_pairs, layer_q)):
+            zip(cache.input_hidden_pairs, layer_q),
+        ):
             a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
 
             # Uniformly reshape the tensors into (batch_size, t, ...)
@@ -1418,18 +1472,23 @@ def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
             timesteps = a_prev_reshaped.shape[1]  # the value of t
             if timesteps <= max_steps_for_vec:
                 # Vectorized calculation of dtheta
-                batch_dtheta = (ds_curr_reshaped.unsqueeze(-1) @
-                                a_prev_reshaped.unsqueeze(2)).sum(axis=1)
+                batch_dtheta = (
+                    ds_curr_reshaped.unsqueeze(-1) @ a_prev_reshaped.unsqueeze(2)
+                ).sum(axis=1)
             else:
                 # Memory efficient calculation of dtheta
-                batch_dtheta = torch.zeros(batch_samples,
-                                           ds_curr_reshaped.shape[-1],
-                                           a_prev_reshaped.shape[-1],
-                                           device=ds_curr.device)
+                batch_dtheta = torch.zeros(
+                    batch_samples,
+                    ds_curr_reshaped.shape[-1],
+                    a_prev_reshaped.shape[-1],
+                    device=ds_curr.device,
+                )
 
                 for ts in range(timesteps):
-                    batch_dtheta += (ds_curr_reshaped[:, ts, :, None] @
-                                     a_prev_reshaped[:, ts, None, :])
+                    batch_dtheta += (
+                        ds_curr_reshaped[:, ts, :, None]
+                        @ a_prev_reshaped[:, ts, None, :]
+                    )
 
             # An equivalent way to calculate lambda's. Please refer to
             # https://math.stackexchange.com/questions/1879933/vector-multiplication-with-multiple-kronecker-products
@@ -1442,19 +1501,22 @@ def _estimate_lambda(curr_estimate: List[List[torch.Tensor]],
             else:
                 old_weight = total_samples / (total_samples + batch_samples)
                 new_weight = batch_samples / (total_samples + batch_samples)
-                layer_lambda[idx] = (old_weight * layer_lambda[idx] +
-                                     new_weight * batch_lambda)
+                layer_lambda[idx] = (
+                    old_weight * layer_lambda[idx] + new_weight * batch_lambda
+                )
 
     return curr_estimate
 
 
-def ihvp_at_x_ekfac(func: Callable,
-                    *x,
-                    in_dims: Optional[Tuple] = None,
-                    batch_size: int = 1,
-                    max_iter: Optional[int] = None,
-                    mlp_cache: Union[MLPCache, List[MLPCache]],
-                    damping: float = 0.0) -> Callable:
+def ihvp_at_x_ekfac(
+    func: Callable,
+    *x,
+    in_dims: Optional[Tuple] = None,
+    batch_size: int = 1,
+    max_iter: Optional[int] = None,
+    mlp_cache: Union[MLPCache, List[MLPCache]],
+    damping: float = 0.0,
+) -> Callable:
     """IHVP via EK-FAC algorithm.
 
     Standing for the inverse-hessian-vector product, returns a function that,
@@ -1500,18 +1562,22 @@ def ihvp_at_x_ekfac(func: Callable,
         max_iter = (num_samples + batch_size - 1) // batch_size
 
     # 1. Use random batch to estimate covariance matrices S and A
-    dataloader = _random_batch_iterator(*x,
-                                        num_samples=num_samples,
-                                        in_dims=in_dims,
-                                        batch_size=batch_size)
+    dataloader = _random_batch_iterator(
+        *x,
+        num_samples=num_samples,
+        in_dims=in_dims,
+        batch_size=batch_size,
+    )
 
     cov_matrices = [[] for _ in range(len(mlp_cache))]
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
         # Forward pass
         func_output = func(*batch)
-        losses, mask = (func_output if isinstance(func_output, tuple)
-                        else func_output, torch.tensor(1.))
+        losses, mask = (
+            func_output if isinstance(func_output, tuple) else func_output,
+            torch.tensor(1.0),
+        )
 
         for loss in losses:
             # Backward pass
@@ -1519,10 +1585,12 @@ def ihvp_at_x_ekfac(func: Callable,
 
         with torch.no_grad():
             # Estimate covariance
-            cov_matrices = _estimate_covariance(cov_matrices,
-                                                mlp_cache,
-                                                total_samples,
-                                                mask)
+            cov_matrices = _estimate_covariance(
+                cov_matrices,
+                mlp_cache,
+                total_samples,
+                mask,
+            )
 
         total_samples += int(mask.sum())
         if i == max_iter - 1:
@@ -1537,17 +1605,21 @@ def ihvp_at_x_ekfac(func: Callable,
             layer_q.append((q_a, q_s))
 
     # 3. Use random batch for eigenvalue correction
-    dataloader = _random_batch_iterator(*x,
-                                        num_samples=num_samples,
-                                        in_dims=in_dims,
-                                        batch_size=batch_size)
+    dataloader = _random_batch_iterator(
+        *x,
+        num_samples=num_samples,
+        in_dims=in_dims,
+        batch_size=batch_size,
+    )
     cached_lambdas = [[] for _ in range(len(mlp_cache))]
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
         # Forward pass
         func_output = func(*batch)
-        losses, mask = (func_output if isinstance(func_output, tuple)
-                        else func_output, torch.tensor(1.))
+        losses, mask = (
+            func_output if isinstance(func_output, tuple) else func_output,
+            torch.tensor(1.0),
+        )
 
         for loss in losses:
             # Backward pass
@@ -1555,11 +1627,13 @@ def ihvp_at_x_ekfac(func: Callable,
 
         with torch.no_grad():
             # Update lambdas
-            cached_lambdas = _estimate_lambda(cached_lambdas,
-                                              mlp_cache,
-                                              cached_q,
-                                              total_samples,
-                                              mask)
+            cached_lambdas = _estimate_lambda(
+                cached_lambdas,
+                mlp_cache,
+                cached_q,
+                total_samples,
+                mask,
+            )
         total_samples += len(losses)
         if i == max_iter - 1:
             break
@@ -1579,14 +1653,14 @@ def ihvp_at_x_ekfac(func: Callable,
             The IHVP value.
         """
         ihvp = [[] for _ in range(len(cached_q))]
-        for layer_ihvp, layer_v, layer_lambda, layer_q in zip(ihvp, v,
-                                                              cached_lambdas,
-                                                              cached_q):
+        for layer_ihvp, layer_v, layer_lambda, layer_q in zip(
+            ihvp,
+            v,
+            cached_lambdas,
+            cached_q,
+        ):
             for _v, _lambda, (q_a, q_s) in zip(layer_v, layer_lambda, layer_q):
-                _ihvp = q_s.T @ (
-                    (q_s @ _v @ q_a.T) /
-                    (_lambda + damping)
-                    ) @ q_a
+                _ihvp = q_s.T @ ((q_s @ _v @ q_a.T) / (_lambda + damping)) @ q_a
                 layer_ihvp.append(_ihvp)
         return ihvp
 

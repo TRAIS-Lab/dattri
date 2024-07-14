@@ -4,9 +4,15 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm.influence_function import IFAttributor
+from dattri.algorithm.influence_function import (
+    IFAttributorArnoldi,
+    IFAttributorCG,
+    IFAttributorDataInf,
+    IFAttributorExplicit,
+    IFAttributorLiSSA,
+)
 from dattri.benchmark.datasets.mnist import train_mnist_lr
-from dattri.func.utils import flatten_func
+from dattri.task import AttributionTask
 
 
 class TestInfluenceFunction:
@@ -27,55 +33,60 @@ class TestInfluenceFunction:
 
         model = train_mnist_lr(train_loader)
 
-        @flatten_func(model)
         def f(params, data_target_pair):
             image, label = data_target_pair
             loss = nn.CrossEntropyLoss()
             yhat = torch.func.functional_call(model, params, image)
             return loss(yhat, label.long())
 
-        model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
-
-        # Explicit
-        attributor = IFAttributor(
+        task = AttributionTask(
             target_func=f,
-            params=model_params,
-            ihvp_solver="explicit",
-            ihvp_kwargs={"regularization": 1e-3},
+            model=model,
+            checkpoints=model.state_dict(),
+        )
+        # Explicit
+        attributor = IFAttributorExplicit(
+            task=task,
             device=torch.device("cpu"),
+            regularization=1e-3,
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
         # CG
-        attributor = IFAttributor(
-            target_func=f,
-            params=model_params,
-            ihvp_solver="cg",
-            ihvp_kwargs={"regularization": 1e-3},
+        attributor = IFAttributorCG(
+            task=task,
             device=torch.device("cpu"),
+            regularization=1e-3,
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
         # arnoldi
-        attributor = IFAttributor(
-            target_func=f,
-            params=model_params,
-            ihvp_solver="arnoldi",
-            ihvp_kwargs={"regularization": 1e-3},
+        attributor = IFAttributorArnoldi(
+            task=task,
             device=torch.device("cpu"),
+            regularization=1e-3,
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
         # lissa
-        attributor = IFAttributor(
-            target_func=f,
-            params=model_params,
-            ihvp_solver="lissa",
-            ihvp_kwargs={"recursion_depth": 5, "batch_size": 2},
+        attributor = IFAttributorLiSSA(
+            task=task,
             device=torch.device("cpu"),
+            recursion_depth=5,
+            batch_size=2,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # DataInf
+        # lissa
+        attributor = IFAttributorDataInf(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)

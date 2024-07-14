@@ -1,38 +1,43 @@
 """This example shows how to use the IF to detect noisy labels in the MNIST."""
 
 import time
+import argparse
+from functools import partial
+
 import torch
 from torch import nn
-from torch.utils.data import Sampler
 from torchvision import transforms
 
-from dattri.algorithm.influence_function import IFAttributor
+from dattri.algorithm.influence_function import\
+    IFAttributorExplicit,\
+    IFAttributorCG,\
+    IFAttributorLiSSA,\
+    IFAttributorDataInf,\
+    IFAttributorArnoldi
 from dattri.benchmark.datasets.cifar2 import create_cifar2_dataset, train_cifar2_resnet9
 from dattri.benchmark.utils import flip_label
-from dattri.func.utils import flatten_func
+from dattri.benchmark.utils import SubsetSampler
+from dattri.task import AttributionTask
+
+ATTRIBUTOR_MAP = {
+    "explicit": partial(IFAttributorExplicit, regularization=0.01),
+    "cg": partial(IFAttributorCG, regularization=0.01, max_iter=1),
+    "lissa": partial(IFAttributorLiSSA, recursion_depth=100),
+    "datainf": partial(IFAttributorDataInf, regularization=0.01),
+    "arnoldi": partial(IFAttributorArnoldi, regularization=0.01, max_iter=10)
+}
 
 
 def get_cifar_indices_and_adjust_labels(dataset, subset_indice):
-
     dataset.targets, flip_index = flip_label(torch.tensor(dataset.targets)[subset_indice], p=0.1)
     return flip_index
 
-
-class SubsetSampler(Sampler):
-    def __init__(self, indices):
-        self.indices = indices
-
-    def __iter__(self):
-        return iter(self.indices)
-
-    def __len__(self):
-        return len(self.indices)
-
-
 if __name__ == "__main__":
-    transform = transforms.Compose([transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5),
-                                                         (0.5, 0.5, 0.5))])
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--method", type=str, default="explicit")
+    parser.add_argument("--device", type=str, default="cuda")
+    args = parser.parse_args()
+
     train_dataset, _ = create_cifar2_dataset("./data")
 
     flip_index = get_cifar_indices_and_adjust_labels(train_dataset, range(1000))
@@ -53,26 +58,23 @@ if __name__ == "__main__":
         sampler=SubsetSampler(range(1000)),
     )
 
-    model = train_cifar2_resnet9(train_loader, device="cuda", num_epochs=20)
+    model = train_cifar2_resnet9(train_loader, device="cuda", num_epochs=1)
     model.cuda()
     model.eval()
 
-    @flatten_func(model)
     def f(params, data_target_pair):
         image, label = data_target_pair
         loss = nn.CrossEntropyLoss()
         yhat = torch.func.functional_call(model, params, image)
-        return loss(yhat, label)
+        return loss(yhat, label.long())
 
+    task = AttributionTask(target_func=f,
+                           model=model,
+                           checkpoints=model.state_dict())
 
-    model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
-
-    attributor = IFAttributor(
-        target_func=f,
-        params=model_params,
-        ihvp_solver="cg",
-        ihvp_kwargs={"regularization": 1e-3},
-        device=torch.device("cuda"),
+    attributor = ATTRIBUTOR_MAP[args.method](
+        task=task,
+        device=args.device,
     )
 
     attributor.cache(train_loader_full)
