@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.model_utils.hook import get_layer_feature
+from dattri.model_utils.hook import get_final_layer_io
 
 
 class MyNet(nn.Module):
@@ -33,11 +33,11 @@ class MyNet(nn.Module):
         return self.layer4(x)
 
 
-class TestGetLayerFeature:
-    """Test get_layer_feature function."""
+class TestGetFinalLayerFeature:
+    """Test get_final_linear_layer_input function."""
 
     def test_output_shape(self):
-        """Test the output shape of get_layer_feature function."""
+        """Test output shape of get_final_linear_layer_input function."""
         model = MyNet()
         data = torch.randn(10, 10)
         labels = torch.randint(0, 2, (10,))  # Dummy labels
@@ -45,8 +45,11 @@ class TestGetLayerFeature:
         dataloader = DataLoader(dataset, batch_size=2)
 
         # specify the layer name
-        layer_name = "layer3"
-        output_dim_gt = 40
-        feature = get_layer_feature(model, layer_name, dataloader)
+        layer_name = "layer4"
+        feat_dim_gt = 40
+        out_dim_gt = 50
+        feature, output = get_final_layer_io(model, layer_name, dataloader)
         assert feature.shape[0] == len(dataset)
-        assert feature.shape[1] == output_dim_gt
+        assert feature.shape[1] == feat_dim_gt
+        assert output.shape[0] == len(dataset)
+        assert output.shape[1] == out_dim_gt
