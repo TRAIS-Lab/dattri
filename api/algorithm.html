@@ -3,7 +3,7 @@
   <head><meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Target Function Helpers" href="helper.html" /><link rel="prev" title="dattri: A Library for Efficient Data Attribution" href="../index.html" />
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Target Function Helpers" href="helper.html" /><link rel="prev" title="Tasks" href="task.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.01.29 -->
         <title>Attributors - Dattri documentation</title>
@@ -156,6 +156,7 @@
 <div id="searchbox"></div><div class="sidebar-scroll"><div class="sidebar-tree">
   <p class="caption" role="heading"><span class="caption-text">Attribution Methods:</span></p>
 <ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="task.html">Tasks</a></li>
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Attributors</a></li>
 <li class="toctree-l1"><a class="reference internal" href="helper.html">Target Function Helpers</a></li>
 </ul>
@@ -204,14 +205,15 @@
         <article role="main">
           <section id="attributors">
 <h1>Attributors<a class="headerlink" href="#attributors" title="Link to this heading">¶</a></h1>
+<p id="module-dattri.algorithm.influence_function">This module implement the influence function.</p>
 <dl class="py class">
-<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributor">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ihvp_solver</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'explicit'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ihvp_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributor" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.BaseInnerProductAttributor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">BaseInnerProductAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAttributor</span></code></p>
-<p>Influence function attributor.</p>
+<p>The base class for inner product attributor.</p>
 <dl class="py method">
-<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributor.attribute">
-<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributor.attribute" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.BaseInnerProductAttributor.attribute">
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -222,7 +224,8 @@ of the full training set if <cite>cache</cite> is called before. A subset
 means that only a part of the training set’s influence is calculated.
 The dataloader should not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not                be shuffled.</p></li>
+test samples to calculate the influence. The dataloader should not
+be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -239,13 +242,333 @@ test samples to calculate the influence. The dataloader should not              
 </dd></dl>
 
 <dl class="py method">
-<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributor.cache">
-<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributor.cache" title="Link to this definition">¶</a></dt>
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.BaseInnerProductAttributor.cache">
+<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.cache" title="Link to this definition">¶</a></dt>
 <dd><p>Cache the dataset for inverse hessian calculation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>DataLoader</em>) – The dataloader
 with full training samples for inverse hessian calculation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.BaseInnerProductAttributor.generate_test_query">
+<span class="sig-name descname"><span class="pre">generate_test_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.generate_test_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculating the query based on the test data.</p>
+<p>Inner product attributor calculates the inner product between the
+train query and the transformation of the test query. This function
+calculates the test query based on the test data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model
+parameters.</p></li>
+<li><p><strong>data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The test data. Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The query based on the test data. Normally it is</dt><dd><p>a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.BaseInnerProductAttributor.generate_train_query">
+<span class="sig-name descname"><span class="pre">generate_train_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.generate_train_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculating the query based on the train data.</p>
+<p>Inner product attributor calculates the inner product between the
+train query and the transformation of the test query. This function
+calculates the train query based on the train data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model
+parameters.</p></li>
+<li><p><strong>data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The train data. Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The query based on the train data. Normally it is</dt><dd><p>a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.BaseInnerProductAttributor.transformation_on_query">
+<em class="property"><span class="pre">abstract</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">transformation_on_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.transformation_on_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the transformation on the query.</p>
+<p>Inner product attributor calculates the inner product between the
+train query and the transformation of the test query. This function
+calculates the transformation of the test query.</p>
+<p>Normally speaking, this function may return any transformation on the query.
+Hessian Matrix and Fisher Information Matrix are two common transformations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model.</p></li>
+<li><p><strong>train_data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+<li><p><strong>query</strong> (<em>torch.Tensor</em>) – The query to be transformed. Normally it is
+a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The transformation on the query. Normally it is</dt><dd><p>a 2-d dimensional tensor with the shape of
+(batchsize, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorArnoldi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor" title="dattri.algorithm.influence_function.BaseInnerProductAttributor"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></a></p>
+<p>The inner product attributor with Arnoldi inverse hessian transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.transformation_on_query">
+<span class="sig-name descname"><span class="pre">transformation_on_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.transformation_on_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the transformation on the query through ihvp_arnoldi.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model.</p></li>
+<li><p><strong>train_data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The train data. Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+<li><p><strong>query</strong> (<em>torch.Tensor</em>) – The query to be transformed. Normally it is
+a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – The keyword arguments for
+the transformation function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorCG</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor" title="dattri.algorithm.influence_function.BaseInnerProductAttributor"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></a></p>
+<p>The inner product attributor with CG inverse hessian transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.transformation_on_query">
+<span class="sig-name descname"><span class="pre">transformation_on_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.transformation_on_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the transformation on the query through ihvp_cg.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model.</p></li>
+<li><p><strong>train_data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The train data. Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+<li><p><strong>query</strong> (<em>torch.Tensor</em>) – The query to be transformed. Normally it is
+a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – The keyword arguments for
+the transformation function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorDataInf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor" title="dattri.algorithm.influence_function.BaseInnerProductAttributor"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></a></p>
+<p>The inner product attributor with DataInf inverse hessian transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.transformation_on_query">
+<span class="sig-name descname"><span class="pre">transformation_on_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.transformation_on_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the transformation on the query through ihvp_datainf.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model.</p></li>
+<li><p><strong>train_data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The train data. Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+<li><p><strong>query</strong> (<em>torch.Tensor</em>) – The query to be transformed. Normally it is
+a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – The keyword arguments for
+the transformation function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorExplicit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor" title="dattri.algorithm.influence_function.BaseInnerProductAttributor"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></a></p>
+<p>The inner product attributor with explicit inverse hessian transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.transformation_on_query">
+<span class="sig-name descname"><span class="pre">transformation_on_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.transformation_on_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the transformation on the query through ihvp_explicit.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model.</p></li>
+<li><p><strong>train_data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The train data. Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+<li><p><strong>query</strong> (<em>torch.Tensor</em>) – The query to be transformed. Normally it is
+a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – The keyword arguments for
+the transformation function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorLiSSA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor" title="dattri.algorithm.influence_function.BaseInnerProductAttributor"><code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></a></p>
+<p>The inner product attributor with LiSSA inverse hessian transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.lissa_collate_fn">
+<em class="property"><span class="pre">static</span><span class="w"> </span></em><span class="sig-name descname"><span class="pre">lissa_collate_fn</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">sampled_input</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.lissa_collate_fn" title="Link to this definition">¶</a></dt>
+<dd><p>Collate function for LISSA.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>sampled_input</strong> (<em>List</em><em>[</em><em>Tensor</em><em>]</em>) – The sampled input from the dataloader.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>The collated input for the LISSA.</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Tensor, List[Tuple[Tensor, …]]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.transformation_on_query">
+<span class="sig-name descname"><span class="pre">transformation_on_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.transformation_on_query" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the transformation on the query through ihvp_lissa.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>index</strong> (<em>int</em>) – The index of the model parameters. This index
+is used for ensembling of different trained model.</p></li>
+<li><p><strong>train_data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The train data. Normally this is a tuple
+of input data and target data, the number of items in the
+tuple should be aligned in the target function. The tensors’
+shape follows (1, batchsize, …).</p></li>
+<li><p><strong>query</strong> (<em>torch.Tensor</em>) – The query to be transformed. Normally it is
+a 2-d dimensional tensor with the shape of
+(batchsize, num_parameters).</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em>) – The keyword arguments for
+the transformation function.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
 </dd>
 </dl>
 </dd></dl>
@@ -414,14 +737,14 @@ fine-tuning.</p>
               </div>
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
             </a>
-          <a class="prev-page" href="../index.html">
+          <a class="prev-page" href="task.html">
               <svg class="furo-related-icon"><use href="#svg-arrow-right"></use></svg>
               <div class="page-info">
                 <div class="context">
                   <span>Previous</span>
                 </div>
                 
-                <div class="title">Home</div>
+                <div class="title">Tasks</div>
                 
               </div>
             </a>
@@ -456,9 +779,33 @@ fine-tuning.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Attributors</a><ul>
-<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributor"><code class="docutils literal notranslate"><span class="pre">IFAttributor</span></code></a><ul>
-<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributor.attribute()</span></code></a></li>
-<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributor.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributor.cache()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor"><code class="docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">BaseInnerProductAttributor.attribute()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.cache"><code class="docutils literal notranslate"><span class="pre">BaseInnerProductAttributor.cache()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.generate_test_query"><code class="docutils literal notranslate"><span class="pre">BaseInnerProductAttributor.generate_test_query()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.generate_train_query"><code class="docutils literal notranslate"><span class="pre">BaseInnerProductAttributor.generate_train_query()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.BaseInnerProductAttributor.transformation_on_query"><code class="docutils literal notranslate"><span class="pre">BaseInnerProductAttributor.transformation_on_query()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.transformation_on_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.transformation_on_query()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.transformation_on_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.transformation_on_query()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.transformation_on_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.transformation_on_query()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.transformation_on_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.transformation_on_query()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.lissa_collate_fn"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.lissa_collate_fn()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.transformation_on_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.transformation_on_query()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor"><code class="docutils literal notranslate"><span class="pre">TracInAttributor</span></code></a><ul>

@@ -1,6 +1,6 @@
 Attributors
 =======
-.. autoclass:: dattri.algorithm.influence_function.IFAttributor
+.. automodule:: dattri.algorithm.influence_function
     :members:
     :undoc-members:
     :show-inheritance:
