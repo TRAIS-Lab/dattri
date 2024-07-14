@@ -795,7 +795,7 @@ def ihvp_datainf(
     if regularization is not None and not isinstance(regularization, list):
         regularization = [regularization] * len(param_layer_map)
 
-    if len(regularization) != len(param_layer_map):
+    if ihvp_datainf is not None and len(regularization) != len(param_layer_map):
         error_msg = "The length of regularization should\
                      be the same as the number of layers."
         raise IHVPUsageError(error_msg)
