@@ -28,6 +28,9 @@ pip install dattri[all]
 > [!NOTE]
 > It's highly recommended to use a device support CUDA to run `dattri`, especially for moderately large or larger models or datasets. And it's required to have CUDA if you want to install the full version `dattri`.
 
+> [!NOTE]
+> If you are using `dattri[all]`, please use `pip<23` and `torch<2.3` due to some known issue of `fast_jl` library.
+
 ### Apply Data Attribution methods on PyTorch Models
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
