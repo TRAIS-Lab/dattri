@@ -12,3 +12,7 @@ Attributors
     :members:
     :undoc-members:
     :show-inheritance:
+.. autoclass:: dattri.algorithm.rps.RPSAttributor
+    :members:
+    :undoc-members:
+    :show-inheritance:
