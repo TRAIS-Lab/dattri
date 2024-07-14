@@ -16,7 +16,7 @@ from dattri.func.utils import flatten_func, flatten_params
 
 
 class AttributionTask:
-    """The abstraction of the abstraction task."""
+    """The abstraction of the attribution task information."""
 
     def __init__(
         self,
@@ -33,7 +33,7 @@ class AttributionTask:
 
         Args:
             target_func (Callable): The target function to be attributed.
-                The function can be quite flexible in terms of what is calculate,
+                The function can be quite flexible in terms of what is calculated,
                 but it should take the parameters and the data as input. Other than
                 that, the forwarding of model should be in `torch.func` style.
                 A typical example is as follows:
@@ -100,7 +100,13 @@ class AttributionTask:
                 The named parameters of the model.
 
         Returns:
-            List[int]: The map from the parameter to the layer.
+            List[int]: The map from the parameter
+                to the layer. If None, the map will be generated automatically. Normally
+                this should not be stated explicitly by the user, if needed it should
+                be the same length as parameters tuple. For example,
+                for a two layer model, params = (0.weights1, 0.bias, 1.weights, 1.bias),
+                param_layer_map should be [0, 0, 1, 1],resulting in two layers
+                as expected.
         """
         named_parameters_keys = named_parameters.keys()
         param_layer_map = []

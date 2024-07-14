@@ -14,7 +14,7 @@ from dattri.algorithm.influence_function import\
     IFAttributorLiSSA,\
     IFAttributorDataInf,\
     IFAttributorArnoldi
-from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
 from dattri.benchmark.utils import flip_label
 from dattri.benchmark.utils import SubsetSampler
 from dattri.task import AttributionTask
@@ -40,13 +40,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda")
     args = parser.parse_args()
 
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,)),
-        ],
-    )
-    dataset = datasets.MNIST("../data", train=True, download=True, transform=transform)
+    dataset, _ = create_mnist_dataset("./data")
 
     flip_index = get_mnist_indices_and_adjust_labels(dataset)
 

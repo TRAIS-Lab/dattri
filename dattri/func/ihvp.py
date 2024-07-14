@@ -784,6 +784,10 @@ def ihvp_datainf(
         A function that takes a list of tuples of Tensor `x` and a tuple of tensors
         `v`(layer-wise) and returns the approximated IHVP of the approximated Hessian of
         `func` and `v`.
+
+    Raises:
+        IHVPUsageError: If the length of regularization is not the same as the number
+            of layers.
     """
     # TODO: param_layer_map should not be optional.
 
@@ -791,11 +795,17 @@ def ihvp_datainf(
     if regularization is not None and not isinstance(regularization, list):
         regularization = [regularization] * len(param_layer_map)
 
+    if len(regularization) != len(param_layer_map):
+        error_msg = "The length of regularization should\
+                     be the same as the number of layers."
+        raise IHVPUsageError(error_msg)
+
     def _single_datainf_ihvp(
         v: torch.Tensor,
         grad: torch.Tensor,
         regularization: float,
     ) -> torch.Tensor:
+        # TODO: docstring
         coef = (v @ grad) / (regularization + torch.sum(grad**2))
         return (v - coef.reshape(-1, 1) @ grad.reshape(1, -1)) / regularization
 
@@ -803,7 +813,7 @@ def ihvp_datainf(
         x: Tuple[torch.Tensor, ...],
         v: Tuple[torch.Tensor, ...],
     ) -> Tuple[torch.Tensor]:
-        """The IHVP function using CG.
+        """The IHVP function using DataInf.
 
         Args:
             x (Tuple[torch.Tensor, ...]): The function will compute the
@@ -902,6 +912,7 @@ def ihvp_at_x_datainf(
         grad: torch.Tensor,
         regularization: float,
     ) -> torch.Tensor:
+        # TODO: same as the `_single_datainf_ihvp` defined in `ihvp_datainf`.
         coef = (v.T @ grad) / (regularization + torch.sum(grad**2))
         return (v - coef * grad) / regularization
 
@@ -936,6 +947,8 @@ def ihvp_at_x_datainf(
         Returns:
             The IHVP value dictionary, with keys corresponding to layer names.
         """
+        # TODO: seems to be redundant if we have `_ihvp_datainf_func``
+        # some code might be reused.
         ihvps = []
         for layer in range(layer_cnt):
             reg = 0.0 if regularization is None else regularization[layer]

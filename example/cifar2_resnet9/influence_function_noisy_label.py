@@ -38,9 +38,6 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda")
     args = parser.parse_args()
 
-    transform = transforms.Compose([transforms.ToTensor(),
-                                    transforms.Normalize((0.5, 0.5, 0.5),
-                                                         (0.5, 0.5, 0.5))])
     train_dataset, _ = create_cifar2_dataset("./data")
 
     flip_index = get_cifar_indices_and_adjust_labels(train_dataset, range(1000))
