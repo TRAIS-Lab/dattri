@@ -11,7 +11,7 @@ if TYPE_CHECKING:
     from typing import Tuple
 
 import torch
-from scipy.stats import spearmanr
+from scipy.stats import pearsonr, spearmanr
 
 
 def lds(
@@ -98,7 +98,31 @@ def loo_corr(
         torch.Tensor: The LOO correlation metric value. The returned tensor has the
             shape (num_test_samples,).
     """
-    return None
+    gt_values, _ = ground_truth
+    num_test_samples = score.shape[1]
+
+    loo_corr = torch.stack(
+        [
+            torch.tensor(
+                pearsonr(score[:, i], gt_values[:, i]).correlation,
+                dtype=score.dtype,
+            )
+            for i in range(num_test_samples)
+        ],
+        dim=0,
+    )  # shape: (num_test_samples,)
+
+    loo_pval = torch.stack(
+        [
+            torch.tensor(
+                pearsonr(score[:, i], gt_values[:, i]).pvalue,
+                dtype=score.dtype,
+            )
+            for i in range(num_test_samples)
+        ],
+        dim=0,
+    )  # shape: (num_test_samples,)
+    return loo_corr, loo_pval
 
 
 def mislabel_detection_auc(
