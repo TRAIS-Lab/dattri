@@ -545,7 +545,7 @@ class ArnoldiProjector(AbstractProjector):
         feature_dim: int,
         proj_dim: int,
         func: Callable,
-        *x,
+        x: Tuple,
         argnums: int = 0,
         max_iter: int = 100,
         norm_constant: float = 1.0,
@@ -568,7 +568,7 @@ class ArnoldiProjector(AbstractProjector):
             func (Callable):
                 A Python function that takes one or more arguments. Must return a
                 single-element Tensor. The hessian will be calculated on this function.
-            *x:
+            x:
                 List of arguments for `func`.
             argnums (int):
                 An integer default to 0. Specifies which argument of func to compute
@@ -609,7 +609,7 @@ class ArnoldiProjector(AbstractProjector):
         # get hvp func
         self.hvp_at_x_func = hvp_at_x(
             func,
-            x=(*x,),
+            x=(x,),
             argnums=argnums,
             mode=mode,
             regularization=regularization,
@@ -891,7 +891,7 @@ def arnoldi_project(
     feature_dim: int,
     proj_dim: int,
     func: Callable,
-    *x,
+    x: List,
     argnums: int = 0,
     max_iter: int = 100,
     norm_constant: float = 1.0,
@@ -916,7 +916,7 @@ def arnoldi_project(
             Must return a single-element Tensor. The hessian will
             be calculated on this function. The positional arguments to func
             must all be Tensors.
-        *x: List of arguments for `func`.
+        x: List of arguments for `func`.
         argnums (int):
             An integer default to 0. Specifies which argument of func
             to compute hessian with respect to.
