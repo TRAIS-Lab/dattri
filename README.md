@@ -69,7 +69,7 @@ Hessian-vector product (HVP), inverse-Hessian-vector product
 (IHVP) are widely used in data attribution methods. `dattri` provides efficient implementation to these operators by `torch.func`. This example shows how to use the CG implementation of the IHVP implementation.
 
 ```python
-from dattri.func.ihvp import ihvp_cg, ihvp_at_x_cg
+from dattri.func.hessian import ihvp_cg, ihvp_at_x_cg
 
 def f(x, param): # target function
     return torch.sin(x / param).sum()
