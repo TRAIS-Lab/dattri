@@ -42,7 +42,11 @@ def ifvp_explicit(
     Args:
         func (Callable): A function taking one or more arguments and returning
             a single-element Tensor. The FIM will be calculated based on
-            this function.
+            this function. Notably, this function should be negative log-likelihood
+            (e.g., cross-entropy loss) for classification tasks. If you want to
+            calculate the emperial FIM, you should use the groundtruth label for
+            the loss. If you want to calculate the true FIM, you should use the
+            predicted label for the loss.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse FIM with respect to.
         regularization (float): A float default to 0.0. Specifies the regularization
@@ -94,7 +98,11 @@ def ifvp_at_x_explicit(
     Args:
         func (Callable): A function taking one or more arguments and returning
             a single-element Tensor. The FIM will be calculated based on
-            this function.
+            this function. Notably, this function should be negative log-likelihood
+            (e.g., cross-entropy loss) for classification tasks. If you want to
+            calculate the emperial FIM, you should use the groundtruth label for
+            the loss. If you want to calculate the true FIM, you should use the
+            predicted label for the loss.
         *x: List of arguments for `func`.
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse FIM with respect to.
