@@ -17,12 +17,115 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import ClassVar, Generator, List, Optional, Tuple, Union
 
+    from torch import Tensor
+
 
 import warnings
 from functools import wraps
 
 import torch
 from torch.func import grad, vmap
+
+
+def ifvp_explicit(
+    func: Callable,
+    argnums: int,
+    regularization: float = 0.0,
+) -> Callable:
+    """IFVP via explicit FIM calculation.
+
+    IFVP stands for inverse-FIM-vector product. For a given function
+    `func`, this method first calculates the FIM explicitly
+    and then wraps the FIM in a function that uses `torch.linalg.solve` to
+    calculate the IFVP for any given vector.
+
+    Args:
+        func (Callable): A function taking one or more arguments and returning
+            a single-element Tensor. The FIM will be calculated based on
+            this function.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse FIM with respect to.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the FIM. This is useful when the FIM
+            is singular or ill-conditioned. The regularization term is
+            `regularization * I`, where `I` is the identity matrix directly added
+            to the FIM.
+
+    Returns:
+        A function that takes a tuple of Tensor `x` and a vector `v` and returns
+        the product of the FIM of `func` and `v`.
+    """
+    grad_func = grad(func, argnums=argnums)
+
+    def _ifvp_explicit_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
+        """The IFVP function using explicit FIM.
+
+        Args:
+            x (Tuple[torch.Tensor, ...]): The function will computed the
+                inverse FIM with respect to these arguments.
+            v (Tensor): The vector to be produced on the inverse FIM.
+
+        Returns:
+            The IFVP value.
+        """
+        grad_tensor = grad_func(*x)
+        return torch.linalg.solve(
+            grad_tensor @ grad_tensor.T
+            + torch.eye(grad_tensor.shape[0]).to(v.device) * regularization,
+            v.T,
+        ).T
+
+    return _ifvp_explicit_func
+
+
+def ifvp_at_x_explicit(
+    func: Callable,
+    *x,
+    argnums: Union[int, Tuple[int, ...]],
+    regularization: float = 0.0,
+) -> Callable:
+    """IFVP via explicit FIM calculation.
+
+    IFVP stands for inverse-FIM-vector product. For a given function
+    `func`, this method first calculates the FIM explicitly
+    and then wraps the FIM in a function that uses `torch.linalg.solve` to
+    calculate the IFVP for any given vector.
+
+    Args:
+        func (Callable): A function taking one or more arguments and returning
+            a single-element Tensor. The FIM will be calculated based on
+            this function.
+        *x: List of arguments for `func`.
+        argnums (int): An integer default to 0. Specifies which argument of func
+            to compute inverse FIM with respect to.
+        regularization (float): A float default to 0.0. Specifies the regularization
+            term to be added to the FIM. This is useful when the FIM
+            is singular or ill-conditioned. The regularization term is
+            `regularization * I`, where `I` is the identity matrix directly added
+            to the FIM.
+
+    Returns:
+        A function that takes a vector `v` and returns the IFVP of the Hessian
+        of `func` and `v`.
+    """
+    grad_tensor = grad(func, argnums=argnums)(*x)
+    fim = grad_tensor @ grad_tensor.T
+
+    def _ifvp_at_x_explicit_func(v: Tensor) -> Tensor:
+        """The IFVP function using explicit FIM.
+
+        Args:
+            v (Tensor): The vector to be produced on the inverse FIM.
+
+        Returns:
+            The IFVP value.
+        """
+        return torch.linalg.solve(
+            fim + torch.eye(grad_tensor.shape[0]).to(v.device) * regularization,
+            v.T,
+        ).T
+
+    return _ifvp_at_x_explicit_func
 
 
 def ifvp_datainf(
@@ -34,11 +137,11 @@ def ifvp_datainf(
 ) -> Callable:
     """DataInf ifvp algorithm function.
 
-    Standing for the inverse-hessian-vector product, returns a function that,
-    when given vectors, computes the product of inverse-hessian and vector.
+    Standing for the inverse-FIM-vector product, returns a function that,
+    when given vectors, computes the product of inverse-FIM and vector.
 
     DataInf assume the loss to be cross-entropy and thus derive a closed form
-    ifvp without having to approximate the hessian. Implementation for reference:
+    ifvp without having to approximate the FIM. Implementation for reference:
     https://github.com/ykwon0407/DataInf/blob/main/src/influence.py
 
     Args:
@@ -47,7 +150,7 @@ def ifvp_datainf(
             be calculated on this function. Note that datainf expects the loss
             to be cross-entropy.
         argnums (int): An integer default to 0. Specifies which argument of func
-            to compute inverse hessian with respect to.
+            to compute inverse FIM with respect to.
         in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
             batched layer-wise gradients. Example: inputs, weights, labels corresponds
             to (0,None,0).
@@ -100,7 +203,7 @@ def ifvp_datainf(
 
         Args:
             x (Tuple[torch.Tensor, ...]): The function will compute the
-                inverse hessian matrix with respect to these arguments.
+                inverse FIM with respect to these arguments.
             v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
                 which ifvp will becomputed. For example layer-wise gradients
                 of test samples.
@@ -153,11 +256,11 @@ def ifvp_at_x_datainf(
 ) -> Callable:
     """DataInf ifvp algorithm function (with fixed x).
 
-    Standing for the inverse-hessian-vector product, returns a function that,
-    when given vectors, computes the product of inverse-hessian and vector.
+    Standing for the inverse-FIM-vector product, returns a function that,
+    when given vectors, computes the product of inverse-FIM and vector.
 
     DataInf assume the loss to be cross-entropy and thus derive a closed form
-    ifvp without having to approximate the hessian.
+    ifvp without having to approximate the FIM.
 
     Args:
         func (Callable): A Python function that takes one or more arguments.
@@ -165,7 +268,7 @@ def ifvp_at_x_datainf(
             be calculated on this function. Note that datainf expects the loss
             to be cross-entropy.
         argnums (int): An integer default to 0. Specifies which argument of func
-            to compute inverse hessian with respect to.
+            to compute inverse FIM with respect to.
         in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
             batched layer-wise gradients. Example: inputs, weights, labels corresponds
             to (0,None,0).
@@ -590,8 +693,8 @@ def ifvp_at_x_ekfac(
 ) -> Callable:
     """IFVP via EK-FAC algorithm.
 
-    Standing for the inverse-hessian-vector product, returns a function that,
-    when given vectors, computes the product of inverse-hessian and vector.
+    Standing for the inverse-FIM-vector product, returns a function that,
+    when given vectors, computes the product of inverse-FIM and vector.
 
     EK-FAC algorithm provides layer-wise approximation for the ifvp function.
     The samples are estimated based on Gauss-Newton Hessian.
@@ -606,7 +709,7 @@ def ifvp_at_x_ekfac(
                                are irrelevant (e.g. padding tokens).
             t is the number of steps, or sequence length of the input data. If the
             input data are non-sequential, t should be set to 1.
-            The hessian will be estimated on this function.
+            The FIM will be estimated on this function.
         *x: List of arguments for `func`.
         in_dims (Tuple, optional): A tuple with the same shape as *x, indicating
             which dimension should be considered as batch size dimension. Take the
@@ -717,7 +820,7 @@ def ifvp_at_x_ekfac(
 
         Args:
             v (List[List[torch.Tensor]]): A list of tensors to be produced on the
-                inverse hessian matrix, where each element should have the compatible
+                inverse FIM, where each element should have the compatible
                 shape (out_dim, in_dim) with the cached layers in `mlp_cache`.
 
         Returns:
