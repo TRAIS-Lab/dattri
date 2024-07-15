@@ -950,7 +950,7 @@ def arnoldi_project(
         device (torch.device, optional): "cuda" or "cpu".. Defaults to "cpu".
 
     Returns:
-        _type_: _description_
+        A function that applies Arnoldi algorithm on input feature.
     """
     # init arnoldi projector
     projector = ArnoldiProjector(
