@@ -4,6 +4,8 @@ IFVP (inverse FIM-vector product)
 FIM (Fisher Information Matrix)
 
 This module contains:
+- `ifvp_explicit`: IFVP via explicit FIM calculation.
+- `ifvp_at_x_explicit`: IFVP via explicit FIM calculation (with fixed x).
 - `ifvp_datainf`: DataInf ifvp algorithm function.
 - `ifvp_at_x_datainf`: DataInf ifvp algorithm function (with fixed x).
 - `ifvp_at_x_ekfac`: EK-FAC ifvp algorithm function (with fixed x).
