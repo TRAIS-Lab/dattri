@@ -7,11 +7,11 @@ import torch
 from dattri.metrics.metrics import loo_corr
 
 
-class TestLDSFunction(unittest.TestCase):
-    """Test LDS related functions."""
+class TestLOOFunction(unittest.TestCase):
+    """Test LOO related functions."""
 
     def test_loo(self):
-        """Test the lds metric."""
+        """Test the loo_corr metric."""
         # num_test_samples = 2, num_train_samples = 4
         score = torch.tensor(
             [[0.1, 0.4], [0.2, 0.3], [0.3, 0.2], [0.4, 0.1]],
