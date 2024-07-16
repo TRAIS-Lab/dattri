@@ -10,3 +10,5 @@ Benchmark Functions
 .. autofunction:: dattri.metrics.metrics.lds
 .. autofunction:: dattri.metrics.metrics.loo_corr
 .. autofunction:: dattri.metrics.metrics.mislabel_detection_auc
+
+.. autofunction:: dattri.benchmark.load.load_benchmark
