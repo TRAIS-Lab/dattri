@@ -8,7 +8,7 @@ from torchvision import datasets, transforms
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.benchmark.utils import flip_label, SubsetSampler
-from dattri.func.utils import flatten_func
+from dattri.task import AttributionTask
 
 
 def get_mnist_indices_and_adjust_labels(dataset):
@@ -47,7 +47,6 @@ if __name__ == "__main__":
     model.cuda()
     model.eval()
 
-    @flatten_func(model)
     def f(params, image_label_pair):
         image, label = image_label_pair
         image_t = image.unsqueeze(0)
@@ -56,7 +55,6 @@ if __name__ == "__main__":
         yhat = torch.func.functional_call(model, params, image_t)
         return loss(yhat, label_t)
 
-    @flatten_func(model)
     def m(params, image_label_pair):
         image, label = image_label_pair
         image_t = image.unsqueeze(0)
@@ -66,17 +64,21 @@ if __name__ == "__main__":
         p = torch.exp(-loss(yhat, label_t))
         return p
 
-    model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+    task = AttributionTask(target_func=f,
+                           model=model,
+                           checkpoints=model.state_dict())
 
     projector_kwargs = {
         "device": "cuda",
         "use_half_precision": False,
     }
 
-    attributor = TRAKAttributor(f,m,
-                                [model_params],
-                                device=torch.device("cuda"),
-                                projector_kwargs=projector_kwargs)
+    attributor = TRAKAttributor(
+        task=task,
+        correct_probability_func=m,
+        device="cuda",
+        projector_kwargs=projector_kwargs
+    )
 
     attributor.cache(train_loader)
     torch.cuda.reset_peak_memory_stats("cuda")

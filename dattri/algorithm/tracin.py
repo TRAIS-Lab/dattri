@@ -5,16 +5,16 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict
 
 if TYPE_CHECKING:
-    from typing import Callable, List, Optional
+    from typing import Optional
+
+    from dattri.task import AttributionTask
 
 import torch
 from torch import Tensor
-from torch.func import grad, vmap
 from torch.nn.functional import normalize
 from tqdm import tqdm
 
 from dattri.func.random_projection import random_project
-from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
@@ -25,9 +25,7 @@ class TracInAttributor(BaseAttributor):
 
     def __init__(
         self,
-        target_func: Callable,
-        model: torch.nn.Module,
-        checkpoint_list: List[str],
+        task: AttributionTask,
         weight_list: Tensor,
         normalized_grad: bool,
         projector_kwargs: Optional[Dict[str, Any]] = None,
@@ -36,20 +34,8 @@ class TracInAttributor(BaseAttributor):
         """TracIn attributor initialization.
 
         Args:
-            target_func (Callable): The target function to be attributed.
-                The function can be quite flexible, but it should take the parameters
-                and the (data, label) as input. A typical example is as follows:
-                ```python
-                @flatten_func(model)
-                def f(params, image, label):
-                    loss = nn.CrossEntropyLoss()
-                    yhat = torch.func.functional_call(model, params, image)
-                    return loss(yhat, label)
-                ```.
-                This examples calculates the loss of the model on input data-label pair.
-            model (torch.nn.Module): The PyTorch model to be attibuted.
-            checkpoint_list (List[str]): The checkpoints of the model, should be a list
-                of string, indicating the stored model checkpoints' paths.
+            task (AttributionTask): The task to be attributed. Please refer to the
+                `AttributionTask` for more details.
             weight_list (Tensor): The weight used for the "weighted sum". For
                 TracIn/CosIn, this will contain a list of learning rates at each ckpt;
                 for Grad-Dot/Grad-Cos, this will be a list of ones.
@@ -58,9 +44,7 @@ class TracInAttributor(BaseAttributor):
                 projector.
             device (str): The device to run the attributor. Default is cpu.
         """
-        self.target_func = target_func
-        self.model = model
-        self.checkpoint_list = checkpoint_list
+        self.task = task
         self.weight_list = weight_list
         # these are projector kwargs shared by train/test projector
         self.projector_kwargs = projector_kwargs
@@ -71,7 +55,7 @@ class TracInAttributor(BaseAttributor):
         self.device = device
         self.full_train_dataloader = None
         # to get per-sample gradients for a mini-batch of train/test samples
-        self.grad_func = vmap(grad(self.target_func), in_dims=(None, 0))
+        self.grad_func = self.task.get_grad_target_func(in_dims=(None, 0))
 
     def cache(self) -> None:
         """Precompute and cache some values for efficiency."""
@@ -104,7 +88,7 @@ class TracInAttributor(BaseAttributor):
         _check_shuffle(train_dataloader)
 
         # check the length match between checkpoint list and weight list
-        if len(self.checkpoint_list) != len(self.weight_list):
+        if len(self.task.get_checkpoints()) != len(self.weight_list):
             msg = "the length of checkpoints and weights lists don't match."
             raise ValueError(msg)
 
@@ -115,14 +99,11 @@ class TracInAttributor(BaseAttributor):
         )
 
         # iterate over each checkpoint (each ensemble)
-        for ckpt_index, (ckpt, ckpt_weight) in enumerate(
-            zip(self.checkpoint_list, self.weight_list),
+        for ckpt_index, ckpt_weight in zip(
+            range(len(self.task.get_checkpoints())),
+            self.weight_list,
         ):
-            # load checkpoint to the model
-            self.model.load_state_dict(torch.load(ckpt))
-            self.model.eval()
-            # get the model parameter
-            parameters = {k: v.detach() for k, v in self.model.named_parameters()}
+            parameters, _ = self.task.get_param(index=ckpt_index)
 
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
@@ -136,7 +117,7 @@ class TracInAttributor(BaseAttributor):
                     data.to(self.device) for data in train_batch_data_
                 )
                 # get gradient of train
-                grad_t = self.grad_func(flatten_params(parameters), train_batch_data)
+                grad_t = self.grad_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
@@ -165,7 +146,7 @@ class TracInAttributor(BaseAttributor):
                         data.to(self.device) for data in test_batch_data_
                     )
                     # get gradient of test
-                    grad_t = self.grad_func(flatten_params(parameters), test_batch_data)
+                    grad_t = self.grad_func(parameters, test_batch_data)
                     if self.projector_kwargs is not None:
                         # define the projector for this batch of data
                         self.test_random_project = random_project(

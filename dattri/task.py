@@ -59,6 +59,7 @@ class AttributionTask:
 
         """
         self.model = model
+        self.original_target_func = target_func
         self.target_func = flatten_func(self.model)(target_func)
 
         if not isinstance(checkpoints, list):
@@ -72,6 +73,7 @@ class AttributionTask:
 
         # TODO: Make this more general, that is allow customized kwargs.
         self.grad_func = vmap(grad(self.target_func), in_dims=(None, 1))
+        self.grad_func_kwargs = None
 
     def _load_checkpoints(self, index: int) -> None:
         """This method load the checkpoint at the specified index.
@@ -88,6 +90,7 @@ class AttributionTask:
             self.named_parameters = {
                 k: p for k, p in self.model.named_parameters() if p.requires_grad
             }
+        self.model.eval()
 
     @staticmethod
     def _genearte_param_layer_map(
@@ -124,6 +127,7 @@ class AttributionTask:
 
     def get_grad_target_func(
         self,
+        in_dims: Tuple[Union[None, int], ...] = (None, 1),
         layer_name: Optional[Union[str, List[str]]] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the target function.
@@ -131,6 +135,12 @@ class AttributionTask:
         TODO: support partial parameter gradient.
 
         Args:
+            in_dims (Tuple[Union[None, int], ...]): The input dimensions of the target
+                function. This should be a tuple of integers and None. The length of the
+                tuple should be the same as the number of inputs of the target function.
+                If the input is a scalar, the corresponding element should be None.
+                If the input is a tensor, the corresponding element should be the
+                dimension of the tensor.
             layer_name (Optional[Union[str, List[str]]]): This has not been supported.
 
         Returns:
@@ -142,10 +152,15 @@ class AttributionTask:
         if layer_name is not None:
             error_msg = "layer_name has not been implemented yet."
             raise NotImplementedError(error_msg)
+
+        if self.grad_func_kwargs != {"in_dims": in_dims}:
+            self.grad_func = vmap(grad(self.target_func), in_dims=in_dims)
+            self.grad_func_kwargs = {"in_dims": in_dims}
         return self.grad_func
 
     def get_target_func(
         self,
+        flatten: bool = True,
         layer_name: Optional[Union[str, List[str]]] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the target function.
@@ -153,6 +168,7 @@ class AttributionTask:
         TODO: support partial parameter gradient.
 
         Args:
+            flatten (bool): If True, the target function will be flattened.
             layer_name (Optional[Union[str, List[str]]]): This has not been supported.
 
         Returns:
@@ -164,6 +180,8 @@ class AttributionTask:
         if layer_name is not None:
             error_msg = "layer_name has not been implemented yet."
             raise NotImplementedError(error_msg)
+        if not flatten:
+            return self.original_target_func
         return self.target_func
 
     def get_param(
@@ -227,6 +245,22 @@ class AttributionTask:
                 [param.flatten() for param in named_parameters.values()],
             ), self._genearte_param_layer_map(named_parameters)
         return flatten_params(named_parameters), None
+
+    def get_checkpoints(self) -> List[Union[Dict[str, torch.Tensor], str]]:
+        """Return the checkpoints of the model.
+
+        Returns:
+            List[Union[Dict[str, torch.Tensor], str]]: The checkpoints of the task.
+        """
+        return self.checkpoints
+
+    def get_model(self) -> nn.Module:
+        """Return the model of the task.
+
+        Returns:
+            nn.Module: The model of the task.
+        """
+        return self.model
 
     def register_forward_hook(  # noqa:PLR6301
         self,

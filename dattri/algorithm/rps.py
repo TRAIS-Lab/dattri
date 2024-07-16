@@ -5,10 +5,10 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Callable
-
     from torch import Tensor
     from torch.utils.data import DataLoader
+
+    from dattri.task import AttributionTask
 
 import warnings
 
@@ -30,8 +30,7 @@ class RPSAttributor(BaseAttributor):
 
     def __init__(
         self,
-        target_func: Callable,
-        model: torch.nn.Module,
+        task: AttributionTask,
         final_linear_layer_name: str,
         nomralize_preactivate: bool = False,
         l2_strength: float = 0.003,
@@ -41,10 +40,11 @@ class RPSAttributor(BaseAttributor):
         """Representer point selection attributor.
 
         Args:
-            target_func (Callable): The target function to be attributed. The inputs are
-                list of pre-activation values (f_i in the paper) and list of labels.
-                Typical examples are loss functions such as BCELoss and CELoss.
-            model (torch.nn.Module): The model to attribute. Notice that we
+            task (AttributionTask): The task to be attributed. Please refer to the
+                `AttributionTask` for more details. Notably, the target_func is required
+                to have inputs are list of pre-activation values (f_i in the paper) and
+                list of labels. Typical examples are loss functions such as BCELoss
+                and CELoss. We also
                 assume the model to have a final linear layer. RPS will extract
                 the final linear layer's input and its parameter. The parameteres will
                 be used for the initialization of the l2-finetuning. That is, model
@@ -58,8 +58,9 @@ class RPSAttributor(BaseAttributor):
             epoch (int): The number of epoch used to fine-tune the last layer.
             device (str): The device to run the attributor. Default is cpu.
         """
-        self.target_func = target_func
-        self.model = model
+        self.task = task
+        self.target_func = task.get_target_func(flatten=False)
+        self.model = task.get_model()
         self.final_linear_layer_name = final_linear_layer_name
         self.nomralize_preactivate = nomralize_preactivate
         self.l2_strength = l2_strength
