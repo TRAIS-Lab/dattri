@@ -10,12 +10,15 @@ if TYPE_CHECKING:
 import os
 import pathlib
 import zipfile
+from functools import partial
 from io import BytesIO
 
 import requests
 import torch
 
 from dattri.benchmark.datasets.mnist import (
+    create_lr_model,
+    create_mlp_model,
     create_mnist_dataset,
     loss_mnist_lr,
     loss_mnist_mlp,
@@ -64,6 +67,11 @@ LOSS_MAP = {
 TRAIN_FUNC_MAP = {
     "mnist_mlp": train_mnist_mlp,
     "mnist_lr": train_mnist_lr,
+}
+
+MODEL_MAP = {
+    "mnist_mlp": partial(create_mlp_model, "mnist"),
+    "mnist_lr": partial(create_lr_model, "mnist"),
 }
 
 
@@ -143,6 +151,7 @@ def load_benchmark(
 
             The first dictionary contains the attribution inputs,
             the items are listed as following.
+            - "model": The model instance for the benchmark setting.
             - "models_full": The pre-trained model checkpoints' path with
                 full train dataset, presented as a list of path(str). The
                 models are trained with same hyperparameters and dataset while
@@ -245,6 +254,7 @@ def load_benchmark(
     )
 
     return {
+        "model": MODEL_MAP[identifier](),
         "models_full": models_full_list,
         "models_half": models_half_list,
         "train_dataset": train_dataset,
