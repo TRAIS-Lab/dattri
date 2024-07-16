@@ -54,7 +54,16 @@ class TestTRAK:
             "device": "cpu",
             "use_half_precision": False,
         }
-        task = AttributionTask(target_func=f, model=model, checkpoints=checkpoint_list)
+        task = AttributionTask(
+            target_func=f,
+            model=model,
+            checkpoints=["ckpts/model_1.pt"],
+        )
+        task_m = AttributionTask(
+            target_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
 
         # trak w/o cache
         attributor = TRAKAttributor(
@@ -69,10 +78,8 @@ class TestTRAK:
 
         # trak w/ cache
         attributor = TRAKAttributor(
-            f,
-            m,
-            model=model,
-            checkpoint_list=["ckpts/model_1.pt"],
+            task=task,
+            correct_probability_func=m,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
@@ -83,10 +90,8 @@ class TestTRAK:
 
         # trak w/ multiple model params
         attributor = TRAKAttributor(
-            f,
-            m,
-            model=model,
-            checkpoint_list=checkpoint_list,
+            task=task_m,
+            correct_probability_func=m,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
