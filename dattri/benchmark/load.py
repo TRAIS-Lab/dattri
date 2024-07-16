@@ -177,6 +177,9 @@ def load_benchmark(
             the items are listed as following. It can be directly sent to the
             metrics function defined in `dattri.metrics`. Notably, the groundtruth
             depends on the `metric` parameter user stated.
+
+    Raises:
+        ValueError: If the model or dataset is not supported.
     """
     if model not in SUPPORTED_MODELS:
         error_msg = f"Model {model} is not supported,\
