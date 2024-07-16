@@ -162,7 +162,8 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Low-level Utility Functions:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="hvp_ihvp.html">HVP/IHVP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="hessian.html">Hessian, HVP, and IHVP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="fisher.html">Fisher Information Matrix (FIM) / IFVP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="random_projection.html">Random Projection</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dropout.html">Dropout Ensemble</a></li>
 </ul>
@@ -446,7 +447,7 @@ the transformation function.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.transformation_on_query">
 <span class="sig-name descname"><span class="pre">transformation_on_query</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">query</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.transformation_on_query" title="Link to this definition">¶</a></dt>
-<dd><p>Calculate the transformation on the query through ihvp_datainf.</p>
+<dd><p>Calculate the transformation on the query through ifvp_datainf.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">

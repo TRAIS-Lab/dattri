@@ -160,7 +160,8 @@
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Low-level Utility Functions:</span></p>
 <ul>
-<li class="toctree-l1"><a class="reference internal" href="api/hvp_ihvp.html">HVP/IHVP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/hessian.html">Hessian, HVP, and IHVP</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/fisher.html">Fisher Information Matrix (FIM) / IFVP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/random_projection.html">Random Projection</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/dropout.html">Dropout Ensemble</a></li>
 </ul>
@@ -316,11 +317,11 @@
   <h2>H</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.hvp">hvp() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.hvp">hvp() (in module dattri.func.hessian)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.hvp_at_x">hvp_at_x() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.hvp_at_x">hvp_at_x() (in module dattri.func.hessian)</a>
 </li>
     </ul></td>
   </tr></table>
@@ -340,29 +341,33 @@
 </li>
         <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributorLiSSA">IFAttributorLiSSA (class in dattri.algorithm.influence_function)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_arnoldi">ihvp_arnoldi() (in module dattri.func.ihvp)</a>
+        <li><a href="api/fisher.html#dattri.func.fisher.ifvp_at_x_datainf">ifvp_at_x_datainf() (in module dattri.func.fisher)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_at_x_arnoldi">ihvp_at_x_arnoldi() (in module dattri.func.ihvp)</a>
+        <li><a href="api/fisher.html#dattri.func.fisher.ifvp_at_x_ekfac">ifvp_at_x_ekfac() (in module dattri.func.fisher)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_at_x_cg">ihvp_at_x_cg() (in module dattri.func.ihvp)</a>
+        <li><a href="api/fisher.html#dattri.func.fisher.ifvp_at_x_explicit">ifvp_at_x_explicit() (in module dattri.func.fisher)</a>
+</li>
+        <li><a href="api/fisher.html#dattri.func.fisher.ifvp_datainf">ifvp_datainf() (in module dattri.func.fisher)</a>
 </li>
     </ul></td>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_at_x_datainf">ihvp_at_x_datainf() (in module dattri.func.ihvp)</a>
+        <li><a href="api/fisher.html#dattri.func.fisher.ifvp_explicit">ifvp_explicit() (in module dattri.func.fisher)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_at_x_ekfac">ihvp_at_x_ekfac() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_arnoldi">ihvp_arnoldi() (in module dattri.func.hessian)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_at_x_explicit">ihvp_at_x_explicit() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_at_x_arnoldi">ihvp_at_x_arnoldi() (in module dattri.func.hessian)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_at_x_lissa">ihvp_at_x_lissa() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_at_x_cg">ihvp_at_x_cg() (in module dattri.func.hessian)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_cg">ihvp_cg() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_at_x_explicit">ihvp_at_x_explicit() (in module dattri.func.hessian)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_datainf">ihvp_datainf() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_at_x_lissa">ihvp_at_x_lissa() (in module dattri.func.hessian)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_explicit">ihvp_explicit() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_cg">ihvp_cg() (in module dattri.func.hessian)</a>
 </li>
-        <li><a href="api/hvp_ihvp.html#dattri.func.ihvp.ihvp_lissa">ihvp_lissa() (in module dattri.func.ihvp)</a>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_explicit">ihvp_explicit() (in module dattri.func.hessian)</a>
+</li>
+        <li><a href="api/hessian.html#dattri.func.hessian.ihvp_lissa">ihvp_lissa() (in module dattri.func.hessian)</a>
 </li>
     </ul></td>
   </tr></table>

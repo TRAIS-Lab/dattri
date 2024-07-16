@@ -27,7 +27,8 @@
    :maxdepth: 1
    :caption: Low-level Utility Functions:
 
-   api/hvp_ihvp.rst
+   api/hessian.rst
+   api/fisher.rst
    api/random_projection.rst
    api/dropout.rst
 
