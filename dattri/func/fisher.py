@@ -6,9 +6,9 @@ FIM (Fisher Information Matrix)
 This module contains:
 - `ifvp_explicit`: IFVP via explicit FIM calculation.
 - `ifvp_at_x_explicit`: IFVP via explicit FIM calculation (with fixed x).
-- `ifvp_datainf`: DataInf ifvp algorithm function.
-- `ifvp_at_x_datainf`: DataInf ifvp algorithm function (with fixed x).
-- `ifvp_at_x_ekfac`: EK-FAC ifvp algorithm function (with fixed x).
+- `ifvp_datainf`: DataInf IFVP algorithm function.
+- `ifvp_at_x_datainf`: DataInf IFVP algorithm function (with fixed x).
+- `ifvp_at_x_ekfac`: EK-FAC IFVP algorithm function (with fixed x).
 """
 
 from __future__ import annotations
@@ -31,7 +31,7 @@ from torch.func import grad, vmap
 
 def ifvp_explicit(
     func: Callable,
-    argnums: int,
+    argnums: int = 0,
     regularization: float = 0.0,
 ) -> Callable:
     """IFVP via explicit FIM calculation.
@@ -87,7 +87,7 @@ def ifvp_explicit(
 def ifvp_at_x_explicit(
     func: Callable,
     *x,
-    argnums: Union[int, Tuple[int, ...]],
+    argnums: Union[int, Tuple[int, ...]] = 0,
     regularization: float = 0.0,
 ) -> Callable:
     """IFVP via explicit FIM calculation.
@@ -145,13 +145,13 @@ def ifvp_datainf(
     regularization: Optional[Union[float, List[float]]] = None,
     param_layer_map: Optional[List[int]] = None,
 ) -> Callable:
-    """DataInf ifvp algorithm function.
+    """DataInf IFVP algorithm function.
 
     Standing for the inverse-FIM-vector product, returns a function that,
     when given vectors, computes the product of inverse-FIM and vector.
 
     DataInf assume the loss to be cross-entropy and thus derive a closed form
-    ifvp without having to approximate the FIM. Implementation for reference:
+    IFVP without having to approximate the FIM. Implementation for reference:
     https://github.com/ykwon0407/DataInf/blob/main/src/influence.py
 
     Args:
@@ -215,7 +215,7 @@ def ifvp_datainf(
             x (Tuple[torch.Tensor, ...]): The function will compute the
                 inverse FIM with respect to these arguments.
             v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
-                which ifvp will becomputed. For example layer-wise gradients
+                which IFVP will becomputed. For example layer-wise gradients
                 of test samples.
 
         Returns:
@@ -264,13 +264,13 @@ def ifvp_at_x_datainf(
     *x,
     param_layer_map: Optional[List[int]] = None,
 ) -> Callable:
-    """DataInf ifvp algorithm function (with fixed x).
+    """DataInf IFVP algorithm function (with fixed x).
 
     Standing for the inverse-FIM-vector product, returns a function that,
     when given vectors, computes the product of inverse-FIM and vector.
 
     DataInf assume the loss to be cross-entropy and thus derive a closed form
-    ifvp without having to approximate the FIM.
+    IFVP without having to approximate the FIM.
 
     Args:
         func (Callable): A Python function that takes one or more arguments.
@@ -337,7 +337,7 @@ def ifvp_at_x_datainf(
 
         Args:
             v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
-                which ifvp will becomputed. For example layer-wise gradients
+                which IFVP will becomputed. For example layer-wise gradients
                 of test samples.
 
         Returns:
@@ -554,7 +554,7 @@ def _estimate_covariance(
     total_samples: int,
     mask: torch.Tensor,
 ) -> List[List[Tuple[torch.Tensor]]]:
-    """Estimate the 'covariance' matrices S and A in EK-FAC ifvp.
+    """Estimate the 'covariance' matrices S and A in EK-FAC IFVP.
 
     Args:
         curr_estimate (List[List[Tuple[torch.Tensor]]]): A list of lists of tuples
@@ -564,7 +564,7 @@ def _estimate_covariance(
         total_samples (int): An integer indicating the number of total valid
             samples in the current batch.
         mask (torch.Tensor): A tensor of shape (batch_size, t), where 1's
-            indicate that the ifvp will be estimated on these input positions and
+            indicate that the IFVP will be estimated on these input positions and
             0's indicate that these positions are irrelevant (e.g. padding tokens).
 
     Returns:
@@ -608,7 +608,7 @@ def _estimate_lambda(
     mask: torch.Tensor,
     max_steps_for_vec: int = 10,
 ) -> List[List[torch.Tensor]]:
-    """Estimate the corrected eigenvalues in EK-FAC ifvp.
+    """Estimate the corrected eigenvalues in EK-FAC IFVP.
 
     Args:
         curr_estimate (List[List[torch.Tensor]]): A list of lists of tensors,
@@ -623,7 +623,7 @@ def _estimate_lambda(
         total_samples (int): An integer indicating the number of total valid
             samples in the current batch.
         mask (torch.Tensor): A tensor of shape (batch_size, t), where 1's
-            indicate that the ifvp will be estimated on these input positions and
+            indicate that the IFVP will be estimated on these input positions and
             0's indicate that these positions are irrelevant (e.g. padding tokens).
             t is the number of steps, or sequence length of the input data. If the
             input data are non-sequential, t should be set to 1.
@@ -706,7 +706,7 @@ def ifvp_at_x_ekfac(
     Standing for the inverse-FIM-vector product, returns a function that,
     when given vectors, computes the product of inverse-FIM and vector.
 
-    EK-FAC algorithm provides layer-wise approximation for the ifvp function.
+    EK-FAC algorithm provides layer-wise approximation for the IFVP function.
     The samples are estimated based on Gauss-Newton Hessian.
 
     Args:
@@ -714,7 +714,7 @@ def ifvp_at_x_ekfac(
             Must return the following,
             - losses: a tensor of shape (batch_size,).
             - mask (optional): a tensor of shape (batch_size, t), where 1's
-                               indicate that the ifvp will be estimated on these
+                               indicate that the IFVP will be estimated on these
                                input positions and 0's indicate that these positions
                                are irrelevant (e.g. padding tokens).
             t is the number of steps, or sequence length of the input data. If the
@@ -732,7 +732,7 @@ def ifvp_at_x_ekfac(
         mlp_cache (Union[MLPCache, List[MLPCache]]): A single or list of registered
             caches, used to record the input and hidden vectors as well as their
             relevant gradients during the forward and backward calls of `func`.
-        damping: Damping factor used for non-convexity in EK-FAC ifvp calculation.
+        damping: Damping factor used for non-convexity in EK-FAC IFVP calculation.
 
     Returns:
         A function that takes  a tuple of Tensor `x` and a nested structure of
@@ -852,4 +852,4 @@ def ifvp_at_x_ekfac(
 
 
 class IFVPUsageError(Exception):
-    """The usage exception class for ifvp module."""
+    """The usage exception class for IFVP module."""

@@ -7,12 +7,12 @@ This module contains:
 - `hvp`: Calculate the HVP of a function.
 - `hvp_at_x`: Calculate the HVP of a function with fixed x.
 - `ihvp_at_x_explicit`: IHVP via explicit Hessian calculation.
-- `ihvp_cg`: Conjugate Gradient Descent ihvp algorithm function.
-- `ihvp_at_x_cg`: Conjugate Gradient Descent ihvp algorithm function with fixed x.
-- `ihvp_arnoldi`: Arnoldi Iteration ihvp algorithm function.
-- `ihvp_at_x_arnoldi`: Arnoldi Iteration ihvp algorithm function with fixed x.
-- `ihvp_lissa`: Lissa algorithm ihvp function.
-- `ihvp_at_x_lissa`: Lissa algorithm ihvp function with fixed x.
+- `ihvp_cg`: Conjugate Gradient Descent IHVP algorithm function.
+- `ihvp_at_x_cg`: Conjugate Gradient Descent IHVP algorithm function with fixed x.
+- `ihvp_arnoldi`: Arnoldi Iteration IHVP algorithm function.
+- `ihvp_at_x_arnoldi`: Arnoldi Iteration IHVP algorithm function with fixed x.
+- `ihvp_lissa`: Lissa algorithm IHVP function.
+- `ihvp_at_x_lissa`: Lissa algorithm IHVP function with fixed x.
 """
 
 from __future__ import annotations
@@ -404,7 +404,7 @@ def ihvp_at_x_cg(
     mode: str = "rev-rev",
     regularization: float = 0.0,
 ) -> Callable:
-    """Conjugate Gradient Descent ihvp algorithm function (with fixed x).
+    """Conjugate Gradient Descent IHVP algorithm function (with fixed x).
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -420,7 +420,7 @@ def ihvp_at_x_cg(
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         max_iter (int): An integer default 10. Specifies the maximum iteration
-            to calculate the ihvp through Conjugate Gradient Descent.
+            to calculate the IHVP through Conjugate Gradient Descent.
         tol (float): A float default to 1e-7. Specifies the break condition that
             decide if the algorithm has converged. If the torch.norm of residual
             is less than tol, then the algorithm is truncated.
@@ -498,7 +498,7 @@ def ihvp_arnoldi(
     mode: str = "rev-fwd",
     regularization: float = 0.0,
 ) -> Callable:
-    """Arnoldi Iteration ihvp algorithm function.
+    """Arnoldi Iteration IHVP algorithm function.
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -513,7 +513,7 @@ def ihvp_arnoldi(
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         max_iter (int): An integer default 100. Specifies the maximum iteration
-            to calculate the ihvp through Arnoldi Iteration.
+            to calculate the IHVP through Arnoldi Iteration.
         tol (float): A float default to 1e-7. Specifies the break condition that
             decide if the algorithm has converged. If the torch.norm of current
             basis vector is less than tol, then the arnoldi_iter algorithm is truncated.
@@ -569,7 +569,7 @@ def ihvp_at_x_arnoldi(
     mode: str = "rev-fwd",
     regularization: float = 0.0,
 ) -> Callable:
-    """Arnoldi Iteration ihvp algorithm function (with fixed x).
+    """Arnoldi Iteration IHVP algorithm function (with fixed x).
 
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
@@ -586,7 +586,7 @@ def ihvp_at_x_arnoldi(
         argnums (int): An integer default to 0. Specifies which argument of func
             to compute inverse hessian with respect to.
         max_iter (int): An integer default to 100. Specifies the maximum iteration
-            to calculate the ihvp through Arnoldi Iteration.
+            to calculate the IHVP through Arnoldi Iteration.
         top_k (int): An integer default to 100. Specifies how many eigenvalues and
             eigenvectors to distill.
         norm_constant (float): A float default to 1.0. Specifies a constant value
@@ -843,7 +843,7 @@ def ihvp_lissa(
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
 
-    LiSSA algorithm approximates the ihvp function by averaging multiple samples.
+    LiSSA algorithm approximates the IHVP function by averaging multiple samples.
     The samples are estimated by recursion based on Taylor expansion.
 
     Args:
@@ -857,9 +857,9 @@ def ihvp_lissa(
         num_repeat (int): An integer default to 1. Specifies the number of samples
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
-            recursions used to estimate each ihvp sample.
-        damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
-        scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
+            recursions used to estimate each IHVP sample.
+        damping (int): Damping factor used for non-convexity in LiSSA IHVP calculation.
+        scaling (int): Scaling factor used for convergence in LiSSA IHVP calculation.
         collate_fn (Optional[Callable]): A function to collate the input data to fit
             the input of `func`. If None, the input data will be directly passed to
             `func`. This is useful when `func` has some nested input structure.
@@ -941,7 +941,7 @@ def ihvp_at_x_lissa(
     Standing for the inverse-hessian-vector product, returns a function that,
     when given vectors, computes the product of inverse-hessian and vector.
 
-    LiSSA algorithm approximates the ihvp function by averaging multiple samples.
+    LiSSA algorithm approximates the IHVP function by averaging multiple samples.
     The samples are estimated by recursion based on Taylor expansion.
 
     Args:
@@ -959,9 +959,9 @@ def ihvp_at_x_lissa(
         num_repeat (int): An integer default to 1. Specifies the number of samples
             of the hvp approximation to average on.
         recursion_depth (int): A integer default to 5000. Specifies the number of
-            recursions used to estimate each ihvp sample.
-        damping (int): Damping factor used for non-convexity in LiSSA ihvp calculation.
-        scaling (int): Scaling factor used for convergence in LiSSA ihvp calculation.
+            recursions used to estimate each IHVP sample.
+        damping (int): Damping factor used for non-convexity in LiSSA IHVP calculation.
+        scaling (int): Scaling factor used for convergence in LiSSA IHVP calculation.
         collate_fn (Optional[Callable]): A function to collate the input data to fit
             the input of `func`. If None, the input data will be directly passed to
             `func`. This is useful when `func` has some nested input structure.
@@ -1003,4 +1003,4 @@ def ihvp_at_x_lissa(
 
 
 class IHVPUsageError(Exception):
-    """The usage exception class for ihvp module."""
+    """The usage exception class for IHVP module."""
