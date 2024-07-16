@@ -312,7 +312,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        from dattri.func.ihvp import ihvp_explicit
+        from dattri.func.hessian import ihvp_explicit
 
         self.ihvp_func = ihvp_explicit(
             partial(self.task.get_target_func(), data_target_pair=train_data),
@@ -351,7 +351,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        from dattri.func.ihvp import ihvp_cg
+        from dattri.func.hessian import ihvp_cg
 
         self.ihvp_func = ihvp_cg(
             partial(self.task.get_target_func(), data_target_pair=train_data),
@@ -390,7 +390,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        from dattri.func.ihvp import ihvp_arnoldi
+        from dattri.func.hessian import ihvp_arnoldi
 
         self.ihvp_func = ihvp_arnoldi(
             partial(self.task.get_target_func(), data_target_pair=train_data),
@@ -429,7 +429,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        from dattri.func.ihvp import ihvp_lissa
+        from dattri.func.hessian import ihvp_lissa
 
         self.ihvp_func = ihvp_lissa(
             self.task.get_target_func(),
@@ -471,7 +471,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         query: torch.Tensor,
         **transformation_kwargs,
     ) -> torch.Tensor:
-        """Calculate the transformation on the query through ihvp_datainf.
+        """Calculate the transformation on the query through ifvp_datainf.
 
         Args:
             index (int): The index of the model parameters. This index
@@ -490,11 +490,11 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        from dattri.func.ihvp import ihvp_datainf
+        from dattri.func.fisher import ifvp_datainf
 
         model_params, param_layer_map = self.task.get_param(index, layer_split=True)
 
-        self.ihvp_func = ihvp_datainf(
+        self.ihvp_func = ifvp_datainf(
             self.task.get_target_func(),
             0,
             (None, 0),
