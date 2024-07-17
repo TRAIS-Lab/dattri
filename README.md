@@ -7,7 +7,7 @@
 - Deploy existing data attribution methods to PyTorch models
   - e.g., Influence Function, TracIn, RPS, TRAK, ...
 - Develop new data attribution methods with efficient implementation of low-level utility functions
-  - e.g., HVP/IHVP, random projection, dropout ensembling, ...
+  - e.g., Hessian (HVP/IHVP), Fisher Information Matrix (IFVP), random projection, dropout ensembling, ...
 - Benchmark data attribution methods with standard benchmark settings
   - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
 
@@ -38,25 +38,26 @@ One can apply different data attribution methods on PyTorch Models. One only nee
 2. trained model parameters (e.g., `model_params`)
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
 
-The following is an example to use `Attributor` to apply data attribution to a PyTorch model.
+The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
 ```python
-from dattri.algorithm import IFAttributor, TracInAttributor, TRAKAttributor, RPSAttributor
+from dattri.algorithm import IFAttributorCG
+from dattri.task import AttributionTask
 
-@flatten_func(model) # a decorator that helps simplify user API
 def f(params, data): # an example of target function using CE loss
     x, y = data
     loss = nn.CrossEntropyLoss()
     yhat = torch.func.functional_call(model, params, x)
     return loss(yhat, y)
 
-model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+task = IFAttributorCG(target_func=f,
+                      model=model,
+                      checkpoints=model.state_dict())
 
 attributor = IFAttributor(
-    target_func=f,
-    params=model_params,
-    **attributor_hyperparams # e.g., ihvp solver, ...
-) # same for other attributors: TracInAttributor, TRAKAttributor, RPSAttributor
+    task=task,
+    **attributor_hyperparams # e.g., iter_num
+)
 
 attributor.cache(train_loader) # optional pre-processing to accelerate the attribution
 score = attributor.attribute(train_loader, test_loader)
@@ -69,7 +70,7 @@ Hessian-vector product (HVP), inverse-Hessian-vector product
 (IHVP) are widely used in data attribution methods. `dattri` provides efficient implementation to these operators by `torch.func`. This example shows how to use the CG implementation of the IHVP implementation.
 
 ```python
-from dattri.func.ihvp import ihvp_cg, ihvp_at_x_cg
+from dattri.func.hessian import ihvp_cg, ihvp_at_x_cg
 
 def f(x, param): # target function
     return torch.sin(x / param).sum()
