@@ -14,14 +14,10 @@ from torch import nn
 from dattri.algorithm.influence_function import IFAttributor
 from dattri.algorithm.tracin import TracInAttributor
 from dattri.algorithm.trak import TRAKAttributor
-from dattri.benchmark.datasets.cifar2 import (
-    create_cifar2_dataset,
-    train_cifar2_resnet9,
+from dattri.benchmark.datasets.mnist import (
+    create_mnist_dataset,
 )
-from dattri.benchmark.datasets.cifar2.cifar2_resnet9 import (
-    create_resnet9_model,
-    loss_cifar2_resnet9,
-)
+from dattri.benchmark.datasets.mnist.mnist_lr import create_lr_model, loss_mnist_lr
 from dattri.benchmark.utils import SubsetSampler
 from dattri.func.utils import flatten_func
 from dattri.metrics.metrics import lds
@@ -56,7 +52,9 @@ if __name__ == "__main__":
 
     print(args)
     # create dataset
-    dataset_train, dataset_test = create_cifar2_dataset("./data")
+    dataset_train, dataset_test = create_mnist_dataset(
+        "/home/shared/dattri-dataset/mnist_lds_test/data"
+    )
 
     # the exp size
     train_size = 5000
@@ -83,7 +81,7 @@ if __name__ == "__main__":
         sampler=SubsetSampler(range(test_size)),
     )
 
-    model = create_resnet9_model()
+    model = create_lr_model("mnist")
     model.cuda()
     model.eval()
 
@@ -151,24 +149,20 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
 
             # get retrained models' location
-            # replace by your own retrain path
-            retrain_dir = None
+            retrain_dir = "/home/shared/dattri-dataset/mnist_lds_test/models"
             # get model output and indices
             target_values, indices = calculate_lds_ground_truth(
-                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+                partial(loss_mnist_lr, device="cuda"), retrain_dir, test_loader
             )
-
-            print(score.shape)
-            loo_corr_v = lds(
-                score.cpu().T, (-target_values[lds_eval_size:], indices[lds_eval_size:])
-            )[0]
+            # compute LDS value
+            lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
 
             sum_val = 0
             counter = 0
             for i in range(test_size):
-                if np.isnan(loo_corr_v[i]):
+                if np.isnan(lds_value[i]):
                     continue
-                sum_val += loo_corr_v[i]
+                sum_val += lds_value[i]
                 counter += 1
             print(sum_val, counter)
             if counter == 0:
@@ -182,28 +176,28 @@ if __name__ == "__main__":
 
     if args.method == "TRAK":
         # create model
-        model = create_resnet9_model()
+        model = create_lr_model("mnist")
         model.to("cuda")
 
-        for proj_dim, ensemble in [(512, 1)]:
+        for proj_dim, ensemble in [(512, 1), (512, 10), (512, 50)]:
             print("proj_dim, ensemble", proj_dim, ensemble)
             projector_kwargs = {
                 "proj_dim": proj_dim,
                 "device": "cuda",
             }
-            params = []
+            ckpts = []
 
             # collect retrained models' paths
-            # replace by your own model path
-            model_path = None
             for i in range(ensemble):
-                params.append(model_path + f"/{i}/model_weights_0.pt")
+                ckpts.append(
+                    f"/home/shared/dattri-dataset/mnist_lds_test/models/{i}/model_weights_0.pt"
+                )
 
             attributor = TRAKAttributor(
                 f_0,
                 m,
                 model=model,
-                params=params,
+                checkpoint_list=ckpts,
                 device=torch.device("cuda"),
                 projector_kwargs=projector_kwargs,
             )
@@ -215,15 +209,15 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
 
             # get retrained models' location
-            # replace by your own model path
-            model_path = None
-            retrain_dir = model_path
+            # replace by your own retrain path
+            retrain_dir = None
             # get model output and indices
             target_values, indices = calculate_lds_ground_truth(
-                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+                partial(loss_mnist_lr, device="cuda"), retrain_dir, test_loader
             )
             # compute LDS value
             lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
+
             # compute average LDS
             sum_val = 0
             counter = 0
@@ -245,7 +239,7 @@ if __name__ == "__main__":
 
     if args.method == "TracIn":
         # create model
-        model = create_resnet9_model()
+        model = create_lr_model()
         model.to("cuda")
 
         for ensemble, normalized_grad in [(1, False), (10, False)]:
@@ -285,7 +279,7 @@ if __name__ == "__main__":
             retrain_dir = model_path
             # get model output and indices
             target_values, indices = calculate_lds_ground_truth(
-                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+                partial(loss_mnist_lr, device="cuda"), retrain_dir, test_loader
             )
             # compute LDS value
             lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
@@ -306,7 +300,7 @@ if __name__ == "__main__":
             print("complete\n")
 
     if args.method == "RPS":
-        model = train_cifar2_resnet9(train_loader, device="cuda")
+        model = create_lr_model()
         model.eval()
         model.to("cuda")
         # replace by your own model path
@@ -330,6 +324,7 @@ if __name__ == "__main__":
             print(f"Peak memory usage: {peak_memory} MB")
             end_attribute = time.time()
             print("Attribution time: ", end_attribute - start_attribute)
+            # print(score.shape)
 
             # get retrained models' location
             # replace by your own model path
@@ -337,8 +332,9 @@ if __name__ == "__main__":
             retrain_dir = model_path
             # get model output and indices
             target_values, indices = calculate_lds_ground_truth(
-                partial(loss_cifar2_resnet9, device="cuda"), retrain_dir, test_loader
+                partial(loss_mnist_lr, device="cuda"), retrain_dir, test_loader
             )
+
             # compute LDS value
             lds_value = lds(score.T.cpu(), (-target_values, indices))[0]
 
