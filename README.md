@@ -35,7 +35,7 @@ pip install dattri[all]
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
 1. a target function (e.g., `f`)
-2. trained model parameters (e.g., `model_params`)
+2. trained model checkpoints.
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
 
 The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
@@ -50,11 +50,11 @@ def f(params, data): # an example of target function using CE loss
     yhat = torch.func.functional_call(model, params, x)
     return loss(yhat, y)
 
-task = IFAttributorCG(target_func=f,
-                      model=model,
-                      checkpoints=model.state_dict())
+task = AttributionTask(target_func=f,
+                       model=model,
+                       checkpoints=model.state_dict())
 
-attributor = IFAttributor(
+attributor = IFAttributorCG(
     task=task,
     **attributor_hyperparams # e.g., iter_num
 )
