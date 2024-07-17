@@ -33,6 +33,8 @@ class TestFlipLabel:
         for i in range(label_range):
             label_count = torch.count_nonzero(flipped_label[noise_index] == i)
             theoretical_mean = torch.tensor(test_size * 0.1 / label_range)
-            assert torch.allclose(label_count.float(),
-                                  theoretical_mean,
-                                  atol=z * standard_error)
+            assert torch.allclose(
+                label_count.float(),
+                theoretical_mean,
+                atol=z * standard_error,
+            )
