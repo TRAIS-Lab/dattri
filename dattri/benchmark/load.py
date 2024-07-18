@@ -175,7 +175,8 @@ def load_benchmark(
                 for the algorithm you want to benchmark.
 
             The second tuple contains the ground truth for the benchmark,
-            the items are listed as following. It can be directly sent to the
+            the items are subjected to change for each benchmark settings.
+            It can be directly sent to the
             metrics function defined in `dattri.metrics`. Notably, the groundtruth
             depends on the `metric` parameter user stated.
 
@@ -227,7 +228,7 @@ def load_benchmark(
         / identifier
         / "models_full"
         / f"{i}"
-        / f"model_weights_{i}.pt"
+        / "model_weights_0.pt"
         for i in range(models_full_count)
     ]
     models_half_count = _count_folders(
@@ -239,7 +240,7 @@ def load_benchmark(
         / identifier
         / "models_half"
         / f"{i}"
-        / f"model_weights_{i}.pt"
+        / "model_weights_0.pt"
         for i in range(models_half_count)
     ]
     train_dataset, test_dataset = SUPPORTED_DATASETS[dataset](download_path / "dataset")
