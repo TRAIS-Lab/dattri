@@ -13,7 +13,7 @@ from torch.func import grad, vmap
 from torch.nn.functional import normalize
 from tqdm import tqdm
 
-from dattri.func.random_projection import random_project
+from dattri.func.projection import random_project
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor

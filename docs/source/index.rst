@@ -29,7 +29,7 @@
 
    api/hessian.rst
    api/fisher.rst
-   api/random_projection.rst
+   api/projection.rst
    api/dropout.rst
 
 .. toctree::
