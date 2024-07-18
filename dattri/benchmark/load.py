@@ -25,7 +25,6 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_lr,
     train_mnist_mlp,
 )
-from dattri.benchmark.models import SUPPORTED_MODELS
 from dattri.benchmark.utils import SubsetSampler
 
 REPO_URL = "https://huggingface.co/datasets/trais-lab/dattri-benchmark/resolve/main/"
@@ -183,17 +182,11 @@ def load_benchmark(
     Raises:
         ValueError: If the model or dataset is not supported.
     """
-    if model not in SUPPORTED_MODELS:
-        error_msg = f"Model {model} is not supported,\
-                      please choose from {SUPPORTED_MODELS}."
-        raise ValueError(error_msg)
-
-    if dataset not in SUPPORTED_DATASETS:
-        error_msg = f"Dataset {dataset} is not supported,\
-                      please choose from {SUPPORTED_DATASETS}."
-        raise ValueError(error_msg)
-
     identifier = f"{dataset}_{model}"
+    if identifier not in MODEL_MAP:
+        error_msg = f"The combination of {identifier} is not supported."
+        raise ValueError(error_msg)
+
     url_map = generate_url_map(identifier)
     download_path = pathlib.Path(download_path).expanduser()
 
