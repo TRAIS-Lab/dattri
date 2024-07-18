@@ -158,7 +158,6 @@
 <ul class="current">
 <li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Tasks</a></li>
 <li class="toctree-l1"><a class="reference internal" href="algorithm.html">Attributors</a></li>
-<li class="toctree-l1"><a class="reference internal" href="helper.html">Target Function Helpers</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Low-level Utility Functions:</span></p>
 <ul>
@@ -212,13 +211,35 @@
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>The abstraction of the attribution task information.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.task.AttributionTask.get_checkpoints">
+<span class="sig-name descname"><span class="pre">get_checkpoints</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_checkpoints" title="Link to this definition">¶</a></dt>
+<dd><p>Return the checkpoints of the model.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The checkpoints of the task.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>List[Union[Dict[str, torch.Tensor], str]]</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.task.AttributionTask.get_grad_target_func">
-<span class="sig-name descname"><span class="pre">get_grad_target_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_grad_target_func" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_grad_target_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(None,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_grad_target_func" title="Link to this definition">¶</a></dt>
 <dd><p>Return a function that computes the gradient of the target function.</p>
 <p>TODO: support partial parameter gradient.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>in_dims</strong> (<em>Tuple</em><em>[</em><em>Union</em><em>[</em><em>None</em><em>, </em><em>int</em><em>]</em><em>, </em><em>...</em><em>]</em>) – The input dimensions of the target
+function. This should be a tuple of integers and None. The length of the
+tuple should be the same as the number of inputs of the target function.
+If the input is a scalar, the corresponding element should be None.
+If the input is a tensor, the corresponding element should be the
+dimension of the tensor.</p></li>
+<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The function that computes the gradient of the target function.</p>
@@ -228,6 +249,20 @@
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
 <dd class="field-even"><p><strong>NotImplementedError</strong> – If layer_name is not None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.task.AttributionTask.get_model">
+<span class="sig-name descname"><span class="pre">get_model</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Module</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_model" title="Link to this definition">¶</a></dt>
+<dd><p>Return the model of the task.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p>The model of the task.</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>nn.Module</p>
 </dd>
 </dl>
 </dd></dl>
@@ -275,12 +310,15 @@ is True. Flattened parameters will be a 1-dim tensor.</p>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.task.AttributionTask.get_target_func">
-<span class="sig-name descname"><span class="pre">get_target_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_target_func" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">get_target_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flatten</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_target_func" title="Link to this definition">¶</a></dt>
 <dd><p>Return a function that computes the gradient of the target function.</p>
 <p>TODO: support partial parameter gradient.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>flatten</strong> (<em>bool</em>) – If True, the target function will be flattened.</p></li>
+<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p></li>
+</ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p>The target function itself.</p>
@@ -369,7 +407,9 @@ is True. Flattened parameters will be a 1-dim tensor.</p>
             <ul>
 <li><a class="reference internal" href="#">Tasks</a><ul>
 <li><a class="reference internal" href="#dattri.task.AttributionTask"><code class="docutils literal notranslate"><span class="pre">AttributionTask</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.task.AttributionTask.get_checkpoints"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_checkpoints()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.task.AttributionTask.get_grad_target_func"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_grad_target_func()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.task.AttributionTask.get_model"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_model()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.task.AttributionTask.get_param"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_param()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.task.AttributionTask.get_target_func"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_target_func()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.task.AttributionTask.register_forward_hook"><code class="docutils literal notranslate"><span class="pre">AttributionTask.register_forward_hook()</span></code></a></li>

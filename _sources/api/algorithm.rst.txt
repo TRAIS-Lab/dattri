@@ -4,6 +4,7 @@ Attributors
     :members:
     :undoc-members:
     :show-inheritance:
+    :inherited-members:
 .. autoclass:: dattri.algorithm.tracin.TracInAttributor
     :members:
     :undoc-members:
