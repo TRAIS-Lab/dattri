@@ -26,6 +26,7 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_mlp,
 )
 from dattri.benchmark.models import SUPPORTED_MODELS
+from dattri.benchmark.utils import SubsetSampler
 
 REPO_URL = "https://huggingface.co/datasets/trais-lab/dattri-benchmark/resolve/main/"
 
@@ -257,11 +258,13 @@ def load_benchmark(
     )
 
     return {
-        "model": MODEL_MAP[identifier](),
+        "model": MODEL_MAP[identifier]().eval(),
         "models_full": models_full_list,
         "models_half": models_half_list,
         "train_dataset": train_dataset,
         "test_dataset": test_dataset,
+        "train_sampler": SubsetSampler(range(5000)),
+        "test_sampler": SubsetSampler(range(500)),
         "loss_func": loss_func,
         "target_func": target_func,
         "train_func": train_func,

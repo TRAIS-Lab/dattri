@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Dict, List, Optional, Tuple, Union
 
+from pathlib import PosixPath
+
 import torch
 from torch import nn
 from torch.func import grad, vmap
@@ -80,7 +82,7 @@ class AttributionTask:
             index (int): The index of the checkpoint to be loaded.
         """
         if self.current_checkpoint_idx is None or self.current_checkpoint_idx != index:
-            if isinstance(self.checkpoints[index], str):
+            if isinstance(self.checkpoints[index], (str, PosixPath)):
                 self.model.load_state_dict(torch.load(self.checkpoints[index]))
             else:
                 self.model.load_state_dict(self.checkpoints[index])
