@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.rps import RPSAttributor
 from dattri.benchmark.utils import SubsetSampler
+from dattri.task import AttributionTask
 
 
 class MLP(nn.Module):
@@ -54,10 +55,15 @@ class TestRPS:
         def f(pre_activation_list, label_list):
             return functional.cross_entropy(pre_activation_list, label_list)
 
-        # define the RPS attributor w/ cache
-        attributor = RPSAttributor(
+        task = AttributionTask(
             target_func=f,
             model=model,
+            checkpoints=model.state_dict(),
+        )
+
+        # define the RPS attributor w/ cache
+        attributor = RPSAttributor(
+            task=task,
             final_linear_layer_name="fc3",
             epoch=10,
         )
@@ -67,8 +73,7 @@ class TestRPS:
 
         # define the RPS attributor w/o cache
         attributor = RPSAttributor(
-            target_func=f,
-            model=model,
+            task=task,
             final_linear_layer_name="fc3",
             epoch=100,
         )
@@ -95,10 +100,15 @@ class TestRPS:
                 label_list,
             )
 
-        # define the RPS attributor w/ cache
-        attributor = RPSAttributor(
+        task = AttributionTask(
             target_func=f,
             model=model,
+            checkpoints=model.state_dict(),
+        )
+
+        # define the RPS attributor w/ cache
+        attributor = RPSAttributor(
+            task=task,
             final_linear_layer_name="fc3",
             epoch=10,
         )
@@ -108,8 +118,7 @@ class TestRPS:
 
         # define the RPS attributor w/o cache
         attributor = RPSAttributor(
-            target_func=f,
-            model=model,
+            task=task,
             final_linear_layer_name="fc3",
             epoch=10,
         )

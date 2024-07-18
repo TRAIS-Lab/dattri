@@ -2,13 +2,10 @@
 
 import torch
 from torch import nn
-from torch.utils.data import Sampler
-from torchvision import datasets, transforms
-
 from dattri.algorithm.tracin import TracInAttributor
-from dattri.benchmark.datasets.mnist import train_mnist_lr
-from dattri.benchmark.utils import flip_label
-from dattri.func.utils import flatten_func
+from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
+from dattri.benchmark.utils import flip_label, SubsetSampler
+from dattri.task import AttributionTask
 
 
 def get_mnist_indices_and_adjust_labels(dataset, subset_indice):
@@ -16,25 +13,8 @@ def get_mnist_indices_and_adjust_labels(dataset, subset_indice):
     return flip_index
 
 
-class SubsetSampler(Sampler):
-    def __init__(self, indices):
-        self.indices = indices
-
-    def __iter__(self):
-        return iter(self.indices)
-
-    def __len__(self):
-        return len(self.indices)
-
-
 if __name__ == "__main__":
-    transform = transforms.Compose(
-        [
-            transforms.ToTensor(),
-            transforms.Normalize((0.1307,), (0.3081,)),
-        ],
-    )
-    dataset = datasets.MNIST("../data", train=True, download=True, transform=transform)
+    dataset, _ = create_mnist_dataset("./data")
 
     train_loader = torch.utils.data.DataLoader(
         dataset,
@@ -56,8 +36,6 @@ if __name__ == "__main__":
     model_1.cuda()
     model_1.eval()
 
-
-    @flatten_func(model_1)
     def f(params, image_label_pair):
         image, label = image_label_pair
         image_t = image.unsqueeze(0)
@@ -66,11 +44,15 @@ if __name__ == "__main__":
         yhat = torch.func.functional_call(model_1, params, image_t)
         return loss(yhat, label_t)
 
-    # simulate checkpoints
-    model_params_1 = {k: p for k, p in model_1.named_parameters() if p.requires_grad}
-    attributor = TracInAttributor(
+    task = AttributionTask(
         target_func=f,
-        params_list=[model_params_1],
+        model=model_1,
+        checkpoints=model_1.state_dict(),
+    )
+
+    # simulate checkpoints
+    attributor = TracInAttributor(
+        task=task,
         weight_list=torch.tensor([0.01]),
         normalized_grad=False,
         device=torch.device("cuda"),

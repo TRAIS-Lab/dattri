@@ -6,7 +6,6 @@ from functools import partial
 
 import torch
 from torch import nn
-from torchvision import datasets, transforms
 
 from dattri.algorithm.influence_function import\
     IFAttributorExplicit,\

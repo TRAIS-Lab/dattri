@@ -21,7 +21,6 @@
 
    api/task.rst
    api/algorithm.rst
-   api/helper.rst
 
 .. toctree::
    :maxdepth: 1

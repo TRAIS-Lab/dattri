@@ -13,6 +13,7 @@ from dattri.algorithm.tracin import TracInAttributor
 from dattri.benchmark.datasets.cifar2.cifar2_resnet9 import train_cifar2_resnet9
 from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.func.utils import flatten_func, flatten_params
+from dattri.task import AttributionTask
 
 
 class TestTracInAttributor:
@@ -36,7 +37,6 @@ class TestTracInAttributor:
         # the function directly operate on batches of images/labels
         # not on dataloader anymore to allow vmap usage
         # need to prepare a batch dim in the begining
-        @flatten_func(model)
         def f(params, image_label_pair):
             image, label = image_label_pair
             image_t = image.unsqueeze(0)
@@ -56,6 +56,12 @@ class TestTracInAttributor:
 
         checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
+        task = AttributionTask(
+            target_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
         # train and test always share the same projector
         # checkpoints need to have differnt projectors
         pytest_device = "cpu"
@@ -69,9 +75,7 @@ class TestTracInAttributor:
 
         # test with projector list
         attributor = TracInAttributor(
-            target_func=f,
-            model=model,
-            checkpoint_list=checkpoint_list,
+            task=task,
             weight_list=torch.ones(len(checkpoint_list)),
             normalized_grad=True,
             projector_kwargs=projector_kwargs,
@@ -103,7 +107,6 @@ class TestTracInAttributor:
         # the function directly operate on batches of images/labels
         # not on dataloader anymore to allow vmap usage
         # need to prepare a batch dim in the begining
-        @flatten_func(model)
         def f(params, image_label_pair):
             image, label = image_label_pair
             image_t = image.unsqueeze(0)
@@ -123,12 +126,16 @@ class TestTracInAttributor:
 
         checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
+        task = AttributionTask(
+            target_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
         pytest_device = "cpu"
         # test with no projector list
         attributor = TracInAttributor(
-            target_func=f,
-            model=model,
-            checkpoint_list=checkpoint_list,
+            task=task,
             weight_list=torch.ones(len(checkpoint_list)),
             normalized_grad=True,
             device=torch.device(pytest_device),
