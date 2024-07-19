@@ -16,7 +16,7 @@ import torch
 from torch.func import vmap
 from tqdm import tqdm
 
-from dattri.func.random_projection import random_project
+from dattri.func.projection import random_project
 from dattri.func.utils import _unflatten_params
 
 from .base import BaseAttributor

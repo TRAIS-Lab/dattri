@@ -1,9 +1,15 @@
-"""Random projection matrix construction to project features.
+"""Projection matrix constructions.
 
-This file contains functions to perform random projections (the projection matrices
-are normal or rademacher) on the feature matrix for feature dimension reduction.
-Typically, the feature will correspond to gradient w.r.t model params.
-The code is mainly adapted from https://github.com/MadryLab/trak/blob/main/trak/.
+This file contains functions to (1) construct random projection matrices (entries
+are normal or rademacher random variables) for dimension reduction and (2) perform
+eigen decomposition on the inverse Hessian matrix using Arnoldi iteration and derive
+the corresponding projection matrix.
+
+Typically, the feature will correspond to gradient w.r.t model parameters.
+
+The code is mainly adapted from https://github.com/MadryLab/trak/blob/main/trak/
+and https://github.com/google-research/jax-influence/blob/main/jax_influence/arnoldi.py,
+correspondingly.
 """
 
 from __future__ import annotations
@@ -11,7 +17,7 @@ from __future__ import annotations
 import math
 from abc import ABC, abstractmethod
 from enum import Enum
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Tuple
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,6 +26,8 @@ if TYPE_CHECKING:
 import numpy as np
 import torch
 from torch import Tensor
+
+from dattri.func.hessian import hvp_at_x
 
 from .utils import _vectorize as vectorize
 from .utils import get_parameter_chunk_sizes
@@ -529,7 +537,231 @@ class ChunkedCudaProjector:
         return ch_output[:actual_bs]
 
 
-def make_projector(
+class ArnoldiProjector(AbstractProjector):
+    """Implementation of Arnoldi projector."""
+
+    def __init__(
+        self,
+        feature_dim: int,
+        proj_dim: int,
+        func: Callable,
+        x: Tuple,
+        argnums: int = 0,
+        max_iter: int = 100,
+        norm_constant: float = 1.0,
+        tol: float = 1e-7,
+        mode: str = "rev-fwd",
+        regularization: float = 0.0,
+        seed: int = 0,
+        device: torch.device = "cpu",
+    ) -> None:
+        """Initializes hyperparameters for ArnoldiProjector.
+
+        Args:
+            feature_dim (int):
+                Dimension of the features to be projected. Typically, this equal to
+                the number of parameters in the model (dimension of the gradient
+                vectors).
+            proj_dim (int):
+                Dimension after the projection. This corresponds to the number of top
+                eigenvalues (top-k eigenvalues) to keep for the Hessian approximation.
+            func (Callable):
+                A Python function that takes one or more arguments. Must return a
+                single-element Tensor. The hessian will be calculated on this function.
+            x:
+                List of arguments for `func`.
+            argnums (int):
+                An integer default to 0. Specifies which argument of func to compute
+                inverse hessian with respect to.
+            max_iter (int):
+                An integer default to 100. Specifies the maximum iteration to calculate
+                the ihvp through Arnoldi Iteration.
+            norm_constant (float):
+                A float default to 1.0. Specifies a constant value for the norm of each
+                projection. In some situations (e.g. with a large numbers of parameters)
+                it might be advisable to set norm_constant > 1 to avoid dividing
+                projection components by a large normalization factor.
+            tol (float):
+                A float default to 1e-7. Specifies the break condition that decide
+                if the algorithm has converged. If the torch.norm of current basis
+                vector is less than tol, then the arnoldi_iter algorithm is truncated.
+            mode (str):
+                The auto diff mode, which can have one of the following values:
+                - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                        better compatibility while cost more memory.
+                - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                        forward-mode. It's more memory-efficient but may not be
+                        supported by some operator.
+            regularization (float):
+                A float default to 0.0. Specifies the regularization term to be added to
+                the Hessian vector product, which is useful for the later inverse
+                calculation if the Hessian matrix is singular or ill-conditioned.
+                Specifically, the regularization term is `regularization * v`.
+            seed (int):
+                Random seed for the generation of the random initial vector to build
+                orthonormal basis for the Krylov subspaces.
+            device (Union[str, torch.device]):
+                Device to use. Default to cpu.
+        """
+        self.max_iter = max_iter
+        self.norm_constant = norm_constant
+        self.tol = tol
+        # get hvp func
+        self.hvp_at_x_func = hvp_at_x(
+            func,
+            x=(x,),
+            argnums=argnums,
+            mode=mode,
+            regularization=regularization,
+        )
+
+        self.feature_dim = feature_dim
+        self.proj_dim = proj_dim
+        self.seed = seed
+        self.device = device
+
+        # init eig vals and vecs as None
+        self.eigvals = None
+        self.eigvecs = None
+
+    def _arnoldi_iter(  # noqa: PLR6301
+        self,
+        hvp_func: Callable,
+        start_vec: Tensor,
+        n_iters: int,
+        norm_constant: float,
+        tol: float,
+        device: str = "cpu",
+    ) -> Tuple[Tensor, Tensor]:
+        """Applies Arnoldi's algorithm.
+
+        Args:
+            hvp_func (Callable): A function that computes hvp.
+            start_vec (Tensor): A random normalized vector for initialization.
+            n_iters (int): The number of iteration.
+            norm_constant (float): The norm normalization for each projection.
+            tol (float): A tolerance value used to terminate iteration early.
+            device (str): The device to run the algorithm. Defaults to "cpu".
+
+        Returns:
+            The result of the Arnoldi Iteration, containing a Hessenberg
+            matrix H' approximating the Hessian matrix on its Krylov subspace K,
+            and the projections onto K. If H is Hermitian,
+            H' will be a tridiagonal matrix (up to numerical errors).
+        """
+        n_iters = min(start_vec.shape[0] + 1, n_iters)
+
+        proj = []
+        appr_mat = torch.zeros((n_iters, n_iters - 1)).to(device)
+
+        start_vec /= torch.norm(start_vec)
+        proj.append(start_vec)
+
+        for n in range(n_iters - 1):
+            h_vec = hvp_func(proj[n])
+
+            for j, proj_vec in enumerate(proj):
+                appr_mat[j][n] = torch.dot(h_vec, proj_vec) / norm_constant**2
+                h_vec -= appr_mat[j][n] * proj_vec
+
+            new_norm = torch.norm(h_vec)
+            if new_norm < tol:
+                appr_mat[n + 1][n] = 0
+                proj.append(h_vec)
+                appr_mat = appr_mat[: n + 2, : n + 1]
+                break
+
+            appr_mat[n + 1][n] = new_norm / norm_constant
+            h_vec *= 1.0 / appr_mat[n + 1][n]
+            proj.append(h_vec)
+
+        return appr_mat, torch.stack(proj, dim=0)
+
+    def _distill(  # noqa: PLR6301
+        self,
+        appr_mat: Tensor,
+        proj: Tensor,
+        top_k: int,
+        *,
+        force_hermitian: bool = True,
+    ) -> Tuple[Tensor, Tensor]:
+        """Distills result of Arnoldi iteration to top_k eigenvalues and eigenvectors.
+
+        Args:
+            appr_mat (Tensor): The first result from arnoldi_iter. This will be a
+                Hessenberg matrix H' approximating the Hessian H.
+            proj (Tensor): The second result from arnoldi_iter. This will be the
+                projection vectors onto the Krylov subspace K of the Hessian H.
+            top_k (int): Specfies how many eigenvalues and eigenvectors to distill.
+            force_hermitian (bool): Whether to force the Hessian to Hermitian.
+                Defaults to True.
+
+        Returns:
+            The distilled eigenvalues and eigenvectors.
+        """
+        appr_mat = appr_mat[:-1, :]
+
+        if force_hermitian:
+            appr_mat = torch.tril(appr_mat, diagonal=1)
+            appr_mat = 0.5 * (appr_mat + appr_mat.T)
+            eigvals, eigvecs = torch.linalg.eigh(appr_mat)
+        else:
+            eigvals, eigvecs = torch.linalg.eig(appr_mat)
+
+        idx = torch.argsort(torch.abs(eigvals))
+        eigvals = eigvals[idx]
+        eigvecs = eigvecs[:, idx]
+        reduced_projections = torch.matmul(eigvecs[:, -top_k:].T, proj[:-1])
+
+        return eigvals[-top_k:], reduced_projections
+
+    def get_eigenspace(self) -> None:
+        """Compute the approximate eigenspaces of inverse Hessian."""
+        # set torch seed
+        torch.manual_seed(self.seed)
+        # init a random vector
+        v0 = torch.rand(self.feature_dim).to(self.device)
+
+        # perform arnoldi iteration
+        appr_mat, proj = self._arnoldi_iter(
+            self.hvp_at_x_func,
+            v0,
+            self.max_iter,
+            self.norm_constant,
+            self.tol,
+            self.device,
+        )
+
+        # get top k eigenvalues/vectors and cache
+        # proj dim is the value of k
+        self.eigvals, self.eigvecs = self._distill(appr_mat, proj, self.proj_dim)
+
+    def project(self, features: Union[dict, Tensor]) -> Tensor:
+        """Performs the random projection on the feature matrix.
+
+        Args:
+            features (Union[dict, Tensor]): A batch of features or a dictionary
+                of batch of features.
+
+        Returns:
+            Tensor: The projected features.
+        """
+        # transform to tensors
+        if isinstance(features, dict):
+            features = vectorize(features, device=self.device)
+        # have not compute the eigen space yet
+        if self.eigvals is None or self.eigvecs is None:
+            self.get_eigenspace()
+
+        return (
+            (features @ self.eigvecs.T) * 1.0 / self.eigvals.unsqueeze(0)
+        ) @ self.eigvecs
+
+    def free_memory(self) -> None:
+        """A no-op method."""
+
+
+def make_random_projector(
     param_shape_list: List,
     feature_batch_size: int,
     proj_dim: int,
@@ -539,7 +771,7 @@ def make_projector(
     *,
     use_half_precision: bool = True,
 ) -> Tensor:
-    """Initialize projector by the info of feature about to be projected.
+    """Initialize random projector by the info of feature about to be projected.
 
     Args:
         param_shape_list (List): A list of numbers indicating the total number of
@@ -655,6 +887,108 @@ def make_projector(
     return assigned_projector
 
 
+def arnoldi_project(
+    feature_dim: int,
+    proj_dim: int,
+    func: Callable,
+    x: List,
+    argnums: int = 0,
+    max_iter: int = 100,
+    norm_constant: float = 1.0,
+    tol: float = 1e-7,
+    mode: str = "rev-fwd",
+    regularization: float = 0.0,
+    seed: int = 0,
+    device: torch.device = "cpu",
+) -> Callable:
+    """Apply Anordi algorithm to approximate iHVP.
+
+    Args:
+        feature_dim (int):
+            Dimension of the features to be projected. Typically, this equal to
+            the number of parameters in the model (dimension of the gradient
+            vectors).
+        proj_dim (int):
+            Dimension after the projection. This corresponds to the number of top
+            eigenvalues (top-k eigenvalues) to keep for the Hessian approximation.
+        func (Callable):
+            A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The hessian will
+            be calculated on this function. The positional arguments to func
+            must all be Tensors.
+        x: List of arguments for `func`.
+        argnums (int):
+            An integer default to 0. Specifies which argument of func
+            to compute hessian with respect to.
+        max_iter (int):
+            An integer default 100. Specifies the maximum iteration
+            to calculate the ihvp through Conjugate Gradient Descent.
+        norm_constant (float):
+            A float default to 1.0. Specifies a constant value
+            for the norm of each projection. In some situations (e.g. with a large
+            numbers of parameters) it might be advisable to set norm_constant > 1
+            to avoid dividing projection components by a large normalization factor.
+        tol (float):
+            A float default to 1e-7. Specifies the break condition that
+            decide if the algorithm has converged. If the torch.norm of residual
+            is less than tol, then the algorithm is truncated.
+        mode (str):
+            Defaults to "rev-fwd". The auto diff mode, which can have one of
+            the following values:
+            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                       better compatibility while cost more memory.
+            - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                       forward-mode. It's more memory-efficient but may not be supported
+                       by some operator.
+        regularization (float):
+            A float default to 0.0. Specifies the regularization
+            term to be added to the Hessian vector product, which is useful for the
+            later inverse calculation if the Hessian matrix is singular or
+            ill-conditioned. Specifically, the regularization term is
+            `regularization * v`.
+        seed (int): Random seed used by the projector. Defaults to 0.
+        device (torch.device, optional): "cuda" or "cpu".. Defaults to "cpu".
+
+    Returns:
+        A function that applies Arnoldi algorithm on input feature.
+    """
+    # init arnoldi projector
+    projector = ArnoldiProjector(
+        feature_dim,
+        proj_dim,
+        func,
+        x,
+        argnums,
+        max_iter,
+        norm_constant,
+        tol,
+        mode,
+        regularization,
+        seed,
+        device,
+    )
+
+    def _arnoldi_project_func(
+        feature: Union[Dict[str, Tensor], Tensor],
+    ) -> Tensor:
+        """The projection function using constructed projector.
+
+        Args:
+            feature (Union[Dict[str, Tensor], Tensor]): The feature needs to be
+                projected. This can simple be a tensor with size [feature_batch_size,
+                feature_dim]. Or typically, if the this is gradient of some
+                torch.nn.Module models, it will have the structure similar to the
+                result of model.named_parameters().
+
+        Returns:
+            The projected result of feature, which is a tensor with size
+                [feature_batch_size, proj_dim].
+        """
+        return projector.project(feature)
+
+    return _arnoldi_project_func
+
+
 def random_project(
     feature: Union[Dict[str, Tensor], Tensor],
     feature_batch_size: int,
@@ -696,7 +1030,7 @@ def random_project(
     else:
         param_shape_list = [feature.numel() // feature_batch_size]
 
-    projector = make_projector(
+    projector = make_random_projector(
         param_shape_list=param_shape_list,
         feature_batch_size=feature_batch_size,
         proj_dim=proj_dim,
