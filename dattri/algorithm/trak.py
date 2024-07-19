@@ -63,6 +63,10 @@ class TRAKAttributor(BaseAttributor):
             projector_kwargs (Optional[Dict[str, Any]], optional): The kwargs for the
                 random projection. Defaults to None.
             device (str): The device to run the attributor. Default is cpu.
+
+        Raise:
+            ValueError: If the provided model contains layers with more parameters
+                than `max_chunk_size` of the selected cuda projector.
         """
         self.task = task
         self.norm_scaler = (
