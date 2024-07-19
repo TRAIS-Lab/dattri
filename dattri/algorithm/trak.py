@@ -108,6 +108,21 @@ class TRAKAttributor(BaseAttributor):
                 grad_t = self.grad_func(parameters, train_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
+
+                # Unflatten the gradient tensors
+                grad_t = [
+                    _unflatten_params(g, self.task.model)
+                    for g in grad_t
+                ]
+
+                # Stack the gradient tensors for each layer
+                grad_t = {
+                    key: torch.stack(
+                        [g[key] for g in grad_t],
+                        ).view(len(grad_t), -1)
+                    for key in grad_t[0]
+                }
+
                 grad_p = (
                     random_project(
                         grad_t,
@@ -210,6 +225,20 @@ class TRAKAttributor(BaseAttributor):
                     grad_t = torch.nan_to_num(grad_t)
                     grad_t /= self.norm_scaler
 
+                    # Unflatten the gradient tensors
+                    grad_t = [
+                        _unflatten_params(g, self.task.model)
+                        for g in grad_t
+                    ]
+
+                    # Stack the gradient tensors for each layer
+                    grad_t = {
+                        key: torch.stack(
+                            [g[key] for g in grad_t],
+                            ).view(len(grad_t), -1)
+                        for key in grad_t[0]
+                    }
+
                     grad_p = (
                         random_project(
                             grad_t,
@@ -244,6 +273,20 @@ class TRAKAttributor(BaseAttributor):
                 grad_t = self.grad_func(parameters, test_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
+
+                # Unflatten the gradient tensors
+                grad_t = [
+                    _unflatten_params(g, self.task.model)
+                    for g in grad_t
+                ]
+
+                # Stack the gradient tensors for each layer
+                grad_t = {
+                    key: torch.stack(
+                        [g[key] for g in grad_t],
+                        ).view(len(grad_t), -1)
+                    for key in grad_t[0]
+                }
 
                 grad_p = (
                     random_project(
