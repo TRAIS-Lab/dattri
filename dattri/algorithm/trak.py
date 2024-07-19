@@ -11,7 +11,7 @@ if TYPE_CHECKING:
 
     from dattri.task import AttributionTask
 
-
+import numpy as np
 import torch
 from torch.func import vmap
 from tqdm import tqdm
@@ -71,6 +71,19 @@ class TRAKAttributor(BaseAttributor):
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
             self.projector_kwargs.update(projector_kwargs)
+
+        max_chunk_size = (np.iinfo(np.uint32).max //
+                    self.projector_kwargs["proj_max_batch_size"])
+        for p in self.task.model.parameters():
+            num_params = p.numel()
+            if num_params > max_chunk_size:
+                error_msg = (f"Your model contains layers with at least {num_params} "
+                             "parameters, which is larger than the `max_chunk_size` "
+                             f"{max_chunk_size} of the projector. This is currently "
+                             "not supported. To avoid this error, please try a smaller"
+                             " `proj_max_batch_size` or use cpu projector instead.")
+                raise ValueError(error_msg)
+
         self.device = device
         self.grad_func = self.task.get_grad_target_func(in_dims=(None, 0))
         self.correct_probability_func = vmap(
