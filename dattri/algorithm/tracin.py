@@ -16,7 +16,6 @@ from tqdm import tqdm
 
 from dattri.func.projection import random_project
 
-
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
