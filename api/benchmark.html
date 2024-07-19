@@ -645,6 +645,86 @@ the second is a Tuple with <cite>fpr, tpr, thresholds</cite> just like
 </dl>
 </dd></dl>
 
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.benchmark.load.load_benchmark">
+<span class="sig-prename descclassname"><span class="pre">dattri.benchmark.load.</span></span><span class="sig-name descname"><span class="pre">load_benchmark</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">dataset</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">metric</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">download_path</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'~/.dattri'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">redownload</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dattri.benchmark.load.load_benchmark" title="Link to this definition">¶</a></dt>
+<dd><p>Load benchmark settings for a given model, dataset, and metric.</p>
+<p>Please check <a class="reference external" href="https://huggingface.co/datasets/trais-lab/dattri-benchmark">https://huggingface.co/datasets/trais-lab/dattri-benchmark</a>
+to see the supported benchmark settings (model, dataset).</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>model</strong> (<em>str</em>) – The model name for the benchmark setting.</p></li>
+<li><p><strong>dataset</strong> (<em>str</em>) – The dataset name for the benchmark setting.</p></li>
+<li><p><strong>metric</strong> (<em>str</em>) – The matrics name for the benchmark setting, which would
+affected the ground truth. Currently only “lds” and “loo” are
+supported.</p></li>
+<li><p><strong>download_path</strong> (<em>str</em>) – The path to download the benchmark files.</p></li>
+<li><p><strong>redownload</strong> (<em>bool</em>) – Whether to redownload the benchmark files.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><p>The first dictionary contains the attribution inputs,
+the items are listed as following.
+- “model”: The model instance for the benchmark setting.
+- “models_full”: The pre-trained model checkpoints’ path with</p>
+<blockquote>
+<div><p>full train dataset, presented as a list of path(str). The
+models are trained with same hyperparameters and dataset while
+the only difference is the seed for random initialization.</p>
+</div></blockquote>
+<ul class="simple">
+<li><dl class="simple">
+<dt>”models_half”: The pre-trained model checkpoints’ path with</dt><dd><p>half train dataset, presented as a list of path(str). The
+models are trained with same hyperparameters while
+the difference is the dataset sampling (half sampling) for
+each model checkpoint.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>”train_dataset”: The path to the training dataset with the</dt><dd><p>same order as the groundtruth’s indices.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>”test_dataset”: The path to the testing dataset with the</dt><dd><p>same order as the groundtruth’s indices.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>”loss_func”: The loss function for the model training. Normally</dt><dd><p>speaking, this should be the same as the target function.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>”target_func”: The target function for the data attribution. Normally</dt><dd><p>speaking, this should be the same as the loss function.</p>
+</dd>
+</dl>
+</li>
+<li><dl class="simple">
+<dt>”train_func”: The training function for the model. Normally it’s</dt><dd><p>not required if the pre-trained model checkpoints is enough
+for the algorithm you want to benchmark.</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>The second tuple contains the ground truth for the benchmark,
+the items are subjected to change for each benchmark settings.
+It can be directly sent to the
+metrics function defined in <cite>dattri.metrics</cite>. Notably, the groundtruth
+depends on the <cite>metric</cite> parameter user stated.</p>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tuple[Dict[str, Any], Tuple[torch.Tensor, torch.Tensor]]</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the model or dataset is not supported.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
         </article>
@@ -703,6 +783,7 @@ the second is a Tuple with <cite>fpr, tpr, thresholds</cite> just like
 <li><a class="reference internal" href="#dattri.metrics.metrics.lds"><code class="docutils literal notranslate"><span class="pre">lds()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.metrics.metrics.loo_corr"><code class="docutils literal notranslate"><span class="pre">loo_corr()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.metrics.metrics.mislabel_detection_auc"><code class="docutils literal notranslate"><span class="pre">mislabel_detection_auc()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.benchmark.load.load_benchmark"><code class="docutils literal notranslate"><span class="pre">load_benchmark()</span></code></a></li>
 </ul>
 </li>
 </ul>
