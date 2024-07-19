@@ -7,15 +7,18 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional
+    from typing import Any, Callable, Dict, Optional
+
+    from dattri.task import AttributionTask
 
 
 import torch
-from torch.func import grad, vmap
+from torch.func import vmap
 from tqdm import tqdm
 
+
 from dattri.func.projection import random_project
-from dattri.func.utils import flatten_params
+from dattri.func.utils import _unflatten_params
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
@@ -34,31 +37,16 @@ class TRAKAttributor(BaseAttributor):
 
     def __init__(
         self,
-        target_func: Callable,
+        task: AttributionTask,
         correct_probability_func: Callable,
-        model: torch.nn.Module,
-        checkpoint_list: List[str],
         projector_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
     ) -> None:
         """Initialize the TRAK attributor.
 
         Args:
-            target_func (Callable): The target function to be attributed.
-                The function can be quite flexible in terms of what is calculate,
-                but it should take the parameters and the dataloader as input.
-                A typical example is as follows:
-                ```python
-                    @flatten_func(model)
-                    def f(params, image_label_pair):
-                        image, label = image_label_pair
-                        image_t = image.unsqueeze(0)
-                        label_t = label.unsqueeze(0)
-                        loss = nn.CrossEntropyLoss()
-                        yhat = torch.func.functional_call(model, params, image_t)
-                        return loss(yhat, label_t)
-                ```.
-                This examples calculates the loss of the model on the dataloader.
+            task (AttributionTask): The task to be attributed. Please refer to the
+                `AttributionTask` for more details.
             correct_probability_func (Callable): The function to calculate the
                 probability to correctly predict the label of the input data.
                 A typical example is as follows:
@@ -73,24 +61,19 @@ class TRAKAttributor(BaseAttributor):
                     p = torch.exp(-loss(yhat, label_t))
                     return p
                 ```.
-            model (nn.Module): The PyTorch model to be attributed.
-            checkpoint_list (List[str]): The checkpoints of the model, should be a list
-                of string, indicating the stored model checkpoints' paths.
             projector_kwargs (Optional[Dict[str, Any]], optional): The kwargs for the
                 random projection. Defaults to None.
             device (str): The device to run the attributor. Default is cpu.
         """
-        if not isinstance(checkpoint_list, list):
-            checkpoint_list = [checkpoint_list]
-        self.checkpoint_list = checkpoint_list
-        self.model = model
-        self.norm_scaler = sum(p.numel() for p in self.model.parameters()) ** 0.5
+        self.task = task
+        self.norm_scaler = (
+            sum(p.numel() for p in self.task.get_param(index=0)[0]) ** 0.5
+        )
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
             self.projector_kwargs.update(projector_kwargs)
-        self.target_func = target_func
         self.device = device
-        self.grad_func = vmap(grad(self.target_func), in_dims=(None, 0))
+        self.grad_func = self.task.get_grad_target_func(in_dims=(None, 0))
         self.correct_probability_func = vmap(
             correct_probability_func,
             in_dims=(None, 0),
@@ -112,12 +95,8 @@ class TRAKAttributor(BaseAttributor):
         inv_XTX_XT_list = []
         running_Q = 0
         running_count = 0
-        for ckpt_seed, ckpt in enumerate(self.checkpoint_list):
-            # load checkpoint to the model
-            self.model.load_state_dict(torch.load(ckpt))
-            self.model.eval()
-            # get the model parameter
-            parameters = {k: v.detach() for k, v in self.model.named_parameters()}
+        for ckpt_seed in range(len(self.task.get_checkpoints())):
+            parameters, _ = self.task.get_param(index=ckpt_seed)
 
             full_train_projected_grad = []
             Q = []
@@ -127,7 +106,7 @@ class TRAKAttributor(BaseAttributor):
                 leave=False,
             ):
                 train_batch_data = tuple(data.to(self.device) for data in train_data)
-                grad_t = self.grad_func(flatten_params(parameters), train_batch_data)
+                grad_t = self.grad_func(parameters, train_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
                 grad_p = (
@@ -144,7 +123,7 @@ class TRAKAttributor(BaseAttributor):
                     (
                         torch.ones(train_batch_data[0].shape[0]).to(self.device)
                         - self.correct_probability_func(
-                            flatten_params(parameters),
+                            _unflatten_params(parameters, self.task.get_model()),
                             train_batch_data,
                         ).flatten()
                     )
@@ -211,12 +190,8 @@ class TRAKAttributor(BaseAttributor):
                        did not cache a training loader by .cache(). Please provide a\
                        training loader or cache a training loader."
             raise ValueError(message)
-        for ckpt_seed, ckpt in enumerate(self.checkpoint_list):
-            # load checkpoint to the model
-            self.model.load_state_dict(torch.load(ckpt))
-            self.model.eval()
-            # get the model parameter
-            parameters = {k: v.detach() for k, v in self.model.named_parameters()}
+        for ckpt_seed in range(len(self.task.get_checkpoints())):
+            parameters, _ = self.task.get_param(index=ckpt_seed)
 
             if train_dataloader is not None:
                 train_projected_grad = []
@@ -230,7 +205,7 @@ class TRAKAttributor(BaseAttributor):
                         data.to(self.device) for data in train_data
                     )
                     grad_t = self.grad_func(
-                        flatten_params(parameters),
+                        parameters,
                         train_batch_data,
                     )
                     grad_t = torch.nan_to_num(grad_t)
@@ -250,7 +225,7 @@ class TRAKAttributor(BaseAttributor):
                         (
                             torch.ones(train_batch_data[0].shape[0]).to(self.device)
                             - self.correct_probability_func(
-                                flatten_params(parameters),
+                                _unflatten_params(parameters, self.task.get_model()),
                                 train_batch_data,
                             )
                         )
@@ -267,7 +242,7 @@ class TRAKAttributor(BaseAttributor):
                 leave=False,
             ):
                 test_batch_data = tuple(data.to(self.device) for data in test_data)
-                grad_t = self.grad_func(flatten_params(parameters), test_batch_data)
+                grad_t = self.grad_func(parameters, test_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
 

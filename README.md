@@ -7,7 +7,7 @@
 - Deploy existing data attribution methods to PyTorch models
   - e.g., Influence Function, TracIn, RPS, TRAK, ...
 - Develop new data attribution methods with efficient implementation of low-level utility functions
-  - e.g., HVP/IHVP, random projection, dropout ensembling, ...
+  - e.g., Hessian (HVP/IHVP), Fisher Information Matrix (IFVP), random projection, dropout ensembling, ...
 - Benchmark data attribution methods with standard benchmark settings
   - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
 
@@ -35,28 +35,29 @@ pip install dattri[all]
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
 1. a target function (e.g., `f`)
-2. trained model parameters (e.g., `model_params`)
+2. trained model checkpoints.
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
 
-The following is an example to use `Attributor` to apply data attribution to a PyTorch model.
+The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
 ```python
-from dattri.algorithm import IFAttributor, TracInAttributor, TRAKAttributor, RPSAttributor
+from dattri.algorithm import IFAttributorCG
+from dattri.task import AttributionTask
 
-@flatten_func(model) # a decorator that helps simplify user API
 def f(params, data): # an example of target function using CE loss
     x, y = data
     loss = nn.CrossEntropyLoss()
     yhat = torch.func.functional_call(model, params, x)
     return loss(yhat, y)
 
-model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+task = AttributionTask(target_func=f,
+                       model=model,
+                       checkpoints=model.state_dict())
 
-attributor = IFAttributor(
-    target_func=f,
-    params=model_params,
-    **attributor_hyperparams # e.g., ihvp solver, ...
-) # same for other attributors: TracInAttributor, TRAKAttributor, RPSAttributor
+attributor = IFAttributorCG(
+    task=task,
+    **attributor_hyperparams # e.g., iter_num
+)
 
 attributor.cache(train_loader) # optional pre-processing to accelerate the attribution
 score = attributor.attribute(train_loader, test_loader)
