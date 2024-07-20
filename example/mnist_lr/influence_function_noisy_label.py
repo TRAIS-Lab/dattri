@@ -1,21 +1,21 @@
 """This example shows how to use the IF to detect noisy labels in the MNIST."""
 
-import time
 import argparse
+import time
 from functools import partial
 
 import torch
 from torch import nn
 
-from dattri.algorithm.influence_function import\
-    IFAttributorExplicit,\
-    IFAttributorCG,\
-    IFAttributorLiSSA,\
-    IFAttributorDataInf,\
-    IFAttributorArnoldi
-from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
-from dattri.benchmark.utils import flip_label
-from dattri.benchmark.utils import SubsetSampler
+from dattri.algorithm.influence_function import (
+    IFAttributorArnoldi,
+    IFAttributorCG,
+    IFAttributorDataInf,
+    IFAttributorExplicit,
+    IFAttributorLiSSA,
+)
+from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
+from dattri.benchmark.utils import SubsetSampler, flip_label
 from dattri.task import AttributionTask
 
 ATTRIBUTOR_MAP = {
@@ -23,7 +23,7 @@ ATTRIBUTOR_MAP = {
     "cg": partial(IFAttributorCG, regularization=0.01),
     "lissa": partial(IFAttributorLiSSA, recursion_depth=100),
     "datainf": partial(IFAttributorDataInf, regularization=0.01),
-    "arnoldi": partial(IFAttributorArnoldi, regularization=0.01, max_iter=10)
+    "arnoldi": partial(IFAttributorArnoldi, regularization=0.01, max_iter=10),
 }
 
 

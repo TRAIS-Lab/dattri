@@ -2,9 +2,10 @@
 
 import torch
 from torch import nn
+
 from dattri.algorithm.tracin import TracInAttributor
-from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
-from dattri.benchmark.utils import flip_label, SubsetSampler
+from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
+from dattri.benchmark.utils import SubsetSampler, flip_label
 from dattri.task import AttributionTask
 
 
