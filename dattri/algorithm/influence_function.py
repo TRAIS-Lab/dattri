@@ -98,7 +98,10 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
     """The inner product attributor with Arnoldi inverse hessian transformation."""
 
     def __init__(self, *args, **kwargs) -> None:
-        """Initialize the attributor."""
+        """Initialize the attributor.
+
+        # noqa: DAR101
+        """
         super().__init__(*args, **kwargs)
         # init arnoldi projector
         self.arnoldi_projector = None
