@@ -163,7 +163,7 @@ class AttributionTask:
         flatten: bool = True,
         layer_name: Optional[Union[str, List[str]]] = None,
     ) -> Callable:
-        """Return a function that computes the gradient of the target function.
+        """Return a function that computes the target function.
 
         TODO: support partial parameter gradient.
 

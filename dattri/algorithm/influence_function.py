@@ -97,15 +97,6 @@ class IFAttributorCG(BaseInnerProductAttributor):
 class IFAttributorArnoldi(BaseInnerProductAttributor):
     """The inner product attributor with Arnoldi inverse hessian transformation."""
 
-    def __init__(self, *args, **kwargs) -> None:
-        """Initialize the attributor.
-
-        # noqa: DAR101
-        """
-        super().__init__(*args, **kwargs)
-        # init arnoldi projector
-        self.arnoldi_projector = None
-
     def transformation_on_query(
         self,
         index: int,
@@ -134,7 +125,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         """
         from dattri.func.projection import arnoldi_project
 
-        if self.arnoldi_projector is None:
+        if not hasattr(self, "arnoldi_projector"):
             feature_dim = query.shape[1]
             func = partial(self.task.get_target_func(), data_target_pair=train_data)
             model_params, _ = self.task.get_param(index)
