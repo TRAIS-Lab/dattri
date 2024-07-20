@@ -72,7 +72,8 @@ class TRAKAttributor(BaseAttributor):
         if projector_kwargs is not None:
             self.projector_kwargs.update(projector_kwargs)
         self.device = device
-        self.grad_func = self.task.get_grad_target_func(in_dims=(None, 0))
+        self.grad_target_func = self.task.get_grad_target_func(in_dims=(None, 0))
+        self.grad_loss_func = self.task.get_grad_loss_func(in_dims=(None, 0))
         self.correct_probability_func = vmap(
             correct_probability_func,
             in_dims=(None, 0),
@@ -105,7 +106,7 @@ class TRAKAttributor(BaseAttributor):
                 leave=False,
             ):
                 train_batch_data = tuple(data.to(self.device) for data in train_data)
-                grad_t = self.grad_func(parameters, train_batch_data)
+                grad_t = self.grad_loss_func(parameters, train_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
                 grad_p = (
@@ -203,7 +204,7 @@ class TRAKAttributor(BaseAttributor):
                     train_batch_data = tuple(
                         data.to(self.device) for data in train_data
                     )
-                    grad_t = self.grad_func(
+                    grad_t = self.grad_loss_func(
                         parameters,
                         train_batch_data,
                     )
@@ -241,7 +242,7 @@ class TRAKAttributor(BaseAttributor):
                 leave=False,
             ):
                 test_batch_data = tuple(data.to(self.device) for data in test_data)
-                grad_t = self.grad_func(parameters, test_batch_data)
+                grad_t = self.grad_target_func(parameters, test_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
 

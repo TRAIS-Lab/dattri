@@ -56,7 +56,7 @@ class TestRPS:
             return functional.cross_entropy(pre_activation_list, label_list)
 
         task = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=model.state_dict(),
         )
@@ -101,7 +101,7 @@ class TestRPS:
             )
 
         task = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=model.state_dict(),
         )

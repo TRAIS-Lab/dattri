@@ -55,7 +55,8 @@ class TracInAttributor(BaseAttributor):
         self.device = device
         self.full_train_dataloader = None
         # to get per-sample gradients for a mini-batch of train/test samples
-        self.grad_func = self.task.get_grad_target_func(in_dims=(None, 0))
+        self.grad_target_func = self.task.get_grad_target_func(in_dims=(None, 0))
+        self.grad_loss_func = self.task.get_grad_loss_func(in_dims=(None, 0))
 
     def cache(self) -> None:
         """Precompute and cache some values for efficiency."""
@@ -117,7 +118,7 @@ class TracInAttributor(BaseAttributor):
                     data.to(self.device) for data in train_batch_data_
                 )
                 # get gradient of train
-                grad_t = self.grad_func(parameters, train_batch_data)
+                grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
@@ -146,7 +147,7 @@ class TracInAttributor(BaseAttributor):
                         data.to(self.device) for data in test_batch_data_
                     )
                     # get gradient of test
-                    grad_t = self.grad_func(parameters, test_batch_data)
+                    grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.projector_kwargs is not None:
                         # define the projector for this batch of data
                         self.test_random_project = random_project(

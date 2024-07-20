@@ -48,7 +48,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         from dattri.func.hessian import ihvp_explicit
 
         self.ihvp_func = ihvp_explicit(
-            partial(self.task.get_target_func(), data_target_pair=train_data),
+            partial(self.task.get_loss_func(), data_target_pair=train_data),
             **transformation_kwargs,
         )
         model_params, _ = self.task.get_param(index)
@@ -87,7 +87,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
         from dattri.func.hessian import ihvp_cg
 
         self.ihvp_func = ihvp_cg(
-            partial(self.task.get_target_func(), data_target_pair=train_data),
+            partial(self.task.get_loss_func(), data_target_pair=train_data),
             **transformation_kwargs,
         )
         model_params, _ = self.task.get_param(index)
@@ -126,7 +126,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         from dattri.func.hessian import ihvp_arnoldi
 
         self.ihvp_func = ihvp_arnoldi(
-            partial(self.task.get_target_func(), data_target_pair=train_data),
+            partial(self.task.get_loss_func(), data_target_pair=train_data),
             **transformation_kwargs,
         )
         model_params, _ = self.task.get_param(index)
@@ -165,7 +165,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         from dattri.func.hessian import ihvp_lissa
 
         self.ihvp_func = ihvp_lissa(
-            self.task.get_target_func(),
+            self.task.get_loss_func(),
             collate_fn=IFAttributorLiSSA.lissa_collate_fn,
             **transformation_kwargs,
         )
@@ -228,7 +228,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         model_params, param_layer_map = self.task.get_param(index, layer_split=True)
 
         self.ihvp_func = ifvp_datainf(
-            self.task.get_target_func(),
+            self.task.get_loss_func(),
             0,
             (None, 0),
             param_layer_map=param_layer_map,

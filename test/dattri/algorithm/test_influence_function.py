@@ -40,7 +40,7 @@ class TestInfluenceFunction:
             return loss(yhat, label.long())
 
         task = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=model.state_dict(),
         )
@@ -113,12 +113,12 @@ class TestInfluenceFunction:
             return loss(yhat, label.long())
 
         task = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=model.state_dict(),
         )
         task_m = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=[model.state_dict(), model.state_dict()],
         )

@@ -45,7 +45,7 @@ if __name__ == "__main__":
         return loss(yhat, label_t)
 
     task = AttributionTask(
-        target_func=f,
+        loss_func=f,
         model=model_1,
         checkpoints=model_1.state_dict(),
     )
