@@ -548,7 +548,7 @@ class ChunkedCudaProjector:
         Returns:
             Tensor: The projected features.
         """
-        self.allocate_input()
+        # allocate zero tensor for output
         ch_output = torch.zeros(
             size=(self.feature_batch_size, self.proj_dim),
             device=self.device,
@@ -563,10 +563,12 @@ class ChunkedCudaProjector:
         for chunk_idx, chunk_dim in enumerate(self.dim_per_chunk):
             ch_output.add_(
                 self.projector_per_chunk[chunk_idx].project(
-                    self.ch_input[:, pointer : pointer + chunk_dim].contiguous(),
+                    features[:, pointer : pointer + chunk_dim].contiguous(),
                     ensemble_id=ensemble_id,
                 ),
             )
+
+            pointer += chunk_dim
 
         return ch_output
 
