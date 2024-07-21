@@ -34,7 +34,7 @@ pip install dattri[all]
 ### Apply Data Attribution methods on PyTorch Models
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
-1. loss function used for model training
+1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
 2. trained model checkpoints.
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
 4. (optional) target function to be attributed if it's not the same as loss function.

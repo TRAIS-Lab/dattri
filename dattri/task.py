@@ -39,6 +39,8 @@ class AttributionTask:
                 The function can be quite flexible in terms of what is calculated,
                 but it should take the parameters and the data as input. Other than
                 that, the forwarding of model should be in `torch.func` style.
+                It will be used as target function to be attributed if no other
+                target function provided
                 A typical example is as follows:
                 ```python
                 def f(params, data):
@@ -65,7 +67,6 @@ class AttributionTask:
                 in terms of what is calculated,
                 but it should take the parameters and the data as input. Other than
                 that, the forwarding of model should be in `torch.func` style.
-                A typical example is as follows:
                 A typical example is as follows:
                 ```python
                 def f(params, data):
