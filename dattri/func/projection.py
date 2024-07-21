@@ -544,11 +544,6 @@ class ChunkedCudaProjector:
                 of batch of features.
             ensemble_id (int): A unique ID for this ensemble.
 
-        Raises:
-            ValueError: The number of accumulated #feature dim does not match
-                dim_per_chunk.
-            ValueError: The number of accumulated #feature dim does not match
-                dim_per_chunk.
 
         Returns:
             Tensor: The projected features.
