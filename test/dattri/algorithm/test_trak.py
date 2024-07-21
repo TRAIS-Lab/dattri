@@ -55,12 +55,12 @@ class TestTRAK:
             "use_half_precision": False,
         }
         task = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=["ckpts/model_1.pt"],
         )
         task_m = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=checkpoint_list,
         )

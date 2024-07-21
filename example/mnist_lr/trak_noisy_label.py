@@ -64,7 +64,7 @@ if __name__ == "__main__":
         p = torch.exp(-loss(yhat, label_t))
         return p
 
-    task = AttributionTask(target_func=f,
+    task = AttributionTask(loss_func=f,
                            model=model,
                            checkpoints=model.state_dict())
 

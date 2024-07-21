@@ -18,7 +18,7 @@ def f(params, data_target_pair):
 
 task = AttributionTask(
     model=model_details["model"].cuda(),
-    target_func=f,
+    loss_func=f,
     checkpoints=model_details["models_full"][0]  # here we use one full model
 )
 

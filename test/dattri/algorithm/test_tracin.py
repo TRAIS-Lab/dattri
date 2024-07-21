@@ -57,7 +57,7 @@ class TestTracInAttributor:
         checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         task = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=checkpoint_list,
         )
@@ -127,7 +127,7 @@ class TestTracInAttributor:
         checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
         task = AttributionTask(
-            target_func=f,
+            loss_func=f,
             model=model,
             checkpoints=checkpoint_list,
         )
