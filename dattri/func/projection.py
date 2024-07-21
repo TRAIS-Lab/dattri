@@ -457,7 +457,7 @@ class ChunkedCudaProjector:
         del self.ch_input
         self.input_allocated = False
 
-    def project(self, features: Union[dict, Tensor], ensemble_id: int) -> Tensor:
+    def dict_project(self, features: Union[dict, Tensor], ensemble_id: int) -> Tensor:
         """Performs the random projection on the feature matrix.
 
         Args:
@@ -535,6 +535,45 @@ class ChunkedCudaProjector:
         )
 
         return ch_output[:actual_bs]
+
+    def project(self, features: Union[dict, Tensor], ensemble_id: int) -> Tensor:
+        """Performs the random projection on the feature matrix.
+
+        Args:
+            features (Union[dict, Tensor]): A batch of features or a dictionary
+                of batch of features.
+            ensemble_id (int): A unique ID for this ensemble.
+
+        Raises:
+            ValueError: The number of accumulated #feature dim does not match
+                dim_per_chunk.
+            ValueError: The number of accumulated #feature dim does not match
+                dim_per_chunk.
+
+        Returns:
+            Tensor: The projected features.
+        """
+        self.allocate_input()
+        ch_output = torch.zeros(
+            size=(self.feature_batch_size, self.proj_dim),
+            device=self.device,
+            dtype=self.dtype,
+        )
+        # force the input to be Tensor for now
+        # TODO: support dict input
+        if isinstance(features, dict):
+            features = vectorize(features, device=self.device)
+
+        pointer = 0
+        for chunk_idx, chunk_dim in enumerate(self.dim_per_chunk):
+            ch_output.add_(
+                self.projector_per_chunk[chunk_idx].project(
+                    self.ch_input[:, pointer : pointer + chunk_dim].contiguous(),
+                    ensemble_id=ensemble_id,
+                ),
+            )
+
+        return ch_output[: self.feature_batch_size]
 
 
 class ArnoldiProjector(AbstractProjector):
@@ -832,6 +871,8 @@ def make_random_projector(
         proj_type = ProjectionType.rademacher
 
     if using_cuda_projector:
+        # TODO: make this support dict input
+        # currently, only tensor input will be considered
         max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
             param_shape_list,
             proj_max_batch_size,
