@@ -22,7 +22,7 @@ class AttributionTask:
 
     def __init__(
         self,
-        target_func: Callable,
+        loss_func: Callable,
         model: nn.Module,
         checkpoints: Union[
             str,
@@ -30,14 +30,17 @@ class AttributionTask:
             List[Dict[str, torch.Tensor]],
             Dict[str, torch.Tensor],
         ],
+        target_func: Optional[Callable] = None,
     ) -> None:
         """Initialize the AttributionTask.
 
         Args:
-            target_func (Callable): The target function to be attributed.
+            loss_func (Callable): The loss function of the model training.
                 The function can be quite flexible in terms of what is calculated,
                 but it should take the parameters and the data as input. Other than
                 that, the forwarding of model should be in `torch.func` style.
+                It will be used as target function to be attributed if no other
+                target function provided
                 A typical example is as follows:
                 ```python
                 def f(params, data):
@@ -58,9 +61,28 @@ class AttributionTask:
                 of the model, both dictionary of the state_dict and the path to
                 the checkpoint are supported. If ensemble is needed, a list of
                 checkpoint is also supported.
+            target_func (Callable): The target function to be attributed.
+                This input is optional, if not provided, the target function will
+                be the same as the loss function. The function can be quite flexible
+                in terms of what is calculated,
+                but it should take the parameters and the data as input. Other than
+                that, the forwarding of model should be in `torch.func` style.
+                A typical example is as follows:
+                ```python
+                def f(params, data):
+                    image, label = data
+                    loss = nn.CrossEntropyLoss()
+                    yhat = torch.func.functional_call(model, params, image)
+                    return loss(yhat, label)
+                ```.
 
         """
         self.model = model
+        if target_func is None:
+            target_func = loss_func
+
+        self.original_loss_func = loss_func
+        self.loss_func = flatten_func(self.model)(loss_func)
         self.original_target_func = target_func
         self.target_func = flatten_func(self.model)(target_func)
 
@@ -74,8 +96,10 @@ class AttributionTask:
         self.current_checkpoint_idx = None
 
         # TODO: Make this more general, that is allow customized kwargs.
-        self.grad_func = vmap(grad(self.target_func), in_dims=(None, 1))
-        self.grad_func_kwargs = None
+        self.grad_loss_func = vmap(grad(self.loss_func), in_dims=(None, 1))
+        self.grad_loss_func_kwargs = {"in_dims": (None, 1)}
+        self.grad_target_func = vmap(grad(self.target_func), in_dims=(None, 1))
+        self.grad_target_func_kwargs = {"in_dims": (None, 1)}
 
     def _load_checkpoints(self, index: int) -> None:
         """This method load the checkpoint at the specified index.
@@ -155,10 +179,10 @@ class AttributionTask:
             error_msg = "layer_name has not been implemented yet."
             raise NotImplementedError(error_msg)
 
-        if self.grad_func_kwargs != {"in_dims": in_dims}:
-            self.grad_func = vmap(grad(self.target_func), in_dims=in_dims)
-            self.grad_func_kwargs = {"in_dims": in_dims}
-        return self.grad_func
+        if self.grad_target_func_kwargs != {"in_dims": in_dims}:
+            self.grad_target_func = vmap(grad(self.target_func), in_dims=in_dims)
+            self.grad_target_func_kwargs = {"in_dims": in_dims}
+        return self.grad_target_func
 
     def get_target_func(
         self,
@@ -185,6 +209,65 @@ class AttributionTask:
         if not flatten:
             return self.original_target_func
         return self.target_func
+
+    def get_grad_loss_func(
+        self,
+        in_dims: Tuple[Union[None, int], ...] = (None, 1),
+        layer_name: Optional[Union[str, List[str]]] = None,
+    ) -> Callable:
+        """Return a function that computes the gradient of the loss function.
+
+        TODO: support partial parameter gradient.
+
+        Args:
+            in_dims (Tuple[Union[None, int], ...]): The input dimensions of the loss
+                function. This should be a tuple of integers and None. The length of the
+                tuple should be the same as the number of inputs of the loss function.
+                If the input is a scalar, the corresponding element should be None.
+                If the input is a tensor, the corresponding element should be the
+                dimension of the tensor.
+            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+
+        Returns:
+            Callable: The function that computes the gradient of the loss function.
+
+        Raises:
+            NotImplementedError: If layer_name is not None.
+        """
+        if layer_name is not None:
+            error_msg = "layer_name has not been implemented yet."
+            raise NotImplementedError(error_msg)
+
+        if self.grad_loss_func_kwargs != {"in_dims": in_dims}:
+            self.grad_loss_func = vmap(grad(self.loss_func), in_dims=in_dims)
+            self.grad_loss_func_kwargs = {"in_dims": in_dims}
+        return self.grad_loss_func
+
+    def get_loss_func(
+        self,
+        flatten: bool = True,
+        layer_name: Optional[Union[str, List[str]]] = None,
+    ) -> Callable:
+        """Return a function that computes the gradient of the loss function.
+
+        TODO: support partial parameter gradient.
+
+        Args:
+            flatten (bool): If True, the loss function will be flattened.
+            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+
+        Returns:
+            Callable: The loss function itself.
+
+        Raises:
+            NotImplementedError: If layer_name is not None.
+        """
+        if layer_name is not None:
+            error_msg = "layer_name has not been implemented yet."
+            raise NotImplementedError(error_msg)
+        if not flatten:
+            return self.original_loss_func
+        return self.loss_func
 
     def get_param(
         self,

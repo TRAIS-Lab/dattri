@@ -34,9 +34,10 @@ pip install dattri[all]
 ### Apply Data Attribution methods on PyTorch Models
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
-1. a target function (e.g., `f`)
+1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
 2. trained model checkpoints.
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
+4. (optional) target function to be attributed if it's not the same as loss function.
 
 The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
@@ -44,13 +45,13 @@ The following is an example to use `IFAttributorCG` and `AttributionTask` to app
 from dattri.algorithm import IFAttributorCG
 from dattri.task import AttributionTask
 
-def f(params, data): # an example of target function using CE loss
+def f(params, data): # an example of loss function using CE loss
     x, y = data
     loss = nn.CrossEntropyLoss()
     yhat = torch.func.functional_call(model, params, x)
     return loss(yhat, y)
 
-task = AttributionTask(target_func=f,
+task = AttributionTask(loss_func=f,
                        model=model,
                        checkpoints=model.state_dict())
 
@@ -72,7 +73,7 @@ Hessian-vector product (HVP), inverse-Hessian-vector product
 ```python
 from dattri.func.hessian import ihvp_cg, ihvp_at_x_cg
 
-def f(x, param): # target function
+def f(x, param):
     return torch.sin(x / param).sum()
 
 x = torch.randn(2)
@@ -102,7 +103,7 @@ project_func = random_project(tensor, tensor.size(0), proj_dim=512)
 projected_tensor = project_func(torch.full_like(tensor))
 ```
 
-Normally speaking, `tensor` is probably the gradient of target function and has a large dimension (i.e., the number of parameters).
+Normally speaking, `tensor` is probably the gradient of loss/target function and has a large dimension (i.e., the number of parameters).
 
 #### Dropout Ensemble
 Recent studies found that ensemble methods can significantly improve the performance of data attribution, [DROPOUT ENSEMBLE](https://arxiv.org/pdf/2405.17293) is one of these ensemble methods. One may prepare their model with

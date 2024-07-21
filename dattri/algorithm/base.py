@@ -6,7 +6,6 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
     from typing import Any, Dict, Optional, Tuple
 
     import torch
@@ -26,11 +25,10 @@ class BaseAttributor(ABC):
     """BaseAttributor."""
 
     @abstractmethod
-    def __init__(self, target_func: Callable, **kwargs: dict) -> None:
+    def __init__(self, **kwargs: dict) -> None:
         """Initialize the attributor.
 
         Args:
-            target_func (Callable): The target function to be attributed.
             **kwargs (dict): The keyword arguments for the attributor.
 
         Returns:
@@ -176,7 +174,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                 (batchsize, num_parameters).
         """
         model_params, _ = self.task.get_param(index)
-        return self.task.get_grad_target_func()(model_params, data)
+        return self.task.get_grad_loss_func()(model_params, data)
 
     @abstractmethod
     def transformation_on_query(

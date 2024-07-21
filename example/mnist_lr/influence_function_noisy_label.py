@@ -72,7 +72,7 @@ if __name__ == "__main__":
         yhat = torch.func.functional_call(model, params, image)
         return loss(yhat, label.long())
 
-    task = AttributionTask(target_func=f,
+    task = AttributionTask(loss_func=f,
                            model=model,
                            checkpoints=model.state_dict())
     attributor = ATTRIBUTOR_MAP[args.method](
