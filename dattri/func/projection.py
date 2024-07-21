@@ -573,7 +573,7 @@ class ChunkedCudaProjector:
                 ),
             )
 
-        return ch_output[: self.feature_batch_size]
+        return ch_output
 
 
 class ArnoldiProjector(AbstractProjector):
