@@ -889,10 +889,10 @@ def make_random_projector(
 
 def arnoldi_project(
     feature_dim: int,
-    proj_dim: int,
     func: Callable,
     x: List,
     argnums: int = 0,
+    proj_dim: int = 100,
     max_iter: int = 100,
     norm_constant: float = 1.0,
     tol: float = 1e-7,
@@ -908,9 +908,6 @@ def arnoldi_project(
             Dimension of the features to be projected. Typically, this equal to
             the number of parameters in the model (dimension of the gradient
             vectors).
-        proj_dim (int):
-            Dimension after the projection. This corresponds to the number of top
-            eigenvalues (top-k eigenvalues) to keep for the Hessian approximation.
         func (Callable):
             A Python function that takes one or more arguments.
             Must return a single-element Tensor. The hessian will
@@ -920,6 +917,9 @@ def arnoldi_project(
         argnums (int):
             An integer default to 0. Specifies which argument of func
             to compute hessian with respect to.
+        proj_dim (int):
+            Dimension after the projection. This corresponds to the number of top
+            eigenvalues (top-k eigenvalues) to keep for the Hessian approximation.
         max_iter (int):
             An integer default 100. Specifies the maximum iteration
             to calculate the ihvp through Conjugate Gradient Descent.

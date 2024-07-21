@@ -2,12 +2,11 @@
 
 import torch
 from torch import nn
-from torch.utils.data import Sampler
 from torchvision import datasets, transforms
 
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
-from dattri.benchmark.utils import flip_label, SubsetSampler
+from dattri.benchmark.utils import SubsetSampler, flip_label
 from dattri.task import AttributionTask
 
 
@@ -77,7 +76,7 @@ if __name__ == "__main__":
         task=task,
         correct_probability_func=m,
         device="cuda",
-        projector_kwargs=projector_kwargs
+        projector_kwargs=projector_kwargs,
     )
 
     attributor.cache(train_loader)

@@ -123,14 +123,21 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        from dattri.func.hessian import ihvp_arnoldi
+        from dattri.func.projection import arnoldi_project
 
-        self.ihvp_func = ihvp_arnoldi(
-            partial(self.task.get_loss_func(), data_target_pair=train_data),
-            **transformation_kwargs,
-        )
-        model_params, _ = self.task.get_param(index)
-        return self.ihvp_func((model_params,), query).detach()
+        if not hasattr(self, "arnoldi_projector"):
+            feature_dim = query.shape[1]
+            func = partial(self.task.get_loss_func(), data_target_pair=train_data)
+            model_params, _ = self.task.get_param(index)
+            self.arnoldi_projector = arnoldi_project(
+                feature_dim,
+                func,
+                model_params,
+                device=self.device,
+                **transformation_kwargs,
+            )
+
+        return self.arnoldi_projector(query).detach()
 
 
 class IFAttributorLiSSA(BaseInnerProductAttributor):

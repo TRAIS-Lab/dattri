@@ -508,9 +508,9 @@ class TestGetProjection(unittest.TestCase):
 
         projector = arnoldi_project(
             feature_dim,
-            proj_dim,
             target,
             x,
+            proj_dim=proj_dim,
         )
 
         result = projector(vec)
