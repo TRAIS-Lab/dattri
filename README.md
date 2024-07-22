@@ -1,5 +1,5 @@
 <div align="center">
-<img src="assets/images/logo.png" alt="logo" width="300">
+<img src="assets/images/logo.png" alt="logo" width="150">
 </div>
 
 # `dattri`: A Library for Efficient Data Attribution
