@@ -1,8 +1,8 @@
-<!-- <div align="center">
+<div align="center">
 <img src="assets/images/logo.png" alt="logo" width="150">
-</div> -->
+</div>
 
-# <img src="assets/images/logo.png" alt="logo" width="100"> : A Library for Efficient Data Attribution
+# `dattri`: A Library for Efficient Data Attribution
 
 <!-- add some demos, list of methods and benchmark settings available, benchmark results, and some development plan -->
 
