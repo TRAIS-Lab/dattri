@@ -1,5 +1,4 @@
-<!-- ![logo](assets/images/logo.png) -->
-<div style="text-align: center;">
+<div align="center">
 <img src="assets/images/logo.png" alt="logo" width="300">
 </div>
 
