@@ -2,6 +2,9 @@
    sphinx-quickstart on Wed Apr  3 12:59:58 2024.
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
+.. image:: ../../assets/images/logo.png
+   :width: 150
+   :align: center
 
 `dattri`: A Library for Efficient Data Attribution
 ==================================
