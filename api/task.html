@@ -211,6 +211,63 @@
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
 <p>The abstraction of the attribution task information.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.task.AttributionTask.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">loss_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">model</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">nn.Module</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">checkpoints</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the AttributionTask.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>loss_func</strong> (<em>Callable</em>) – <p>The loss function of the model training.
+The function can be quite flexible in terms of what is calculated,
+but it should take the parameters and the data as input. Other than
+that, the forwarding of model should be in <cite>torch.func</cite> style.
+It will be used as target function to be attributed if no other
+target function provided
+A typical example is as follows:
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+def f(params, data):</p>
+<blockquote>
+<div><p>image, label = data
+loss = nn.CrossEntropyLoss()
+yhat = torch.func.functional_call(model, params, image)
+return loss(yhat, label)</p>
+</div></blockquote>
+<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a>.
+This examples calculates the CE loss of the model on the data.</p>
+</p></li>
+<li><p><strong>model</strong> (<em>nn.Module</em>) – The model that the target function is based on.
+To be more specific, the model is the <cite>model</cite> used in the target
+function. Since only the computation graph of the model will be
+used, so it is allowed that this model is not loaded with a trained
+parameters.</p></li>
+<li><p><strong>checkpoints</strong> – (Union[str, List[str], List[Dict[str, torch.Tensor]],
+Dict[str, torch.Tensor]]): The checkpoints
+of the model, both dictionary of the state_dict and the path to
+the checkpoint are supported. If ensemble is needed, a list of
+checkpoint is also supported.</p></li>
+<li><p><strong>target_func</strong> (<em>Callable</em>) – <p>The target function to be attributed.
+This input is optional, if not provided, the target function will
+be the same as the loss function. The function can be quite flexible
+in terms of what is calculated,
+but it should take the parameters and the data as input. Other than
+that, the forwarding of model should be in <cite>torch.func</cite> style.
+A typical example is as follows:
+<a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
+def f(params, data):</p>
+<blockquote>
+<div><p>image, label = data
+loss = nn.CrossEntropyLoss()
+yhat = torch.func.functional_call(model, params, image)
+return loss(yhat, label)</p>
+</div></blockquote>
+<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a>.</p>
+</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.task.AttributionTask.get_checkpoints">
 <span class="sig-name descname"><span class="pre">get_checkpoints</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">str</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_checkpoints" title="Link to this definition">¶</a></dt>
 <dd><p>Return the checkpoints of the model.</p>
@@ -460,6 +517,7 @@ is True. Flattened parameters will be a 1-dim tensor.</p>
             <ul>
 <li><a class="reference internal" href="#">Tasks</a><ul>
 <li><a class="reference internal" href="#dattri.task.AttributionTask"><code class="docutils literal notranslate"><span class="pre">AttributionTask</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.task.AttributionTask.__init__"><code class="docutils literal notranslate"><span class="pre">AttributionTask.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.task.AttributionTask.get_checkpoints"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_checkpoints()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.task.AttributionTask.get_grad_loss_func"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_grad_loss_func()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.task.AttributionTask.get_grad_target_func"><code class="docutils literal notranslate"><span class="pre">AttributionTask.get_grad_target_func()</span></code></a></li>

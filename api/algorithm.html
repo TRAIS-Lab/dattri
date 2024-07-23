@@ -212,6 +212,27 @@
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
 <p>The inner product attributor with Arnoldi inverse hessian transformation.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
+be an instance of <cite>AttributionTask</cite>.</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – The keyword arguments for
+the transformation function. More specifically, it will be stored in
+the <cite>transformation_kwargs</cite> attribute and be used by some customized
+member functions, e.g., <cite>transformation_on_query</cite>, where the
+transformation such as hessian matrix or Fisher Information matrix is
+calculated.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
@@ -359,6 +380,27 @@ the transformation function.</p></li>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorCG</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
 <p>The inner product attributor with CG inverse hessian transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
+be an instance of <cite>AttributionTask</cite>.</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – The keyword arguments for
+the transformation function. More specifically, it will be stored in
+the <cite>transformation_kwargs</cite> attribute and be used by some customized
+member functions, e.g., <cite>transformation_on_query</cite>, where the
+transformation such as hessian matrix or Fisher Information matrix is
+calculated.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.attribute" title="Link to this definition">¶</a></dt>
@@ -508,6 +550,27 @@ the transformation function.</p></li>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
 <p>The inner product attributor with DataInf inverse hessian transformation.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
+be an instance of <cite>AttributionTask</cite>.</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – The keyword arguments for
+the transformation function. More specifically, it will be stored in
+the <cite>transformation_kwargs</cite> attribute and be used by some customized
+member functions, e.g., <cite>transformation_on_query</cite>, where the
+transformation such as hessian matrix or Fisher Information matrix is
+calculated.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
@@ -656,6 +719,27 @@ the transformation function.</p></li>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
 <p>The inner product attributor with explicit inverse hessian transformation.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
+be an instance of <cite>AttributionTask</cite>.</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – The keyword arguments for
+the transformation function. More specifically, it will be stored in
+the <cite>transformation_kwargs</cite> attribute and be used by some customized
+member functions, e.g., <cite>transformation_on_query</cite>, where the
+transformation such as hessian matrix or Fisher Information matrix is
+calculated.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
@@ -803,6 +887,27 @@ the transformation function.</p></li>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorLiSSA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
 <p>The inner product attributor with LiSSA inverse hessian transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
+be an instance of <cite>AttributionTask</cite>.</p></li>
+<li><p><strong>transformation_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – The keyword arguments for
+the transformation function. More specifically, it will be stored in
+the <cite>transformation_kwargs</cite> attribute and be used by some customized
+member functions, e.g., <cite>transformation_on_query</cite>, where the
+transformation such as hessian matrix or Fisher Information matrix is
+calculated.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.attribute" title="Link to this definition">¶</a></dt>
@@ -969,6 +1074,27 @@ the transformation function.</p></li>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAttributor</span></code></p>
 <p>TracIn attributor.</p>
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.tracin.TracInAttributor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized_grad</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projector_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.tracin.TracInAttributor.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>TracIn attributor initialization.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Please refer to the
+<cite>AttributionTask</cite> for more details.</p></li>
+<li><p><strong>weight_list</strong> (<em>Tensor</em>) – The weight used for the “weighted sum”. For
+TracIn/CosIn, this will contain a list of learning rates at each ckpt;
+for Grad-Dot/Grad-Cos, this will be a list of ones.</p></li>
+<li><p><strong>normalized_grad</strong> (<em>bool</em>) – Whether to apply normalization to gradients.</p></li>
+<li><p><strong>projector_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – The keyword arguments for the
+projector.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.tracin.TracInAttributor.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.tracin.TracInAttributor.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
@@ -1013,6 +1139,40 @@ test samples to calculate the influence. The dataloader should not              
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.trak.</span></span><span class="sig-name descname"><span class="pre">TRAKAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">correct_probability_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projector_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.trak.TRAKAttributor" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAttributor</span></code></p>
 <p>TRAK attributor.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.trak.TRAKAttributor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">correct_probability_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projector_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.trak.TRAKAttributor.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the TRAK attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Please refer to the
+<cite>AttributionTask</cite> for more details.</p></li>
+<li><p><strong>correct_probability_func</strong> (<em>Callable</em>) – <p>The function to calculate the
+probability to correctly predict the label of the input data.
+A typical example is as follows:
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+&#64;flatten_func(model)
+def m(params, image_label_pair):</p>
+<blockquote>
+<div><p>image, label = image_label_pair
+image_t = image.unsqueeze(0)
+label_t = label.unsqueeze(0)
+loss = nn.CrossEntropyLoss()
+yhat = torch.func.functional_call(model, params, image_t)
+p = torch.exp(-loss(yhat, label_t))
+return p</p>
+</div></blockquote>
+<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a>.</p>
+</p></li>
+<li><p><strong>projector_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – The kwargs for the
+random projection. Defaults to None.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.trak.TRAKAttributor.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.utils.data.DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.utils.data.DataLoader</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.trak.TRAKAttributor.attribute" title="Link to this definition">¶</a></dt>
@@ -1065,6 +1225,35 @@ with full training samples for gradient calculation.</p>
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.rps.</span></span><span class="sig-name descname"><span class="pre">RPSAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_linear_layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nomralize_preactivate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_strength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.003</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.rps.RPSAttributor" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAttributor</span></code></p>
 <p>Representer point selection attributor.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.rps.RPSAttributor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_linear_layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nomralize_preactivate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_strength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.003</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.rps.RPSAttributor.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Representer point selection attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Please refer to the
+<cite>AttributionTask</cite> for more details. Notably, the target_func is required
+to have inputs are list of pre-activation values (f_i in the paper) and
+list of labels. Typical examples are loss functions such as BCELoss
+and CELoss. We also
+assume the model to have a final linear layer. RPS will extract
+the final linear layer’s input and its parameter. The parameteres will
+be used for the initialization of the l2-finetuning. That is, model
+output = linear(second-to-last feature).</p></li>
+<li><p><strong>final_linear_layer_name</strong> (<em>str</em>) – The name of the final linear layer’s name
+in the model.</p></li>
+<li><p><strong>nomralize_preactivate</strong> (<em>bool</em>) – If set to true, then the intermediate layer
+output will be normalized. The value of the output inner-product will
+not affected by the value of individual output magnitude.</p></li>
+<li><p><strong>l2_strength</strong> (<em>float</em>) – The l2 regularizaton to fine-tune the last layer.</p></li>
+<li><p><strong>epoch</strong> (<em>int</em>) – The number of epoch used to fine-tune the last layer.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.rps.RPSAttributor.attribute">
 <span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.rps.RPSAttributor.attribute" title="Link to this definition">¶</a></dt>
@@ -1168,6 +1357,7 @@ fine-tuning.</p>
             <ul>
 <li><a class="reference internal" href="#">Attributors</a><ul>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.generate_test_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.generate_test_query()</span></code></a></li>
@@ -1176,6 +1366,7 @@ fine-tuning.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.generate_test_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.generate_test_query()</span></code></a></li>
@@ -1184,6 +1375,7 @@ fine-tuning.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.generate_test_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.generate_test_query()</span></code></a></li>
@@ -1192,6 +1384,7 @@ fine-tuning.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.generate_test_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.generate_test_query()</span></code></a></li>
@@ -1200,6 +1393,7 @@ fine-tuning.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.generate_test_query"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.generate_test_query()</span></code></a></li>
@@ -1209,16 +1403,19 @@ fine-tuning.</p>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor"><code class="docutils literal notranslate"><span class="pre">TracInAttributor</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">TracInAttributor.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">TracInAttributor.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor.cache"><code class="docutils literal notranslate"><span class="pre">TracInAttributor.cache()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor.cache"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor.cache()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor"><code class="docutils literal notranslate"><span class="pre">RPSAttributor</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">RPSAttributor.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">RPSAttributor.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor.cache"><code class="docutils literal notranslate"><span class="pre">RPSAttributor.cache()</span></code></a></li>
 </ul>
