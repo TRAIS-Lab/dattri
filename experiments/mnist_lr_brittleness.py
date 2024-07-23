@@ -1,16 +1,15 @@
-"""This experiment is for brittleness test on Influence Function on the MNIST-10 dataset."""
+"""This experiment brittleness TDA methods on the MNIST-10 dataset."""
+import sys
+sys.path.append('/home/sz54/dattri_1/')
 
 # ruff: noqa
 import time
 import argparse
 from functools import partial
 
-import numpy as np
 import torch
-from tqdm import tqdm
 from torch import nn
-from torchvision import datasets, transforms
-from torch.utils.data import DataLoader, Subset
+from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.influence_function import\
     IFAttributorExplicit,\
@@ -95,6 +94,7 @@ if __name__ == "__main__":
     # Find a correct predicted data
     for test_batch in test_loader:
         for i in range(len(test_batch[0])):
+            i = i
             x = test_batch[0][i].unsqueeze(0).cuda()
             label = test_batch[1][i].cuda()
             output = model(x)
@@ -103,8 +103,8 @@ if __name__ == "__main__":
             if pred.item() == label.item():
                 print(f"Found a correctly predicted test sample with correct index is: {i}")
                 print(f"The label: {label.item()}, the prediction: {pred.item()}")
-                correct_x = x
-                correct_label = label
+                correct_x = x.unsqueeze(0)
+                correct_label = label.unsqueeze(0)
                 correct_index = i
                 break
 
@@ -112,23 +112,29 @@ if __name__ == "__main__":
             break
     
     # Example test sample
-    test_data = (correct_x, correct_label)
+    test_dataset = TensorDataset(correct_x, correct_label)
+    test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
     score = score[:, correct_index]
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Compute brittleness
     start_time = time.time()
 
-    smallest_k = brittleness(
-        test_data=test_data,
-        train_loader=train_loader,
-        train_data_indices=torch.tensor(range(1000)),
-        scores=score,
-        steplength=(20, 200, 20),
-        train_func=lambda loader: train_mnist_lr(loader),
-        device=device
-    )
+    # Evaluation 
+    def eval_func(model_output):
+        probabilities = torch.softmax(model_output, dim=1)
+        predicted_class = torch.argmax(probabilities, dim=1)
+        return predicted_class
 
+    smallest_k = brittleness(
+        train_loader=train_loader,
+        test_loader=test_loader,
+        scores=score,
+        train_func=lambda loader: train_mnist_lr(loader),
+        eval_func=eval_func,
+        device=device,
+        search_space=[20,40,60,80,100,120,140,180],
+    )
     if smallest_k is not None:
         print(f"The number of removal that can make it flip: {smallest_k}")
     else:

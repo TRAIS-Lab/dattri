@@ -6,23 +6,25 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import List, Optional, Tuple
+    from typing import List, Optional
+
+    from torch.utils.data import DataLoader
 
 import numpy as np
 import torch
-from torch.utils.data import DataLoader, Subset
 from tqdm import tqdm
+
+from dattri.benchmark.utils import SubsetSampler
 
 
 def brittleness(
-    test_data: Tuple[torch.Tensor, torch.Tensor],
     train_loader: DataLoader,
-    train_data_indices: torch.Tensor,
+    test_loader: DataLoader,
     scores: torch.Tensor,
-    steplength: Tuple[int, int, int],
     train_func: Callable[[DataLoader], torch.nn.Module],
-    device: torch.device,
-    batch_size: int = 64,
+    eval_func: Callable,
+    device: torch.device = "cpu",
+    search_space: Optional[List[int]] = None,
 ) -> Optional[int]:
     """Calculate smallest k make a test data flip.
 
@@ -30,23 +32,23 @@ def brittleness(
     training data whose removal causes the test sample's prediction to flip.
 
     Args:
-        test_data (tuple): A tuple containing the image and label of the test sample.
         train_loader (DataLoader): DataLoader for the training data.
-        train_data_indices (list[int]): Indices of the training data used.
+        test_loader (DataLoader): DataLoader for test data.
         scores (torch.Tensor):
-            Data attribution scores associated with each training sample.
-        steplength (tuple): Tuple containing start, end, and step size for the k range.
-        train_func (function): Function to retrain the model on the modified dataset.
-        device (torch.device): The device (CPU or GPU) to perform computations on.
-        batch_size (int):
-            The batch size used when creating new DataLoaders. Default is 64.
+            Attribution scores in shape (len(train_loader), len(test_loader)).
+        train_func (function): Function to retrain the model on modified dataset.
+        eval_func (function): Function to evaluate the model and return predictions.
+        device (torch.device): Computation device (CPU or GPU).
+        search_space (List[int]):
+            List of points in the search space for most influential training data.
 
     Returns:
         int or None: The smallest number of influential training points whose removal
         flips the test point's prediction, or None if no such k exists.
     """
-    start, end, step = steplength
-    k_values = list(range(start, end, step))
+    if search_space is None:
+        search_space = list(range(0, 200, 20))
+    k_values = list(search_space)
     if isinstance(scores, torch.Tensor):
         scores = scores.cpu().numpy() if scores.is_cuda else scores.numpy()
     sorted_indices = np.argsort(scores)[::-1]
@@ -56,60 +58,54 @@ def brittleness(
         leave=False,
         ):
         highest_score_indices = sorted_indices[:k]
-        if check_if_flip(test_data,
-                         train_loader,
-                         train_data_indices,
-                         highest_score_indices,
-                         train_func,
-                         device,
-                         batch_size):
+        if check_if_flip(train_loader,
+                        test_loader,
+                        highest_score_indices,
+                        train_func,
+                        eval_func,
+                        device):
             return k
     return None
 
 
 def check_if_flip(
-    test_data: Tuple[torch.Tensor, torch.Tensor],
     train_loader: DataLoader,
-    train_data_indices: List[int],
+    test_loader: DataLoader,
     indices_to_remove: List[int],
     train_func: Callable[[DataLoader], torch.nn.Module],
-    device: torch.device,
-    batch_size: int,
+    eval_func: Callable,
+    device: torch.device = "cpu",
 ) -> bool:
-    """Flip check for brittleness prediction.
-
-    This function weill check if the prediction for a test sample flips after
-    removing certain training data.
+    """Check if a test sample flips after removing specified training data.
 
     Args:
-        test_data (tuple): The test data consisting of an image and its label.
         train_loader (DataLoader): DataLoader for the training data.
-        train_data_indices (list[int]):
-            List of indices indicating orignial data the used training data.
-        indices_to_remove (list[int]):
-            Indices of the training data to remove.
-        train_func (function): Function to train the model on the modified dataset.
-        device (torch.device): The device for computation.
-        batch_size (int): Batch size for the DataLoader of the new training set.
+        test_loader (DataLoader): DataLoader for test data.
+        indices_to_remove (List[int]): Indices of training data to remove.
+        train_func (function): Function to retrain the model on modified dataset.
+        eval_func (function): Function to evaluate the model and return predictions.
+        device (torch.device): Computation device.
 
     Returns:
-        bool: True if the prediction flips, otherwise False.
+        bool: True if prediction flips after data removal, otherwise False.
     """
-    dataset = train_loader.dataset
-    dataset = Subset(dataset, train_data_indices)
+    original_sampler = train_loader.sampler
+    original_indices = original_sampler.indices
+    remaining_indices = list(set(original_indices) - set(indices_to_remove))
 
-    remaining_indices = list(set(range(len(dataset))) - set(indices_to_remove))
-    subset = Subset(dataset, remaining_indices)
-    new_train_loader = DataLoader(subset, batch_size=batch_size, shuffle=True)
+    new_train_loader = torch.utils.data.DataLoader(
+        train_loader.dataset,
+        batch_size=64,
+        sampler=SubsetSampler(remaining_indices),
+    )
 
     model = train_func(new_train_loader)
     model.to(device)
     model.eval()
 
-    x, label = test_data
-    x, label = x.to(device), label.to(device)
-
-    output = model(x)
-    pred = output.argmax(dim=1, keepdim=True)
-
+    for test_data in test_loader:
+        x, label = test_data
+        x, label = x.to(device), label.to(device)
+        output = model(x)
+    pred = eval_func(output)
     return pred.item() != label.item()
