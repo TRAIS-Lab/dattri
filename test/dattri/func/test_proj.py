@@ -480,7 +480,7 @@ class TestGetProjection(unittest.TestCase):
         test_batch_size = 64
 
         test_tensor = torch.rand(test_batch_size, 1000)
-        # suppose to be BasicProjector
+        # suppose to be CudaProjector
         project = random_project(
             test_tensor,
             test_batch_size,
@@ -493,6 +493,26 @@ class TestGetProjection(unittest.TestCase):
 
         result = project(test_tensor)
         assert result.shape == (test_batch_size, self.proj_dim)
+
+    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+    def test_tensor_input_chunked_cuda(self):
+        """Test the usage of tensor input."""
+        feature_batch_size = 4
+        # 0.3B is slighly larger then max_chunk_size (~0.26B)
+        test_tensor = torch.rand(feature_batch_size, 300000000)
+        # suppose to be ChunkedCudaProjector
+        project = random_project(
+            test_tensor,
+            feature_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device="cuda",
+            proj_seed=0,
+            use_half_precision=True,
+        )
+
+        result = project(test_tensor)
+        assert result.shape == (feature_batch_size, self.proj_dim)
 
     def test_arnoldi_project(self):
         """Test the funcitonality of arnoldi_project."""
