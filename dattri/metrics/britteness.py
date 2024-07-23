@@ -36,8 +36,9 @@ def brittleness(
         test_loader (DataLoader): DataLoader for test data.
         scores (torch.Tensor):
             Attribution scores in shape (len(train_loader), len(test_loader)).
-        train_func (function): Function to retrain the model on modified dataset.
-        eval_func (function): Function to evaluate the model and return predictions.
+        train_func (Callable[[DataLoader], torch.nn.Module]):
+            Function to retrain the model on modified dataset.
+        eval_func (Callable): Function to evaluate the model and return predictions.
         device (torch.device): Computation device (CPU or GPU).
         search_space (List[int]):
             List of points in the search space for most influential training data.
@@ -82,8 +83,9 @@ def check_if_flip(
         train_loader (DataLoader): DataLoader for the training data.
         test_loader (DataLoader): DataLoader for test data.
         indices_to_remove (List[int]): Indices of training data to remove.
-        train_func (function): Function to retrain the model on modified dataset.
-        eval_func (function): Function to evaluate the model and return predictions.
+        train_func (Callable[[DataLoader], torch.nn.Module]):
+            Function to retrain the model on modified dataset.
+        eval_func (Callable): Function to evaluate the model and return predictions.
         device (torch.device): Computation device.
 
     Returns:
