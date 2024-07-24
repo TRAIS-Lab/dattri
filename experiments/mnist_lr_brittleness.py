@@ -1,7 +1,4 @@
 """This experiment brittleness TDA methods on the MNIST-10 dataset."""
-import sys
-sys.path.append('/home/sz54/dattri_1/')
-
 # ruff: noqa
 import time
 import argparse
@@ -18,7 +15,6 @@ from dattri.algorithm.influence_function import\
     IFAttributorDataInf,\
     IFAttributorArnoldi
 from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
-from dattri.benchmark.utils import flip_label
 from dattri.benchmark.utils import SubsetSampler
 from dattri.metrics.britteness import brittleness
 from dattri.task import AttributionTask
