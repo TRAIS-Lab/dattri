@@ -281,3 +281,48 @@ def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
         return _function_flattened
 
     return flatten_params_wrapper
+
+
+def partial_param(
+    full_param: Dict[str, Tensor],
+    layer_name: List[str],
+    param_num: int = 0,
+) -> Callable:
+    """A decorator that edit a function from taking full parameter to partial parameter.
+
+    This is useful for working with functions that taking a flattened parameter as
+    input, but we want to change it to take the parameter of some specific layers.
+
+    Args:
+        full_param: A dictionary of full parameters.
+        layer_name: A list of layer names to that will be left as
+            parameter input of the function.
+        param_num: The index of the parameter in function's input.
+
+    Returns:
+        (Callable): A decorator that edit a function from taking full parameter to
+            partial parameter.
+    """
+
+    def partial_param_wrapper(function: Callable) -> Callable:
+        """A wrapper function that edit the parameter from full to partial.
+
+        Args:
+            function: The function to be wrapped.
+
+        returns:
+            (Callable): A wrapped function that changes the parameters at the
+                specified index to require only some specific layers' parameters
+        """
+
+        @functools.wraps(function)
+        def _function_partial(*args, **kwargs: Dict[str, Any]) -> torch.Tensor:
+            new_args = list(args)
+            for i, layer in enumerate(layer_name):
+                full_param[layer] = new_args[param_num][i]
+            new_args[param_num] = flatten_params(full_param)
+            return function(*new_args, **kwargs)
+
+        return _function_partial
+
+    return partial_param_wrapper

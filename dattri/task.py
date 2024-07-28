@@ -14,7 +14,7 @@ import torch
 from torch import nn
 from torch.func import grad, vmap
 
-from dattri.func.utils import flatten_func, flatten_params
+from dattri.func.utils import flatten_func, flatten_params, partial_param
 
 
 class AttributionTask:
@@ -97,9 +97,17 @@ class AttributionTask:
 
         # TODO: Make this more general, that is allow customized kwargs.
         self.grad_loss_func = vmap(grad(self.loss_func), in_dims=(None, 1))
-        self.grad_loss_func_kwargs = {"in_dims": (None, 1)}
+        self.grad_loss_func_kwargs = {
+            "in_dims": (None, 1),
+            "layer_name": None,
+            "index": None,
+        }
         self.grad_target_func = vmap(grad(self.target_func), in_dims=(None, 1))
-        self.grad_target_func_kwargs = {"in_dims": (None, 1)}
+        self.grad_target_func_kwargs = {
+            "in_dims": (None, 1),
+            "layer_name": None,
+            "index": None,
+        }
 
     def _load_checkpoints(self, index: int) -> None:
         """This method load the checkpoint at the specified index.
@@ -155,6 +163,7 @@ class AttributionTask:
         self,
         in_dims: Tuple[Union[None, int], ...] = (None, 1),
         layer_name: Optional[Union[str, List[str]]] = None,
+        index: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the target function.
 
@@ -168,26 +177,36 @@ class AttributionTask:
                 If the input is a tensor, the corresponding element should be the
                 dimension of the tensor.
             layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            index (Optional[int]): The index of the checkpoint to be loaded, only
+                needed when layer_name is not None.
 
         Returns:
             Callable: The function that computes the gradient of the target function.
-
-        Raises:
-            NotImplementedError: If layer_name is not None.
         """
+        # first add decorator that handles the layer_name
+        target_func = self.target_func
         if layer_name is not None:
-            error_msg = "layer_name has not been implemented yet."
-            raise NotImplementedError(error_msg)
+            self._load_checkpoints(index)
+            target_func = partial_param(
+                full_param=self.named_parameters,
+                layer_name=layer_name,
+            )(target_func)
 
-        if self.grad_target_func_kwargs != {"in_dims": in_dims}:
-            self.grad_target_func = vmap(grad(self.target_func), in_dims=in_dims)
-            self.grad_target_func_kwargs = {"in_dims": in_dims}
+        grad_target_func_kwargs = {
+            "in_dims": in_dims,
+            "layer_name": layer_name,
+            "index": index,
+        }
+        if self.grad_target_func_kwargs != grad_target_func_kwargs:
+            self.grad_target_func = vmap(grad(target_func), in_dims=in_dims)
+            self.grad_target_func_kwargs = grad_target_func_kwargs
         return self.grad_target_func
 
     def get_target_func(
         self,
         flatten: bool = True,
         layer_name: Optional[Union[str, List[str]]] = None,
+        index: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the target function.
 
@@ -196,24 +215,34 @@ class AttributionTask:
         Args:
             flatten (bool): If True, the target function will be flattened.
             layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            index (Optional[int]): The index of the checkpoint to be loaded, only
+                needed when layer_name is not None.
 
         Returns:
             Callable: The target function itself.
 
         Raises:
-            NotImplementedError: If layer_name is not None.
+            NotImplementedError: If layer_name is not None and flatten = False.
         """
-        if layer_name is not None:
-            error_msg = "layer_name has not been implemented yet."
-            raise NotImplementedError(error_msg)
         if not flatten:
+            if layer_name is not None:
+                error_msg = "layer_name is not supported for non-flatten target_func."
+                raise NotImplementedError(error_msg)
             return self.original_target_func
+
+        if layer_name is not None:
+            self._load_checkpoints(index)
+            return partial_param(
+                full_param=self.named_parameters,
+                layer_name=layer_name,
+            )(self.target_func)
         return self.target_func
 
     def get_grad_loss_func(
         self,
         in_dims: Tuple[Union[None, int], ...] = (None, 1),
         layer_name: Optional[Union[str, List[str]]] = None,
+        index: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the loss function.
 
@@ -227,26 +256,35 @@ class AttributionTask:
                 If the input is a tensor, the corresponding element should be the
                 dimension of the tensor.
             layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            index (Optional[int]): The index of the checkpoint to be loaded, only
+                needed when layer_name is not None.
 
         Returns:
             Callable: The function that computes the gradient of the loss function.
-
-        Raises:
-            NotImplementedError: If layer_name is not None.
         """
+        loss_func = self.loss_func
         if layer_name is not None:
-            error_msg = "layer_name has not been implemented yet."
-            raise NotImplementedError(error_msg)
+            self._load_checkpoints(index)
+            loss_func = partial_param(
+                full_param=self.named_parameters,
+                layer_name=layer_name,
+            )(loss_func)
 
-        if self.grad_loss_func_kwargs != {"in_dims": in_dims}:
-            self.grad_loss_func = vmap(grad(self.loss_func), in_dims=in_dims)
-            self.grad_loss_func_kwargs = {"in_dims": in_dims}
+        loss_target_func_kwargs = {
+            "in_dims": in_dims,
+            "layer_name": layer_name,
+            "index": index,
+        }
+        if self.grad_loss_func_kwargs != loss_target_func_kwargs:
+            self.grad_loss_func = vmap(grad(loss_func), in_dims=in_dims)
+            self.grad_loss_func_kwargs = loss_target_func_kwargs
         return self.grad_loss_func
 
     def get_loss_func(
         self,
         flatten: bool = True,
         layer_name: Optional[Union[str, List[str]]] = None,
+        index: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the loss function.
 
@@ -255,6 +293,8 @@ class AttributionTask:
         Args:
             flatten (bool): If True, the loss function will be flattened.
             layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            index (Optional[int]): The index of the checkpoint to be loaded, only
+                needed when layer_name is not None.
 
         Returns:
             Callable: The loss function itself.
@@ -262,11 +302,17 @@ class AttributionTask:
         Raises:
             NotImplementedError: If layer_name is not None.
         """
-        if layer_name is not None:
-            error_msg = "layer_name has not been implemented yet."
-            raise NotImplementedError(error_msg)
         if not flatten:
+            if layer_name is not None:
+                error_msg = "layer_name is not supported for non-flatten loss_func."
+                raise NotImplementedError(error_msg)
             return self.original_loss_func
+        if layer_name is not None:
+            self._load_checkpoints(index)
+            return partial_param(
+                full_param=self.named_parameters,
+                layer_name=layer_name,
+            )(self.loss_func)
         return self.loss_func
 
     def get_param(
@@ -283,7 +329,9 @@ class AttributionTask:
             layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
                 extracted. If None, all the parameters will be returned. This should be
                 a string or a list of strings if multiple layers are needed. The name
-                of layer should follow the key of model.named_parameters().
+                of layer should follow the key of model.named_parameters(). If not None,
+                the layer_split will be forced to be True because a whole flattened
+                parameter will miss the layer information.
             layer_split (Optional[bool]): If True, the parameters will be split
                 into different layers and returned as a list of parameter tensors.
             param_layer_map (Optional[List[int]]): The map from the parameter
@@ -311,6 +359,8 @@ class AttributionTask:
                 for k in layer_name
                 if k in self.named_parameters
             }
+            # forced to layer_split
+            layer_split = True
         else:
             named_parameters = self.named_parameters
 
