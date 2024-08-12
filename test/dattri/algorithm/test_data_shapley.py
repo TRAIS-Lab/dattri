@@ -9,7 +9,7 @@ from dattri.algorithm.data_shapley import KNNShalpeyAttributerExact
 class TestInfluenceFunction:
     """Test for data shapley."""
 
-    def test_knn_data_shapley_exact():
+    def test_knn_data_shapley_exact(self):
         """Test for exact KNN data shpaley."""
         train_dataset = TensorDataset(
             torch.randn(20, 1, 28, 28),
