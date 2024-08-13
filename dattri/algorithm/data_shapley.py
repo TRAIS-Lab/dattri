@@ -72,6 +72,9 @@ class KNNShalpeyAttributor(BaseAttributor):
                 ```.
                 If not provided, a default Euclidean distance function
                 will be used.
+
+        Raises:
+            NotImplementedError: If task is not None.
         """
         self.k_neighbors = k_neighbors
 
