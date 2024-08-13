@@ -37,7 +37,7 @@ def default_dist_func(
     return torch.cdist(coord1, coord2)
 
 
-class KNNShalpeyAttributerExact(BaseAttributor):
+class KNNShalpeyAttributor(BaseAttributor):
     """KNN Data Shapley Attributer."""
 
     def __init__(

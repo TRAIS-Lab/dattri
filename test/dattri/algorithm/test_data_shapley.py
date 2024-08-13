@@ -3,7 +3,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm.data_shapley import KNNShalpeyAttributerExact
+from dattri.algorithm.data_shapley import KNNShalpeyAttributor
 
 
 class TestInfluenceFunction:
@@ -28,7 +28,7 @@ class TestInfluenceFunction:
             coord2 = test_batch[0].reshape(-1, 28 * 28)
             return torch.cdist(coord1, coord2)
 
-        attributer = KNNShalpeyAttributerExact(k=3, distance_func=f)
+        attributer = KNNShalpeyAttributor(k=3, distance_func=f)
         sv = attributer.attribute(train_loader,
                                   test_loader,
                                   train_dataset.tensors[1],
