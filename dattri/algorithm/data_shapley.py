@@ -28,6 +28,9 @@ def default_dist_func(
         batch_y (Tuple[torch.Tensor]): The batch to be calculated
             distances on. The embeddings is default to be the
             first element.
+
+    Returns:
+        Tensor: The calculated Euclidean distance.
     """
     coord1 = batch_x[0]
     coord2 = batch_y[0]
