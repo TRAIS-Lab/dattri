@@ -105,12 +105,12 @@ def check_if_flip(
         sampler=SubsetSampler(remaining_indices),
     )
 
-    model = train_func(new_train_loader, device=device)
+    model = train_func(new_train_loader)
     model.to(device)
     model.eval()
 
     for test_data in test_loader:
         x, label = test_data
         x, label = x.to(device), label.to(device)
-    pred = eval_func(model, test_loader, device=device)
+    pred = eval_func(model, test_loader)
     return pred.item() != label.item()
