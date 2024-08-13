@@ -28,7 +28,7 @@ class TestInfluenceFunction:
             coord2 = test_batch[0].reshape(-1, 28 * 28)
             return torch.cdist(coord1, coord2)
 
-        attributer = KNNShalpeyAttributor(k=3, distance_func=f)
+        attributer = KNNShalpeyAttributor(k_neighbors=3, distance_func=f)
         sv = attributer.attribute(train_loader,
                                   test_loader,
                                   train_dataset.tensors[1],
