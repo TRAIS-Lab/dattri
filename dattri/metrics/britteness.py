@@ -22,7 +22,8 @@ def brittleness(
     test_loader: DataLoader,
     scores: torch.Tensor,
     train_func: Callable[[DataLoader], torch.nn.Module],
-    eval_func: Callable,
+    eval_func: Callable[[torch.nn.Module, DataLoader],
+                        torch.Tensor],
     device: torch.device = "cpu",
     search_space: Optional[List[int]] = None,
 ) -> Optional[int]:
@@ -38,7 +39,8 @@ def brittleness(
             Attribution scores in shape (len(train_loader), len(test_loader)).
         train_func (Callable[[DataLoader], torch.nn.Module]):
             Function to retrain the model on modified dataset.
-        eval_func (Callable): Function to evaluate the model and return predictions.
+        eval_func (Callable[[torch.nn.Module, DataLoader], torch.Tensor]):
+            Function to evaluate the model and return predictions.
         device (torch.device): Computation device (CPU or GPU).
         search_space (List[int]):
             List of points in the search space for most influential training data.
@@ -74,7 +76,8 @@ def check_if_flip(
     test_loader: DataLoader,
     indices_to_remove: List[int],
     train_func: Callable[[DataLoader], torch.nn.Module],
-    eval_func: Callable,
+    eval_func: Callable[[torch.nn.Module, DataLoader],
+                        torch.Tensor],
     device: torch.device = "cpu",
 ) -> bool:
     """Check if a test sample flips after removing specified training data.
@@ -85,7 +88,8 @@ def check_if_flip(
         indices_to_remove (List[int]): Indices of training data to remove.
         train_func (Callable[[DataLoader], torch.nn.Module]):
             Function to retrain the model on modified dataset.
-        eval_func (Callable): Function to evaluate the model and return predictions.
+        eval_func (Callable[[torch.nn.Module, DataLoader], torch.Tensor]):
+            Function to evaluate the model and return predictions.
         device (torch.device): Computation device.
 
     Returns:
@@ -101,13 +105,12 @@ def check_if_flip(
         sampler=SubsetSampler(remaining_indices),
     )
 
-    model = train_func(new_train_loader)
+    model = train_func(new_train_loader,device = device)
     model.to(device)
     model.eval()
 
     for test_data in test_loader:
         x, label = test_data
         x, label = x.to(device), label.to(device)
-        output = model(x)
-    pred = eval_func(output)
+    pred = eval_func(model, test_loader, device = device)
     return pred.item() != label.item()

@@ -117,10 +117,20 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # Evaluation 
-    def eval_func(model_output):
-        probabilities = torch.softmax(model_output, dim=1)
-        predicted_class = torch.argmax(probabilities, dim=1)
-        return predicted_class
+    def eval_func(model, test_loader, device= "cpu"):
+        model.to(device)
+        model.eval()
+        all_predictions = []
+
+        with torch.no_grad():
+            for data, _ in test_loader:
+                data = data.to(device)
+                model_output = model(data)
+                probabilities = torch.softmax(model_output, dim=1)
+                predicted_class = torch.argmax(probabilities, dim=1)
+                all_predictions.append(predicted_class.cpu())
+
+        return torch.cat(all_predictions)
 
     smallest_k = brittleness(
         train_loader=train_loader,

@@ -141,6 +141,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 - Leave-one-out (LOO) correlation
 - Linear datamodeling score (LDS)
 - Area under the ROC curve (AUC) for noisy label detection
+- Brittleness test for checking flipped label
 
 ## Benchmark Settings Supported
 |   Dataset   |       Model       |         Task         | Sample size (train,test) | Parameter size |   Metrics   |          Data Source         |
