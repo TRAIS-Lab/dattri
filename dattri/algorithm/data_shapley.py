@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import List
+    from typing import List, Optional, Tuple
 
 import torch
 from tqdm import tqdm
@@ -15,9 +15,22 @@ from .base import BaseAttributor
 from .utils import _check_shuffle
 
 
-def default_dist_func(train_batch, test_batch):
-    coord1 = train_batch[0]
-    coord2 = test_batch[0]
+def default_dist_func(
+        batch_x: Tuple[torch.Tensor],
+        batch_y: Tuple[torch.Tensor],
+) -> torch.Tensor:
+    """Default distance function for KNN.
+
+    Args:
+        batch_x (Tuple[torch.Tensor]): The batch to be calculated
+            distances on. The embeddings is default to be the
+            first element.
+        batch_y (Tuple[torch.Tensor]): The batch to be calculated
+            distances on. The embeddings is default to be the
+            first element.
+    """
+    coord1 = batch_x[0]
+    coord2 = batch_y[0]
     return torch.cdist(coord1, coord2)
 
 
@@ -27,7 +40,7 @@ class KNNShalpeyAttributerExact(BaseAttributor):
     def __init__(
         self,
         k_neighbors: int,
-        distance_func: Callable = None,
+        distance_func: Optional[Callable] = None,
     ) -> None:
         """Initialize the AttributionTask.
 
@@ -37,17 +50,19 @@ class KNNShalpeyAttributerExact(BaseAttributor):
 
         Args:
             k_neighbors (int): The number of neighbors in KNN model.
-            distance_func (Callable): Customizable function used for
-                distance calculation in KNN. The function can be quite
-                flexible in terms of what is calculated, but it should
-                take two batches of data as input.
+            distance_func (Callable, optional): Customizable function
+                used for distance calculation in KNN. The function
+                can be quite flexible in terms of what is calculated,
+                but it should take two batches of data as input.
                 A typical example is as follows:
                 ```python
-                def f(train_batch, test_batch):
-                    coord1 = train_batch[0]
-                    coord2 = test_batch[0]
+                def f(batch_x, batch_y):
+                    coord1 = batch_x[0]
+                    coord2 = batch_y[0]
                     return torch.cdist(coord1, coord2)
                 ```.
+                If not provided, a default Euclidean distance function
+                will be used.
         """
         self.k_neighbors = k_neighbors
 
