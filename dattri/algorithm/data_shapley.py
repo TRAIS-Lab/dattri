@@ -8,6 +8,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional, Tuple
 
+    from dattri.task import AttributionTask
+
 import torch
 from tqdm import tqdm
 
@@ -43,6 +45,7 @@ class KNNShalpeyAttributor(BaseAttributor):
     def __init__(
         self,
         k_neighbors: int,
+        task: AttributionTask = None,
         distance_func: Optional[Callable] = None,
     ) -> None:
         """Initialize the AttributionTask.
@@ -53,6 +56,9 @@ class KNNShalpeyAttributor(BaseAttributor):
 
         Args:
             k_neighbors (int): The number of neighbors in KNN model.
+            task (AttributionTask): The task to be attributed. Used to
+                pass the model and hook information in this attributor.
+                Please refer to the `AttributionTask` for more details.
             distance_func (Callable, optional): Customizable function
                 used for distance calculation in KNN. The function
                 can be quite flexible in terms of what is calculated,
@@ -69,8 +75,13 @@ class KNNShalpeyAttributor(BaseAttributor):
         """
         self.k_neighbors = k_neighbors
 
+        if task is not None:
+            error_msg = ("Specifying the model via the task argument "
+                         "is not implmented yet.")
+            raise NotImplementedError(error_msg)
+
         self.distance_func = default_dist_func
-        if distance_func:
+        if distance_func is not None:
             self.distance_func = distance_func
 
     def cache(self) -> None:
