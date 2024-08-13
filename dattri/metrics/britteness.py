@@ -101,16 +101,16 @@ def check_if_flip(
 
     new_train_loader = torch.utils.data.DataLoader(
         train_loader.dataset,
-        batch_size=64,
+        batch_size=train_loader.batch_size,
         sampler=SubsetSampler(remaining_indices),
     )
 
-    model = train_func(new_train_loader,device = device)
+    model = train_func(new_train_loader, device=device)
     model.to(device)
     model.eval()
 
     for test_data in test_loader:
         x, label = test_data
         x, label = x.to(device), label.to(device)
-    pred = eval_func(model, test_loader, device = device)
+    pred = eval_func(model, test_loader, device=device)
     return pred.item() != label.item()
