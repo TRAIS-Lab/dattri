@@ -15,20 +15,28 @@ from .base import BaseAttributor
 from .utils import _check_shuffle
 
 
+def default_dist_func(train_batch, test_batch):
+    coord1 = train_batch[0]
+    coord2 = test_batch[0]
+    return torch.cdist(coord1, coord2)
+
+
 class KNNShalpeyAttributerExact(BaseAttributor):
     """KNN Data Shapley Attributer."""
 
     def __init__(
         self,
-        k: int,
-        distance_func: Callable,
+        k_neighbors: int,
+        distance_func: Callable = None,
     ) -> None:
         """Initialize the AttributionTask.
 
-        KNN Data Shapley Valuation is task-agnostic.
+        KNN Data Shapley Valuation is generally dataset-specific.
+        Passing a model is optional and currently can be done in the
+        customizable distance function.
 
         Args:
-            k (int): The number of neighbors in KNN model.
+            k_neighbors (int): The number of neighbors in KNN model.
             distance_func (Callable): Customizable function used for
                 distance calculation in KNN. The function can be quite
                 flexible in terms of what is calculated, but it should
@@ -41,8 +49,11 @@ class KNNShalpeyAttributerExact(BaseAttributor):
                     return torch.cdist(coord1, coord2)
                 ```.
         """
-        self.k = k
-        self.distance_func = distance_func
+        self.k_neighbors = k_neighbors
+
+        self.distance_func = default_dist_func
+        if distance_func:
+            self.distance_func = distance_func
 
     def cache(self) -> None:
         """Precompute and cache some values for efficiency."""
@@ -54,7 +65,7 @@ class KNNShalpeyAttributerExact(BaseAttributor):
         train_labels: List[int],
         test_labels: List[int],
     ) -> None:
-        """Calculate the shapley values of the training set on each test sample.
+        """Calculate the KNN shapley values of the training set on each test sample.
 
         Args:
             train_dataloader (torch.utils.data.DataLoader): The dataloader for
@@ -130,6 +141,6 @@ class KNNShalpeyAttributerExact(BaseAttributor):
                     shapley_values[j, nn_sorting[j, i + 1]] + \
                     (int(train_labels[nn_sorting[j, i]] == test_labels[j]) -
                     int(train_labels[nn_sorting[j, i + 1]] == test_labels[j])) \
-                    / self.k * min([self.k, i + 1]) / (i + 1)
+                    / self.k_neighbors * min([self.k_neighbors, i + 1]) / (i + 1)
 
         return shapley_values
