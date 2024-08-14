@@ -94,8 +94,8 @@ class KNNShalpeyAttributor(BaseAttributor):
         self,
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
-        train_labels: List[int],
-        test_labels: List[int],
+        train_labels: Optional[List[int]] = None,
+        test_labels: Optional[List[int]] = None,
     ) -> None:
         """Calculate the KNN shapley values of the training set on each test sample.
 
@@ -106,17 +106,32 @@ class KNNShalpeyAttributor(BaseAttributor):
             test_dataloader (torch.utils.data.DataLoader): The dataloader for
                 test samples to calculate the shapley values. The dataloader
                 should not be shuffled.
-            train_labels: (List[int]): The list of training labels, with the same
-                size and order of the training dataset.
-            test_labels: (List[int]): The list of test labels, with the same
-                size and order of the test dataset.
+            train_labels: (List[int], optional): The list of training labels,
+                with the same size and order of the training dataset. If not provided,
+                the last element in each batch from the loader will be used as label.
+            test_labels: (List[int], optional): The list of test labels,
+                with the same size and order of the test dataset. If not provided,
+                the last element in each batch from the loader will be used as label.
 
         Returns:
             Tensor: The shapley values of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
+
+        Raises:
+            ValueError: If the length of provided labels and dataset mismatch.
         """
         _check_shuffle(test_dataloader)
         _check_shuffle(train_dataloader)
+
+        if (train_labels is not None and
+            len(train_labels) != len(train_dataloader.sampler)):
+            error_msg = "Length of training labels and training dataset mismatch."
+            raise ValueError(error_msg)
+
+        if (test_labels is not None and
+            len(test_labels) != len(test_dataloader.sampler)):
+            error_msg = "Length of test labels and test dataset mismatch."
+            raise ValueError(error_msg)
 
         num_train_samples = len(train_dataloader.sampler)
         num_test_samples = len(test_dataloader.sampler)
@@ -128,6 +143,12 @@ class KNNShalpeyAttributor(BaseAttributor):
         shapley_values = torch.zeros(
             size=(num_test_samples, num_train_samples),
         )
+
+        if train_labels is None:
+            train_labels = []
+
+        if test_labels is None:
+            test_labels = []
 
         for test_batch_idx, test_batch_data in enumerate(
             tqdm(
@@ -155,6 +176,12 @@ class KNNShalpeyAttributor(BaseAttributor):
                 )
 
                 dist_matrix[row_st:row_ed, col_st:col_ed] += partial_dist
+
+                if len(train_labels) != len(train_dataloader.sampler):
+                    train_labels.extend(train_batch_data[-1])
+
+                if len(test_labels) != len(test_dataloader.sampler):
+                    test_labels.extend(test_batch_data[-1])
 
         nn_sorting = torch.argsort(dist_matrix, dim=-1)
 
