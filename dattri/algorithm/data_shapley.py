@@ -177,6 +177,8 @@ class KNNShalpeyAttributor(BaseAttributor):
 
                 dist_matrix[row_st:row_ed, col_st:col_ed] += partial_dist
 
+                # Take the last element of the batch as the label
+                # If no labels are provided.
                 if len(train_labels) != len(train_dataloader.sampler):
                     train_labels.extend(train_batch_data[-1])
 
