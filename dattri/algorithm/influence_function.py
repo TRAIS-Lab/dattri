@@ -236,9 +236,6 @@ class IFAttributorDataInf(BaseAttributor):
         self.device = device
         self.index = 0
 
-    class DataInfUsageError(Exception):
-        """The usage exception class for DataInf."""
-
     def _set_test_data(self, dataloader: torch.utils.data.DataLoader) -> None:
         """Set test dataloader.
 
@@ -355,8 +352,8 @@ class IFAttributorDataInf(BaseAttributor):
         """
         self._set_full_train_data(full_train_dataloader)
 
+    @staticmethod
     def datainf(
-            self,
             func: Callable,
             argnums: int,
             in_dims: Tuple[Union[None, int], ...],
@@ -398,7 +395,13 @@ class IFAttributorDataInf(BaseAttributor):
             A function that takes a list of tuples of Tensor `x`, a tuple of tensors
                 `v`(layer-wise), and a tuple of tensors `q`(layer-wise)
                 and returns the approximated influence.
+
+        Raises:
+            DataInfUsageError: If the length of regularization is not the same
+                as the number of layers.
         """
+        class DataInfUsageError(Exception):
+            """The usage exception class for DataInf."""
         batch_grad_func = torch.func.vmap(
             grad(func, argnums=argnums), in_dims=in_dims,
         )
@@ -410,7 +413,7 @@ class IFAttributorDataInf(BaseAttributor):
         ):
             error_msg = "The length of regularization should\
                         be the same as the number of layers."
-            raise self.DataInfUsageError(error_msg)
+            raise DataInfUsageError(error_msg)
 
         def _single_datainf(
             v: torch.Tensor,
