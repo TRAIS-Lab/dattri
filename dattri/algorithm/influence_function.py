@@ -5,26 +5,24 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import List, Tuple
+    from collections.abc import Callable
+    from typing import Any, Dict, List, Optional, Tuple, Union
 
     from torch import Tensor
+    from torch.utils.data import DataLoader
 
+    from dattri.task import AttributionTask
+
+import warnings
 from functools import partial
 
 import torch
+from torch.func import grad
+from tqdm import tqdm
 
-from .base import BaseInnerProductAttributor, BaseAttributor
-
-from typing import TYPE_CHECKING
-import warnings
-
-from torch.func import grad, vmap
-
-import time
-
+from .base import BaseAttributor, BaseInnerProductAttributor
 from .utils import _check_shuffle
 
-from tqdm import tqdm
 
 class IFAttributorExplicit(BaseInnerProductAttributor):
     """The inner product attributor with explicit inverse hessian transformation."""
@@ -210,8 +208,9 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
             tuple(sampled_input[i].float() for i in range(1, len(sampled_input))),
         )
 
+
 class IFAttributorDataInf(BaseAttributor):
-    """The attributor using DataInf"""
+    """The attributor using DataInf."""
 
     def __init__(
         self,
@@ -265,18 +264,19 @@ class IFAttributorDataInf(BaseAttributor):
         self.full_train_dataloader = dataloader
 
     def get_layer_wise_grads(self, query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        """Split a gradient into a tuple of gradients corresponding to layer-wise parameters.
-
+        """Split a gradient into layer-wise gradients.
 
         Args:
-            query (torch.Tensor): Input gradient to split, could be train/test gradients. Normally
-                of shape (batch_size,parameter)
-        
+            query (torch.Tensor): Input gradient to split, could be train/test
+                gradients. Normally of shape (batch_size,parameter)
+
         Returns:
-            Tuple[torch.Tensor, ...]: The layer-wise splitted tensor, a tuple of shape 
-            (batch_size,layer0_size), (batch_size,layer1_size)...
+            Tuple[torch.Tensor, ...]: The layer-wise splitted tensor, a tuple of shape
+                (batch_size,layer0_size), (batch_size,layer1_size)...
         """
-        model_params, param_layer_map = self.task.get_param(self.index, layer_split=True)
+        model_params, param_layer_map = self.task.get_param(
+            self.index, layer_split=True,
+        )
         split_index = [0] * (param_layer_map[-1] + 1)
         for idx, layer_index in enumerate(param_layer_map):
             split_index[layer_index] += model_params[idx].shape[0]
@@ -343,7 +343,6 @@ class IFAttributorDataInf(BaseAttributor):
         model_params, _ = self.task.get_param(index)
         return self.task.get_grad_loss_func()(model_params, data)
 
-
     def cache(self, full_train_dataloader: DataLoader) -> None:
         """Cache the dataset for inverse hessian calculation.
 
@@ -397,7 +396,6 @@ class IFAttributorDataInf(BaseAttributor):
         # prepare a checkpoint-specific seed
         checkpoint_running_count = 0
 
-
         def datainf(
             func: Callable,
             argnums: int,
@@ -420,35 +418,41 @@ class IFAttributorDataInf(BaseAttributor):
                     to be cross-entropy.
                 argnums (int): An integer default to 0. Specifies which argument of func
                     to compute inverse FIM with respect to.
-                in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to produce
-                    batched layer-wise gradients. Example: inputs, weights, labels corresponds
-                    to (0,None,0).
+                in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to
+                    produce batched layer-wise gradients. Example: inputs,
+                    weights, labels corresponds to (0,None,0).
                 regularization (List [float]): A float or list of floats default to 0.0.
-                    Specifies the
-                    regularization term to be added to the Hessian matrix in each layer.
-                    This is useful when the Hessian matrix is singular or ill-conditioned.
-                    The regularization term is `regularization * I`, where `I` is the
-                    identity matrix directly added to the Hessian matrix. The list is
-                    of length L, where L is the total number of layers.
-                param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
-                    into layers. Should be the same length as parameters tuple. For example,
-                    for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
-                    param_layer_map should be [0,0,1,1],resulting in two layers as expected.
+                    Specifies the regularization term to be added to the Hessian
+                    matrix in each layer. This is useful when the Hessian matrix is
+                    singular or ill-conditioned. The regularization term is
+                    `regularization * I` , where `I` is the identity matrix directly
+                    added to the Hessian matrix. The list is of length L, where L is
+                    the total number of layers.
+                param_layer_map: Optional[List[int]]: Specifies how the parameters
+                    are grouped into layers. Should be the same length as parameters
+                    tuple. For example,for a two layer model, params =
+                    (0.weights1,0.bias,1.weights,1.bias),param_layer_map should be
+                    [0,0,1,1],resulting in two layers as expected.
 
             Returns:
                 A function that takes a list of tuples of Tensor `x`, a tuple of tensors
-                `v`(layer-wise), and a tuple of tensors `q`(layer-wise) and returns the approximated influence.
+                    `v`(layer-wise), and a tuple of tensors `q`(layer-wise)
+                    and returns the approximated influence.
 
             Raises:
-                IFVPUsageError: If the length of regularization is not the same as the number
-                    of layers.
+                IFVPUsageError: If the length of regularization is not the
+                    same as the number of layers.
             """
             # TODO: param_layer_map should not be optional.
-            batch_grad_func = torch.func.vmap(grad(func, argnums=argnums), in_dims=in_dims)
+            batch_grad_func = torch.func.vmap(
+                grad(func, argnums=argnums), in_dims=in_dims,
+            )
             if regularization is not None and not isinstance(regularization, list):
                 regularization = [regularization] * len(param_layer_map)
 
-            if param_layer_map is not None and len(regularization) != len(param_layer_map):
+            if param_layer_map is not None and len(regularization) != len(
+                param_layer_map,
+            ):
                 error_msg = "The length of regularization should\
                             be the same as the number of layers."
                 raise IFVPUsageError(error_msg)
@@ -459,22 +463,26 @@ class IFAttributorDataInf(BaseAttributor):
                 q: torch.Tensor,
                 regularization: float,
             ) -> torch.Tensor:
-                """Intermediate DataInf value calculation of a single training data point.
+                """Intermediate DataInf value calculation of a single data point.
 
-                Args: 
-                    v (torch.Tensor): A tensor representing (batched) validation set gradient,
-                        Normally of shape (num_valiation,parameter_size)
-                    grad (torch.Tensor): A tensor representing a single training gradient, of shape
-                        (parameter_size,)
-                    q (torch.Tensor): A tensor representing (batched) training gradient, Normally
-                        of shape (num_train,parameter_size)
-                    regularization (List [float]): A float or list of floats default to 0.0.
-                        Specifies the regularization term to be added to the Hessian matrix in each layer.
+                Args:
+                    v (torch.Tensor): A tensor representing (batched) validation
+                        set gradient,Normally of shape (num_valiation,parameter_size)
+                    grad (torch.Tensor): A tensor representing a single training
+                        gradient, of shape (parameter_size,)
+                    q (torch.Tensor): A tensor representing (batched) training gradient
+                        , Normally of shape (num_train,parameter_size)
+                    regularization (float): A float or list of floats default
+                        to 0.0.Specifies the regularization term to be added to
+                        the Hessian matrix in each layer.
+
+                Returns:
+                    A tensor corresponding to intermediate influence value. This value
+                        will later to aggregated to obtain final influence.
                 """
                 grad = grad.unsqueeze(-1)
-                coef = (v @ grad) / (regularization + torch.norm(grad)**2)
-                res = (q @ v.T - (q @ grad) @ coef.T) / regularization
-                return res
+                coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
+                return (q @ v.T - (q @ grad) @ coef.T) / regularization
 
             def _datainf_func(
                 x: Tuple[torch.Tensor, ...],
@@ -503,11 +511,9 @@ class IFAttributorDataInf(BaseAttributor):
                     max_layer = max(param_layer_map)
                     for group in range(max_layer + 1):
                         grouped_layers = tuple(
-                            [
-                                grads[layer]
-                                for layer in range(len(param_layer_map))
-                                if param_layer_map[layer] == group
-                            ],
+                            grads[layer]
+                            for layer in range(len(param_layer_map))
+                            if param_layer_map[layer] == group
                         )
                         concated_grads = torch.concat(grouped_layers, dim=1)
                         grouped.append(concated_grads)
@@ -515,13 +521,11 @@ class IFAttributorDataInf(BaseAttributor):
                     layer_cnt = max_layer + 1  # Assuming count starts from 0
                 ifvps = []
                 for layer in range(layer_cnt):
-                    start_time = time.time()
                     grad_layer = grads[layer]
                     reg = 0.0 if regularization is None else regularization[layer]
-                    tmp = v[layer]
                     ifvp_contributions = torch.func.vmap(
                         lambda grad, layer=layer, reg=reg: _single_datainf(
-                            tmp,
+                            v[layer],
                             grad,
                             q[layer],
                             reg,
@@ -533,13 +537,14 @@ class IFAttributorDataInf(BaseAttributor):
 
             return _datainf_func
 
-
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
             # set index to current one
             self.index = checkpoint_idx
             checkpoint_running_count += 1
             tda_output *= checkpoint_running_count - 1
-            model_params, param_layer_map = self.task.get_param(self.index, layer_split=True)
+            model_params, param_layer_map = self.task.get_param(
+                self.index, layer_split=True,
+            )
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
@@ -576,7 +581,6 @@ class IFAttributorDataInf(BaseAttributor):
                         data=test_batch_data,
                     )
 
-                    vector_product = 0
                     for full_data_ in self.full_train_dataloader:
                         # move to device
                         query_split = self.get_layer_wise_grads(test_batch_grad)
@@ -589,11 +593,13 @@ class IFAttributorDataInf(BaseAttributor):
                             **self.transformation_kwargs,
                         )
                         res = inf_func(
-                        (model_params, (full_data[0], full_data[1].view(-1, 1).float())),
-                        query_split,
-                        train_grad_split
+                            (
+                                model_params,
+                                (full_data[0], full_data[1].view(-1, 1).float()),
+                            ),
+                            query_split,
+                            train_grad_split,
                         )
-                        
 
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(

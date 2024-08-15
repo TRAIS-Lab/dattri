@@ -203,17 +203,18 @@ def ifvp_datainf(
     ) -> torch.Tensor:
         """Intermediate DataInf ifvp calculation of a single training data point.
 
-        Args: 
+        Args:
             v (torch.Tensor): A tensor representing (batched) validation set gradient,
                 Normally of shape (num_valiation,parameter_size)
-            grad (torch.Tensor): A tensor representing a single training gradient, of shape
-                (parameter_size,)
-            regularization (List [float]): A float or list of floats default to 0.0.
-                Specifies the regularization term to be added to the Hessian matrix in each layer.
-        
-        Returns: 
-            A torch.Tensor corresponding to intermediate ifvp, which will later be aggregated to obtain
-                final ifvp.
+            grad (torch.Tensor): A tensor representing a single training gradient,
+                of shape (parameter_size,)
+            regularization (float): A float or list of floats default to 0.0.
+                Specifies the regularization term to be added to the Hessian matrix
+                in each layer.
+
+        Returns:
+            A torch.Tensor corresponding to intermediate ifvp, which will
+                be aggregated to obtain final ifvp.
         """
         coef = (v @ grad) / (regularization + torch.sum(grad**2))
         return (v - coef.reshape(-1, 1) @ grad.reshape(1, -1)) / regularization
@@ -323,17 +324,18 @@ def ifvp_at_x_datainf(
     ) -> torch.Tensor:
         """Intermediate DataInf ifvp calculation of a single training data point.
 
-        Args: 
+        Args:
             v (torch.Tensor): A tensor representing (batched) validation set gradient,
                 Normally of shape (num_valiation,parameter_size)
-            grad (torch.Tensor): A tensor representing a single training gradient, of shape
-                (parameter_size,)
-            regularization (List [float]): A float or list of floats default to 0.0.
-                Specifies the regularization term to be added to the Hessian matrix in each layer.
-        
-        Returns: 
-            A torch.Tensor corresponding to intermediate ifvp, which will later be aggregated to obtain
-                final ifvp.
+            grad (torch.Tensor): A tensor representing a single training gradient,
+                of shape (parameter_size,)
+            regularization (float): A float or list of floats default to 0.0.
+                Specifies the regularization term to be added to the Hessian matrix
+                in each layer.
+
+        Returns:
+            A torch.Tensor corresponding to intermediate ifvp, which will later
+                be aggregated to obtain final ifvp.
         """
         coef = (v @ grad) / (regularization + torch.sum(grad**2))
         return (v - coef.reshape(-1, 1) @ grad.reshape(1, -1)) / regularization
