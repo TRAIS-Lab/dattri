@@ -201,7 +201,20 @@ def ifvp_datainf(
         grad: torch.Tensor,
         regularization: float,
     ) -> torch.Tensor:
-        # TODO: docstring
+        """Intermediate DataInf ifvp calculation of a single training data point.
+
+        Args: 
+            v (torch.Tensor): A tensor representing (batched) validation set gradient,
+                Normally of shape (num_valiation,parameter_size)
+            grad (torch.Tensor): A tensor representing a single training gradient, of shape
+                (parameter_size,)
+            regularization (List [float]): A float or list of floats default to 0.0.
+                Specifies the regularization term to be added to the Hessian matrix in each layer.
+        
+        Returns: 
+            A torch.Tensor corresponding to intermediate ifvp, which will later be aggregated to obtain
+                final ifvp.
+        """
         coef = (v @ grad) / (regularization + torch.sum(grad**2))
         return (v - coef.reshape(-1, 1) @ grad.reshape(1, -1)) / regularization
 
@@ -308,9 +321,22 @@ def ifvp_at_x_datainf(
         grad: torch.Tensor,
         regularization: float,
     ) -> torch.Tensor:
-        # TODO: same as the `_single_datainf_ifvp` defined in `ifvp_datainf`.
-        coef = (v.T @ grad) / (regularization + torch.sum(grad**2))
-        return (v - coef * grad) / regularization
+        """Intermediate DataInf ifvp calculation of a single training data point.
+
+        Args: 
+            v (torch.Tensor): A tensor representing (batched) validation set gradient,
+                Normally of shape (num_valiation,parameter_size)
+            grad (torch.Tensor): A tensor representing a single training gradient, of shape
+                (parameter_size,)
+            regularization (List [float]): A float or list of floats default to 0.0.
+                Specifies the regularization term to be added to the Hessian matrix in each layer.
+        
+        Returns: 
+            A torch.Tensor corresponding to intermediate ifvp, which will later be aggregated to obtain
+                final ifvp.
+        """
+        coef = (v @ grad) / (regularization + torch.sum(grad**2))
+        return (v - coef.reshape(-1, 1) @ grad.reshape(1, -1)) / regularization
 
     grads = vmap(_per_sample_grad, in_dims=in_dims)(*x)
     layer_cnt = len(grads)
