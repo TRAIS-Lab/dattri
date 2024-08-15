@@ -68,6 +68,7 @@ def loss_mnist_mlp(
     criterion = nn.CrossEntropyLoss(reduction="none")
     model = create_mlp_model("mnist")
     model.load_state_dict(torch.load(Path(model_path)))
+    model = model.to('cuda')
     model.eval()
     loss_list = []
     with torch.no_grad():

@@ -28,6 +28,8 @@ from functools import wraps
 import torch
 from torch.func import grad, vmap
 
+import time
+
 
 def ifvp_explicit(
     func: Callable,
@@ -186,8 +188,11 @@ def ifvp_datainf(
             of layers.
     """
     # TODO: param_layer_map should not be optional.
-
+    print(f"Start of DataInf calculation!")
+    initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
     batch_grad_func = vmap(grad(func, argnums=argnums), in_dims=in_dims)
+    final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
+    print(f"Memory usage of test grad calculating: {final_memory-initial_memory}")
     if regularization is not None and not isinstance(regularization, list):
         regularization = [regularization] * len(param_layer_map)
 
@@ -202,8 +207,21 @@ def ifvp_datainf(
         regularization: float,
     ) -> torch.Tensor:
         # TODO: docstring
-        coef = (v @ grad) / (regularization + torch.sum(grad**2))
-        return (v - coef.reshape(-1, 1) @ grad.reshape(1, -1)) / regularization
+        #print(f"v shape: {v.shape}")
+        #print(f"grad shape: {grad.shape}")
+        initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
+        coef = (v @ grad) / (regularization + torch.norm(grad)**2)
+        final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
+        #print(f"Memory usage of coef: {final_memory-initial_memory}")
+        coef = coef.unsqueeze(-1)
+        #print(f"Coef shape: {coef.shape}")
+        initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
+        tmp = coef * grad
+        #print(f"tmp shape: {tmp.shape}")
+        res = (v - tmp) / regularization
+        final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
+        #print(f"Memory usage of res: {final_memory-initial_memory}")
+        return res
 
     def _ifvp_datainf_func(
         x: Tuple[torch.Tensor, ...],
@@ -221,7 +239,11 @@ def ifvp_datainf(
         Returns:
             Layer-wise IFVP values.
         """
+        print(f"New implementation!")
+        initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
         grads = batch_grad_func(*x)
+        final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
+        print(f"Memory usage of test grad calculating: {final_memory-initial_memory}")
         layer_cnt = len(grads)
         if param_layer_map is not None:
             grouped = []
@@ -239,18 +261,31 @@ def ifvp_datainf(
             grads = tuple(grouped)
             layer_cnt = max_layer + 1  # Assuming count starts from 0
         ifvps = []
+        memory_now = torch.cuda.memory_allocated("cuda") / 1e6
+        print(f"Memory before calculation: {memory_now}")
         for layer in range(layer_cnt):
+            start_time = time.time()
+            initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
             grad_layer = grads[layer]
             reg = 0.0 if regularization is None else regularization[layer]
-            ifvp_contributions = vmap(
-                lambda grad, layer=layer, reg=reg: _single_datainf_ifvp(
-                    v[layer],
-                    grad,
-                    reg,
-                ),
-            )(grad_layer)
+            tmp = v[layer]
+            contri = torch.zeros((tmp.shape)).to('cuda')
+            for grad in grad_layer:
+                contri = contri + _single_datainf_ifvp(tmp,grad,reg)
+            ifvp_contributions = contri
+            # ifvp_contributions = vmap(
+            #     lambda grad, layer=layer, reg=reg: _single_datainf_ifvp(
+            #         tmp,
+            #         grad,
+            #         reg,
+            #     ),
+            # )(grad_layer)
+            final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
+            print(f"Memory usage of mapping layer{layer}: {final_memory-initial_memory}")
             ifvp_at_layer = ifvp_contributions.mean(dim=0)
             ifvps.append(ifvp_at_layer)
+            end_time = time.time()
+            print(f"Time used for layer {layer}: {end_time-start_time}")
         return tuple(ifvps)
 
     return _ifvp_datainf_func
