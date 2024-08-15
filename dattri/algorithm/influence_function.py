@@ -264,7 +264,18 @@ class IFAttributorDataInf(BaseAttributor):
         # This function may be overrided by the subclass
         self.full_train_dataloader = dataloader
 
-    def get_layer_wise_grads(self, query):
+    def get_layer_wise_grads(self, query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        """Split a gradient into a tuple of gradients corresponding to layer-wise parameters.
+
+
+        Args:
+            query (torch.Tensor): Input gradient to split, could be train/test gradients. Normally
+                of shape (batch_size,parameter)
+        
+        Returns:
+            Tuple[torch.Tensor, ...]: The layer-wise splitted tensor, a tuple of shape 
+            (batch_size,layer0_size), (batch_size,layer1_size)...
+        """
         model_params, param_layer_map = self.task.get_param(self.index, layer_split=True)
         split_index = [0] * (param_layer_map[-1] + 1)
         for idx, layer_index in enumerate(param_layer_map):
@@ -392,7 +403,7 @@ class IFAttributorDataInf(BaseAttributor):
             argnums: int,
             in_dims: Tuple[Union[None, int], ...],
             regularization: Optional[Union[float, List[float]]] = None,
-            param_layer_map: Optional[List[int]] = None,
+            param_layer_map: [List[int]] = None,
         ) -> Callable:
             """DataInf IFVP algorithm function.
 
@@ -454,22 +465,27 @@ class IFAttributorDataInf(BaseAttributor):
                 q: torch.Tensor,
                 regularization: float,
             ) -> torch.Tensor:
+                """Intermediate DataInf value calculation of a single training data point.
+
+                Args: 
+                    v (torch.Tensor): A tensor representing (batched) validation set gradient,
+                        Normally of shape (num_valiation,parameter_size)
+                    grad (torch.Tensor): A tensor representing a single training gradient, of shape
+                        (parameter_size,)
+                    q (torch.Tensor): A tensor representing (batched) training gradient, Normally
+                        of shape (num_train,parameter_size)
+                    regularization (List [float]): A float or list of floats default to 0.0.
+                        Specifies the regularization term to be added to the Hessian matrix in each layer.
+                """
                 # TODO: docstring
-                #print(f"v shape: {v.shape}")
-                #print(f"grad shape: {grad.shape}")
-                #print(f"q shape: {q.shape}")
                 grad = grad.unsqueeze(-1)
                 initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
                 coef = (v @ grad) / (regularization + torch.norm(grad)**2)
                 final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
-                #print(f"Memory usage of coef: {final_memory-initial_memory}")
-                #print(f"Coef shape: {coef.shape}")
                 initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
                 tmp = (q @ grad) @ coef.T
-                #print(f"tmp shape: {tmp.shape}")
                 res = (q @ v.T - tmp) / regularization
                 final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
-                #print(f"Memory usage of res: {final_memory-initial_memory}")
                 return res
 
             def _ifvp_datainf_func(
@@ -482,18 +498,19 @@ class IFAttributorDataInf(BaseAttributor):
                 Args:
                     x (Tuple[torch.Tensor, ...]): The function will compute the
                         inverse FIM with respect to these arguments.
-                    v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from
-                        which IFVP will becomputed. For example layer-wise gradients
+                    v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from which
+                        influence will be computed. For example layer-wise gradients
                         of test samples.
+                    q (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from which
+                        influence will be computed. For example layer-wise gradients
+                        of train samples.
 
                 Returns:
                     Layer-wise IFVP values.
                 """
-                #print(f"New implementation!")
                 initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
                 grads = batch_grad_func(*x)
                 final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
-                #print(f"Memory usage of test grad calculating: {final_memory-initial_memory}")
                 layer_cnt = len(grads)
                 if param_layer_map is not None:
                     grouped = []
@@ -512,17 +529,12 @@ class IFAttributorDataInf(BaseAttributor):
                     layer_cnt = max_layer + 1  # Assuming count starts from 0
                 ifvps = []
                 memory_now = torch.cuda.memory_allocated("cuda") / 1e6
-                #print(f"Memory before calculation: {memory_now}")
                 for layer in range(layer_cnt):
                     start_time = time.time()
                     initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
                     grad_layer = grads[layer]
                     reg = 0.0 if regularization is None else regularization[layer]
                     tmp = v[layer]
-                    # contri = torch.zeros((tmp.shape)).to('cuda')
-                    # for grad in grad_layer:
-                    #     contri = contri + _single_datainf_ifvp(tmp,grad,reg)
-                    # ifvp_contributions = contri
                     ifvp_contributions = torch.func.vmap(
                         lambda grad, layer=layer, reg=reg: _single_datainf_ifvp(
                             tmp,
@@ -563,11 +575,7 @@ class IFAttributorDataInf(BaseAttributor):
                     index=self.index,
                     data=train_batch_data,
                 )
-                #print(f"Shape of train grad{train_batch_grad.shape}")
-                #print(type(train_batch_grad))
                 train_grad_tmp = self.get_layer_wise_grads(train_batch_grad)
-                #print(len(train_grad_tmp))
-                #print(train_grad_tmp[0].shape)
                 for test_batch_idx, test_batch_data_ in enumerate(
                     tqdm(
                         test_dataloader,
@@ -604,16 +612,8 @@ class IFAttributorDataInf(BaseAttributor):
                         query_split,
                         train_grad_tmp
                         )
-                        #print(f"res shape: {res[0].shape}")
-                        # vector_product += self.transformation_on_query(
-                        #     index=self.index,
-                        #     train_data=full_data,
-                        #     query=test_batch_grad,
-                        #     **self.transformation_kwargs,
-                        # )
                         
 
-                    # results position based on batch info
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
                         (train_batch_idx + 1) * train_dataloader.batch_size,
@@ -625,9 +625,7 @@ class IFAttributorDataInf(BaseAttributor):
                         (test_batch_idx + 1) * test_dataloader.batch_size,
                         len(test_dataloader.sampler),
                     )
-                    stacked_tensors = torch.stack(res, dim=0)  # Shape will be [num_tensors, 64, 64]
-                    #print(f"stacked_tensor shape: {stacked_tensors.shape}")
-# Compute the mean along the 0th dimension
+                    stacked_tensors = torch.stack(res, dim=0)
                     average_tensor = torch.mean(stacked_tensors, dim=0)
                     tda_output[row_st:row_ed, col_st:col_ed] += average_tensor
 
