@@ -399,7 +399,6 @@ class IFAttributorDataInf(BaseAttributor):
                 `v`(layer-wise), and a tuple of tensors `q`(layer-wise)
                 and returns the approximated influence.
         """
-        # TODO: param_layer_map should not be optional.
         batch_grad_func = torch.func.vmap(
             grad(func, argnums=argnums), in_dims=in_dims,
         )
@@ -593,7 +592,7 @@ class IFAttributorDataInf(BaseAttributor):
                             param_layer_map=param_layer_map,
                             **self.transformation_kwargs,
                         )
-                        res = inf_func(
+                        single_influence = inf_func(
                             (
                                 model_params,
                                 (full_data[0], full_data[1].view(-1, 1).float()),
@@ -613,9 +612,9 @@ class IFAttributorDataInf(BaseAttributor):
                         (test_batch_idx + 1) * test_dataloader.batch_size,
                         len(test_dataloader.sampler),
                     )
-                    stacked_tensors = torch.stack(res, dim=0)
-                    average_tensor = torch.mean(stacked_tensors, dim=0)
-                    tda_output[row_st:row_ed, col_st:col_ed] += average_tensor
+                    influence = torch.stack(single_influence, dim=0)
+                    average_influence = torch.mean(influence, dim=0)
+                    tda_output[row_st:row_ed, col_st:col_ed] += average_influence
 
         tda_output /= checkpoint_running_count
 
