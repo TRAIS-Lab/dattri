@@ -211,7 +211,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         )
 
 class IFAttributorDataInf(BaseAttributor):
-    """The base class for inner product attributor."""
+    """The attributor using DataInf"""
 
     def __init__(
         self,
@@ -398,17 +398,16 @@ class IFAttributorDataInf(BaseAttributor):
         checkpoint_running_count = 0
 
 
-        def ifvp_datainf_revise(
+        def datainf(
             func: Callable,
             argnums: int,
             in_dims: Tuple[Union[None, int], ...],
             regularization: Optional[Union[float, List[float]]] = None,
             param_layer_map: [List[int]] = None,
         ) -> Callable:
-            """DataInf IFVP algorithm function.
+            """DataInf algorithm function.
 
-            Standing for the inverse-FIM-vector product, returns a function that,
-            when given vectors, computes the product of inverse-FIM and vector.
+            Returns a function that,when given vectors, computes the DataInf influence.
 
             DataInf assume the loss to be cross-entropy and thus derive a closed form
             IFVP without having to approximate the FIM. Implementation for reference:
@@ -437,20 +436,15 @@ class IFAttributorDataInf(BaseAttributor):
                     param_layer_map should be [0,0,1,1],resulting in two layers as expected.
 
             Returns:
-                A function that takes a list of tuples of Tensor `x` and a tuple of tensors
-                `v`(layer-wise) and returns the approximated IFVP of the approximated Hessian of
-                `func` and `v`.
+                A function that takes a list of tuples of Tensor `x`, a tuple of tensors
+                `v`(layer-wise), and a tuple of tensors `q`(layer-wise) and returns the approximated influence.
 
             Raises:
                 IFVPUsageError: If the length of regularization is not the same as the number
                     of layers.
             """
             # TODO: param_layer_map should not be optional.
-            #print(f"Start of DataInf calculation!")
-            initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
             batch_grad_func = torch.func.vmap(grad(func, argnums=argnums), in_dims=in_dims)
-            final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
-            #print(f"Memory usage of test grad calculating: {final_memory-initial_memory}")
             if regularization is not None and not isinstance(regularization, list):
                 regularization = [regularization] * len(param_layer_map)
 
@@ -459,7 +453,7 @@ class IFAttributorDataInf(BaseAttributor):
                             be the same as the number of layers."
                 raise IFVPUsageError(error_msg)
 
-            def _single_datainf_ifvp(
+            def _single_datainf(
                 v: torch.Tensor,
                 grad: torch.Tensor,
                 q: torch.Tensor,
@@ -477,23 +471,17 @@ class IFAttributorDataInf(BaseAttributor):
                     regularization (List [float]): A float or list of floats default to 0.0.
                         Specifies the regularization term to be added to the Hessian matrix in each layer.
                 """
-                # TODO: docstring
                 grad = grad.unsqueeze(-1)
-                initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
                 coef = (v @ grad) / (regularization + torch.norm(grad)**2)
-                final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
-                initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
-                tmp = (q @ grad) @ coef.T
-                res = (q @ v.T - tmp) / regularization
-                final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
+                res = (q @ v.T - (q @ grad) @ coef.T) / regularization
                 return res
 
-            def _ifvp_datainf_func(
+            def _datainf_func(
                 x: Tuple[torch.Tensor, ...],
                 v: Tuple[torch.Tensor, ...],
                 q: Tuple[torch.Tensor, ...],
             ) -> Tuple[torch.Tensor]:
-                """The IFVP function using DataInf.
+                """The influence function using DataInf.
 
                 Args:
                     x (Tuple[torch.Tensor, ...]): The function will compute the
@@ -506,11 +494,9 @@ class IFAttributorDataInf(BaseAttributor):
                         of train samples.
 
                 Returns:
-                    Layer-wise IFVP values.
+                    Layer-wise influence value of shape (train_size,validation_size).
                 """
-                initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
                 grads = batch_grad_func(*x)
-                final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
                 layer_cnt = len(grads)
                 if param_layer_map is not None:
                     grouped = []
@@ -528,30 +514,24 @@ class IFAttributorDataInf(BaseAttributor):
                     grads = tuple(grouped)
                     layer_cnt = max_layer + 1  # Assuming count starts from 0
                 ifvps = []
-                memory_now = torch.cuda.memory_allocated("cuda") / 1e6
                 for layer in range(layer_cnt):
                     start_time = time.time()
-                    initial_memory = torch.cuda.memory_allocated("cuda") / 1e6
                     grad_layer = grads[layer]
                     reg = 0.0 if regularization is None else regularization[layer]
                     tmp = v[layer]
                     ifvp_contributions = torch.func.vmap(
-                        lambda grad, layer=layer, reg=reg: _single_datainf_ifvp(
+                        lambda grad, layer=layer, reg=reg: _single_datainf(
                             tmp,
                             grad,
                             q[layer],
                             reg,
                         ),
                     )(grad_layer)
-                    final_memory = torch.cuda.memory_allocated("cuda") / 1e6 
-                    #print(f"Memory usage of mapping layer{layer}: {final_memory-initial_memory}")
                     ifvp_at_layer = ifvp_contributions.mean(dim=0)
                     ifvps.append(ifvp_at_layer)
-                    end_time = time.time()
-                    #print(f"Time used for layer {layer}: {end_time-start_time}")
                 return tuple(ifvps)
 
-            return _ifvp_datainf_func
+            return _datainf_func
 
 
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
@@ -559,6 +539,7 @@ class IFAttributorDataInf(BaseAttributor):
             self.index = checkpoint_idx
             checkpoint_running_count += 1
             tda_output *= checkpoint_running_count - 1
+            model_params, param_layer_map = self.task.get_param(self.index, layer_split=True)
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
@@ -575,7 +556,9 @@ class IFAttributorDataInf(BaseAttributor):
                     index=self.index,
                     data=train_batch_data,
                 )
-                train_grad_tmp = self.get_layer_wise_grads(train_batch_grad)
+
+                train_grad_split = self.get_layer_wise_grads(train_batch_grad)
+
                 for test_batch_idx, test_batch_data_ in enumerate(
                     tqdm(
                         test_dataloader,
@@ -594,13 +577,11 @@ class IFAttributorDataInf(BaseAttributor):
                     )
 
                     vector_product = 0
-                    model_params, param_layer_map = self.task.get_param(self.index, layer_split=True)
                     for full_data_ in self.full_train_dataloader:
                         # move to device
                         query_split = self.get_layer_wise_grads(test_batch_grad)
                         full_data = tuple(data.to(self.device) for data in full_data_)
-                        #print("reached!")
-                        inf_func = ifvp_datainf_revise(
+                        inf_func = datainf(
                             self.task.get_loss_func(),
                             0,
                             (None, 0),
@@ -610,7 +591,7 @@ class IFAttributorDataInf(BaseAttributor):
                         res = inf_func(
                         (model_params, (full_data[0], full_data[1].view(-1, 1).float())),
                         query_split,
-                        train_grad_tmp
+                        train_grad_split
                         )
                         
 
