@@ -24,6 +24,7 @@ import time
 
 from .utils import _check_shuffle
 
+from tqdm import tqdm
 
 class IFAttributorExplicit(BaseInnerProductAttributor):
     """The inner product attributor with explicit inverse hessian transformation."""
