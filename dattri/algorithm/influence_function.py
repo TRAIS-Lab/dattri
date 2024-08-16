@@ -6,21 +6,19 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any, Dict, List, Optional, Tuple, Union
+    from typing import List, Optional, Tuple, Union
 
     from torch import Tensor
     from torch.utils.data import DataLoader
 
-    from dattri.task import AttributionTask
 
 import warnings
 from functools import partial
 
 import torch
-from torch.func import grad
 from tqdm import tqdm
 
-from .base import BaseAttributor, BaseInnerProductAttributor
+from .base import BaseInnerProductAttributor
 from .utils import _check_shuffle
 
 
@@ -209,59 +207,62 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         )
 
 
-class IFAttributorDataInf(BaseAttributor):
+class IFAttributorDataInf(BaseInnerProductAttributor):
     """The attributor using DataInf."""
 
-    def __init__(
-        self,
-        task: AttributionTask,
-        device: Optional[str] = "cpu",
-        **transformation_kwargs: Dict[str, Any],
-    ) -> None:
-        """Initialize the attributor.
+    def transformation_on_query(
+    self,
+    index: int,
+    train_data: Tuple[torch.Tensor, ...],
+    query: torch.Tensor,
+    **transformation_kwargs,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the query through ifvp_datainf.
 
         Args:
-            task (AttributionTask): The task to be attributed. The task should
-                be an instance of `AttributionTask`.
-            transformation_kwargs (Optional[Dict[str, Any]]): The keyword arguments for
-                the transformation function. More specifically, it will be stored in
-                the `transformation_kwargs` attribute and be used by some customized
-                member functions, e.g., `transformation_on_query`, where the
-                transformation such as hessian matrix or Fisher Information matrix is
-                calculated.
-            device (str): The device to run the attributor.
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            train_data (Tuple[Tensor]): The train data. Normally this is a tuple
+                of input data and target data, the number of items in the
+                tuple should be aligned in the target function. The tensors'
+                shape follows (1, batchsize, ...).
+            query (torch.Tensor): The query to be transformed. Normally it is
+                a 2-d dimensional tensor with the shape of
+                (batchsize, num_parameters).
+            transformation_kwargs (Dict[str, Any]): The keyword arguments for
+                the transformation function.
+
+        Returns:
+            torch.Tensor: The transformation on the query. Normally it is a 2-d
+                dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        self.task = task
-        self.transformation_kwargs = transformation_kwargs or {}
-        self.device = device
-        self.index = 0
+        from dattri.func.fisher import ifvp_datainf
 
-    def _set_test_data(self, dataloader: torch.utils.data.DataLoader) -> None:
-        """Set test dataloader.
+        model_params, param_layer_map = self.task.get_param(index, layer_split=True)
 
-        Args:
-            dataloader (DataLoader): The dataloader for test samples to be attributed.
-        """
-        # This function may be overrided by the subclass
-        self.test_dataloader = dataloader
+        self.ihvp_func = ifvp_datainf(
+            self.task.get_loss_func(),
+            0,
+            (None, 0),
+            param_layer_map=param_layer_map,
+            **transformation_kwargs,
+        )
 
-    def _set_train_data(self, dataloader: torch.utils.data.DataLoader) -> None:
-        """Set train dataloader to be attributed.
+        split_index = [0] * (param_layer_map[-1] + 1)
+        for idx, layer_index in enumerate(param_layer_map):
+            split_index[layer_index] += model_params[idx].shape[0]
 
-        Args:
-            dataloader (DataLoader): The dataloader for train samples to be attributed.
-        """
-        # This function may be overrided by the subclass
-        self.train_dataloader = dataloader
+        current_idx = 0
+        query_split = []
+        for i in range(len(split_index)):
+            query_split.append(query[:, current_idx : split_index[i] + current_idx])
+            current_idx += split_index[i]
 
-    def _set_full_train_data(self, dataloader: torch.utils.data.DataLoader) -> None:
-        """Set train dataloader for full training set.
-
-        Args:
-            dataloader (DataLoader): The dataloader for full training samples.
-        """
-        # This function may be overrided by the subclass
-        self.full_train_dataloader = dataloader
+        res = self.ihvp_func(
+            (model_params, (train_data[0], train_data[1].view(-1, 1).float())),
+            query_split,
+        )
+        return torch.cat(res, dim=1).detach()
 
     def get_layer_wise_grads(self, query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Split a gradient into layer-wise gradients.
@@ -286,71 +287,6 @@ class IFAttributorDataInf(BaseAttributor):
             query_split.append(query[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
         return query_split
-
-    def generate_test_query(
-        self,
-        index: int,
-        data: Tuple[torch.Tensor, ...],
-    ) -> torch.Tensor:
-        """Calculating the query based on the test data.
-
-        Inner product attributor calculates the inner product between the
-        train query and the transformation of the test query. This function
-        calculates the test query based on the test data.
-
-        Args:
-            index (int): The index of the model parameters. This index
-                is used for ensembling of different trained model
-                parameters.
-            data (Tuple[Tensor]): The test data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-
-        Returns:
-            torch.Tensor: The query based on the test data. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-        """
-        model_params, _ = self.task.get_param(index)
-        return self.task.get_grad_target_func()(model_params, data)
-
-    def generate_train_query(
-        self,
-        index: int,
-        data: Tuple[torch.Tensor, ...],
-    ) -> torch.Tensor:
-        """Calculating the query based on the train data.
-
-        Inner product attributor calculates the inner product between the
-        train query and the transformation of the test query. This function
-        calculates the train query based on the train data.
-
-        Args:
-            index (int): The index of the model parameters. This index
-                is used for ensembling of different trained model
-                parameters.
-            data (Tuple[Tensor]): The train data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-
-        Returns:
-            torch.Tensor: The query based on the train data. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-        """
-        model_params, _ = self.task.get_param(index)
-        return self.task.get_grad_loss_func()(model_params, data)
-
-    def cache(self, full_train_dataloader: DataLoader) -> None:
-        """Cache the dataset for inverse hessian calculation.
-
-        Args:
-            full_train_dataloader (DataLoader): The dataloader
-                with full training samples for inverse hessian calculation.
-        """
-        self._set_full_train_data(full_train_dataloader)
 
     @staticmethod
     def datainf(
@@ -403,7 +339,7 @@ class IFAttributorDataInf(BaseAttributor):
         class DataInfUsageError(Exception):
             """The usage exception class for DataInf."""
         batch_grad_func = torch.func.vmap(
-            grad(func, argnums=argnums), in_dims=in_dims,
+            torch.func.grad(func, argnums=argnums), in_dims=in_dims,
         )
         if regularization is not None and not isinstance(regularization, list):
             regularization = [regularization] * len(param_layer_map)
@@ -517,7 +453,6 @@ class IFAttributorDataInf(BaseAttributor):
                 the shape of (num_train_samples, num_test_samples).
 
         """
-        super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
             self.full_train_dataloader = train_dataloader
             warnings.warn(
