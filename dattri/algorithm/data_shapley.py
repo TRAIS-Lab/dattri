@@ -40,7 +40,7 @@ def default_dist_func(
 
 
 class KNNShalpeyAttributor(BaseAttributor):
-    """KNN Data Shapley Attributer."""
+    """KNN Data Shapley Attributor."""
 
     def __init__(
         self,

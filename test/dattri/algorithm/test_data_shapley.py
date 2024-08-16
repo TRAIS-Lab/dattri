@@ -28,8 +28,8 @@ class TestInfluenceFunction:
             coord2 = test_batch[0].reshape(-1, 28 * 28)
             return torch.cdist(coord1, coord2)
 
-        attributer = KNNShalpeyAttributor(k_neighbors=3, distance_func=f)
-        sv = attributer.attribute(train_loader,
+        attributor = KNNShalpeyAttributor(k_neighbors=3, distance_func=f)
+        sv = attributor.attribute(train_loader,
                                   test_loader,
                                   train_dataset.tensors[1],
                                   test_dataset.tensors[1])
@@ -44,7 +44,7 @@ class TestInfluenceFunction:
             train_dataset.tensors[1][permutation],
         )
         train_loader_perm = DataLoader(train_dataset_perm, batch_size=4)
-        sv_perm = attributer.attribute(train_loader_perm,
+        sv_perm = attributor.attribute(train_loader_perm,
                                        test_loader,
                                        train_dataset_perm.tensors[1],
                                        test_dataset.tensors[1])
