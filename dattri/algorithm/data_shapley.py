@@ -114,7 +114,7 @@ class KNNShalpeyAttributor(BaseAttributor):
                 the last element in each batch from the loader will be used as label.
 
         Returns:
-            Tensor: The shapley values of the training set on the test set, with
+            Tensor: The KNN shapley values of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
 
         Raises:
