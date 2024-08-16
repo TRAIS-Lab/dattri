@@ -19,14 +19,15 @@
 
 ### Installation
 
-```python
-pip install dattri
+```bash
+git clone https://github.com/TRAIS-Lab/dattri
+pip install -e .
 ```
 
 If you want to use all features on CUDA and accelerate the library, you may install the full version by
 
-```python
-pip install dattri[all]
+```bash
+pip install -e .[all]
 ```
 
 > [!NOTE]
@@ -43,28 +44,49 @@ One can apply different data attribution methods on PyTorch Models. One only nee
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
 4. (optional) target function to be attributed if it's not the same as loss function.
 
-The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
+The following is an example to use `IFAttributor`  to apply data attribution to a PyTorch model.
 
 ```python
-from dattri.algorithm import IFAttributorCG
-from dattri.task import AttributionTask
+import torch
+from torch import nn
 
-def f(params, data): # an example of loss function using CE loss
-    x, y = data
+from dattri.algorithm.influence_function import IFAttributor
+from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
+from dattri.func.utils import flatten_func
+from dattri.benchmark.utils import SubsetSampler
+
+
+dataset_train, dataset_test = create_mnist_dataset("./data")
+
+train_loader = torch.utils.data.DataLoader(
+    dataset_train,
+    batch_size=64,
+    sampler=SubsetSampler(range(1000)),
+)
+test_loader = torch.utils.data.DataLoader(
+    dataset_test,
+    batch_size=64,
+    sampler=SubsetSampler(range(100)),
+)
+
+model = train_mnist_lr(train_loader)
+
+@flatten_func(model)
+def f(params, data_target_pair):
+    x, y = data_target_pair
     loss = nn.CrossEntropyLoss()
     yhat = torch.func.functional_call(model, params, x)
     return loss(yhat, y)
 
-task = AttributionTask(loss_func=f,
-                       model=model,
-                       checkpoints=model.state_dict())
-
-attributor = IFAttributorCG(
-    task=task,
-    **attributor_hyperparams # e.g., iter_num
+model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+attributor = IFAttributor(
+    target_func=f,
+    params=model_params,
+    ihvp_solver="cg",
+    ihvp_kwargs={"max_iter": 10, "regularization": 1e-2},
 )
 
-attributor.cache(train_loader) # optional pre-processing to accelerate the attribution
+attributor.cache(train_loader)
 score = attributor.attribute(train_loader, test_loader)
 ```
 

@@ -20,7 +20,6 @@ classifiers = [
 dependencies = [
     "numpy>=1.25",
     "scipy>=1.11",
-    "torch>=2.2.0",
     "pyyaml",
 ]
 
@@ -28,7 +27,7 @@ dependencies = [
 homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
-fast = ["fast_jl"]
+all = ["fast_jl"]
 test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests"]
 
 [tool.setuptools.packages]
