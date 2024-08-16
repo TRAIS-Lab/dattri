@@ -207,6 +207,99 @@
 <h1>Attributors<a class="headerlink" href="#attributors" title="Link to this heading">¶</a></h1>
 <p id="module-dattri.algorithm.influence_function">This module implement the influence function.</p>
 <dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ihvp_solver</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'explicit'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ihvp_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributor" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAttributor</span></code></p>
+<p>Influence function attributor.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">params</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">dict</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ihvp_solver</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'explicit'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ihvp_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributor.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Influence function attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>target_func</strong> (<em>Callable</em>) – <p>The target function to be attributed.
+The function can be quite flexible in terms of what is calculate,
+but it should take the parameters and the dataloader as input.
+A typical example is as follows:
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+&#64;flatten_func(model)
+def f(params, dataloader):</p>
+<blockquote>
+<div><p>loss = nn.CrossEntropyLoss()
+loss_val = 0
+for image, label in dataloader:</p>
+<blockquote>
+<div><p>yhat = torch.func.functional_call(model, params, image)
+loss_val += loss(yhat, label)</p>
+</div></blockquote>
+<p>return loss_val</p>
+</div></blockquote>
+<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a>.
+This examples calculates the loss of the model on the dataloader.</p>
+</p></li>
+<li><p><strong>params</strong> (<em>dict</em>) – <p>The parameters of the target function. The key is the
+name of a parameter and the value is the parameter tensor.
+TODO: This should be changed to support a list of parameters or</p>
+<blockquote>
+<div><p>paths for ensembling and memory efficiency.</p>
+</div></blockquote>
+</p></li>
+<li><p><strong>ihvp_solver</strong> (<em>str</em>) – The solver for inverse hessian vector product
+calculation, currently we only support “explicit”, “cg” and “arnoldi”.</p></li>
+<li><p><strong>ihvp_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em>) – Keyword arguments for ihvp solver.
+calculation, currently we only support “explicit”, “cg”, “arnoldi”,
+and “lissa”.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributor.attribute">
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributor.attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on the test set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
+training samples to calculate the influence. It can be a subset
+of the full training set if <cite>cache</cite> is called before. A subset
+means that only a part of the training set’s influence is calculated.
+The dataloader should not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
+test samples to calculate the influence. The dataloader should not                be shuffled.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on the test set, with</dt><dd><p>the shape of (num_train_samples, num_test_samples).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributor.cache">
+<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributor.cache" title="Link to this definition">¶</a></dt>
+<dd><p>Cache the dataset for inverse hessian calculation.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>DataLoader</em>) – The dataloader
+with full training samples for inverse hessian calculation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorArnoldi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">**</span></span><span class="n"><span class="pre">transformation_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
@@ -1151,7 +1244,7 @@ test samples to calculate the influence. The dataloader should not              
 <li><p><strong>correct_probability_func</strong> (<em>Callable</em>) – <p>The function to calculate the
 probability to correctly predict the label of the input data.
 A typical example is as follows:
-<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+<a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
 &#64;flatten_func(model)
 def m(params, image_label_pair):</p>
 <blockquote>
@@ -1163,7 +1256,7 @@ yhat = torch.func.functional_call(model, params, image_t)
 p = torch.exp(-loss(yhat, label_t))
 return p</p>
 </div></blockquote>
-<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a>.</p>
+<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a>.</p>
 </p></li>
 <li><p><strong>projector_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – The kwargs for the
 random projection. Defaults to None.</p></li>
@@ -1356,6 +1449,12 @@ fine-tuning.</p>
           <div class="toc-tree">
             <ul>
 <li><a class="reference internal" href="#">Attributors</a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributor"><code class="docutils literal notranslate"><span class="pre">IFAttributor</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributor.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributor.attribute()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributor.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributor.cache()</span></code></a></li>
+</ul>
+</li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi</span></code></a><ul>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.attribute()</span></code></a></li>
