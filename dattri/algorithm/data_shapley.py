@@ -182,8 +182,8 @@ class KNNShalpeyAttributor(BaseAttributor):
                 if len(train_labels) != len(train_dataloader.sampler):
                     train_labels.extend(train_batch_data[-1])
 
-                if len(test_labels) != len(test_dataloader.sampler):
-                    test_labels.extend(test_batch_data[-1])
+            if len(test_labels) != len(test_dataloader.sampler):
+                test_labels.extend(test_batch_data[-1])
 
         nn_sorting = torch.argsort(dist_matrix, dim=-1)
 
