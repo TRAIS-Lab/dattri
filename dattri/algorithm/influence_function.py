@@ -214,6 +214,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
     self,
     index: int,
     train_data: Tuple[torch.Tensor, ...],
+    train_grads: torch.Tensor,
     query: torch.Tensor,
     **transformation_kwargs,
     ) -> torch.Tensor:
@@ -226,6 +227,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 of input data and target data, the number of items in the
                 tuple should be aligned in the target function. The tensors'
                 shape follows (1, batchsize, ...).
+            train_grads: (torch.Tensor): The training data gradients for influence
+                calculation. The shape follows (batchsize,num_parameters).
             query (torch.Tensor): The query to be transformed. Normally it is
                 a 2-d dimensional tensor with the shape of
                 (batchsize, num_parameters).
@@ -239,7 +242,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         from dattri.func.fisher import ifvp_datainf
 
         model_params, param_layer_map = self.task.get_param(index, layer_split=True)
-
+        
         self.ihvp_func = ifvp_datainf(
             self.task.get_loss_func(),
             0,
@@ -417,6 +420,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             for layer in range(layer_cnt):
                 grad_layer = grads[layer]
                 reg = 0.0 if regularization is None else regularization[layer]
+                print(len(grad_layer))
                 ifvp_contributions = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: _single_datainf(
                         v[layer],
@@ -538,7 +542,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                             query_split,
                             train_grad_split,
                         )
-
+                    print(f"Single influence len: {len(single_influence)}")
+                    print(f"Shape: {single_influence[0].shape}")
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
                         (train_batch_idx + 1) * train_dataloader.batch_size,
