@@ -5,11 +5,11 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-    from typing import List, Optional, Tuple, Union
+    from typing import Any, Callable, Dict, List, Optional, Tuple
 
     from torch import Tensor
     from torch.utils.data import DataLoader
+
 
 import warnings
 from functools import partial
