@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional, Tuple
+    from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
     from torch import Tensor
     from torch.utils.data import DataLoader
@@ -412,7 +412,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
     self,
     index: int,
     train_data: Tuple[torch.Tensor, ...],
-    train_grads: torch.Tensor,
     query: torch.Tensor,
     **transformation_kwargs,
     ) -> torch.Tensor:
@@ -425,8 +424,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 of input data and target data, the number of items in the
                 tuple should be aligned in the target function. The tensors'
                 shape follows (1, batchsize, ...).
-            train_grads: (torch.Tensor): The training data gradients for influence
-                calculation. The shape follows (batchsize,num_parameters).
             query (torch.Tensor): The query to be transformed. Normally it is
                 a 2-d dimensional tensor with the shape of
                 (batchsize, num_parameters).
@@ -440,7 +437,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         from dattri.func.fisher import ifvp_datainf
 
         model_params, param_layer_map = self.task.get_param(index, layer_split=True)
-        
+
         self.ihvp_func = ifvp_datainf(
             self.task.get_loss_func(),
             0,
