@@ -677,9 +677,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             self.index = checkpoint_idx
             checkpoint_running_count += 1
             tda_output *= checkpoint_running_count - 1
-            model_params, param_layer_map = self.task.get_param(
-                self.index, layer_split=True,
-            )
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
@@ -716,8 +713,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                         data=test_batch_data,
                     )
 
-                    query_split = self.get_layer_wise_grads(test_batch_grad)
-
                     for full_data_ in self.full_train_dataloader:
                         # move to device
                         full_data = tuple(data.to(self.device) for data in full_data_)
@@ -725,15 +720,16 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                             self.task.get_loss_func(),
                             0,
                             (None, 0),
-                            param_layer_map=param_layer_map,
+                            param_layer_map=self.task.get_param(self.index,
+                                                                layer_split=True)[1],
                             **self.transformation_kwargs,
                         )
                         single_influence = inf_func(
                             (
-                                model_params,
+                                self.task.get_param(self.index, layer_split=True)[0],
                                 (full_data[0], full_data[1].view(-1, 1).float()),
                             ),
-                            query_split,
+                            self.get_layer_wise_grads(test_batch_grad),
                             train_grad_split,
                         )
                     row_st = train_batch_idx * train_dataloader.batch_size
@@ -747,9 +743,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                         (test_batch_idx + 1) * test_dataloader.batch_size,
                         len(test_dataloader.sampler),
                     )
-                    influence = torch.stack(single_influence, dim=0)
-                    average_influence = torch.mean(influence, dim=0)
-                    tda_output[row_st:row_ed, col_st:col_ed] += average_influence
+                    inf = torch.stack(single_influence, dim=0)
+                    tda_output[row_st:row_ed, col_st:col_ed] += torch.mean(inf, dim=0)
 
         tda_output /= checkpoint_running_count
 
