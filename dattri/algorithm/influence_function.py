@@ -409,11 +409,11 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
     """The attributor using DataInf."""
 
     def transformation_on_query(
-    self,
-    index: int,
-    train_data: Tuple[torch.Tensor, ...],
-    query: torch.Tensor,
-    **transformation_kwargs,
+        self,
+        index: int,
+        train_data: Tuple[torch.Tensor, ...],
+        query: torch.Tensor,
+        **transformation_kwargs,
     ) -> torch.Tensor:
         """Calculate the transformation on the query through ifvp_datainf.
 
