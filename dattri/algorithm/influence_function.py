@@ -10,7 +10,6 @@ if TYPE_CHECKING:
     from torch import Tensor
     from torch.utils.data import DataLoader
 
-
 import warnings
 from functools import partial
 
