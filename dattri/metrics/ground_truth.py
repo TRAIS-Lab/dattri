@@ -19,7 +19,7 @@ import yaml
 
 
 def _dir_to_index(dir_name: str) -> int:
-    """Help function for calculate_loo_groundtruth.
+    """Helper function for calculate_loo_groundtruth.
 
     This function returns the directory index to sort directories
     by index instead of by alphabets.
@@ -40,9 +40,9 @@ def calculate_loo_groundtruth(
     retrain_dir: str,
     test_dataloader: torch.utils.data.DataLoader,
 ) -> Tuple[torch.Tensor, torch.Tensor]:
-    """Calculate the groundtruth values for the Leave-One-Out (LOO) metric.
+    """Calculate the ground truth values for the Leave-One-Out (LOO) metric.
 
-    The LOO groundtruth is directly calculated by calculating the target value
+    The LOO ground truth is directly calculated by calculating the target value
     difference for each sample in the test dataloader on each model in the
     retrain directory. The target value is calculated by the target function.
 

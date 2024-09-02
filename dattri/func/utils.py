@@ -18,35 +18,37 @@ from torch import Tensor
 
 
 def _vectorize(
-    g: Dict[str, torch.Tensor],
+    g: Dict[str, Tensor],
     batch_dim: Optional[bool] = True,
-    arr: Optional[torch.Tensor] = None,
+    arr: Optional[Tensor] = None,
     device: Optional[str] = "cuda",
 ) -> Tensor:
-    """Vectorize gradient result (g) into arr.
+    """Vectorize gradients into a flattened tensor.
 
-    This function takes a dictionary of gradient and returns a flattened tensor
+    This function takes a dictionary of gradients and returns a flattened tensor
     of shape [batch_size, num_params].
 
     Args:
-        g (dict of Tensors): A dictionary containing gradient tensors to be vectorized.
+        g (Dict[str, Tensor]): A dictionary containing gradient tensors to be
+        vectorized.
         batch_dim (bool, optional): Whether to include the batch dimension in the
-                                    returned tensor. Defaults to True.
+            returned tensor. Defaults to True.
         arr (Tensor, optional): An optional pre-allocated tensor to store the
-                                vectorized gradients. If provided, it must have the
-                                shape `[batch_size, num_params]`, where `num_params`
-                                is the total number of scalar parameters in all
-                                gradient tensors combined. If `None`, a new tensor
-                                is created. Defaults to None.
-        device (str, optional): "cuda" or "cpu". Defaults to "cuda".
+            vectorized gradients. If provided, it must have the shape
+            `[batch_size, num_params]`, where `num_params` is the total number of
+            scalar parameters in all the tensors in `g`. If not provided, a new
+            tensor will be allocated. Defaults to None.
+        device (str, optional): The device to store the tensor on. Either "cuda"
+            or "cpu". Defaults to "cuda".
 
     Returns:
-        Tensor: If batch_dim is True, A 2D tensor of shape `[batch_size, num_params]`,
-                where each row contains all the vectorized gradients for a single batch
-                element. If batch_dim is False, A 1D tensor of shape `[num_params]`.
+        Tensor: A flattened tensor of gradients. If batch_dim is True, shape is
+        `[batch_size, num_params]`, where each row contains all the vectorized
+        gradients for a single element in the batch. Otherwise, shape is
+        `[num_params]`.
 
     Raises:
-        ValueError: Parameter size in g doesn't match batch size.
+        ValueError: If parameter size in g doesn't match batch size.
     """
     if arr is None:
         if batch_dim:
@@ -105,8 +107,9 @@ def _get_parameter_chunk_sizes(
             will have the same batch size.
 
     Returns:
-        tuple[int, int]: Maximum number of parameter per chunk and a list of
-            number of parameters in each chunk.
+        tuple[int, List[int]]: A tuple containing:
+        - Maximum number of parameters per chunk
+        - A list of the number of parameters in each chunk
     """
     # get the number of params of each term in feature
     param_shapes = np.array(param_shape_list)
@@ -145,8 +148,9 @@ def get_parameter_chunk_sizes(
             will have the same batch size.
 
     Returns:
-        tuple[int, int]: Maximum number of parameter per chunk and a list of
-            number of parameters in each chunk.
+        tuple[int, List[int]]: A tuple containing:
+        - Maximum number of parameters per chunk
+        - A list of the number of parameters in each chunk
     """
     # get the number of total params
     param_num = param_shape_list[0]
@@ -160,17 +164,18 @@ def get_parameter_chunk_sizes(
     return max_chunk_size, params_per_chunk
 
 
-def flatten_params(tensors: Dict[str, torch.Tensor]) -> torch.Tensor:
+def flatten_params(tensors: Dict[str, Tensor]) -> Tensor:
     """Flatten a dictionary of tensors into a single tensor.
 
     This is useful for transforming model.named_parameters()
     results into a single tensor which can be passed to hvp or ihvp functions.
 
     Args:
-        tensors: A dictionary of tensors. E.g., the result of model.named_parameters().
+        tensors (Dict[str, Tensor]): A dictionary of tensors (e.g., the result of
+            model.named_parameters()).
 
     Returns:
-        (torch.Tensor): A single tensor containing the flattened parameters.
+        Tensor: A single tensor containing the flattened parameters.
 
     Note:
         This function will flatten the tensors in the order they are passed in the
@@ -184,20 +189,20 @@ def flatten_params(tensors: Dict[str, torch.Tensor]) -> torch.Tensor:
     )
 
 
-def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Tensor:
+def _unflatten_params(tensors: Tensor, model: torch.nn.Module) -> Dict[str, Tensor]:
     """Unflatten a single tensor into a dictionary of tensors.
 
     This is a reverse operation of flatten_params. The transforming could enable the
     following usage of `functional_call` function.
 
     Args:
-        tensors: A single tensor containing the flattened parameters.
-        model: A torch.nn.Module object, providing the shape information and the names
-            of the parameters.
+        tensors (Tensor): A single tensor containing the flattened parameters.
+        model (torch.nn.Module): A torch.nn.Module object providing shape
+            information and parameter names.
 
     Returns:
-        (dict[str, torch.Tensor]): A dictionary of tensors.
-            E.g., the result of model.named_parameters().
+        Dict[str, Tensor]: A dictionary of tensors (e.g., something similar to
+            model.named_parameters()).
 
     Note:
         The returned value will use the `tensor` as the value of the dictionary, rather
@@ -206,7 +211,7 @@ def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Te
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
     shape_list = [p.shape for p in model_params.values()]
 
-    def generator() -> torch.Tensor:
+    def generator() -> Tensor:
         current_index = 0
         for shape in shape_list:
             size = math.prod(shape)
@@ -217,18 +222,19 @@ def _unflatten_params(tensors: torch.Tensor, model: torch.nn.Module) -> torch.Te
 
 
 def _unflatten_params_layerwise(
-    tensors: Tuple[torch.Tensor, ...],
+    tensors: Tuple[Tensor, ...],
     model: torch.nn.Module,
-) -> Tuple[torch.Tensor, ...]:
-    """Unflatten a tuple of tensors into a dictionaries of tensors.
+) -> Dict[str, Tensor]:
+    """Unflatten a tuple of tensors into a dictionary of tensors.
 
     Args:
-        tensors: A tuple of tensors containing the flattened parameters.
-        model: A torch.nn.Module object, providing the shape information and the names
-            of the parameters.
+        tensors (Tuple[Tensor, ...]): A tuple of tensors containing the flattened
+            parameters.
+        model (torch.nn.Module): A torch.nn.Module object providing shape
+            information and parameter names.
 
     Returns:
-        (Tuple[torch.Tensor, ...]): A tuple of tensors containing the unflattened
+        Dict[str, Tensor]: A dictionary of tensors containing the unflattened
             parameters.
     """
     model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
@@ -246,12 +252,12 @@ def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
     as input, but we want to pass the flattened parameters to the function.
 
     Args:
-        model: A torch.nn.Module object, providing the shape information and the names
-            of the parameters.
-        param_num: The index of the parameter that should be flattened.
+        model (torch.nn.Module): A torch.nn.Module object providing shape
+            information and parameter names.
+        param_num (int): The index of the parameter that should be flattened.
 
     Returns:
-        (Callable): A decorator that flattens the parameters of a function at the
+        Callable: A decorator that flattens the parameters of a function at the
             specified index.
     """
 
@@ -259,15 +265,15 @@ def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
         """A wrapper function that flattens the parameters of a function.
 
         Args:
-            function: The function to be wrapped.
+            function (Callable): The function to be wrapped.
 
         returns:
-            (Callable): A wrapped function that flattens the parameters at the
-                specified index.
+            Callable: A wrapped function that flattens the parameters at the
+            specified index.
         """
 
         @functools.wraps(function)
-        def _function_flattened(*args, **kwargs: Dict[str, Any]) -> torch.Tensor:
+        def _function_flattened(*args, **kwargs: Dict[str, Any]) -> Tensor:
             new_args = list(args)
             if isinstance(args[param_num], tuple):
                 new_args[param_num] = _unflatten_params_layerwise(

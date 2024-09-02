@@ -1,4 +1,4 @@
-"""This module evaluate the performance of the data attribution."""
+"""This module evaluates the performance of the data attribution."""
 
 # ruff: noqa: ARG001, TCH002
 # TODO: Remove the above line after finishing the implementation of the functions.
@@ -80,22 +80,23 @@ def loo_corr(
 ) -> torch.Tensor:
     """Calculate the Leave-One-Out (LOO) correlation metric.
 
-    The LOO correlation is calculated by pearson correlation between the score
-    tensor and the groundtruth.
+    The LOO correlation is calculated by Pearson correlation between the score
+    tensor and the ground truth.
 
     TODO: more detailed description.
 
     Args:
         score (torch.Tensor): The score tensor with the shape (num_train_samples,
             num_test_samples).
-        ground_truth (torch.Tensor): A tuple of two tensors. First is the LOO
-            groundtruth values for each sample in test_dataloader and each model
-            in retrain_dir. The returned tensor has the shape (num_models,
+        ground_truth (Tuple[torch.Tensor, torch.Tensor]): A tuple of two tensors. First
+            is the LOO ground truth values for each sample in test_dataloader and each
+            model in retrain_dir. The returned tensor has the shape (num_models,
             num_test_samples). Second is the tensor indicating the removed index. The
             returned tensor has the shape (num_models,).
 
     Returns:
-        torch.Tensor: The LOO correlation metric value. The returned tensor has the
+        Tuple[torch.Tensor, torch.Tensor]: A tuple containing the LOO correlation
+            metric values and their corresponding p-values. Both tensors have the
             shape (num_test_samples,).
     """
     gt_values, _ = ground_truth
@@ -133,7 +134,7 @@ def mislabel_detection_auc(
 
     The function will calculate the false positive rates and true positive rates
     under different thresholds (number of data inspected), and return them with
-    the calculated auc (Area Under Curve).
+    the calculated AUC (Area Under Curve).
 
     Args:
         score (torch.Tensor): The self-attribution scores of shape (num_train_samples,).
