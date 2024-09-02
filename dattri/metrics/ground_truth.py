@@ -65,7 +65,7 @@ def calculate_loo_groundtruth(
 
     Returns:
         Tuple[torch.Tensor, torch.Tensor]: A tuple of two tensors. First is the LOO
-            groundtruth values for each sample in test_dataloader and each model in
+            ground truth values for each sample in test_dataloader and each model in
             retrain_dir. The returned tensor has the shape
             (num_models, num_test_samples).
             Second is the tensor indicating the removed index. The returned tensor has
