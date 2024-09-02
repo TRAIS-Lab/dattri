@@ -19,7 +19,7 @@ import yaml
 
 
 def _dir_to_index(dir_name: str) -> int:
-    """Helper function for calculate_loo_groundtruth.
+    """Helper function for calculate_loo_ground_truth.
 
     This function returns the directory index to sort directories
     by index instead of by alphabets.
@@ -35,7 +35,7 @@ def _dir_to_index(dir_name: str) -> int:
     return int(dir_name[prefix_len:])
 
 
-def calculate_loo_groundtruth(
+def calculate_loo_ground_truth(
     target_func: Callable,
     retrain_dir: str,
     test_dataloader: torch.utils.data.DataLoader,
