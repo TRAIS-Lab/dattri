@@ -1,1 +1,1 @@
-"""dattri.metrics for some metric function on data attribution."""
+"""dattri.metrics for some metric functions on data attribution."""

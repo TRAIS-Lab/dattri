@@ -1,7 +1,7 @@
 """Projection matrix constructions.
 
 This file contains functions to (1) construct random projection matrices (entries
-are normal or rademacher random variables) for dimension reduction and (2) perform
+are normal or Rademacher random variables) for dimension reduction and (2) perform
 eigen decomposition on the inverse Hessian matrix using Arnoldi iteration and derive
 the corresponding projection matrix.
 
@@ -55,24 +55,18 @@ class AbstractProjector(ABC):
         """Initializes hyperparameters for the projection.
 
         Args:
-            feature_dim (int):
-                Dimension of the features to be projected. Typically, this equal to
-                the number of parameters in the model (dimension of the gradient
-                vectors).
-            proj_dim (int):
-                Dimension after the projection.
-            seed (int):
-                Random seed for the generation of the sketching (projection)
-                matrix.
-            proj_type (Union[str, ProjectionType]):
-                The random projection (JL transform) guarantees that distances
-                will be approximately preserved for a variety of choices of the
-                random matrix (see e.g. https://arxiv.org/abs/1411.2404). Here,
+            feature_dim (int): Dimension of the features to be projected.
+                Typically, this equals the number of parameters in the model
+                (dimension of the gradient vectors).
+            proj_dim (int): Dimension after the projection.
+            seed (int): Random seed for the generation of the sketching
+                (projection) matrix.
+            proj_type (Union[str, ProjectionType]): The random projection (JL
+                transform) guarantees that distances will be approximately
+                preserved for a variety of choices of the random matrix. Here,
                 we provide an implementation for matrices with iid Gaussian
                 entries and iid Rademacher entries.
-            device (Union[str, torch.device]):
-                CUDA device to use.
-
+            device (Union[str, torch.device]): CUDA device to use.
         """
         self.feature_dim = feature_dim
         self.proj_dim = proj_dim
@@ -129,30 +123,23 @@ class BasicProjector(AbstractProjector):
         """Initializes hyperparameters for BasicProjector.
 
         Args:
-            feature_dim (int):
-                Dimension of the features to be projected. Typically, this equal to
-                the number of parameters in the model (dimension of the gradient
-                vectors).
-            proj_dim (int):
-                Dimension after the projection.
-            seed (int):
-                Random seed for the generation of the sketching (projection)
-                matrix.
-            proj_type (Union[str, ProjectionType]):
-                The random projection (JL transform) guarantees that distances
-                will be approximately preserved for a variety of choices of the
-                random matrix (see e.g. https://arxiv.org/abs/1411.2404). Here,
+            feature_dim (int): Dimension of the features to be projected.
+                Typically, this equals the number of parameters in the model
+                (dimension of the gradient vectors).
+            proj_dim (int): Dimension after the projection.
+            seed (int): Random seed for the generation of the sketching
+                (projection) matrix.
+            proj_type (Union[str, ProjectionType]): The random projection (JL
+                transform) guarantees that distances will be approximately
+                preserved for a variety of choices of the random matrix. Here,
                 we provide an implementation for matrices with iid Gaussian
                 entries and iid Rademacher entries.
-            device (Union[str, torch.device]):
-                CUDA device to use.
-            block_size (int):
-                Maximum number of projection dimension allowed. Thus,
-                min(block_size, proj_dim) will be used as the actual projection
-                dimension.
+            device (torch.device): CUDA device to use.
+            block_size (int): Maximum number of projection dimension allowed.
+                Thus, min(block_size, proj_dim) will be used as the actual
+                projection dimension.
             dtype (torch.dtype): The dtype of the projected matrix.
             ensemble_id (int): A unique ID for this ensemble.
-
         """
         super().__init__(feature_dim, proj_dim, seed, proj_type, device)
 
@@ -286,22 +273,21 @@ class CudaProjector(AbstractProjector):
 
         Args:
             feature_dim (int): Dimension of the features to be projected.
-                Typically, this equal to the number of parameters in the
-                model (dimension of the gradient vectors).
+                Typically, this equals the number of parameters in the model
+                (dimension of the gradient vectors).
             proj_dim (int): Dimension we project *to* during the projection step
             seed (int): Random seed.
             proj_type (ProjectionType): Type of randomness to use for
-                                        projection matrix (rademacher or normal).
-            device: CUDA device to use.
-            max_batch_size (int): Explicitly constraints the batch size of
+                projection matrix (rademacher or normal).
+            device (str): CUDA device to use.
+            max_batch_size (int): Explicitly constrains the batch size of
                 the CudaProjector is going to use for projection.
                 Set this if you get a 'The batch size of the CudaProjector is
                 too large for your GPU' error. Must be either 8, 16, or 32.
 
         Raises:
-            ValueError: When attempting to use this on a non-CUDA device
-            msg: When fast_jl is not installed
-
+            ValueError: When attempting to use this on a non-CUDA device.
+            ModuleNotFoundError: When fast_jl is not installed.
         """
         super().__init__(feature_dim, proj_dim, seed, proj_type, device)
         self.max_batch_size = max_batch_size
@@ -331,7 +317,7 @@ class CudaProjector(AbstractProjector):
         except ImportError:
             msg = "You should make sure to install the CUDA projector \
             (the fast_jl library)."
-            raise msg from ModuleNotFoundError
+            raise ModuleNotFoundError(msg) from None
 
     def project(
         self,
@@ -346,7 +332,8 @@ class CudaProjector(AbstractProjector):
             ensemble_id (int): A unique ID for this ensemble.
 
         Raises:
-            msg: The batch size of the CudaProjector need to be reduced.
+            RuntimeError: The batch size of the CudaProjector is too large for
+                your GPU.
             RuntimeError: Too many resources requested for launch CUDA.
 
         Returns:
@@ -386,7 +373,7 @@ class CudaProjector(AbstractProjector):
                 msg = "The batch size of the CudaProjector is too large for your GPU. \
                     Reduce it by using the proj_max_batch_size argument.\
                     \nOriginal error:"
-                raise msg from RuntimeError
+                raise RuntimeError(msg) from e
             raise e from None
 
         return result
@@ -421,7 +408,7 @@ class ChunkedCudaProjector:
             max_chunk_size (int): The maximum size of each chunk.
             dim_per_chunk (list): The number of feature dimensions per chunk.
             feature_batch_size (int): The batch size of input feature.
-            proj_max_batch_size (int): The maximum batch size or each projector.
+            proj_max_batch_size (int): The maximum batch size for each projector.
             device (torch.device): Device to use. Will be "cuda" or "cpu".
             dtype (torch.dtype): The dtype of the projected matrix.
         """
@@ -466,8 +453,6 @@ class ChunkedCudaProjector:
             ensemble_id (int): A unique ID for this ensemble.
 
         Raises:
-            ValueError: The number of accumulated #feature dim does not match
-                dim_per_chunk.
             ValueError: The number of accumulated #feature dim does not match
                 dim_per_chunk.
 
@@ -544,7 +529,6 @@ class ChunkedCudaProjector:
                 of batch of features.
             ensemble_id (int): A unique ID for this ensemble.
 
-
         Returns:
             Tensor: The projected features.
         """
@@ -594,50 +578,45 @@ class ArnoldiProjector(AbstractProjector):
         """Initializes hyperparameters for ArnoldiProjector.
 
         Args:
-            feature_dim (int):
-                Dimension of the features to be projected. Typically, this equal to
-                the number of parameters in the model (dimension of the gradient
-                vectors).
-            proj_dim (int):
-                Dimension after the projection. This corresponds to the number of top
-                eigenvalues (top-k eigenvalues) to keep for the Hessian approximation.
-            func (Callable):
-                A Python function that takes one or more arguments. Must return a
-                single-element Tensor. The hessian will be calculated on this function.
-            x:
-                List of arguments for `func`.
-            argnums (int):
-                An integer default to 0. Specifies which argument of func to compute
-                inverse hessian with respect to.
-            max_iter (int):
-                An integer default to 100. Specifies the maximum iteration to calculate
-                the ihvp through Arnoldi Iteration.
-            norm_constant (float):
-                A float default to 1.0. Specifies a constant value for the norm of each
-                projection. In some situations (e.g. with a large numbers of parameters)
-                it might be advisable to set norm_constant > 1 to avoid dividing
-                projection components by a large normalization factor.
-            tol (float):
-                A float default to 1e-7. Specifies the break condition that decide
-                if the algorithm has converged. If the torch.norm of current basis
-                vector is less than tol, then the arnoldi_iter algorithm is truncated.
-            mode (str):
-                The auto diff mode, which can have one of the following values:
-                - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
-                        better compatibility while cost more memory.
-                - rev-fwd: calculate the hessian with the composing of reverse-mode and
-                        forward-mode. It's more memory-efficient but may not be
-                        supported by some operator.
-            regularization (float):
-                A float default to 0.0. Specifies the regularization term to be added to
-                the Hessian vector product, which is useful for the later inverse
-                calculation if the Hessian matrix is singular or ill-conditioned.
-                Specifically, the regularization term is `regularization * v`.
-            seed (int):
-                Random seed for the generation of the random initial vector to build
-                orthonormal basis for the Krylov subspaces.
-            device (Union[str, torch.device]):
-                Device to use. Default to cpu.
+            feature_dim (int): Dimension of the features to be projected.
+                Typically, this equals the number of parameters in the model
+                (dimension of the gradient vectors).
+            proj_dim (int): Dimension after the projection. This corresponds to
+                the number of top eigenvalues (top-k eigenvalues) to keep for
+                the Hessian approximation.
+            func (Callable): A Python function that takes one or more
+                arguments. Must return a single-element Tensor. The Hessian
+                will be calculated on this function.
+            x (Tuple): List of arguments for `func`.
+            argnums (int): An integer defaulting to 0. Specifies which argument
+                of func to compute inverse Hessian with respect to.
+            max_iter (int): An integer defaulting to 100. Specifies the maximum
+                iteration to calculate the ihvp through Arnoldi Iteration.
+            norm_constant (float): A float defaulting to 1.0. Specifies a
+                constant value for the norm of each projection. In some
+                situations (e.g. with a large number of parameters) it might be
+                advisable to set norm_constant > 1 to avoid dividing projection
+                components by a large normalization factor.
+            tol (float): A float defaulting to 1e-7. Specifies the break
+                condition that decides if the algorithm has converged. If the
+                torch.norm of current basis vector is less than tol, then the
+                arnoldi_iter algorithm is truncated.
+            mode (str): The auto diff mode, which can have one of the following
+                values:
+                - rev-rev: calculate the Hessian with two reverse-mode
+                  auto-diff. It has better compatibility while costing more
+                  memory.
+                - rev-fwd: calculate the Hessian with the composition of
+                  reverse-mode and forward-mode. It's more memory-efficient but
+                  may not be supported by some operators.
+            regularization (float): A float defaulting to 0.0. Specifies the
+                regularization term to be added to the Hessian vector product,
+                which is useful for the later inverse calculation if the
+                Hessian matrix is singular or ill-conditioned. Specifically,
+                the regularization term is `regularization * v`.
+            seed (int): Random seed for the generation of the random initial
+                vector to build orthonormal basis for the Krylov subspaces.
+            device (torch.device): Device to use. Defaults to cpu.
         """
         self.max_iter = max_iter
         self.norm_constant = norm_constant
@@ -674,7 +653,7 @@ class ArnoldiProjector(AbstractProjector):
         Args:
             hvp_func (Callable): A function that computes hvp.
             start_vec (Tensor): A random normalized vector for initialization.
-            n_iters (int): The number of iteration.
+            n_iters (int): The number of iterations.
             norm_constant (float): The norm normalization for each projection.
             tol (float): A tolerance value used to terminate iteration early.
             device (str): The device to run the algorithm. Defaults to "cpu".
@@ -724,11 +703,13 @@ class ArnoldiProjector(AbstractProjector):
         """Distills result of Arnoldi iteration to top_k eigenvalues and eigenvectors.
 
         Args:
-            appr_mat (Tensor): The first result from arnoldi_iter. This will be a
-                Hessenberg matrix H' approximating the Hessian H.
-            proj (Tensor): The second result from arnoldi_iter. This will be the
-                projection vectors onto the Krylov subspace K of the Hessian H.
-            top_k (int): Specfies how many eigenvalues and eigenvectors to distill.
+            appr_mat (Tensor): The first result from arnoldi_iter. This will be
+                a Hessenberg matrix H' approximating the Hessian H.
+            proj (Tensor): The second result from arnoldi_iter. This will be
+                the projection vectors onto the Krylov subspace K of the
+                Hessian H.
+            top_k (int): Specifies how many eigenvalues and eigenvectors to
+                distill.
             force_hermitian (bool): Whether to force the Hessian to Hermitian.
                 Defaults to True.
 
@@ -816,7 +797,7 @@ def make_random_projector(
             of each module equals to feature_batch_size * param_size of that module.
         feature_batch_size (int): The batch size of each tensor in the feature
             about to be projected. The typical type of feature are gradients of
-            torch.nn.Module model but can restricted to this.
+            torch.nn.Module model but can be restricted to this.
         proj_dim (int): Dimension of the projected feature.
         proj_max_batch_size (int): The maximum batch size used by fast_jl if the
             CudaProjector is used. Must be a multiple of 8. The maximum
@@ -939,53 +920,47 @@ def arnoldi_project(
     seed: int = 0,
     device: torch.device = "cpu",
 ) -> Callable:
-    """Apply Anordi algorithm to approximate iHVP.
+    """Apply Arnoldi algorithm to approximate iHVP.
 
     Args:
-        feature_dim (int):
-            Dimension of the features to be projected. Typically, this equal to
-            the number of parameters in the model (dimension of the gradient
-            vectors).
-        func (Callable):
-            A Python function that takes one or more arguments.
-            Must return a single-element Tensor. The hessian will
-            be calculated on this function. The positional arguments to func
-            must all be Tensors.
-        x: List of arguments for `func`.
-        argnums (int):
-            An integer default to 0. Specifies which argument of func
-            to compute hessian with respect to.
-        proj_dim (int):
-            Dimension after the projection. This corresponds to the number of top
-            eigenvalues (top-k eigenvalues) to keep for the Hessian approximation.
-        max_iter (int):
-            An integer default 100. Specifies the maximum iteration
-            to calculate the ihvp through Conjugate Gradient Descent.
-        norm_constant (float):
-            A float default to 1.0. Specifies a constant value
-            for the norm of each projection. In some situations (e.g. with a large
-            numbers of parameters) it might be advisable to set norm_constant > 1
-            to avoid dividing projection components by a large normalization factor.
-        tol (float):
-            A float default to 1e-7. Specifies the break condition that
-            decide if the algorithm has converged. If the torch.norm of residual
-            is less than tol, then the algorithm is truncated.
-        mode (str):
-            Defaults to "rev-fwd". The auto diff mode, which can have one of
-            the following values:
-            - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
-                       better compatibility while cost more memory.
-            - rev-fwd: calculate the hessian with the composing of reverse-mode and
-                       forward-mode. It's more memory-efficient but may not be supported
-                       by some operator.
-        regularization (float):
-            A float default to 0.0. Specifies the regularization
-            term to be added to the Hessian vector product, which is useful for the
-            later inverse calculation if the Hessian matrix is singular or
-            ill-conditioned. Specifically, the regularization term is
-            `regularization * v`.
+        feature_dim (int): Dimension of the features to be projected. Typically,
+            this equals the number of parameters in the model (dimension of the
+            gradient vectors).
+        func (Callable): A Python function that takes one or more arguments.
+            Must return a single-element Tensor. The Hessian will be calculated
+            on this function. The positional arguments to func must all be
+            Tensors.
+        x (List): List of arguments for `func`.
+        argnums (int): An integer defaulting to 0. Specifies which argument of
+            func to compute Hessian with respect to.
+        proj_dim (int): Dimension after the projection. This corresponds to the
+            number of top eigenvalues (top-k eigenvalues) to keep for the
+            Hessian approximation.
+        max_iter (int): An integer defaulting to 100. Specifies the maximum
+            iteration to calculate the ihvp through Arnoldi Iteration.
+        norm_constant (float): A float defaulting to 1.0. Specifies a constant
+            value for the norm of each projection. In some situations (e.g.
+            with a large number of parameters) it might be advisable to set
+            norm_constant > 1 to avoid dividing projection components by a
+            large normalization factor.
+        tol (float): A float defaulting to 1e-7. Specifies the break condition
+            that decides if the algorithm has converged. If the torch.norm of
+            the current basis vector is less than tol, then the algorithm is
+            truncated.
+        mode (str): The auto diff mode, which can have one of the following
+            values:
+            - rev-rev: calculate the Hessian with two reverse-mode auto-diff.
+              It has better compatibility while costing more memory.
+            - rev-fwd: calculate the Hessian with the composition of
+              reverse-mode and forward-mode. It's more memory-efficient but may
+              not be supported by some operators.
+        regularization (float): A float defaulting to 0.0. Specifies the
+            regularization term to be added to the Hessian vector product,
+            which is useful for the later inverse calculation if the Hessian
+            matrix is singular or ill-conditioned. Specifically, the
+            regularization term is `regularization * v`.
         seed (int): Random seed used by the projector. Defaults to 0.
-        device (torch.device, optional): "cuda" or "cpu".. Defaults to "cpu".
+        device (torch.device): "cuda" or "cpu". Defaults to "cpu".
 
     Returns:
         A function that applies Arnoldi algorithm on input feature.
