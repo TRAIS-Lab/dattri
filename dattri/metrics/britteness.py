@@ -1,4 +1,4 @@
-"""This module provides britteness prediction evaluate the data attribution."""
+"""This module provides brittleness prediction to evaluate the data attribution."""
 
 from __future__ import annotations
 
@@ -22,12 +22,11 @@ def brittleness(
     test_loader: DataLoader,
     scores: torch.Tensor,
     train_func: Callable[[DataLoader], torch.nn.Module],
-    eval_func: Callable[[torch.nn.Module, DataLoader],
-                        torch.Tensor],
+    eval_func: Callable[[torch.nn.Module, DataLoader], torch.Tensor],
     device: torch.device = "cpu",
     search_space: Optional[List[int]] = None,
 ) -> Optional[int]:
-    """Calculate smallest k make a test data flip.
+    """Calculate smallest k to make a test data prediction flip.
 
     This function calculate the brittleness metric by determining the smallest subset of
     training data whose removal causes the test sample's prediction to flip.
@@ -59,14 +58,16 @@ def brittleness(
         k_values,
         desc="Calculating brittleness",
         leave=False,
-        ):
+    ):
         highest_score_indices = sorted_indices[:k]
-        if check_if_flip(train_loader,
-                        test_loader,
-                        highest_score_indices,
-                        train_func,
-                        eval_func,
-                        device):
+        if check_if_flip(
+            train_loader,
+            test_loader,
+            highest_score_indices,
+            train_func,
+            eval_func,
+            device,
+        ):
             return k
     return None
 
@@ -76,8 +77,7 @@ def check_if_flip(
     test_loader: DataLoader,
     indices_to_remove: List[int],
     train_func: Callable[[DataLoader], torch.nn.Module],
-    eval_func: Callable[[torch.nn.Module, DataLoader],
-                        torch.Tensor],
+    eval_func: Callable[[torch.nn.Module, DataLoader], torch.Tensor],
     device: torch.device = "cpu",
 ) -> bool:
     """Check if a test sample flips after removing specified training data.

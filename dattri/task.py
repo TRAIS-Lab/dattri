@@ -127,7 +127,7 @@ class AttributionTask:
         self.model.eval()
 
     @staticmethod
-    def _genearte_param_layer_map(
+    def _generate_param_layer_map(
         named_parameters: Dict[str, torch.Tensor],
     ) -> List[int]:
         """This function generate the param_layer_map automatically.
@@ -378,7 +378,7 @@ class AttributionTask:
                 ), param_layer_map
             return tuple(
                 [param.flatten() for param in named_parameters.values()],
-            ), self._genearte_param_layer_map(named_parameters)
+            ), self._generate_param_layer_map(named_parameters)
         return flatten_params(named_parameters), None
 
     def get_checkpoints(self) -> List[Union[Dict[str, torch.Tensor], str]]:

@@ -46,7 +46,7 @@ def ifvp_explicit(
             a single-element Tensor. The FIM will be calculated based on
             this function. Notably, this function should be negative log-likelihood
             (e.g., cross-entropy loss) for classification tasks. If you want to
-            calculate the emperial FIM, you should use the groundtruth label for
+            calculate the empirical FIM, you should use the ground truth label for
             the loss. If you want to calculate the true FIM, you should use the
             predicted label for the loss.
         argnums (int): An integer default to 0. Specifies which argument of func
@@ -102,7 +102,7 @@ def ifvp_at_x_explicit(
             a single-element Tensor. The FIM will be calculated based on
             this function. Notably, this function should be negative log-likelihood
             (e.g., cross-entropy loss) for classification tasks. If you want to
-            calculate the emperial FIM, you should use the groundtruth label for
+            calculate the empirical FIM, you should use the ground truth label for
             the loss. If you want to calculate the true FIM, you should use the
             predicted label for the loss.
         *x: List of arguments for `func`.
@@ -166,10 +166,10 @@ def ifvp_datainf(
             to (0,None,0).
         regularization (List [float]): A float or list of floats default to 0.0.
             Specifies the
-            regularization term to be added to the Hessian matrix in each layer.
-            This is useful when the Hessian matrix is singular or ill-conditioned.
+            regularization term to be added to the empirical FIM in each layer.
+            This is useful when the empirical FIM is singular or ill-conditioned.
             The regularization term is `regularization * I`, where `I` is the
-            identity matrix directly added to the Hessian matrix. The list is
+            identity matrix directly added to the empirical FIM. The list is
             of length L, where L is the total number of layers.
         param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
             into layers. Should be the same length as parameters tuple. For example,
@@ -178,8 +178,8 @@ def ifvp_datainf(
 
     Returns:
         A function that takes a list of tuples of Tensor `x` and a tuple of tensors
-        `v`(layer-wise) and returns the approximated IFVP of the approximated Hessian of
-        `func` and `v`.
+        `v` (layer-wise) and returns the approximate IFVP of the approximate Hessian
+        of `func` and `v`.
 
     Raises:
         IFVPUsageError: If the length of regularization is not the same as the number
@@ -283,10 +283,10 @@ def ifvp_at_x_datainf(
             batched layer-wise gradients. Example: inputs, weights, labels corresponds
             to (0,None,0).
         regularization (List [float]): A list of floats default to 0.0. Specifies the
-            regularization term to be added to the Hessian matrix in each layer.
-            This is useful when the Hessian matrix is singular or ill-conditioned.
+            regularization term to be added to the empirical FIM in each layer.
+            This is useful when the empirical FIM is singular or ill-conditioned.
             The regularization term is `regularization * I`, where `I` is the
-            identity matrix directly added to the Hessian matrix.
+            identity matrix directly added to the empirical FIM.
             The list is of length L, where L is the total number of
             layers.
         param_layer_map: Optional[List[int]]: Specifies how the parameters are grouped
