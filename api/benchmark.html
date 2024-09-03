@@ -374,10 +374,10 @@ is not deterministic.</p></li>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dattri.metrics.ground_truth.calculate_loo_groundtruth">
-<span class="sig-prename descclassname"><span class="pre">dattri.metrics.ground_truth.</span></span><span class="sig-name descname"><span class="pre">calculate_loo_groundtruth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">retrain_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.utils.data.DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dattri.metrics.ground_truth.calculate_loo_groundtruth" title="Link to this definition">¶</a></dt>
-<dd><p>Calculate the groundtruth values for the Leave-One-Out (LOO) metric.</p>
-<p>The LOO groundtruth is directly calculated by calculating the target value
+<dt class="sig sig-object py" id="dattri.metrics.ground_truth.calculate_loo_ground_truth">
+<span class="sig-prename descclassname"><span class="pre">dattri.metrics.ground_truth.</span></span><span class="sig-name descname"><span class="pre">calculate_loo_ground_truth</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">target_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">retrain_dir</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.utils.data.DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dattri.metrics.ground_truth.calculate_loo_ground_truth" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the ground truth values for the Leave-One-Out (LOO) metric.</p>
+<p>The LOO ground truth is directly calculated by calculating the target value
 difference for each sample in the test dataloader on each model in the
 retrain directory. The target value is calculated by the target function.</p>
 <dl class="field-list simple">
@@ -409,7 +409,7 @@ the samples is used as the test set.</p></li>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>A tuple of two tensors. First is the LOO</dt><dd><p>groundtruth values for each sample in test_dataloader and each model in
+<dt>A tuple of two tensors. First is the LOO</dt><dd><p>ground truth values for each sample in test_dataloader and each model in
 retrain_dir. The returned tensor has the shape
 (num_models, num_test_samples).
 Second is the tensor indicating the removed index. The returned tensor has
@@ -590,30 +590,31 @@ p-values of the correlation. Both have the shape (num_test_samples,).</p>
 <dt class="sig sig-object py" id="dattri.metrics.metrics.loo_corr">
 <span class="sig-prename descclassname"><span class="pre">dattri.metrics.metrics.</span></span><span class="sig-name descname"><span class="pre">loo_corr</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">score</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">ground_truth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.metrics.metrics.loo_corr" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the Leave-One-Out (LOO) correlation metric.</p>
-<p>The LOO correlation is calculated by pearson correlation between the score
-tensor and the groundtruth.</p>
+<p>The LOO correlation is calculated by Pearson correlation between the score
+tensor and the ground truth.</p>
 <p>TODO: more detailed description.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>score</strong> (<em>torch.Tensor</em>) – The score tensor with the shape (num_train_samples,
 num_test_samples).</p></li>
-<li><p><strong>ground_truth</strong> (<em>torch.Tensor</em>) – A tuple of two tensors. First is the LOO
-groundtruth values for each sample in test_dataloader and each model
-in retrain_dir. The returned tensor has the shape (num_models,
+<li><p><strong>ground_truth</strong> (<em>Tuple</em><em>[</em><em>torch.Tensor</em><em>, </em><em>torch.Tensor</em><em>]</em>) – A tuple of two tensors. First
+is the LOO ground truth values for each sample in test_dataloader and each
+model in retrain_dir. The returned tensor has the shape (num_models,
 num_test_samples). Second is the tensor indicating the removed index. The
 returned tensor has the shape (num_models,).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The LOO correlation metric value. The returned tensor has the</dt><dd><p>shape (num_test_samples,).</p>
+<dt>A tuple containing the LOO correlation</dt><dd><p>metric values and their corresponding p-values. Both tensors have the
+shape (num_test_samples,).</p>
 </dd>
 </dl>
 </p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
-<dd class="field-odd"><p>torch.Tensor</p>
+<dd class="field-odd"><p>Tuple[torch.Tensor, torch.Tensor]</p>
 </dd>
 </dl>
 </dd></dl>
@@ -624,7 +625,7 @@ returned tensor has the shape (num_models,).</p></li>
 <dd><p>Calculate the AUC using sorting algorithm.</p>
 <p>The function will calculate the false positive rates and true positive rates
 under different thresholds (number of data inspected), and return them with
-the calculated auc (Area Under Curve).</p>
+the calculated AUC (Area Under Curve).</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -777,7 +778,7 @@ depends on the <cite>metric</cite> parameter user stated.</p>
 <li><a class="reference internal" href="#">Benchmark Functions</a><ul>
 <li><a class="reference internal" href="#dattri.model_utils.retrain.retrain_loo"><code class="docutils literal notranslate"><span class="pre">retrain_loo()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.model_utils.retrain.retrain_lds"><code class="docutils literal notranslate"><span class="pre">retrain_lds()</span></code></a></li>
-<li><a class="reference internal" href="#dattri.metrics.ground_truth.calculate_loo_groundtruth"><code class="docutils literal notranslate"><span class="pre">calculate_loo_groundtruth()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.metrics.ground_truth.calculate_loo_ground_truth"><code class="docutils literal notranslate"><span class="pre">calculate_loo_ground_truth()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.metrics.ground_truth.calculate_lds_ground_truth"><code class="docutils literal notranslate"><span class="pre">calculate_lds_ground_truth()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.benchmark.utils.flip_label"><code class="docutils literal notranslate"><span class="pre">flip_label()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.metrics.metrics.lds"><code class="docutils literal notranslate"><span class="pre">lds()</span></code></a></li>
