@@ -30,7 +30,7 @@ def _vectorize(
 
     Args:
         g (Dict[str, Tensor]): A dictionary containing gradient tensors to be
-        vectorized.
+            vectorized.
         batch_dim (bool, optional): Whether to include the batch dimension in the
             returned tensor. Defaults to True.
         arr (Tensor, optional): An optional pre-allocated tensor to store the
@@ -108,8 +108,8 @@ def _get_parameter_chunk_sizes(
 
     Returns:
         tuple[int, List[int]]: A tuple containing:
-        - Maximum number of parameters per chunk
-        - A list of the number of parameters in each chunk
+            - Maximum number of parameters per chunk
+            - A list of the number of parameters in each chunk
     """
     # get the number of params of each term in feature
     param_shapes = np.array(param_shape_list)
@@ -149,8 +149,8 @@ def get_parameter_chunk_sizes(
 
     Returns:
         tuple[int, List[int]]: A tuple containing:
-        - Maximum number of parameters per chunk
-        - A list of the number of parameters in each chunk
+            - Maximum number of parameters per chunk
+            - A list of the number of parameters in each chunk
     """
     # get the number of total params
     param_num = param_shape_list[0]

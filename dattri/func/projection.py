@@ -286,8 +286,8 @@ class CudaProjector(AbstractProjector):
                 too large for your GPU' error. Must be either 8, 16, or 32.
 
         Raises:
-            ValueError: When attempting to use this on a non-CUDA device
-            ImportError: When fast_jl is not installed
+            ValueError: When attempting to use this on a non-CUDA device.
+            ModuleNotFoundError: When fast_jl is not installed.
         """
         super().__init__(feature_dim, proj_dim, seed, proj_type, device)
         self.max_batch_size = max_batch_size
@@ -317,7 +317,7 @@ class CudaProjector(AbstractProjector):
         except ImportError:
             msg = "You should make sure to install the CUDA projector \
             (the fast_jl library)."
-            raise msg from ModuleNotFoundError
+            raise ModuleNotFoundError(msg) from None
 
     def project(
         self,
@@ -373,7 +373,7 @@ class CudaProjector(AbstractProjector):
                 msg = "The batch size of the CudaProjector is too large for your GPU. \
                     Reduce it by using the proj_max_batch_size argument.\
                     \nOriginal error:"
-                raise msg from RuntimeError
+                raise RuntimeError(msg) from e
             raise e from None
 
         return result
