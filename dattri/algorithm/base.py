@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, Optional, Tuple
+    from typing import Optional, Tuple
 
     import torch
     from torch.utils.data import DataLoader
@@ -73,23 +73,15 @@ class BaseInnerProductAttributor(BaseAttributor):
         self,
         task: AttributionTask,
         device: Optional[str] = "cpu",
-        **transformation_kwargs: Dict[str, Any],
     ) -> None:
         """Initialize the attributor.
 
         Args:
             task (AttributionTask): The task to be attributed. The task should
                 be an instance of `AttributionTask`.
-            transformation_kwargs (Optional[Dict[str, Any]]): The keyword arguments for
-                the transformation function. More specifically, it will be stored in
-                the `transformation_kwargs` attribute and be used by some customized
-                member functions, e.g., `transform_test_rep`, where the
-                transformation such as hessian matrix or Fisher Information matrix is
-                calculated.
             device (str): The device to run the attributor.
         """
         self.task = task
-        self.transformation_kwargs = transformation_kwargs or {}
         self.device = device
 
     def _set_test_data(self, dataloader: torch.utils.data.DataLoader) -> None:

@@ -10,6 +10,8 @@ if TYPE_CHECKING:
     from torch import Tensor
     from torch.utils.data import DataLoader
 
+    from dattri.task import AttributionTask
+
 import warnings
 from functools import partial
 
@@ -300,9 +302,10 @@ class IFAttributorCG(BaseInnerProductAttributor):
 class IFAttributorArnoldi(BaseInnerProductAttributor):
     """The inner product attributor with Arnoldi projection transformation."""
 
-    def cache(
+    def __init__(
         self,
-        full_train_dataloader: DataLoader,
+        task: AttributionTask,
+        device: Optional[str] = "cpu",
         proj_dim: int = 100,
         max_iter: int = 100,
         norm_constant: float = 1.0,
@@ -310,10 +313,12 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         regularization: float = 0.0,
         seed: int = 0,
     ) -> None:
-        """Cache the dataset and pre-calculate the Arnoldi projector.
+        """Initialize the Arnoldi projection attributor.
 
         Args:
-            full_train_dataloader (DataLoader): The dataloader with full training data.
+            task (AttributionTask): The task to be attributed. The task should
+                be an instance of `AttributionTask`.
+            device (str): The device to run the attributor. Default is cpu.
             proj_dim (int): Dimension after the projection. This corresponds to the
                 number of top eigenvalues (top-k eigenvalues) to keep for the
                 Hessian approximation.
@@ -335,6 +340,23 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
                 regularization term is `regularization * v`.
             seed (int): Random seed used by the projector. Defaults to 0.
         """
+        super().__init__(task, device)
+        self.proj_dim = proj_dim
+        self.max_iter = max_iter
+        self.norm_constant = norm_constant
+        self.tol = tol
+        self.regularization = regularization
+        self.seed = seed
+
+    def cache(
+        self,
+        full_train_dataloader: DataLoader,
+    ) -> None:
+        """Cache the dataset and pre-calculate the Arnoldi projector.
+
+        Args:
+            full_train_dataloader (DataLoader): The dataloader with full training data.
+        """
         self.full_train_dataloader = full_train_dataloader
         self.arnoldi_projectors = []
 
@@ -352,12 +374,12 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
                     feature_dim=len(model_params),
                     func=func,
                     x=model_params,
-                    proj_dim=proj_dim,
-                    max_iter=max_iter,
-                    norm_constant=norm_constant,
-                    tol=tol,
-                    regularization=regularization,
-                    seed=seed,
+                    proj_dim=self.proj_dim,
+                    max_iter=self.max_iter,
+                    norm_constant=self.norm_constant,
+                    tol=self.tol,
+                    regularization=self.regularization,
+                    seed=self.seed,
                     device=self.device,
                 ),
             )
