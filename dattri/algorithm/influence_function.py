@@ -298,49 +298,109 @@ class IFAttributorCG(BaseInnerProductAttributor):
 
 
 class IFAttributorArnoldi(BaseInnerProductAttributor):
-    """The inner product attributor with Arnoldi inverse hessian transformation."""
+    """The inner product attributor with Arnoldi projection transformation."""
 
-    def transformation_on_query(
+    def cache(
         self,
-        index: int,
-        train_data: Tuple[torch.Tensor, ...],
-        query: torch.Tensor,
-        **transformation_kwargs,
-    ) -> torch.Tensor:
-        """Calculate the transformation on the query through ihvp_arnoldi.
+        full_train_dataloader: DataLoader,
+        proj_dim: int = 100,
+        max_iter: int = 100,
+        norm_constant: float = 1.0,
+        tol: float = 1e-7,
+        regularization: float = 0.0,
+        seed: int = 0,
+    ) -> None:
+        """Cache the dataset and pre-calculate the Arnoldi projector.
 
         Args:
-            index (int): The index of the model parameters. This index
-                is used for ensembling of different trained model.
-            train_data (Tuple[Tensor]): The train data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-            query (torch.Tensor): The query to be transformed. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-            transformation_kwargs (Dict[str, Any]): The keyword arguments for
-                the transformation function.
-
-        Returns:
-            torch.Tensor: The transformation on the query. Normally it is a 2-d
-                dimensional tensor with the shape of (batchsize, transformed_dimension).
+            full_train_dataloader (DataLoader): The dataloader with full training data.
+            proj_dim (int): Dimension after the projection. This corresponds to the
+                number of top eigenvalues (top-k eigenvalues) to keep for the
+                Hessian approximation.
+            max_iter (int): An integer defaulting to 100. Specifies the maximum
+                iteration to calculate the ihvp through Arnoldi Iteration.
+            norm_constant (float): A float defaulting to 1.0. Specifies a constant
+                value for the norm of each projection. In some situations (e.g.
+                with a large number of parameters) it might be advisable to set
+                norm_constant > 1 to avoid dividing projection components by a
+                large normalization factor.
+            tol (float): A float defaulting to 1e-7. Specifies the break condition
+                that decides if the algorithm has converged. If the torch.norm of
+                the current basis vector is less than tol, then the algorithm is
+                truncated.
+            regularization (float): A float defaulting to 0.0. Specifies the
+                regularization term to be added to the Hessian vector product,
+                which is useful for the later inverse calculation if the Hessian
+                matrix is singular or ill-conditioned. Specifically, the
+                regularization term is `regularization * v`.
+            seed (int): Random seed used by the projector. Defaults to 0.
         """
+        self.full_train_dataloader = full_train_dataloader
+        self.arnoldi_projectors = []
+
+        # Assuming that full_train_dataloader has only one batch
+        # TODO: support multiple batches
+        data_target_pair = next(iter(full_train_dataloader))
+        func = partial(self.task.get_loss_func(), data_target_pair=data_target_pair)
+
         from dattri.func.projection import arnoldi_project
 
-        if not hasattr(self, "arnoldi_projector"):
-            feature_dim = query.shape[1]
-            func = partial(self.task.get_loss_func(), data_target_pair=train_data)
-            model_params, _ = self.task.get_param(index)
-            self.arnoldi_projector = arnoldi_project(
-                feature_dim,
-                func,
-                model_params,
-                device=self.device,
-                **transformation_kwargs,
+        for i in range(len(self.task.get_checkpoints())):
+            model_params, _ = self.task.get_param(i)
+            self.arnoldi_projectors.append(
+                arnoldi_project(
+                    feature_dim=len(model_params),
+                    func=func,
+                    x=model_params,
+                    proj_dim=proj_dim,
+                    max_iter=max_iter,
+                    norm_constant=norm_constant,
+                    tol=tol,
+                    regularization=regularization,
+                    seed=seed,
+                    device=self.device,
+                ),
             )
 
-        return self.arnoldi_projector(query).detach()
+    def transform_train_rep(
+        self,
+        ckpt_idx: int,
+        train_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Transform the train representations via Arnoldi projection.
+
+        Args:
+            ckpt_idx (int): The index of the model checkpoints. This index
+                is used for ensembling different trained model checkpoints.
+            train_rep (torch.Tensor): The train representations to be transformed.
+                It is a 2-d dimensional tensor with the shape of
+                (batch_size, num_params).
+
+        Returns:
+            torch.Tensor: The transformed train representations, a 2-d dimensional
+                tensor with the shape of (batch_size, proj_dim).
+        """
+        return self.arnoldi_projectors[ckpt_idx](train_rep).detach()
+
+    def transform_test_rep(
+        self,
+        ckpt_idx: int,
+        test_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Transform the test representations via Arnoldi projection.
+
+        Args:
+            ckpt_idx (int): The index of the model checkpoints. This index
+                is used for ensembling different trained model checkpoints.
+            test_rep (torch.Tensor): The test representations to be transformed.
+                It is a 2-d dimensional tensor with the shape of
+                (batch_size, num_params).
+
+        Returns:
+            torch.Tensor: The transformed test representations, a 2-d dimensional
+                tensor with the shape of (batch_size, proj_dim).
+        """
+        return self.arnoldi_projectors[ckpt_idx](test_rep).detach()
 
 
 class IFAttributorLiSSA(BaseInnerProductAttributor):
