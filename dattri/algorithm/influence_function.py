@@ -447,8 +447,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     set gradient,Normally of shape (num_valiation,parameter_size)
                 grad (torch.Tensor): A tensor representing a single training
                     gradient, of shape (parameter_size,)
-                q (torch.Tensor): A tensor representing (batched) training gradient
-                    , Normally of shape (num_train,parameter_size)
                 regularization (float): A float or list of floats default
                     to 0.0.Specifies the regularization term to be added to
                     the Hessian matrix in each layer.
@@ -462,15 +460,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             return (v - coef @ grad.T) / regularization
         
         regularization = None
-        train_batch_data = tuple(
-            data.to(self.device).unsqueeze(0) for data in train_data
-        )
-        train_batch_grad = self.generate_train_query(
-            index=self.index,
-            data=train_batch_data,
-        )
         query_split = self.get_layer_wise_grads(query)
-        train_grad_split = self.get_layer_wise_grads(train_batch_grad)
+        train_grad_split = self.get_layer_wise_grads(train_data)
         layer_cnt = len(train_grad_split)
         ifvps = []
         batch_size = 16
@@ -566,6 +557,14 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             self.index = checkpoint_idx
             checkpoint_running_count += 1
             tda_output *= checkpoint_running_count - 1
+            # calculate gradient with respect to full_data, do it only once
+            full_data_grad = 0            
+            for full_data_ in self.full_train_dataloader:
+                full_data = tuple(data.to(self.device).unsqueeze(0) for data in full_data_)
+                full_data_grad = self.generate_train_query(
+                    index=self.index,
+                    data=full_data,
+                )
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
@@ -603,15 +602,13 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     )
 
                     vector_product = 0
-                    for full_data_ in self.full_train_dataloader:
-                        # move to device
-                        full_data = tuple(data.to(self.device) for data in full_data_)
-                        vector_product += self.transformation_on_query(
+                    vector_product += self.transformation_on_query(
                             index=self.index,
-                            train_data=full_data,
+                            train_data=full_data_grad,
                             query=test_batch_grad,
                             **self.transformation_kwargs,
-                        )
+                    )
+                    
 
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
