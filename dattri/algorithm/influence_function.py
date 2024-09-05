@@ -433,7 +433,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        #print("Reached Datainf!")
         model_params, param_layer_map = self.task.get_param(index, layer_split=True)
         
         def _single_datainf(
@@ -471,21 +470,14 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             data=train_batch_data,
         )
         query_split = self.get_layer_wise_grads(query)
-        #print(type(train_batch_grad))
         train_grad_split = self.get_layer_wise_grads(train_batch_grad)
-        # print(type(train_grad_split))
-        # print(len(train_grad_split))
-        # print(train_grad_split[0].shape)
         layer_cnt = len(train_grad_split)
-        #print(layer_cnt)
         ifvps = []
         batch_size = 16
         for layer in range(layer_cnt):
             grad_layer = train_grad_split[layer]
             length = grad_layer.shape[0]
-            #print(f"Length: {length}")
             grad_batches = grad_layer.split(batch_size,dim=0)
-            #print(len(grad_batches))
             running_contributions = 0
 
             for batch in grad_batches:
@@ -498,44 +490,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 )
                 )(batch)
                 running_contributions += contribution.sum(dim=0)
-                #contributions.append(contribution)
             running_contributions /= length
-            #print(f"Shape: {running_contributions.shape}")
-            #print(f"Shape: {average_transformed.shape}")
             ifvps.append(running_contributions)
-            # ifvp_contributions = torch.func.vmap(
-            #     lambda grad, layer=layer, reg=reg: _single_datainf(
-            #         v[layer],
-            #         grad,
-            #         q[layer],
-            #         reg,
-            #     ),
-            # )(grad_layer)
-            # ifvp_at_layer = ifvp_contributions.mean(dim=0)
-            # ifvps.append(ifvp_at_layer)
-        # self.ihvp_func = ifvp_datainf(
-        #     self.task.get_loss_func(),
-        #     0,
-        #     (None, 0),
-        #     param_layer_map=param_layer_map,
-        #     **transformation_kwargs,
-        # )
-
-        # split_index = [0] * (param_layer_map[-1] + 1)
-        # for idx, layer_index in enumerate(param_layer_map):
-        #     split_index[layer_index] += model_params[idx].shape[0]
-
-        # current_idx = 0
-        # query_split = []
-        # for i in range(len(split_index)):
-        #     query_split.append(query[:, current_idx : split_index[i] + current_idx])
-        #     current_idx += split_index[i]
-
-        # res = self.ihvp_func(
-        #     (model_params, (train_data[0], train_data[1].view(-1, 1).float())),
-        #     query_split,
-        # )
-        # torch.cat(res, dim=1).detach()
         return torch.cat(ifvps,dim=1)
 
     def get_layer_wise_grads(self, query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
@@ -561,149 +517,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             query_split.append(query[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
         return query_split
-
-    @staticmethod
-    def datainf(
-            func: Callable,
-            argnums: int,
-            in_dims: Tuple[Union[None, int], ...],
-            regularization: Optional[Union[float, List[float]]] = None,
-            param_layer_map: [List[int]] = None,
-        ) -> Callable:
-        """DataInf algorithm function.
-
-        Returns a function that,when given vectors, computes the DataInf influence.
-
-        DataInf assume the loss to be cross-entropy and thus derive a closed form
-        IFVP without having to approximate the FIM. Implementation for reference:
-        https://github.com/ykwon0407/DataInf/blob/main/src/influence.py
-
-        Args:
-            func (Callable): A Python function that takes one or more arguments.
-                Must return a single-element Tensor. The layer-wise gradients will
-                be calculated on this function. Note that datainf expects the loss
-                to be cross-entropy.
-            argnums (int): An integer default to 0. Specifies which argument of func
-                to compute inverse FIM with respect to.
-            in_dims (Tuple[Union[None, int], ...]): Parameter sent to vmap to
-                produce batched layer-wise gradients. Example: inputs,
-                weights, labels corresponds to (0,None,0).
-            regularization (List [float]): A float or list of floats default to 0.0.
-                Specifies the regularization term to be added to the Hessian
-                matrix in each layer. This is useful when the Hessian matrix is
-                singular or ill-conditioned. The regularization term is
-                `regularization * I` , where `I` is the identity matrix directly
-                added to the Hessian matrix. The list is of length L, where L is
-                the total number of layers.
-            param_layer_map: Optional[List[int]]: Specifies how the parameters
-                are grouped into layers. Should be the same length as parameters
-                tuple. For example,for a two layer model, params =
-                (0.weights1,0.bias,1.weights,1.bias),param_layer_map should be
-                [0,0,1,1],resulting in two layers as expected.
-
-        Returns:
-            A function that takes a list of tuples of Tensor `x`, a tuple of tensors
-                `v`(layer-wise), and a tuple of tensors `q`(layer-wise)
-                and returns the approximated influence.
-
-        Raises:
-            DataInfUsageError: If the length of regularization is not the same
-                as the number of layers.
-        """
-        class DataInfUsageError(Exception):
-            """The usage exception class for DataInf."""
-        batch_grad_func = torch.func.vmap(
-            torch.func.grad(func, argnums=argnums), in_dims=in_dims,
-        )
-        if regularization is not None and not isinstance(regularization, list):
-            regularization = [regularization] * len(param_layer_map)
-
-        if param_layer_map is not None and len(regularization) != len(
-            param_layer_map,
-        ):
-            error_msg = "The length of regularization should\
-                        be the same as the number of layers."
-            raise DataInfUsageError(error_msg)
-
-        def _single_datainf(
-            v: torch.Tensor,
-            grad: torch.Tensor,
-            q: torch.Tensor,
-            regularization: float,
-        ) -> torch.Tensor:
-            """Intermediate DataInf value calculation of a single data point.
-
-            Args:
-                v (torch.Tensor): A tensor representing (batched) validation
-                    set gradient,Normally of shape (num_valiation,parameter_size)
-                grad (torch.Tensor): A tensor representing a single training
-                    gradient, of shape (parameter_size,)
-                q (torch.Tensor): A tensor representing (batched) training gradient
-                    , Normally of shape (num_train,parameter_size)
-                regularization (float): A float or list of floats default
-                    to 0.0.Specifies the regularization term to be added to
-                    the Hessian matrix in each layer.
-
-            Returns:
-                A tensor corresponding to intermediate influence value. This value
-                    will later to aggregated to obtain final influence.
-            """
-            grad = grad.unsqueeze(-1)
-            coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
-            return (q @ v.T - (q @ grad) @ coef.T) / regularization
-
-        def _datainf_func(
-            x: Tuple[torch.Tensor, ...],
-            v: Tuple[torch.Tensor, ...],
-            q: Tuple[torch.Tensor, ...],
-        ) -> Tuple[torch.Tensor]:
-            """The influence function using DataInf.
-
-            Args:
-                x (Tuple[torch.Tensor, ...]): The function will compute the
-                    inverse FIM with respect to these arguments.
-                v (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from which
-                    influence will be computed. For example layer-wise gradients
-                    of test samples.
-                q (Tuple[torch.Tensor, ...]): Tuple of layer-wise tensors from which
-                    influence will be computed. For example layer-wise gradients
-                    of train samples.
-
-            Returns:
-                Layer-wise influence value of shape (train_size,validation_size).
-            """
-            grads = batch_grad_func(*x)
-            layer_cnt = len(grads)
-            if param_layer_map is not None:
-                grouped = []
-                max_layer = max(param_layer_map)
-                for group in range(max_layer + 1):
-                    grouped_layers = tuple(
-                        grads[layer]
-                        for layer in range(len(param_layer_map))
-                        if param_layer_map[layer] == group
-                    )
-                    concated_grads = torch.concat(grouped_layers, dim=1)
-                    grouped.append(concated_grads)
-                grads = tuple(grouped)
-                layer_cnt = max_layer + 1  # Assuming count starts from 0
-            ifvps = []
-            for layer in range(layer_cnt):
-                grad_layer = grads[layer]
-                reg = 0.0 if regularization is None else regularization[layer]
-                ifvp_contributions = torch.func.vmap(
-                    lambda grad, layer=layer, reg=reg: _single_datainf(
-                        v[layer],
-                        grad,
-                        q[layer],
-                        reg,
-                    ),
-                )(grad_layer)
-                ifvp_at_layer = ifvp_contributions.mean(dim=0)
-                ifvps.append(ifvp_at_layer)
-            return tuple(ifvps)
-
-        return _datainf_func
 
     def attribute(
         self,
@@ -789,38 +602,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                         data=test_batch_data,
                     )
 
-                    # for full_data_ in self.full_train_dataloader:
-                    #     # move to device
-                    #     full_data = tuple(data.to(self.device) for data in full_data_)
-                    #     inf_func = self.datainf(
-                    #         self.task.get_loss_func(),
-                    #         0,
-                    #         (None, 0),
-                    #         param_layer_map=self.task.get_param(self.index,
-                    #                                             layer_split=True)[1],
-                    #         **self.transformation_kwargs,
-                    #     )
-                    #     single_influence = inf_func(
-                    #         (
-                    #             self.task.get_param(self.index, layer_split=True)[0],
-                    #             (full_data[0], full_data[1].view(-1, 1).float()),
-                    #         ),
-                    #         self.get_layer_wise_grads(test_batch_grad),
-                    #         train_grad_split,
-                    #     )
-                    # if param_layer_map is not None:
-                    #     grouped = []
-                    #     max_layer = max(param_layer_map)
-                    #     for group in range(max_layer + 1):
-                    #         grouped_layers = tuple(
-                    #             grads[layer]
-                    #             for layer in range(len(param_layer_map))
-                    #             if param_layer_map[layer] == group
-                    #         )
-                    #         concated_grads = torch.concat(grouped_layers, dim=1)
-                    #         grouped.append(concated_grads)
-                    #     grads = tuple(grouped)
-                    #     layer_cnt = max_layer + 1  # Assuming count starts from 0
                     vector_product = 0
                     for full_data_ in self.full_train_dataloader:
                         # move to device
@@ -847,8 +628,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     tda_output[row_st:row_ed, col_st:col_ed] += (
                         train_batch_grad @ vector_product.T
                     )
-                    # inf = torch.stack(single_influence, dim=0)
-                    # tda_output[row_st:row_ed, col_st:col_ed] += torch.mean(inf, dim=0)
 
         tda_output /= checkpoint_running_count
 
