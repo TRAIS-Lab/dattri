@@ -2,11 +2,7 @@
 
 # ruff: noqa
 import argparse
-from functools import partial
-import time
 
-
-import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
@@ -21,7 +17,7 @@ from dattri.algorithm.influence_function import (
 from dattri.algorithm.tracin import TracInAttributor
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.algorithm.rps import RPSAttributor
-from dattri.metrics.metrics import lds
+from dattri.metrics.metrics import lds, loo_corr
 from dattri.benchmark.load import load_benchmark
 from dattri.task import AttributionTask
 
@@ -59,10 +55,27 @@ ATTRIBUTOR_DICT = {
     "RPS": RPSAttributor,
 }
 
+METRICS_DICT = {
+    "lds": lds,
+    "loo": loo_corr,
+}
+
 if __name__ == "__main__":
     argparser = argparse.ArgumentParser()
-    argparser.add_argument("--dataset", type=str, default="mnist")
-    argparser.add_argument("--model", type=str, default="mlp")
+    argparser.add_argument(
+        "--dataset",
+        type=str,
+        default="mnist",
+        choices=["mnist", "cifar2"],
+        help="The dataset of the benchmark.",
+    )
+    argparser.add_argument(
+        "--model",
+        type=str,
+        default="mlp",
+        choices=["lr", "mlp", "resnet9"],
+        help="The model of the benchmark.",
+    )
     argparser.add_argument(
         "--method",
         type=str,
@@ -80,33 +93,46 @@ if __name__ == "__main__":
             "Grad-Cos",
             "RPS",
         ],
+        help="The TDA method to benchmark.",
     )
-    argparser.add_argument("--metric", type=str, default="lds", choices=["lds", "loo"])
-    argparser.add_argument("--device", type=str, default="cuda")
+    argparser.add_argument(
+        "--metric",
+        type=str,
+        default="lds",
+        choices=["lds", "loo"],
+        help="The metric to evaluate the TDA method.",
+    )
+    argparser.add_argument(
+        "--device", type=str, default="cuda", help="The device to run the experiment."
+    )
     args = argparser.parse_args()
 
     print(args)
+
+    # 1. load the benchmark
 
     model_details, groundtruth = load_benchmark(
         model=args.model, dataset=args.dataset, metric=args.metric
     )
 
+    # 2. prepare task for each method
+
     train_loader_cache = DataLoader(
         model_details["train_dataset"],
         shuffle=False,
-        batch_size=5000,
+        batch_size=5000 if args.dataset == "mnist" else 64,
         sampler=model_details["train_sampler"],
     )
     train_loader = DataLoader(
         model_details["train_dataset"],
         shuffle=False,
-        batch_size=500,
+        batch_size=500 if args.dataset == "mnist" else 64,
         sampler=model_details["train_sampler"],
     )
     test_loader = DataLoader(
         model_details["test_dataset"],
         shuffle=False,
-        batch_size=500,
+        batch_size=500 if args.dataset == "mnist" else 64,
         sampler=model_details["test_sampler"],
     )
 
@@ -119,7 +145,7 @@ if __name__ == "__main__":
             return loss(yhat, label.long())
 
         task = AttributionTask(
-            model=model_details["model"].cuda(),
+            model=model_details["model"].to(args.device),
             loss_func=loss_if,
             checkpoints=model_details["models_full"][0],
         )
@@ -135,7 +161,7 @@ if __name__ == "__main__":
             return loss(yhat, label_t.long())
 
         task = AttributionTask(
-            model=model_details["model"].cuda(),
+            model=model_details["model"].to(args.device),
             loss_func=loss_tracin,
             checkpoints=model_details["models_full"][0:10]
             if args.method == "TracIn"
@@ -154,7 +180,7 @@ if __name__ == "__main__":
             return logp - torch.log(1 - torch.exp(logp))
 
         task = AttributionTask(
-            model=model_details["model"].cuda(),
+            model=model_details["model"].to(args.device),
             loss_func=loss_trak,
             checkpoints=model_details["models_half"][
                 0 : int(args.method.split("-")[1])
@@ -176,13 +202,16 @@ if __name__ == "__main__":
             loss_fn = nn.CrossEntropyLoss()
             return loss_fn(pre_activation_list, label_list)
 
+        model = model_details["model"].to(args.device)
+        model.load_state_dict(torch.load(model_details["models_full"][0]))
+
         task = AttributionTask(
-            model=model_details["model"].cuda(),
+            model=model_details["model"].to(args.device),
             loss_func=loss_rps,
             checkpoints=model_details["models_full"][0],
         )
 
-    # the eval size
+    # 3. start running the TDA methods
     best_result = 0
     best_config = None
 
@@ -195,21 +224,18 @@ if __name__ == "__main__":
                 **ihvp_config,
             )
             attributor.cache(train_loader_cache)
-            torch.cuda.reset_peak_memory_stats("cuda")
             with torch.no_grad():
                 score = attributor.attribute(train_loader, test_loader)
-            peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
-            print(f"Peak memory usage: {peak_memory} MB")
 
-            lds_score = lds(-score.T.cpu(), groundtruth)[0]
-            lds_score = torch.mean(lds_score[~torch.isnan(lds_score)])
+            metric_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+            metric_score = torch.mean(metric_score[~torch.isnan(metric_score)])
 
-            print("lds:", lds_score)
-            if lds_score > best_result:
-                best_result = lds_score
+            print(f"{args.metric}:", metric_score)
+            if metric_score > best_result:
+                best_result = metric_score
                 best_config = ihvp_config
             print("complete\n")
-        print(args.method, "RESULT:", best_config, "lds:", best_result)
+        print(args.method, "RESULT:", best_config, f"{args.metric}:", best_result)
 
     if args.method in ["TRAK-1", "TRAK-10", "TRAK-50"]:
         projector_kwargs = {
@@ -224,22 +250,19 @@ if __name__ == "__main__":
             projector_kwargs=projector_kwargs,
         )
         attributor.cache(train_loader)
-        torch.cuda.reset_peak_memory_stats("cuda")
         with torch.no_grad():
             score = attributor.attribute(test_loader)
-        peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
-        print(f"Peak memory usage: {peak_memory} MB")
 
-        lds_score = lds(-score.T.cpu(), groundtruth)[0]
-        lds_score = torch.mean(lds_score[~torch.isnan(lds_score)])
+        metric_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+        metric_score = torch.mean(metric_score[~torch.isnan(metric_score)])
 
-        print("lds:", lds_score)
-        if lds_score > best_result:
-            best_result = lds_score
+        print(f"{args.metric}:", metric_score)
+        if metric_score > best_result:
+            best_result = metric_score
             best_config = projector_kwargs
         print("complete\n")
 
-        print(args.method, "RESULT:", best_config, "lds:", best_result)
+        print(args.method, "RESULT:", best_config, f"{args.metric}:", best_result)
 
     if args.method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
         normalized_grad = False
@@ -257,33 +280,29 @@ if __name__ == "__main__":
             # projector_kwargs=proj_kwargs,
             device=args.device,
         )
-        torch.cuda.reset_peak_memory_stats("cuda")
         with torch.no_grad():
             score = attributor.attribute(train_loader, test_loader)
-        peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
-        print(f"Peak memory usage: {peak_memory} MB")
 
         # compute LDS value
-        lds_score = lds(-score.T.cpu(), groundtruth)[0]
-        lds_score = torch.mean(lds_score[~torch.isnan(lds_score)])
+        metrics_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+        metrics_score = torch.mean(metrics_score[~torch.isnan(metrics_score)])
 
-        if lds_score > best_result:
-            best_result = lds_score
+        if metrics_score > best_result:
+            best_result = metrics_score
         print("complete\n")
 
-        print(args.method, "lds:", best_result)
+        print(args.method, f"{args.metric}:", best_result)
 
     if args.method == "RPS":
         for l2 in [1, 1e-1, 1e-2, 1e-3, 1e-4]:
             attributor = ATTRIBUTOR_DICT[args.method](
                 task=task,
-                final_linear_layer_name="fc3",
-                nomralize_preactivate=False,
+                final_linear_layer_name="fc3" if args.model == "mlp" else "linear",
+                nomralize_preactivate=True,
                 l2_strength=l2,
-                device="cuda",
+                device=args.device,
             )
 
-            torch.cuda.reset_peak_memory_stats("cuda")
             train_loader_train = DataLoader(
                 model_details["train_dataset"],
                 shuffle=False,
@@ -292,17 +311,15 @@ if __name__ == "__main__":
             )
             attributor.cache(train_loader_train)
             score = attributor.attribute(train_loader, test_loader)
-            peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
-            print(f"Peak memory usage: {peak_memory} MB")
 
             # compute LDS value
-            lds_score = lds(-score.T.cpu(), groundtruth)[0]
-            lds_score = torch.mean(lds_score[~torch.isnan(lds_score)])
+            metrics_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+            metrics_score = torch.mean(metrics_score[~torch.isnan(metrics_score)])
 
-            print("lds:", lds_score)
-            if lds_score > best_result:
-                best_result = lds_score
+            print(f"{args.metric}:", metrics_score)
+            if metrics_score > best_result:
+                best_result = metrics_score
                 best_config = l2
             print("complete\n")
 
-        print(args.method, "RESULT:", {"lr": l2}, "lds:", best_result)
+        print(args.method, "RESULT:", {"lr": l2}, f"{args.metric}:", best_result)

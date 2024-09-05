@@ -9,6 +9,7 @@ if TYPE_CHECKING:
 
 import os
 import pathlib
+import warnings
 import zipfile
 from functools import partial
 from io import BytesIO
@@ -16,6 +17,12 @@ from io import BytesIO
 import requests
 import torch
 
+from dattri.benchmark.datasets.cifar2 import (
+    create_cifar2_dataset,
+    create_resnet9_model,
+    loss_cifar2_resnet9,
+    train_cifar2_resnet9,
+)
 from dattri.benchmark.datasets.mnist import (
     create_lr_model,
     create_mlp_model,
@@ -57,21 +64,25 @@ def generate_url_map(identifier: str) -> Dict[str, Any]:
 
 SUPPORTED_DATASETS = {
     "mnist": create_mnist_dataset,
+    "cifar2": create_cifar2_dataset,
 }
 
 LOSS_MAP = {
     "mnist_mlp": loss_mnist_mlp,
     "mnist_lr": loss_mnist_lr,
+    "cifar2_resnet9": loss_cifar2_resnet9,
 }
 
 TRAIN_FUNC_MAP = {
     "mnist_mlp": train_mnist_mlp,
     "mnist_lr": train_mnist_lr,
+    "cifar2_resnet9": train_cifar2_resnet9,
 }
 
 MODEL_MAP = {
     "mnist_mlp": partial(create_mlp_model, "mnist"),
     "mnist_lr": partial(create_lr_model, "mnist"),
+    "cifar2_resnet9": create_resnet9_model,
 }
 
 
@@ -120,6 +131,10 @@ def _download(
                 for chunk in response.iter_content(chunk_size=1024):
                     if chunk:
                         file.write(chunk)
+    elif response.status_code == 404:  # noqa: PLR2004
+        warn_msg = f"{url} does not exist, which could be a\
+                     reasonable case if the benchmark is too large."
+        warnings.warn(warn_msg, stacklevel=2)
     else:
         error_msg = f"Failed to download file. Status code: {response.status_code}"
         raise ValueError(error_msg)
