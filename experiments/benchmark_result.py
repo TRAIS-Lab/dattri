@@ -227,7 +227,10 @@ if __name__ == "__main__":
             with torch.no_grad():
                 score = attributor.attribute(train_loader, test_loader)
 
-            metric_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+            # compute metrics
+            if args.metric == "lds":
+                score = -score
+            metric_score = METRICS_DICT[args.metric](score, groundtruth)[0]
             metric_score = torch.mean(metric_score[~torch.isnan(metric_score)])
 
             print(f"{args.metric}:", metric_score)
@@ -253,7 +256,10 @@ if __name__ == "__main__":
         with torch.no_grad():
             score = attributor.attribute(test_loader)
 
-        metric_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+        # compute metrics
+        if args.metric == "lds":
+            score = -score
+        metric_score = METRICS_DICT[args.metric](score, groundtruth)[0]
         metric_score = torch.mean(metric_score[~torch.isnan(metric_score)])
 
         print(f"{args.metric}:", metric_score)
@@ -283,8 +289,10 @@ if __name__ == "__main__":
         with torch.no_grad():
             score = attributor.attribute(train_loader, test_loader)
 
-        # compute LDS value
-        metrics_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+        # compute metrics
+        if args.metric == "lds":
+            score = -score
+        metrics_score = METRICS_DICT[args.metric](score, groundtruth)[0]
         metrics_score = torch.mean(metrics_score[~torch.isnan(metrics_score)])
 
         if metrics_score > best_result:
@@ -312,8 +320,10 @@ if __name__ == "__main__":
             attributor.cache(train_loader_train)
             score = attributor.attribute(train_loader, test_loader)
 
-            # compute LDS value
-            metrics_score = METRICS_DICT[args.metric](-score.T.cpu(), groundtruth)[0]
+            # compute metrics
+            if args.metric == "lds":
+                score = -score
+            metrics_score = METRICS_DICT[args.metric](score, groundtruth)[0]
             metrics_score = torch.mean(metrics_score[~torch.isnan(metrics_score)])
 
             print(f"{args.metric}:", metrics_score)
