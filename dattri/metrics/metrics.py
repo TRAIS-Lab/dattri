@@ -39,7 +39,7 @@ def lds(
             ground truth values for each test sample. The second tensor contains the
             p-values of the correlation. Both have the shape (num_test_samples,).
     """
-    score = score.T
+    score = score.T.cpu()
     gt_values, indices = ground_truth
     num_subsets = indices.shape[0]
     num_test_samples = score.shape[0]
@@ -100,6 +100,7 @@ def loo_corr(
             metric values and their corresponding p-values. Both tensors have the
             shape (num_test_samples,).
     """
+    score = score.cpu()
     gt_values, _ = ground_truth
     num_test_samples = score.shape[1]
 
