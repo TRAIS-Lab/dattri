@@ -433,33 +433,110 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        from dattri.func.fisher import ifvp_datainf
-
+        #print("Reached Datainf!")
         model_params, param_layer_map = self.task.get_param(index, layer_split=True)
+        
+        def _single_datainf(
+            v: torch.Tensor,
+            grad: torch.Tensor,
+            regularization: float,
+        ) -> torch.Tensor:
+            """Intermediate DataInf value calculation of a single data point.
 
-        self.ihvp_func = ifvp_datainf(
-            self.task.get_loss_func(),
-            0,
-            (None, 0),
-            param_layer_map=param_layer_map,
-            **transformation_kwargs,
+            Args:
+                v (torch.Tensor): A tensor representing (batched) validation
+                    set gradient,Normally of shape (num_valiation,parameter_size)
+                grad (torch.Tensor): A tensor representing a single training
+                    gradient, of shape (parameter_size,)
+                q (torch.Tensor): A tensor representing (batched) training gradient
+                    , Normally of shape (num_train,parameter_size)
+                regularization (float): A float or list of floats default
+                    to 0.0.Specifies the regularization term to be added to
+                    the Hessian matrix in each layer.
+
+            Returns:
+                A tensor corresponding to intermediate influence value. This value
+                    will later to aggregated to obtain final influence.
+            """
+            grad = grad.unsqueeze(-1)
+            coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
+            return (v - coef @ grad.T) / regularization
+        
+        regularization = None
+        train_batch_data = tuple(
+            data.to(self.device).unsqueeze(0) for data in train_data
         )
-
-        split_index = [0] * (param_layer_map[-1] + 1)
-        for idx, layer_index in enumerate(param_layer_map):
-            split_index[layer_index] += model_params[idx].shape[0]
-
-        current_idx = 0
-        query_split = []
-        for i in range(len(split_index)):
-            query_split.append(query[:, current_idx : split_index[i] + current_idx])
-            current_idx += split_index[i]
-
-        res = self.ihvp_func(
-            (model_params, (train_data[0], train_data[1].view(-1, 1).float())),
-            query_split,
+        train_batch_grad = self.generate_train_query(
+            index=self.index,
+            data=train_batch_data,
         )
-        return torch.cat(res, dim=1).detach()
+        query_split = self.get_layer_wise_grads(query)
+        #print(type(train_batch_grad))
+        train_grad_split = self.get_layer_wise_grads(train_batch_grad)
+        # print(type(train_grad_split))
+        # print(len(train_grad_split))
+        # print(train_grad_split[0].shape)
+        layer_cnt = len(train_grad_split)
+        #print(layer_cnt)
+        ifvps = []
+        batch_size = 16
+        for layer in range(layer_cnt):
+            grad_layer = train_grad_split[layer]
+            length = grad_layer.shape[0]
+            #print(f"Length: {length}")
+            grad_batches = grad_layer.split(batch_size,dim=0)
+            #print(len(grad_batches))
+            running_contributions = 0
+
+            for batch in grad_batches:
+                reg = 0.0 if regularization is None else regularization[layer]
+                contribution = torch.func.vmap(
+                    lambda grad, layer=layer, reg=reg: _single_datainf(
+                    query_split[layer],
+                    grad,
+                    reg,
+                )
+                )(batch)
+                running_contributions += contribution.sum(dim=0)
+                #contributions.append(contribution)
+            running_contributions /= length
+            #print(f"Shape: {running_contributions.shape}")
+            #print(f"Shape: {average_transformed.shape}")
+            ifvps.append(running_contributions)
+            # ifvp_contributions = torch.func.vmap(
+            #     lambda grad, layer=layer, reg=reg: _single_datainf(
+            #         v[layer],
+            #         grad,
+            #         q[layer],
+            #         reg,
+            #     ),
+            # )(grad_layer)
+            # ifvp_at_layer = ifvp_contributions.mean(dim=0)
+            # ifvps.append(ifvp_at_layer)
+        # self.ihvp_func = ifvp_datainf(
+        #     self.task.get_loss_func(),
+        #     0,
+        #     (None, 0),
+        #     param_layer_map=param_layer_map,
+        #     **transformation_kwargs,
+        # )
+
+        # split_index = [0] * (param_layer_map[-1] + 1)
+        # for idx, layer_index in enumerate(param_layer_map):
+        #     split_index[layer_index] += model_params[idx].shape[0]
+
+        # current_idx = 0
+        # query_split = []
+        # for i in range(len(split_index)):
+        #     query_split.append(query[:, current_idx : split_index[i] + current_idx])
+        #     current_idx += split_index[i]
+
+        # res = self.ihvp_func(
+        #     (model_params, (train_data[0], train_data[1].view(-1, 1).float())),
+        #     query_split,
+        # )
+        # torch.cat(res, dim=1).detach()
+        return torch.cat(ifvps,dim=1)
 
     def get_layer_wise_grads(self, query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Split a gradient into layer-wise gradients.
@@ -712,25 +789,49 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                         data=test_batch_data,
                     )
 
+                    # for full_data_ in self.full_train_dataloader:
+                    #     # move to device
+                    #     full_data = tuple(data.to(self.device) for data in full_data_)
+                    #     inf_func = self.datainf(
+                    #         self.task.get_loss_func(),
+                    #         0,
+                    #         (None, 0),
+                    #         param_layer_map=self.task.get_param(self.index,
+                    #                                             layer_split=True)[1],
+                    #         **self.transformation_kwargs,
+                    #     )
+                    #     single_influence = inf_func(
+                    #         (
+                    #             self.task.get_param(self.index, layer_split=True)[0],
+                    #             (full_data[0], full_data[1].view(-1, 1).float()),
+                    #         ),
+                    #         self.get_layer_wise_grads(test_batch_grad),
+                    #         train_grad_split,
+                    #     )
+                    # if param_layer_map is not None:
+                    #     grouped = []
+                    #     max_layer = max(param_layer_map)
+                    #     for group in range(max_layer + 1):
+                    #         grouped_layers = tuple(
+                    #             grads[layer]
+                    #             for layer in range(len(param_layer_map))
+                    #             if param_layer_map[layer] == group
+                    #         )
+                    #         concated_grads = torch.concat(grouped_layers, dim=1)
+                    #         grouped.append(concated_grads)
+                    #     grads = tuple(grouped)
+                    #     layer_cnt = max_layer + 1  # Assuming count starts from 0
+                    vector_product = 0
                     for full_data_ in self.full_train_dataloader:
                         # move to device
                         full_data = tuple(data.to(self.device) for data in full_data_)
-                        inf_func = self.datainf(
-                            self.task.get_loss_func(),
-                            0,
-                            (None, 0),
-                            param_layer_map=self.task.get_param(self.index,
-                                                                layer_split=True)[1],
+                        vector_product += self.transformation_on_query(
+                            index=self.index,
+                            train_data=full_data,
+                            query=test_batch_grad,
                             **self.transformation_kwargs,
                         )
-                        single_influence = inf_func(
-                            (
-                                self.task.get_param(self.index, layer_split=True)[0],
-                                (full_data[0], full_data[1].view(-1, 1).float()),
-                            ),
-                            self.get_layer_wise_grads(test_batch_grad),
-                            train_grad_split,
-                        )
+
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
                         (train_batch_idx + 1) * train_dataloader.batch_size,
@@ -742,8 +843,12 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                         (test_batch_idx + 1) * test_dataloader.batch_size,
                         len(test_dataloader.sampler),
                     )
-                    inf = torch.stack(single_influence, dim=0)
-                    tda_output[row_st:row_ed, col_st:col_ed] += torch.mean(inf, dim=0)
+
+                    tda_output[row_st:row_ed, col_st:col_ed] += (
+                        train_batch_grad @ vector_product.T
+                    )
+                    # inf = torch.stack(single_influence, dim=0)
+                    # tda_output[row_st:row_ed, col_st:col_ed] += torch.mean(inf, dim=0)
 
         tda_output /= checkpoint_running_count
 
