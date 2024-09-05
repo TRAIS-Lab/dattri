@@ -37,5 +37,5 @@ with torch.no_grad():
                 sampler=model_details["test_sampler"])
     )
 
-lds_score = lds(score.cpu().T, groundtruth)[0]
+lds_score = lds(-score.cpu(), groundtruth)[0]
 print("lds:", torch.mean(lds_score[~torch.isnan(lds_score)]))
