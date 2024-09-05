@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+    from typing import Any, Callable, Dict, List, Optional, Tuple
 
     from torch import Tensor
     from torch.utils.data import DataLoader
@@ -433,8 +433,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             torch.Tensor: The transformation on the query. Normally it is a 2-d
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
-        model_params, param_layer_map = self.task.get_param(index, layer_split=True)
-        
+
         def _single_datainf(
             v: torch.Tensor,
             grad: torch.Tensor,
@@ -458,37 +457,41 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             grad = grad.unsqueeze(-1)
             coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
             return (v - coef @ grad.T) / regularization
-        
-        regularization = None
-        query_split = self.get_layer_wise_grads(query)
-        train_grad_split = self.get_layer_wise_grads(train_data)
+
+        regularization = transformation_kwargs.get("regularization") or None
+        query_split = self.get_layer_wise_grads(index, query)
+        train_grad_split = self.get_layer_wise_grads(index, train_data)
         layer_cnt = len(train_grad_split)
         ifvps = []
         batch_size = 16
         for layer in range(layer_cnt):
             grad_layer = train_grad_split[layer]
             length = grad_layer.shape[0]
-            grad_batches = grad_layer.split(batch_size,dim=0)
+            grad_batches = grad_layer.split(batch_size, dim=0)
             running_contributions = 0
 
             for batch in grad_batches:
-                reg = 0.0 if regularization is None else regularization[layer]
+                reg = 0.1 if regularization is None else regularization[layer]
                 contribution = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: _single_datainf(
                     query_split[layer],
                     grad,
                     reg,
-                )
+                ),
                 )(batch)
                 running_contributions += contribution.sum(dim=0)
             running_contributions /= length
             ifvps.append(running_contributions)
-        return torch.cat(ifvps,dim=1)
+        return torch.cat(ifvps, dim=1)
 
-    def get_layer_wise_grads(self, query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+    def get_layer_wise_grads(self,
+        index: int,
+        query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Split a gradient into layer-wise gradients.
 
         Args:
+            index (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
             query (torch.Tensor): Input gradient to split, could be train/test
                 gradients. Normally of shape (batch_size,parameter)
 
@@ -497,7 +500,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 (batch_size,layer0_size), (batch_size,layer1_size)...
         """
         model_params, param_layer_map = self.task.get_param(
-            self.index, layer_split=True,
+            index, layer_split=True,
         )
         split_index = [0] * (param_layer_map[-1] + 1)
         for idx, layer_index in enumerate(param_layer_map):
@@ -558,9 +561,10 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             checkpoint_running_count += 1
             tda_output *= checkpoint_running_count - 1
             # calculate gradient with respect to full_data, do it only once
-            full_data_grad = 0            
+            full_data_grad = 0
             for full_data_ in self.full_train_dataloader:
-                full_data = tuple(data.to(self.device).unsqueeze(0) for data in full_data_)
+                full_data = tuple(data.to(self.device).unsqueeze(0)
+                             for data in full_data_)
                 full_data_grad = self.generate_train_query(
                     index=self.index,
                     data=full_data,
@@ -581,8 +585,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     index=self.index,
                     data=train_batch_data,
                 )
-
-                train_grad_split = self.get_layer_wise_grads(train_batch_grad)
 
                 for test_batch_idx, test_batch_data_ in enumerate(
                     tqdm(
@@ -608,7 +610,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                             query=test_batch_grad,
                             **self.transformation_kwargs,
                     )
-                    
 
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
