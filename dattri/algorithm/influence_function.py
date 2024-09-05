@@ -471,7 +471,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             running_contributions = 0
 
             for batch in grad_batches:
-                reg = 0.1 if regularization is None else regularization[layer]
+                reg = 0.1 if regularization is None else regularization
                 contribution = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: _single_datainf(
                     query_split[layer],
