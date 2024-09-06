@@ -562,7 +562,7 @@ and the ground truth values for each test sample across all retrained models.</p
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>score</strong> (<em>torch.Tensor</em>) – The data attribution score tensor with the shape
-(num_test_samples, num_train_samples).</p></li>
+(num_train_samples, num_test_samples).</p></li>
 <li><p><strong>ground_truth</strong> (<em>Tuple</em><em>[</em><em>torch.Tensor</em><em>, </em><em>torch.Tensor</em><em>]</em>) – A tuple of two tensors. The
 first one has the shape (num_subsets, num_test_samples), which is the
 ground-truth target values for all test samples under <cite>num_subsets</cite> models,
