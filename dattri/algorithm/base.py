@@ -237,9 +237,6 @@ class BaseInnerProductAttributor(BaseAttributor):
                 should be the same as the number of training samples to get the
                 best accuracy for some attributors. Smaller batch size may lead to
                 a less accurate result but lower memory consumption.
-
-        Returns:
-            None.
         """
         self._set_full_train_data(full_train_dataloader)
 
