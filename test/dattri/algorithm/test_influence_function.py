@@ -82,7 +82,6 @@ class TestInfluenceFunction:
         attributor.attribute(train_loader, test_loader)
 
         # DataInf
-        # lissa
         attributor = IFAttributorDataInf(
             task=task,
             device=torch.device("cpu"),
