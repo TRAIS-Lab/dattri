@@ -36,23 +36,37 @@ pip install -e .[all]
 > [!NOTE]
 > If you are using `dattri[all]`, please use `pip<23` and `torch<2.3` due to some known issue of `fast_jl` library.
 
+#### Recommended enviroment setup
+It's not required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
+
+```bash
+conda create -n dattri python=3.10
+conda activate dattri
+
+conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
+pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+
+git clone https://github.com/TRAIS-Lab/dattri
+pip install -e .[all]
+```
+
 ### Apply Data Attribution methods on PyTorch Models
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
 1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
-2. trained model checkpoints.
+2. trained model checkpoints (one or more).
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
 4. (optional) target function to be attributed if it's not the same as loss function.
 
-The following is an example to use `IFAttributor`  to apply data attribution to a PyTorch model.
+The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
 ```python
 import torch
 from torch import nn
 
-from dattri.algorithm.influence_function import IFAttributor
+from dattri.algorithm import IFAttributorCG
+from dattri.task import AttributionTask
 from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
-from dattri.func.utils import flatten_func
 from dattri.benchmark.utils import SubsetSampler
 
 
@@ -60,35 +74,38 @@ dataset_train, dataset_test = create_mnist_dataset("./data")
 
 train_loader = torch.utils.data.DataLoader(
     dataset_train,
-    batch_size=64,
+    batch_size=1000,
     sampler=SubsetSampler(range(1000)),
 )
 test_loader = torch.utils.data.DataLoader(
     dataset_test,
-    batch_size=64,
+    batch_size=100,
     sampler=SubsetSampler(range(100)),
 )
 
 model = train_mnist_lr(train_loader)
 
-@flatten_func(model)
 def f(params, data_target_pair):
     x, y = data_target_pair
     loss = nn.CrossEntropyLoss()
     yhat = torch.func.functional_call(model, params, x)
     return loss(yhat, y)
 
-model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
-attributor = IFAttributor(
-    target_func=f,
-    params=model_params,
-    ihvp_solver="cg",
-    ihvp_kwargs={"max_iter": 10, "regularization": 1e-2},
+task = AttributionTask(loss_func=f,
+                       model=model,
+                       checkpoints=model.state_dict())
+
+attributor = IFAttributorCG(
+    task=task,
+    max_iter=10,
+    regularization=1e-2
 )
 
 attributor.cache(train_loader)
-score = attributor.attribute(train_loader, test_loader)
+with torch.no_grad():
+    score = attributor.attribute(train_loader, test_loader)
 ```
+
 
 ### Use low-level utility functions to develop new data attribution methods
 
@@ -97,6 +114,7 @@ Hessian-vector product (HVP), inverse-Hessian-vector product
 (IHVP) are widely used in data attribution methods. `dattri` provides efficient implementation to these operators by `torch.func`. This example shows how to use the CG implementation of the IHVP implementation.
 
 ```python
+import torch
 from dattri.func.hessian import ihvp_cg, ihvp_at_x_cg
 
 def f(x, param):
@@ -162,6 +180,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 |        |   [Grad-Cos](https://arxiv.org/abs/2102.05262)  |
 |   [RPS](https://arxiv.org/abs/1811.09720)  |   [RPS-L2](https://arxiv.org/abs/1811.09720)   |
 |  [TRAK](https://arxiv.org/abs/2303.14186)  |       [TRAK](https://arxiv.org/abs/2303.14186)       |
+|  [Shapley Value](https://arxiv.org/abs/1904.02868)  |       [KNN-Shapley](https://dl.acm.org/doi/10.14778/3342263.3342637)       |
 
 ## Metrics Supported
 - Leave-one-out (LOO) correlation
@@ -198,7 +217,6 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
   - KNN filter
   - TF-IDF filter
   - RelativeIF
-  - KNN Shapley
   - In-Run Shapley
 - Better documentation
   - Quick start colab notebooks

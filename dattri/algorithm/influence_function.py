@@ -486,6 +486,9 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: The transformed test representations, a 2-d dimensional
                 tensor with the shape of (batch_size, proj_dim).
+
+        Raises:
+            ValueError: If the Arnoldi projector has not been cached.
         """
         if not hasattr(self, "arnoldi_projectors"):
             error_msg = "The Arnoldi projector has not been cached.\
