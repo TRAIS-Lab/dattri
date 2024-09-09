@@ -469,31 +469,6 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
                 ),
             )
 
-    def transform_train_rep(
-        self,
-        ckpt_idx: int,
-        train_rep: torch.Tensor,
-    ) -> torch.Tensor:
-        """Transform the train representations via Arnoldi projection.
-
-        Args:
-            ckpt_idx (int): The index of the model checkpoints. This index
-                is used for ensembling different trained model checkpoints.
-            train_rep (torch.Tensor): The train representations to be transformed.
-                It is a 2-d dimensional tensor with the shape of
-                (batch_size, num_params).
-
-        Returns:
-            torch.Tensor: The transformed train representations, a 2-d dimensional
-                tensor with the shape of (batch_size, proj_dim).
-        """
-        if not hasattr(self, "arnoldi_projectors"):
-            error_msg = "The Arnoldi projector has not been cached.\
-                         Please call cache() first."
-            raise ValueError(error_msg)
-
-        return self.arnoldi_projectors[ckpt_idx](train_rep).detach()
-
     def transform_test_rep(
         self,
         ckpt_idx: int,
