@@ -83,6 +83,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         """
         self.task = task
         self.device = device
+        self.full_train_dataloader = None
 
     def _set_test_data(self, dataloader: torch.utils.data.DataLoader) -> None:
         """Set test dataloader.

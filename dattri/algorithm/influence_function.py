@@ -12,6 +12,7 @@ if TYPE_CHECKING:
 
     from dattri.task import AttributionTask
 
+import math
 import warnings
 from functools import partial
 
@@ -363,6 +364,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         self,
         task: AttributionTask,
         device: Optional[str] = "cpu",
+        precompute_data_ratio: float = 1.0,
         proj_dim: int = 100,
         max_iter: int = 100,
         norm_constant: float = 1.0,
@@ -376,6 +378,9 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
             task (AttributionTask): The task to be attributed. The task should
                 be an instance of `AttributionTask`.
             device (str): The device to run the attributor. Default is cpu.
+            precompute_data_ratio (float): A float defaulting to 1.0. Specifies the
+                ratio of the full training data to be precomputed for the Arnoldi
+                projection.
             proj_dim (int): Dimension after the projection. This corresponds to the
                 number of top eigenvalues (top-k eigenvalues) to keep for the
                 Hessian approximation.
@@ -398,6 +403,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
             seed (int): Random seed used by the projector. Defaults to 0.
         """
         super().__init__(task, device)
+        self.precompute_data_ratio = precompute_data_ratio
         self.proj_dim = proj_dim
         self.max_iter = max_iter
         self.norm_constant = norm_constant
@@ -419,7 +425,29 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
 
         # Assuming that full_train_dataloader has only one batch
         # TODO: support multiple batches
-        data_target_pair = next(iter(full_train_dataloader))
+        iter_number = math.ceil(len(full_train_dataloader) * self.precompute_data_ratio)
+        data_target_pair_list = []
+        for _ in range(iter_number):
+            data_target_pair_list.append(next(iter(full_train_dataloader)))  # noqa: PERF401
+
+        # concatenate all data
+        data_target_pair = data_target_pair_list[0]
+        for batch_idx in range(1, len(data_target_pair_list)):
+            for data_item_idx in range(len(data_target_pair_list[0])):
+                data_target_pair[data_item_idx] = torch.cat(
+                    (
+                        data_target_pair[data_item_idx],
+                        data_target_pair_list[batch_idx][data_item_idx],
+                    ),
+                    dim=0,
+                )
+
+        # to device (only once for all data)
+        for data_item_idx in range(len(data_target_pair)):
+            data_target_pair[data_item_idx] = data_target_pair[data_item_idx].to(
+                self.device,
+            )
+
         func = partial(self.task.get_loss_func(), data_target_pair=data_target_pair)
 
         from dattri.func.projection import arnoldi_project
@@ -459,6 +487,11 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
             torch.Tensor: The transformed train representations, a 2-d dimensional
                 tensor with the shape of (batch_size, proj_dim).
         """
+        if not hasattr(self, "arnoldi_projectors"):
+            error_msg = "The Arnoldi projector has not been cached.\
+                         Please call cache() first."
+            raise ValueError(error_msg)
+
         return self.arnoldi_projectors[ckpt_idx](train_rep).detach()
 
     def transform_test_rep(
@@ -479,6 +512,11 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
             torch.Tensor: The transformed test representations, a 2-d dimensional
                 tensor with the shape of (batch_size, proj_dim).
         """
+        if not hasattr(self, "arnoldi_projectors"):
+            error_msg = "The Arnoldi projector has not been cached.\
+                         Please call cache() first."
+            raise ValueError(error_msg)
+
         return self.arnoldi_projectors[ckpt_idx](test_rep).detach()
 
 
