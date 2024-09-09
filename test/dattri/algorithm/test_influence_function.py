@@ -124,8 +124,7 @@ class TestInfluenceFunction:
             device=torch.device("cpu"),
             regularization=1e-3,
         )
-        error_msg = "The Arnoldi projector has not been cached.\
-                         Please call cache() first."
+        error_msg = "The Arnoldi projector has not been cached"
         with pytest.raises(ValueError, match=error_msg):
             attributor.attribute(train_loader, test_loader)
 
