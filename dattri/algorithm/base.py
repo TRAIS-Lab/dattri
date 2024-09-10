@@ -227,7 +227,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         return train_rep
 
     def cache(self, full_train_dataloader: torch.utils.data.DataLoader) -> None:
-        """Cache the full training dataloader.
+        """Cache the full training dataloader or precompute and cache more information.
 
         By default, the cache function only caches the full training dataloader.
         Subclasses may override this function to precompute and cache more information.

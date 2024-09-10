@@ -424,7 +424,6 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         self.arnoldi_projectors = []
 
         # Assuming that full_train_dataloader has only one batch
-        # TODO: support multiple batches
         iter_number = math.ceil(len(full_train_dataloader) * self.precompute_data_ratio)
         data_target_pair_list = []
         for _ in range(iter_number):
