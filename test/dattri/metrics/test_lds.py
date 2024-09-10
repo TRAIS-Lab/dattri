@@ -27,7 +27,7 @@ class TestLDSFunction(unittest.TestCase):
         indices = torch.tensor([[0, 1], [0, 2], [1, 2]])
         ground_truth = (gt_values, indices)
 
-        lds_corr, lds_pval = lds(score, ground_truth)
+        lds_corr, lds_pval = lds(score.T, ground_truth)
 
         expected_corr = torch.tensor([1.0, 0.8660254037844387], dtype=torch.float32)
         expected_pval = torch.tensor([0.0, 0.3333333333333332], dtype=torch.float32)

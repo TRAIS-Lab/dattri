@@ -25,7 +25,7 @@ def lds(
 
     Args:
         score (torch.Tensor): The data attribution score tensor with the shape
-            (num_test_samples, num_train_samples).
+            (num_train_samples, num_test_samples).
         ground_truth (Tuple[torch.Tensor, torch.Tensor]): A tuple of two tensors. The
             first one has the shape (num_subsets, num_test_samples), which is the
             ground-truth target values for all test samples under `num_subsets` models,
@@ -39,6 +39,7 @@ def lds(
             ground truth values for each test sample. The second tensor contains the
             p-values of the correlation. Both have the shape (num_test_samples,).
     """
+    score = score.T.cpu()
     gt_values, indices = ground_truth
     num_subsets = indices.shape[0]
     num_test_samples = score.shape[0]
@@ -99,6 +100,7 @@ def loo_corr(
             metric values and their corresponding p-values. Both tensors have the
             shape (num_test_samples,).
     """
+    score = score.cpu()
     gt_values, _ = ground_truth
     num_test_samples = score.shape[1]
 
