@@ -491,8 +491,8 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         batch_size: int = 1,
         num_repeat: int = 1,
         recursion_depth: int = 5000,
-        damping: int = 0.0,
-        scaling: int = 50.0,
+        damping: float = 0.0,
+        scaling: float = 50.0,
         mode: str = "rev-rev",
     ) -> None:
         """Initialize the LiSSA inverse Hessian attributor.
