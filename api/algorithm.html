@@ -219,7 +219,7 @@
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>target_func</strong> (<em>Callable</em>) – <p>The target function to be attributed.
-The function can be quite flexible in terms of what is calculate,
+The function can be quite flexible in terms of what is calculated,
 but it should take the parameters and the dataloader as input.
 A typical example is as follows:
 <a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
@@ -311,32 +311,24 @@ with full training samples for inverse hessian calculation.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
-be an instance of <cite>AttributionTask</cite>.</p></li>
-<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
-<li><p><strong>precompute_data_ratio</strong> (<em>float</em>) – A float defaulting to 1.0. Specifies the
-ratio of the full training data to be precomputed for the Arnoldi
-projection.</p></li>
-<li><p><strong>proj_dim</strong> (<em>int</em>) – Dimension after the projection. This corresponds to the
-number of top eigenvalues (top-k eigenvalues) to keep for the
-Hessian approximation.</p></li>
-<li><p><strong>max_iter</strong> (<em>int</em>) – An integer defaulting to 100. Specifies the maximum
-iteration to calculate the ihvp through Arnoldi Iteration.</p></li>
-<li><p><strong>norm_constant</strong> (<em>float</em>) – A float defaulting to 1.0. Specifies a constant
-value for the norm of each projection. In some situations (e.g.
-with a large number of parameters) it might be advisable to set
-norm_constant &gt; 1 to avoid dividing projection components by a
-large normalization factor.</p></li>
-<li><p><strong>tol</strong> (<em>float</em>) – A float defaulting to 1e-7. Specifies the break condition
-that decides if the algorithm has converged. If the torch.norm of
-the current basis vector is less than tol, then the algorithm is
-truncated.</p></li>
-<li><p><strong>regularization</strong> (<em>float</em>) – A float defaulting to 0.0. Specifies the
-regularization term to be added to the Hessian vector product,
-which is useful for the later inverse calculation if the Hessian
-matrix is singular or ill-conditioned. Specifically, the
-regularization term is <cite>regularization * v</cite>.</p></li>
-<li><p><strong>seed</strong> (<em>int</em>) – Random seed used by the projector. Defaults to 0.</p></li>
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Must be an instance of
+<cite>AttributionTask</cite>.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – Device to run the attributor on. Default is “cpu”.</p></li>
+<li><p><strong>precompute_data_ratio</strong> (<em>float</em>) – Ratio of full training data used to
+precompute the Arnoldi projector. Default is 1.0.</p></li>
+<li><p><strong>proj_dim</strong> (<em>int</em>) – Dimension after projection. Corresponds to number of top
+eigenvalues to keep for Hessian approximation.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – Maximum iterations for Arnoldi Iteration. Default is 100.</p></li>
+<li><p><strong>norm_constant</strong> (<em>float</em>) – Constant for the norm of the projected vector.
+May need to be &gt; 1 for large number of parameters to avoid dividing the
+projected vector by a very large normalization constant. Default is 1.0.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – Convergence tolerance. Algorithm stops if the norm of the
+current basis vector &lt; tol. Default is 1e-7.</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – Regularization term for Hessian vector product.
+Adding <cite>regularization * I</cite> to the Hessian matrix, where <cite>I</cite> is the
+identity matrix. Useful for singular or ill-conditioned matrices.
+Default is 0.0.</p></li>
+<li><p><strong>seed</strong> (<em>int</em>) – Random seed for projector. Default is 0.</p></li>
 </ul>
 </dd>
 </dl>
@@ -349,14 +341,13 @@ regularization term is <cite>regularization * v</cite>.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-training samples to calculate the influence. It can be a subset
-of the full training set if <cite>cache</cite> is called before. A subset
-means that only a part of the training set’s influence is calculated.
-The dataloader should not be shuffled.</p></li>
-<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not
-be shuffled.</p></li>
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
+the influence. The dataloader should not be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -378,7 +369,7 @@ be shuffled.</p></li>
 <dd><p>Cache the dataset and pre-calculate the Arnoldi projector.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>DataLoader</em>) – The dataloader with full training data.</p>
+<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>DataLoader</em>) – Dataloader with full training data.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -386,8 +377,8 @@ be shuffled.</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.generate_test_rep">
 <span class="sig-name descname"><span class="pre">generate_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.generate_test_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Getting the initial representations of the test data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of test data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial test representations.</p>
 <p>The default implementation calculates the gradient of the test loss with respect
@@ -421,8 +412,8 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.generate_train_rep">
 <span class="sig-name descname"><span class="pre">generate_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.generate_train_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Generate the initial representations of the train data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of train data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial train representations.</p>
 <p>The default implementation calculates the gradient of the train loss with
@@ -460,16 +451,15 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model checkpoints. This index
-is used for ensembling different trained model checkpoints.</p></li>
-<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – The test representations to be transformed.
-It is a 2-d dimensional tensor with the shape of
-(batch_size, num_params).</p></li>
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – Index of the model checkpoints. Used for ensembling
+different trained model checkpoints.</p></li>
+<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – Test representations to be transformed.
+A 2-d tensor with shape (batch_size, num_params).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The transformed test representations, a 2-d dimensional</dt><dd><p>tensor with the shape of (batch_size, proj_dim).</p>
+<dt>Transformed test representations. A 2-d tensor with</dt><dd><p>shape (batch_size, proj_dim).</p>
 </dd>
 </dl>
 </p>
@@ -525,37 +515,26 @@ Typically, it is a 2-d dimensional tensor with the shape of
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-07</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.__init__" title="Link to this definition">¶</a></dt>
-<dd><p>Initialize the CG inverse hessian attributor.</p>
+<dd><p>Initialize the CG inverse Hessian attributor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
-be an instance of <cite>AttributionTask</cite>.</p></li>
-<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
-<li><p><strong>max_iter</strong> (<em>int</em>) – An integer default 10. Specifies the maximum iteration
-to calculate the ihvp through Conjugate Gradient Descent.</p></li>
-<li><p><strong>tol</strong> (<em>float</em>) – A float default to 1e-7. Specifies the break condition that
-decide if the algorithm has converged. If the torch.norm of residual
-is less than tol, then the algorithm is truncated.</p></li>
-<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
-- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
-<blockquote>
-<div><p>better compatibility while cost more memory.</p>
-</div></blockquote>
-<ul>
-<li><dl class="simple">
-<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be
-supported by some operator.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p></li>
-<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
-term to be added to the Hessian vector product, which is useful for the
-later inverse calculation if the Hessian matrix is singular or
-ill-conditioned. Specifically, the regularization term is
-<cite>regularization * v</cite>.</p></li>
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Must be an instance of
+<cite>AttributionTask</cite>.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – Device to run the attributor on. Default is “cpu”.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – Maximum iterations for Conjugate Gradient Descent. Default
+is 10.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – Convergence tolerance. Algorithm stops if residual norm &lt; tol.
+Default is 1e-7.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – Auto-diff mode. Options:
+- “rev-rev”: Two reverse-mode auto-diffs. Better compatibility, more
+memory cost.
+- “rev-fwd”: Reverse-mode + forward-mode. Memory-efficient, less
+compatible.</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – Regularization term for Hessian vector product.
+Adding <cite>regularization * I</cite> to the Hessian matrix, where <cite>I</cite> is the
+identity matrix. Useful for singular or ill-conditioned matrices.
+Default is 0.0.</p></li>
 </ul>
 </dd>
 </dl>
@@ -568,14 +547,13 @@ ill-conditioned. Specifically, the regularization term is
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-training samples to calculate the influence. It can be a subset
-of the full training set if <cite>cache</cite> is called before. A subset
-means that only a part of the training set’s influence is calculated.
-The dataloader should not be shuffled.</p></li>
-<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not
-be shuffled.</p></li>
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
+the influence. The dataloader should not be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -599,7 +577,7 @@ be shuffled.</p></li>
 Subclasses may override this function to precompute and cache more information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – Dataloader for
 the full training data. Ideally, the batch size of the dataloader
 should be the same as the number of training samples to get the
 best accuracy for some attributors. Smaller batch size may lead to
@@ -611,8 +589,8 @@ a less accurate result but lower memory consumption.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.generate_test_rep">
 <span class="sig-name descname"><span class="pre">generate_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.generate_test_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Getting the initial representations of the test data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of test data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial test representations.</p>
 <p>The default implementation calculates the gradient of the test loss with respect
@@ -646,8 +624,8 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.generate_train_rep">
 <span class="sig-name descname"><span class="pre">generate_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.generate_train_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Generate the initial representations of the train data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of train data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial train representations.</p>
 <p>The default implementation calculates the gradient of the train loss with
@@ -685,16 +663,15 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model parameters. This index
-is used for ensembling of different trained model.</p></li>
-<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – The test representations to be transformed.
-Typically, it is a 2-d dimensional tensor with the shape of
-(batch_size, num_parameters).</p></li>
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – Index of the model checkpoints. Used for ensembling
+different trained model checkpoints.</p></li>
+<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – Test representations to be transformed.
+Typically a 2-d tensor with shape (batch_size, num_parameters).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+<dt>Transformed test representations. Typically a 2-d</dt><dd><p>tensor with shape (batch_size, transformed_dimension).</p>
 </dd>
 </dl>
 </p>
@@ -747,18 +724,17 @@ Typically, it is a 2-d dimensional tensor with the shape of
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.__init__" title="Link to this definition">¶</a></dt>
-<dd><p>Initialize the explicit inverse hessian attributor.</p>
+<dd><p>Initialize the DataInf inverse Hessian attributor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
-be an instance of <cite>AttributionTask</cite>.</p></li>
-<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
-<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
-term to be added to the Hessian vector product, which is useful for the
-later inverse calculation if the Hessian matrix is singular or
-ill-conditioned. Specifically, the regularization term is
-<cite>regularization * v</cite>.</p></li>
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Must be an instance of
+<cite>AttributionTask</cite>.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – Device to run the attributor on. Default is “cpu”.</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – Regularization term for Hessian vector product.
+Adding <cite>regularization * I</cite> to the Hessian matrix, where <cite>I</cite> is the
+identity matrix. Useful for singular or ill-conditioned matrices.
+Default is 0.0.</p></li>
 </ul>
 </dd>
 </dl>
@@ -771,14 +747,13 @@ ill-conditioned. Specifically, the regularization term is
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-training samples to calculate the influence. It can be a subset
-of the full training set if <cite>cache</cite> is called before. A subset
-means that only a part of the training set’s influence is calculated.
-The dataloader should not be shuffled.</p></li>
-<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not
-be shuffled.</p></li>
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
+the influence. The dataloader should not be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -802,7 +777,7 @@ be shuffled.</p></li>
 Subclasses may override this function to precompute and cache more information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – Dataloader for
 the full training data. Ideally, the batch size of the dataloader
 should be the same as the number of training samples to get the
 best accuracy for some attributors. Smaller batch size may lead to
@@ -814,8 +789,8 @@ a less accurate result but lower memory consumption.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.generate_test_rep">
 <span class="sig-name descname"><span class="pre">generate_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.generate_test_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Getting the initial representations of the test data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of test data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial test representations.</p>
 <p>The default implementation calculates the gradient of the test loss with respect
@@ -849,8 +824,8 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.generate_train_rep">
 <span class="sig-name descname"><span class="pre">generate_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.generate_train_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Generate the initial representations of the train data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of train data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial train representations.</p>
 <p>The default implementation calculates the gradient of the train loss with
@@ -888,16 +863,15 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model parameters. This index
-is used for ensembling of different trained model.</p></li>
-<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – The test representations to be transformed.
-Typically, it is a 2-d dimensional tensor with the shape of
-(batch_size, num_parameters).</p></li>
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – Index of the model checkpoints. Used for ensembling
+different trained model checkpoints.</p></li>
+<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – Test representations to be transformed.
+Typically a 2-d tensor with shape (batch_size, num_parameters).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+<dt>Transformed test representations. Typically a 2-d</dt><dd><p>tensor with shape (batch_size, transformed_dimension).</p>
 </dd>
 </dl>
 </p>
@@ -950,18 +924,17 @@ Typically, it is a 2-d dimensional tensor with the shape of
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.__init__" title="Link to this definition">¶</a></dt>
-<dd><p>Initialize the explicit inverse hessian attributor.</p>
+<dd><p>Initialize the explicit inverse Hessian attributor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
-be an instance of <cite>AttributionTask</cite>.</p></li>
-<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
-<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
-term to be added to the Hessian matrix. This is useful when the Hessian
-matrix is singular or ill-conditioned. The regularization term is
-<cite>regularization * I</cite>, where <cite>I</cite> is the identity matrix directly added
-to the Hessian matrix.</p></li>
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – Task to attribute. Must be an instance of
+<cite>AttributionTask</cite>.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – Device to run the attributor on. Default is “cpu”.</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – Regularization term added to Hessian matrix.
+Useful for singular or ill-conditioned Hessian matrices.
+Added as <cite>regularization * I</cite>, where <cite>I</cite> is the identity matrix.
+Default is 0.0.</p></li>
 </ul>
 </dd>
 </dl>
@@ -974,14 +947,13 @@ to the Hessian matrix.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-training samples to calculate the influence. It can be a subset
-of the full training set if <cite>cache</cite> is called before. A subset
-means that only a part of the training set’s influence is calculated.
-The dataloader should not be shuffled.</p></li>
-<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not
-be shuffled.</p></li>
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
+the influence. The dataloader should not be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1005,7 +977,7 @@ be shuffled.</p></li>
 Subclasses may override this function to precompute and cache more information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – Dataloader for
 the full training data. Ideally, the batch size of the dataloader
 should be the same as the number of training samples to get the
 best accuracy for some attributors. Smaller batch size may lead to
@@ -1017,8 +989,8 @@ a less accurate result but lower memory consumption.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.generate_test_rep">
 <span class="sig-name descname"><span class="pre">generate_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.generate_test_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Getting the initial representations of the test data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of test data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial test representations.</p>
 <p>The default implementation calculates the gradient of the test loss with respect
@@ -1052,8 +1024,8 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.generate_train_rep">
 <span class="sig-name descname"><span class="pre">generate_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.generate_train_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Generate the initial representations of the train data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of train data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial train representations.</p>
 <p>The default implementation calculates the gradient of the train loss with
@@ -1091,16 +1063,14 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model parameters. This index
-is used for ensembling of different trained model.</p></li>
-<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – The test representations to be transformed.
-Typically, it is a 2-d dimensional tensor with the shape of
-(batch_size, num_parameters).</p></li>
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – Index of model parameters. Used for ensembling.</p></li>
+<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – Test representations to be transformed.
+Typically a 2-d tensor with shape (batch_size, num_parameters).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+<dt>Transformed test representations. Typically a 2-d</dt><dd><p>tensor with shape (batch_size, transformed_dimension).</p>
 </dd>
 </dl>
 </p>
@@ -1147,43 +1117,31 @@ Typically, it is a 2-d dimensional tensor with the shape of
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorLiSSA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_repeat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursion_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorLiSSA</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_repeat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursion_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
 <p>The inner product attributor with LiSSA inverse hessian transformation.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_repeat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursion_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.__init__" title="Link to this definition">¶</a></dt>
-<dd><p>Initialize the LiSSA inverse hessian attributor.</p>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_repeat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursion_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the LiSSA inverse Hessian attributor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. The task should
-be an instance of <cite>AttributionTask</cite>.</p></li>
-<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
-<li><p><strong>batch_size</strong> (<em>int</em>) – An integer default to 1. Specifies the batch size used
-for LiSSA inner loop update.</p></li>
-<li><p><strong>num_repeat</strong> (<em>int</em>) – An integer default to 1. Specifies the number of samples
-of the hvp approximation to average on.</p></li>
-<li><p><strong>recursion_depth</strong> (<em>int</em>) – A integer default to 5000. Specifies the number of
-recursions used to estimate each IHVP sample.</p></li>
-<li><p><strong>damping</strong> (<em>int</em>) – Damping factor used for non-convexity in LiSSA IHVP
-calculation.</p></li>
-<li><p><strong>scaling</strong> (<em>int</em>) – Scaling factor used for convergence in LiSSA IHVP
-calculation.</p></li>
-<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
-- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
-<blockquote>
-<div><p>better compatibility while cost more memory.</p>
-</div></blockquote>
-<ul>
-<li><dl class="simple">
-<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be
-supported by some operator.</p>
-</dd>
-</dl>
-</li>
-</ul>
-</p></li>
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Must be an instance of
+<cite>AttributionTask</cite>.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – Device to run the attributor on. Default is “cpu”.</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em>) – Batch size for LiSSA inner loop update. Default is 1.</p></li>
+<li><p><strong>num_repeat</strong> (<em>int</em>) – Number of samples of the HVP approximation to average.
+Default is 1.</p></li>
+<li><p><strong>recursion_depth</strong> (<em>int</em>) – Number of recursions to estimate each IHVP sample.
+Default is 5000.</p></li>
+<li><p><strong>damping</strong> (<em>float</em>) – Damping factor for non-convexity in LiSSA IHVP calculation.</p></li>
+<li><p><strong>scaling</strong> (<em>float</em>) – Scaling factor for convergence in LiSSA IHVP calculation.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – Auto-diff mode. Options:
+- “rev-rev”: Two reverse-mode auto-diffs. Better compatibility, more
+memory cost.
+- “rev-fwd”: Reverse-mode + forward-mode. Memory-efficient, less
+compatible.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1196,14 +1154,13 @@ supported by some operator.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-training samples to calculate the influence. It can be a subset
-of the full training set if <cite>cache</cite> is called before. A subset
-means that only a part of the training set’s influence is calculated.
-The dataloader should not be shuffled.</p></li>
-<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not
-be shuffled.</p></li>
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
+the influence. The dataloader should not be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1227,7 +1184,7 @@ be shuffled.</p></li>
 Subclasses may override this function to precompute and cache more information.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+<dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – Dataloader for
 the full training data. Ideally, the batch size of the dataloader
 should be the same as the number of training samples to get the
 best accuracy for some attributors. Smaller batch size may lead to
@@ -1239,8 +1196,8 @@ a less accurate result but lower memory consumption.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.generate_test_rep">
 <span class="sig-name descname"><span class="pre">generate_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.generate_test_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Getting the initial representations of the test data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of test data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial test representations.</p>
 <p>The default implementation calculates the gradient of the test loss with respect
@@ -1274,8 +1231,8 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.generate_train_rep">
 <span class="sig-name descname"><span class="pre">generate_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.generate_train_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Generate the initial representations of the train data.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
+<dd><p>Generate initial representations of train data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
 train representations and test representations. This function generates the
 initial train representations.</p>
 <p>The default implementation calculates the gradient of the train loss with
@@ -1330,16 +1287,15 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model parameters. This index
-is used for ensembling of different trained model.</p></li>
-<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – The test representations to be transformed.
-Typically, it is a 2-d dimensional tensor with the shape of
-(batch_size, num_parameters).</p></li>
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – Index of the model checkpoints. Used for ensembling
+different trained model checkpoints.</p></li>
+<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – Test representations to be transformed.
+Typically a 2-d tensor with shape (batch_size, num_parameters).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The transformation on the query. Normally it is a 2-d</dt><dd><p>dimensional tensor with the shape of (batchsize, transformed_dimension).</p>
+<dt>Transformed test representations. Typically a 2-d</dt><dd><p>tensor with shape (batch_size, transformed_dimension).</p>
 </dd>
 </dl>
 </p>
@@ -1392,7 +1348,7 @@ Typically, it is a 2-d dimensional tensor with the shape of
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.tracin.TracInAttributor.__init__">
 <span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">weight_list</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalized_grad</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">projector_kwargs</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Any</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.tracin.TracInAttributor.__init__" title="Link to this definition">¶</a></dt>
-<dd><p>TracIn attributor initialization.</p>
+<dd><p>Initialize the TracIn attributor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -1423,7 +1379,8 @@ of the full training set if <cite>cache</cite> is called before. A subset
 means that only a part of the training set’s influence is calculated.
 The dataloader should not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not                be shuffled.</p></li>
+test samples to calculate the influence. The dataloader should not
+be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Raises<span class="colon">:</span></dt>
@@ -1479,11 +1436,11 @@ yhat = torch.func.functional_call(model, params, image_t)
 p = torch.exp(-loss(yhat, label_t))
 return p</p>
 </div></blockquote>
-<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a>.</p>
+<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a></p>
 </p></li>
 <li><p><strong>projector_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – The kwargs for the
 random projection. Defaults to None.</p></li>
-<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is “cpu”.</p></li>
 </ul>
 </dd>
 </dl>
@@ -1497,12 +1454,14 @@ random projection. Defaults to None.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
-training samples to calculate the influence. It can be a subset
-of the full training set if <cite>cache</cite> is called before. A subset
-means that only a part of the training set’s influence is calculated.
-The dataloader should not be shuffled.</p></li>
+training samples to calculate the influence. If <cite>cache</cite> is called before
+<cite>attribute</cite>, this dataloader can consists of a subset of the full
+training dataset cached in <cite>cache</cite>. In this case, only a part of the
+training set’s influence will be calculated. The dataloader should not
+be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not                be shuffled.</p></li>
+test samples to calculate the influence. The dataloader should not
+be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1538,12 +1497,12 @@ with full training samples for gradient calculation.</p>
 
 <dl class="py class">
 <dt class="sig sig-object py" id="dattri.algorithm.rps.RPSAttributor">
-<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.rps.</span></span><span class="sig-name descname"><span class="pre">RPSAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_linear_layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nomralize_preactivate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_strength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.003</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.rps.RPSAttributor" title="Link to this definition">¶</a></dt>
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.rps.</span></span><span class="sig-name descname"><span class="pre">RPSAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_linear_layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize_preactivate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_strength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.003</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.rps.RPSAttributor" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAttributor</span></code></p>
 <p>Representer point selection attributor.</p>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.rps.RPSAttributor.__init__">
-<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_linear_layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">nomralize_preactivate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_strength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.003</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.rps.RPSAttributor.__init__" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">final_linear_layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">normalize_preactivate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">False</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">l2_strength</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.003</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">3000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.rps.RPSAttributor.__init__" title="Link to this definition">¶</a></dt>
 <dd><p>Representer point selection attributor.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1552,17 +1511,16 @@ with full training samples for gradient calculation.</p>
 <cite>AttributionTask</cite> for more details. Notably, the target_func is required
 to have inputs are list of pre-activation values (f_i in the paper) and
 list of labels. Typical examples are loss functions such as BCELoss
-and CELoss. We also
-assume the model to have a final linear layer. RPS will extract
-the final linear layer’s input and its parameter. The parameteres will
-be used for the initialization of the l2-finetuning. That is, model
-output = linear(second-to-last feature).</p></li>
+and CELoss. We also assume the model has a final linear layer. RPS will
+extract the final linear layer’s input and its parameter. The parameters
+will be used for the initialization of the l2-finetuning. That is,
+model_output = linear(second-to-last feature).</p></li>
 <li><p><strong>final_linear_layer_name</strong> (<em>str</em>) – The name of the final linear layer’s name
 in the model.</p></li>
-<li><p><strong>nomralize_preactivate</strong> (<em>bool</em>) – If set to true, then the intermediate layer
+<li><p><strong>normalize_preactivate</strong> (<em>bool</em>) – If set to true, then the intermediate layer
 output will be normalized. The value of the output inner-product will
-not affected by the value of individual output magnitude.</p></li>
-<li><p><strong>l2_strength</strong> (<em>float</em>) – The l2 regularizaton to fine-tune the last layer.</p></li>
+not be affected by the value of individual output magnitude.</p></li>
+<li><p><strong>l2_strength</strong> (<em>float</em>) – The l2 regularization to fine-tune the last layer.</p></li>
 <li><p><strong>epoch</strong> (<em>int</em>) – The number of epoch used to fine-tune the last layer.</p></li>
 <li><p><strong>device</strong> (<em>str</em>) – The device to run the attributor. Default is cpu.</p></li>
 </ul>
@@ -1577,18 +1535,18 @@ not affected by the value of individual output magnitude.</p></li>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-training samples to calculate the influence. It can be a subset
-of the full training set if <cite>cache</cite> is called before. A subset
-means that only a part of the training set’s influence is calculated.
-The dataloader should not be shuffled.</p></li>
-<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for
-test samples to calculate the influence. The dataloader should not                be shuffled.</p></li>
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – The dataloader for training samples to
+calculate the influence. It can be a subset of the full training set
+if <cite>cache</cite> is called before. A subset means that only a part of the
+training set’s influence is calculated. The dataloader should not be
+shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – The dataloader for test samples to calculate
+the influence. The dataloader should not be shuffled.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The influence of the training set on the test set, with</dt><dd><p>the shape of (num_train_samples, num_test_samples).</p>
+<dt>The influence of the training set on the test set, with the shape</dt><dd><p>of (num_train_samples, num_test_samples).</p>
 </dd>
 </dl>
 </p>
