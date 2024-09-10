@@ -1,4 +1,4 @@
-"""This module implement the representer point selection."""
+"""This module implements the representer point selection (RPS) attributor."""
 
 from __future__ import annotations
 
@@ -32,7 +32,7 @@ class RPSAttributor(BaseAttributor):
         self,
         task: AttributionTask,
         final_linear_layer_name: str,
-        nomralize_preactivate: bool = False,
+        normalize_preactivate: bool = False,
         l2_strength: float = 0.003,
         epoch: int = 3000,
         device: str = "cpu",
@@ -44,17 +44,16 @@ class RPSAttributor(BaseAttributor):
                 `AttributionTask` for more details. Notably, the target_func is required
                 to have inputs are list of pre-activation values (f_i in the paper) and
                 list of labels. Typical examples are loss functions such as BCELoss
-                and CELoss. We also
-                assume the model to have a final linear layer. RPS will extract
-                the final linear layer's input and its parameter. The parameteres will
-                be used for the initialization of the l2-finetuning. That is, model
-                output = linear(second-to-last feature).
+                and CELoss. We also assume the model has a final linear layer. RPS will
+                extract the final linear layer's input and its parameter. The parameters
+                will be used for the initialization of the l2-finetuning. That is,
+                model_output = linear(second-to-last feature).
             final_linear_layer_name (str): The name of the final linear layer's name
                 in the model.
-            nomralize_preactivate (bool): If set to true, then the intermediate layer
+            normalize_preactivate (bool): If set to true, then the intermediate layer
                 output will be normalized. The value of the output inner-product will
-                not affected by the value of individual output magnitude.
-            l2_strength (float): The l2 regularizaton to fine-tune the last layer.
+                not be affected by the value of individual output magnitude.
+            l2_strength (float): The l2 regularization to fine-tune the last layer.
             epoch (int): The number of epoch used to fine-tune the last layer.
             device (str): The device to run the attributor. Default is cpu.
         """
@@ -62,7 +61,7 @@ class RPSAttributor(BaseAttributor):
         self.target_func = task.get_target_func(flatten=False)
         self.model = task.get_model()
         self.final_linear_layer_name = final_linear_layer_name
-        self.nomralize_preactivate = nomralize_preactivate
+        self.normalize_preactivate = normalize_preactivate
         self.l2_strength = l2_strength
         self.epoch = epoch
         self.device = device
@@ -106,18 +105,17 @@ class RPSAttributor(BaseAttributor):
         """Calculate the influence of the training set on the test set.
 
         Args:
-            train_dataloader (DataLoader): The dataloader for
-                training samples to calculate the influence. It can be a subset
-                of the full training set if `cache` is called before. A subset
-                means that only a part of the training set's influence is calculated.
-                The dataloader should not be shuffled.
-            test_dataloader (DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not\
-                be shuffled.
+            train_dataloader (DataLoader): The dataloader for training samples to
+                calculate the influence. It can be a subset of the full training set
+                if `cache` is called before. A subset means that only a part of the
+                training set's influence is calculated. The dataloader should not be
+                shuffled.
+            test_dataloader (DataLoader): The dataloader for test samples to calculate
+                the influence. The dataloader should not be shuffled.
 
         Returns:
-            Tensor: The influence of the training set on the test set, with
-                the shape of (num_train_samples, num_test_samples).
+            Tensor: The influence of the training set on the test set, with the shape
+                of (num_train_samples, num_test_samples).
         """
         super().attribute(train_dataloader, test_dataloader)
         if self.full_train_dataloader is None:
@@ -173,7 +171,7 @@ class RPSAttributor(BaseAttributor):
             self.l2_strength,
         )
 
-        if self.nomralize_preactivate:
+        if self.normalize_preactivate:
             return (
                 normalize(intermediate_x_train)
                 @ normalize(intermediate_x_test).T

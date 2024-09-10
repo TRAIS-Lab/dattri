@@ -36,7 +36,7 @@ def _lissa_collate_fn(
         sampled_input (List[Tensor]): The sampled input from the dataloader.
 
     Returns:
-        Tuple[Tensor, List[Tuple[Tensor, ...]]]: The collated input for the LISSA.
+        Tuple[Tensor, List[Tuple[Tensor, ...]]]: The collated input for the LiSSA.
     """
     return (
         sampled_input[0],
@@ -67,7 +67,7 @@ class IFAttributor(BaseAttributor):
 
         Args:
             target_func (Callable): The target function to be attributed.
-                The function can be quite flexible in terms of what is calculate,
+                The function can be quite flexible in terms of what is calculated,
                 but it should take the parameters and the dataloader as input.
                 A typical example is as follows:
                 ```python
@@ -231,17 +231,16 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
     ) -> None:
-        """Initialize the explicit inverse hessian attributor.
+        """Initialize the explicit inverse Hessian attributor.
 
         Args:
-            task (AttributionTask): The task to be attributed. The task should
-                be an instance of `AttributionTask`.
-            device (str): The device to run the attributor. Default is cpu.
-            regularization (float): A float default to 0.0. Specifies the regularization
-                term to be added to the Hessian matrix. This is useful when the Hessian
-                matrix is singular or ill-conditioned. The regularization term is
-                `regularization * I`, where `I` is the identity matrix directly added
-                to the Hessian matrix.
+            task (AttributionTask): Task to attribute. Must be an instance of
+                `AttributionTask`.
+            device (str): Device to run the attributor on. Default is "cpu".
+            regularization (float): Regularization term added to Hessian matrix.
+                Useful for singular or ill-conditioned Hessian matrices.
+                Added as `regularization * I`, where `I` is the identity matrix.
+                Default is 0.0.
         """
         super().__init__(task, device)
         self.transformation_kwargs = {
@@ -256,15 +255,13 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         """Calculate the transformation on the test rep through ihvp_explicit.
 
         Args:
-            ckpt_idx (int): The index of the model parameters. This index
-                is used for ensembling of different trained model.
-            test_rep (torch.Tensor): The test representations to be transformed.
-                Typically, it is a 2-d dimensional tensor with the shape of
-                (batch_size, num_parameters).
+            ckpt_idx (int): Index of model parameters. Used for ensembling.
+            test_rep (torch.Tensor): Test representations to be transformed.
+                Typically a 2-d tensor with shape (batch_size, num_parameters).
 
         Returns:
-            torch.Tensor: The transformation on the query. Normally it is a 2-d
-                dimensional tensor with the shape of (batchsize, transformed_dimension).
+            torch.Tensor: Transformed test representations. Typically a 2-d
+                tensor with shape (batch_size, transformed_dimension).
         """
         from dattri.func.hessian import ihvp_explicit
 
@@ -293,28 +290,25 @@ class IFAttributorCG(BaseInnerProductAttributor):
         mode: str = "rev-rev",
         regularization: float = 0.0,
     ) -> None:
-        """Initialize the CG inverse hessian attributor.
+        """Initialize the CG inverse Hessian attributor.
 
         Args:
-            task (AttributionTask): The task to be attributed. The task should
-                be an instance of `AttributionTask`.
-            device (str): The device to run the attributor. Default is cpu.
-            max_iter (int): An integer default 10. Specifies the maximum iteration
-                to calculate the ihvp through Conjugate Gradient Descent.
-            tol (float): A float default to 1e-7. Specifies the break condition that
-                decide if the algorithm has converged. If the torch.norm of residual
-                is less than tol, then the algorithm is truncated.
-            mode (str): The auto diff mode, which can have one of the following values:
-                - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
-                        better compatibility while cost more memory.
-                - rev-fwd: calculate the hessian with the composing of reverse-mode and
-                        forward-mode. It's more memory-efficient but may not be
-                        supported by some operator.
-            regularization (float): A float default to 0.0. Specifies the regularization
-                term to be added to the Hessian vector product, which is useful for the
-                later inverse calculation if the Hessian matrix is singular or
-                ill-conditioned. Specifically, the regularization term is
-                `regularization * v`.
+            task (AttributionTask): The task to be attributed. Must be an instance of
+                `AttributionTask`.
+            device (str): Device to run the attributor on. Default is "cpu".
+            max_iter (int): Maximum iterations for Conjugate Gradient Descent. Default
+                is 10.
+            tol (float): Convergence tolerance. Algorithm stops if residual norm < tol.
+                Default is 1e-7.
+            mode (str): Auto-diff mode. Options:
+                - "rev-rev": Two reverse-mode auto-diffs. Better compatibility, more
+                memory cost.
+                - "rev-fwd": Reverse-mode + forward-mode. Memory-efficient, less
+                compatible.
+            regularization (float): Regularization term for Hessian vector product.
+                Adding `regularization * I` to the Hessian matrix, where `I` is the
+                identity matrix. Useful for singular or ill-conditioned matrices.
+                Default is 0.0.
         """
         super().__init__(task, device)
         self.transformation_kwargs = {
@@ -332,15 +326,14 @@ class IFAttributorCG(BaseInnerProductAttributor):
         """Calculate the transformation on the test rep through ihvp_cg.
 
         Args:
-            ckpt_idx (int): The index of the model parameters. This index
-                is used for ensembling of different trained model.
-            test_rep (torch.Tensor): The test representations to be transformed.
-                Typically, it is a 2-d dimensional tensor with the shape of
-                (batch_size, num_parameters).
+            ckpt_idx (int): Index of the model checkpoints. Used for ensembling
+                different trained model checkpoints.
+            test_rep (torch.Tensor): Test representations to be transformed.
+                Typically a 2-d tensor with shape (batch_size, num_parameters).
 
         Returns:
-            torch.Tensor: The transformation on the query. Normally it is a 2-d
-                dimensional tensor with the shape of (batchsize, transformed_dimension).
+            torch.Tensor: Transformed test representations. Typically a 2-d
+                tensor with shape (batch_size, transformed_dimension).
         """
         from dattri.func.hessian import ihvp_cg
 
@@ -375,32 +368,24 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         """Initialize the Arnoldi projection attributor.
 
         Args:
-            task (AttributionTask): The task to be attributed. The task should
-                be an instance of `AttributionTask`.
-            device (str): The device to run the attributor. Default is cpu.
-            precompute_data_ratio (float): A float defaulting to 1.0. Specifies the
-                ratio of the full training data to be precomputed for the Arnoldi
-                projection.
-            proj_dim (int): Dimension after the projection. This corresponds to the
-                number of top eigenvalues (top-k eigenvalues) to keep for the
-                Hessian approximation.
-            max_iter (int): An integer defaulting to 100. Specifies the maximum
-                iteration to calculate the ihvp through Arnoldi Iteration.
-            norm_constant (float): A float defaulting to 1.0. Specifies a constant
-                value for the norm of each projection. In some situations (e.g.
-                with a large number of parameters) it might be advisable to set
-                norm_constant > 1 to avoid dividing projection components by a
-                large normalization factor.
-            tol (float): A float defaulting to 1e-7. Specifies the break condition
-                that decides if the algorithm has converged. If the torch.norm of
-                the current basis vector is less than tol, then the algorithm is
-                truncated.
-            regularization (float): A float defaulting to 0.0. Specifies the
-                regularization term to be added to the Hessian vector product,
-                which is useful for the later inverse calculation if the Hessian
-                matrix is singular or ill-conditioned. Specifically, the
-                regularization term is `regularization * v`.
-            seed (int): Random seed used by the projector. Defaults to 0.
+            task (AttributionTask): The task to be attributed. Must be an instance of
+                `AttributionTask`.
+            device (str): Device to run the attributor on. Default is "cpu".
+            precompute_data_ratio (float): Ratio of full training data used to
+                precompute the Arnoldi projector. Default is 1.0.
+            proj_dim (int): Dimension after projection. Corresponds to number of top
+                eigenvalues to keep for Hessian approximation.
+            max_iter (int): Maximum iterations for Arnoldi Iteration. Default is 100.
+            norm_constant (float): Constant for the norm of the projected vector.
+                May need to be > 1 for large number of parameters to avoid dividing the
+                projected vector by a very large normalization constant. Default is 1.0.
+            tol (float): Convergence tolerance. Algorithm stops if the norm of the
+                current basis vector < tol. Default is 1e-7.
+            regularization (float): Regularization term for Hessian vector product.
+                Adding `regularization * I` to the Hessian matrix, where `I` is the
+                identity matrix. Useful for singular or ill-conditioned matrices.
+                Default is 0.0.
+            seed (int): Random seed for projector. Default is 0.
         """
         super().__init__(task, device)
         self.precompute_data_ratio = precompute_data_ratio
@@ -418,7 +403,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         """Cache the dataset and pre-calculate the Arnoldi projector.
 
         Args:
-            full_train_dataloader (DataLoader): The dataloader with full training data.
+            full_train_dataloader (DataLoader): Dataloader with full training data.
         """
         self.full_train_dataloader = full_train_dataloader
         self.arnoldi_projectors = []
@@ -476,15 +461,14 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         """Transform the test representations via Arnoldi projection.
 
         Args:
-            ckpt_idx (int): The index of the model checkpoints. This index
-                is used for ensembling different trained model checkpoints.
-            test_rep (torch.Tensor): The test representations to be transformed.
-                It is a 2-d dimensional tensor with the shape of
-                (batch_size, num_params).
+            ckpt_idx (int): Index of the model checkpoints. Used for ensembling
+                different trained model checkpoints.
+            test_rep (torch.Tensor): Test representations to be transformed.
+                A 2-d tensor with shape (batch_size, num_params).
 
         Returns:
-            torch.Tensor: The transformed test representations, a 2-d dimensional
-                tensor with the shape of (batch_size, proj_dim).
+            torch.Tensor: Transformed test representations. A 2-d tensor with
+                shape (batch_size, proj_dim).
 
         Raises:
             ValueError: If the Arnoldi projector has not been cached.
@@ -511,28 +495,24 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         scaling: int = 50.0,
         mode: str = "rev-rev",
     ) -> None:
-        """Initialize the LiSSA inverse hessian attributor.
+        """Initialize the LiSSA inverse Hessian attributor.
 
         Args:
-            task (AttributionTask): The task to be attributed. The task should
-                be an instance of `AttributionTask`.
-            device (str): The device to run the attributor. Default is cpu.
-            batch_size (int): An integer default to 1. Specifies the batch size used
-                for LiSSA inner loop update.
-            num_repeat (int): An integer default to 1. Specifies the number of samples
-                of the hvp approximation to average on.
-            recursion_depth (int): A integer default to 5000. Specifies the number of
-                recursions used to estimate each IHVP sample.
-            damping (int): Damping factor used for non-convexity in LiSSA IHVP
-                calculation.
-            scaling (int): Scaling factor used for convergence in LiSSA IHVP
-                calculation.
-            mode (str): The auto diff mode, which can have one of the following values:
-                - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
-                        better compatibility while cost more memory.
-                - rev-fwd: calculate the hessian with the composing of reverse-mode and
-                        forward-mode. It's more memory-efficient but may not be
-                        supported by some operator.
+            task (AttributionTask): The task to be attributed. Must be an instance of
+                `AttributionTask`.
+            device (str): Device to run the attributor on. Default is "cpu".
+            batch_size (int): Batch size for LiSSA inner loop update. Default is 1.
+            num_repeat (int): Number of samples of the HVP approximation to average.
+                Default is 1.
+            recursion_depth (int): Number of recursions to estimate each IHVP sample.
+                Default is 5000.
+            damping (float): Damping factor for non-convexity in LiSSA IHVP calculation.
+            scaling (float): Scaling factor for convergence in LiSSA IHVP calculation.
+            mode (str): Auto-diff mode. Options:
+                - "rev-rev": Two reverse-mode auto-diffs. Better compatibility, more
+                memory cost.
+                - "rev-fwd": Reverse-mode + forward-mode. Memory-efficient, less
+                compatible.
         """
         super().__init__(task, device)
         self.transformation_kwargs = {
@@ -552,15 +532,14 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         """Calculate the transformation on the test rep through ihvp_lissa.
 
         Args:
-            ckpt_idx (int): The index of the model parameters. This index
-                is used for ensembling of different trained model.
-            test_rep (torch.Tensor): The test representations to be transformed.
-                Typically, it is a 2-d dimensional tensor with the shape of
-                (batch_size, num_parameters).
+            ckpt_idx (int): Index of the model checkpoints. Used for ensembling
+                different trained model checkpoints.
+            test_rep (torch.Tensor): Test representations to be transformed.
+                Typically a 2-d tensor with shape (batch_size, num_parameters).
 
         Returns:
-            torch.Tensor: The transformation on the query. Normally it is a 2-d
-                dimensional tensor with the shape of (batchsize, transformed_dimension).
+            torch.Tensor: Transformed test representations. Typically a 2-d
+                tensor with shape (batch_size, transformed_dimension).
         """
         from dattri.func.hessian import ihvp_lissa
 
@@ -608,17 +587,16 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
     ) -> None:
-        """Initialize the explicit inverse hessian attributor.
+        """Initialize the DataInf inverse Hessian attributor.
 
         Args:
-            task (AttributionTask): The task to be attributed. The task should
-                be an instance of `AttributionTask`.
-            device (str): The device to run the attributor. Default is cpu.
-            regularization (float): A float default to 0.0. Specifies the regularization
-                term to be added to the Hessian vector product, which is useful for the
-                later inverse calculation if the Hessian matrix is singular or
-                ill-conditioned. Specifically, the regularization term is
-                `regularization * v`.
+            task (AttributionTask): The task to be attributed. Must be an instance of
+                `AttributionTask`.
+            device (str): Device to run the attributor on. Default is "cpu".
+            regularization (float): Regularization term for Hessian vector product.
+                Adding `regularization * I` to the Hessian matrix, where `I` is the
+                identity matrix. Useful for singular or ill-conditioned matrices.
+                Default is 0.0.
         """
         super().__init__(task, device)
         self.transformation_kwargs = {
@@ -633,15 +611,14 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         """Calculate the transformation on the query through ifvp_datainf.
 
         Args:
-            ckpt_idx (int): The index of the model parameters. This index
-                is used for ensembling of different trained model.
-            test_rep (torch.Tensor): The test representations to be transformed.
-                Typically, it is a 2-d dimensional tensor with the shape of
-                (batch_size, num_parameters).
+            ckpt_idx (int): Index of the model checkpoints. Used for ensembling
+                different trained model checkpoints.
+            test_rep (torch.Tensor): Test representations to be transformed.
+                Typically a 2-d tensor with shape (batch_size, num_parameters).
 
         Returns:
-            torch.Tensor: The transformation on the query. Normally it is a 2-d
-                dimensional tensor with the shape of (batchsize, transformed_dimension).
+            torch.Tensor: Transformed test representations. Typically a 2-d
+                tensor with shape (batch_size, transformed_dimension).
         """
         from dattri.func.fisher import ifvp_datainf
 

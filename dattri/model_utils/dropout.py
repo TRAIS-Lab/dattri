@@ -17,7 +17,7 @@ def activate_dropout(
     layer_positions: Optional[List[str]] = None,
     dropout_prob: float = 0.1,
 ) -> None:
-    """Active dropout layers in the model.
+    """Activate dropout layers in the model.
 
     Args:
         model (torch.nn.Module): The model to be used.
@@ -29,9 +29,6 @@ def activate_dropout(
 
     Raises:
         ValueError: Some input layers do not contain nn.Dropout module.
-
-    Returns:
-        The dropout-enabled model.
     """
     # evaluate the model
     model.eval()

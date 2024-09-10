@@ -18,13 +18,13 @@ def _check_shuffle(dataloader: torch.utils.data.DataLoader) -> None:
     """Check if the dataloader is shuffling the data.
 
     Args:
-        dataloader (torch.data.utils.DataLoader): The dataloader to be checked.
+        dataloader (torch.utils.data.DataLoader): The dataloader to be checked.
     """
     is_shuffling = isinstance(dataloader.sampler, RandomSampler)
     if is_shuffling:
         warnings.warn(
             "The dataloader is shuffling the data. The influence \
-                        calculation could not be interpreted in order.",
+            calculation could not be interpreted in order.",
             stacklevel=1,
         )
 
@@ -42,7 +42,9 @@ def rps_finetune_model(
         theta (torch.autograd.Variable): The initial last layer weight.
 
     Returns:
-        x*\Theta^T and frobenius-norm of \Theta.
+        A tuple containing:
+        - The pre-activation value of the input data: x*\Theta^T
+        - The frobenius-norm of \Theta
     """
     phi = torch.matmul(theta, x.T).T
     theta1 = torch.squeeze(theta)
@@ -67,7 +69,7 @@ def backtracking_line_search(
         theta (torch.autograd.Variable): The current last layer weight.
         grad_theta (Tensor): The current gradient of last layer weight.
         loss_func (Callable): The loss function used for prediction.
-            Typically, BCELoss or CEloss.
+            Typically, BCELoss or CELoss.
         x (Tensor): The input data.
         y (Tensor): The pre-trained model output.
         val (float): The current loss.
@@ -113,7 +115,7 @@ def rps_finetune_theta(
         y (Tensor): The pre-trained model output.
         init_theta (Tensor): The initial last layer weight.
         loss_func (Callable): The loss function used for prediction.
-            Typically, BCELoss or CEloss.
+            Typically, BCELoss or CELoss.
         lambda_l2 (float): The l2-regularization strength.
         num_epoch (int): The number of epoch used for training.
         device (str): The device used for training.
@@ -178,7 +180,7 @@ def get_rps_weight(
     Args:
         finetuned_theta (Tensor): The optimized last layer weight.
         loss_func (Callable): The loss function used for prediction.
-            Typically, should be BCELoss or CEloss.
+            Typically, should be BCELoss or CELoss.
         x_train (Tensor): The intermediate feature of the training set.
         y_pred_train (Tensor): The pre-trained model output of the training set.
         y_test (Tensor): The ground-truth of the testing set.
@@ -188,7 +190,7 @@ def get_rps_weight(
         The decomposed RPS weight (\Theta^*_1 in the paper notation).
     """
     n = len(y_pred_train)
-    # caluculate theta1 based on the representer theorem's decomposition
+    # calculate theta1 based on the representer theorem's decomposition
     pre_activation_value = torch.matmul(
         x_train,
         Variable(finetuned_theta).transpose(0, 1),
@@ -229,7 +231,7 @@ def rps_corr_check(rps_weight: Tensor, x: Tensor, y: Tensor) -> None:
     print("L1 diff between gt and rps prediction per class")
     print(np.mean(np.abs(pre_y - y_p), axis=0))
 
-    print("pearson corr between gt and rps prediction per class")
+    print("pearson correlation between gt and rps prediction per class")
     corr_list = []
     for i in range(y.shape[1]):
         corr, _ = pearsonr(pre_y[:, i].flatten(), y_p[:, i].flatten())
