@@ -10,6 +10,9 @@ if TYPE_CHECKING:
     from torch import Tensor
     from torch.utils.data import DataLoader
 
+    from dattri.task import AttributionTask
+
+import math
 import warnings
 from functools import partial
 
@@ -222,27 +225,42 @@ class IFAttributor(BaseAttributor):
 class IFAttributorExplicit(BaseInnerProductAttributor):
     """The inner product attributor with explicit inverse hessian transformation."""
 
-    def transformation_on_query(
+    def __init__(
         self,
-        index: int,
-        train_data: Tuple[torch.Tensor, ...],
-        query: torch.Tensor,
-        **transformation_kwargs,
-    ) -> torch.Tensor:
-        """Calculate the transformation on the query through ihvp_explicit.
+        task: AttributionTask,
+        device: Optional[str] = "cpu",
+        regularization: float = 0.0,
+    ) -> None:
+        """Initialize the explicit inverse hessian attributor.
 
         Args:
-            index (int): The index of the model parameters. This index
+            task (AttributionTask): The task to be attributed. The task should
+                be an instance of `AttributionTask`.
+            device (str): The device to run the attributor. Default is cpu.
+            regularization (float): A float default to 0.0. Specifies the regularization
+                term to be added to the Hessian matrix. This is useful when the Hessian
+                matrix is singular or ill-conditioned. The regularization term is
+                `regularization * I`, where `I` is the identity matrix directly added
+                to the Hessian matrix.
+        """
+        super().__init__(task, device)
+        self.transformation_kwargs = {
+            "regularization": regularization,
+        }
+
+    def transform_test_rep(
+        self,
+        ckpt_idx: int,
+        test_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the test rep through ihvp_explicit.
+
+        Args:
+            ckpt_idx (int): The index of the model parameters. This index
                 is used for ensembling of different trained model.
-            train_data (Tuple[Tensor]): The train data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-            query (torch.Tensor): The query to be transformed. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-            transformation_kwargs (Dict[str, Any]): The keyword arguments for
-                the transformation function.
+            test_rep (torch.Tensor): The test representations to be transformed.
+                Typically, it is a 2-d dimensional tensor with the shape of
+                (batch_size, num_parameters).
 
         Returns:
             torch.Tensor: The transformation on the query. Normally it is a 2-d
@@ -250,38 +268,75 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         """
         from dattri.func.hessian import ihvp_explicit
 
-        self.ihvp_func = ihvp_explicit(
-            partial(self.task.get_loss_func(), data_target_pair=train_data),
-            **transformation_kwargs,
-        )
-        model_params, _ = self.task.get_param(index)
-        return self.ihvp_func((model_params,), query).detach()
+        vector_product = 0
+        model_params, _ = self.task.get_param(ckpt_idx)
+        for full_data_ in self.full_train_dataloader:
+            # move to device
+            full_data = tuple(data.to(self.device) for data in full_data_)
+            self.ihvp_func = ihvp_explicit(
+                partial(self.task.get_loss_func(), data_target_pair=full_data),
+                **self.transformation_kwargs,
+            )
+            vector_product += self.ihvp_func((model_params,), test_rep).detach()
+        return vector_product
 
 
 class IFAttributorCG(BaseInnerProductAttributor):
     """The inner product attributor with CG inverse hessian transformation."""
 
-    def transformation_on_query(
+    def __init__(
         self,
-        index: int,
-        train_data: Tuple[torch.Tensor, ...],
-        query: torch.Tensor,
-        **transformation_kwargs,
-    ) -> torch.Tensor:
-        """Calculate the transformation on the query through ihvp_cg.
+        task: AttributionTask,
+        device: Optional[str] = "cpu",
+        max_iter: int = 10,
+        tol: float = 1e-7,
+        mode: str = "rev-rev",
+        regularization: float = 0.0,
+    ) -> None:
+        """Initialize the CG inverse hessian attributor.
 
         Args:
-            index (int): The index of the model parameters. This index
+            task (AttributionTask): The task to be attributed. The task should
+                be an instance of `AttributionTask`.
+            device (str): The device to run the attributor. Default is cpu.
+            max_iter (int): An integer default 10. Specifies the maximum iteration
+                to calculate the ihvp through Conjugate Gradient Descent.
+            tol (float): A float default to 1e-7. Specifies the break condition that
+                decide if the algorithm has converged. If the torch.norm of residual
+                is less than tol, then the algorithm is truncated.
+            mode (str): The auto diff mode, which can have one of the following values:
+                - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                        better compatibility while cost more memory.
+                - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                        forward-mode. It's more memory-efficient but may not be
+                        supported by some operator.
+            regularization (float): A float default to 0.0. Specifies the regularization
+                term to be added to the Hessian vector product, which is useful for the
+                later inverse calculation if the Hessian matrix is singular or
+                ill-conditioned. Specifically, the regularization term is
+                `regularization * v`.
+        """
+        super().__init__(task, device)
+        self.transformation_kwargs = {
+            "max_iter": max_iter,
+            "tol": tol,
+            "mode": mode,
+            "regularization": regularization,
+        }
+
+    def transform_test_rep(
+        self,
+        ckpt_idx: int,
+        test_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the test rep through ihvp_cg.
+
+        Args:
+            ckpt_idx (int): The index of the model parameters. This index
                 is used for ensembling of different trained model.
-            train_data (Tuple[Tensor]): The train data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-            query (torch.Tensor): The query to be transformed. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-            transformation_kwargs (Dict[str, Any]): The keyword arguments for
-                the transformation function.
+            test_rep (torch.Tensor): The test representations to be transformed.
+                Typically, it is a 2-d dimensional tensor with the shape of
+                (batch_size, num_parameters).
 
         Returns:
             torch.Tensor: The transformation on the query. Normally it is a 2-d
@@ -289,84 +344,219 @@ class IFAttributorCG(BaseInnerProductAttributor):
         """
         from dattri.func.hessian import ihvp_cg
 
-        self.ihvp_func = ihvp_cg(
-            partial(self.task.get_loss_func(), data_target_pair=train_data),
-            **transformation_kwargs,
-        )
-        model_params, _ = self.task.get_param(index)
-        return self.ihvp_func((model_params,), query).detach()
+        vector_product = 0
+        model_params, _ = self.task.get_param(ckpt_idx)
+        for full_data_ in self.full_train_dataloader:
+            # move to device
+            full_data = tuple(data.to(self.device) for data in full_data_)
+            self.ihvp_func = ihvp_cg(
+                partial(self.task.get_loss_func(), data_target_pair=full_data),
+                **self.transformation_kwargs,
+            )
+            vector_product += self.ihvp_func((model_params,), test_rep).detach()
+        return vector_product
 
 
 class IFAttributorArnoldi(BaseInnerProductAttributor):
-    """The inner product attributor with Arnoldi inverse hessian transformation."""
+    """The inner product attributor with Arnoldi projection transformation."""
 
-    def transformation_on_query(
+    def __init__(
         self,
-        index: int,
-        train_data: Tuple[torch.Tensor, ...],
-        query: torch.Tensor,
-        **transformation_kwargs,
-    ) -> torch.Tensor:
-        """Calculate the transformation on the query through ihvp_arnoldi.
+        task: AttributionTask,
+        device: Optional[str] = "cpu",
+        precompute_data_ratio: float = 1.0,
+        proj_dim: int = 100,
+        max_iter: int = 100,
+        norm_constant: float = 1.0,
+        tol: float = 1e-7,
+        regularization: float = 0.0,
+        seed: int = 0,
+    ) -> None:
+        """Initialize the Arnoldi projection attributor.
 
         Args:
-            index (int): The index of the model parameters. This index
-                is used for ensembling of different trained model.
-            train_data (Tuple[Tensor]): The train data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-            query (torch.Tensor): The query to be transformed. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-            transformation_kwargs (Dict[str, Any]): The keyword arguments for
-                the transformation function.
-
-        Returns:
-            torch.Tensor: The transformation on the query. Normally it is a 2-d
-                dimensional tensor with the shape of (batchsize, transformed_dimension).
+            task (AttributionTask): The task to be attributed. The task should
+                be an instance of `AttributionTask`.
+            device (str): The device to run the attributor. Default is cpu.
+            precompute_data_ratio (float): A float defaulting to 1.0. Specifies the
+                ratio of the full training data to be precomputed for the Arnoldi
+                projection.
+            proj_dim (int): Dimension after the projection. This corresponds to the
+                number of top eigenvalues (top-k eigenvalues) to keep for the
+                Hessian approximation.
+            max_iter (int): An integer defaulting to 100. Specifies the maximum
+                iteration to calculate the ihvp through Arnoldi Iteration.
+            norm_constant (float): A float defaulting to 1.0. Specifies a constant
+                value for the norm of each projection. In some situations (e.g.
+                with a large number of parameters) it might be advisable to set
+                norm_constant > 1 to avoid dividing projection components by a
+                large normalization factor.
+            tol (float): A float defaulting to 1e-7. Specifies the break condition
+                that decides if the algorithm has converged. If the torch.norm of
+                the current basis vector is less than tol, then the algorithm is
+                truncated.
+            regularization (float): A float defaulting to 0.0. Specifies the
+                regularization term to be added to the Hessian vector product,
+                which is useful for the later inverse calculation if the Hessian
+                matrix is singular or ill-conditioned. Specifically, the
+                regularization term is `regularization * v`.
+            seed (int): Random seed used by the projector. Defaults to 0.
         """
-        from dattri.func.projection import arnoldi_project
+        super().__init__(task, device)
+        self.precompute_data_ratio = precompute_data_ratio
+        self.proj_dim = proj_dim
+        self.max_iter = max_iter
+        self.norm_constant = norm_constant
+        self.tol = tol
+        self.regularization = regularization
+        self.seed = seed
 
-        if not hasattr(self, "arnoldi_projector"):
-            feature_dim = query.shape[1]
-            func = partial(self.task.get_loss_func(), data_target_pair=train_data)
-            model_params, _ = self.task.get_param(index)
-            self.arnoldi_projector = arnoldi_project(
-                feature_dim,
-                func,
-                model_params,
-                device=self.device,
-                **transformation_kwargs,
+    def cache(
+        self,
+        full_train_dataloader: DataLoader,
+    ) -> None:
+        """Cache the dataset and pre-calculate the Arnoldi projector.
+
+        Args:
+            full_train_dataloader (DataLoader): The dataloader with full training data.
+        """
+        self.full_train_dataloader = full_train_dataloader
+        self.arnoldi_projectors = []
+
+        # Assuming that full_train_dataloader has only one batch
+        iter_number = math.ceil(len(full_train_dataloader) * self.precompute_data_ratio)
+        data_target_pair_list = []
+        for _ in range(iter_number):
+            data_target_pair_list.append(next(iter(full_train_dataloader)))  # noqa: PERF401
+
+        # concatenate all data
+        data_target_pair = data_target_pair_list[0]
+        for batch_idx in range(1, len(data_target_pair_list)):
+            for data_item_idx in range(len(data_target_pair_list[0])):
+                data_target_pair[data_item_idx] = torch.cat(
+                    (
+                        data_target_pair[data_item_idx],
+                        data_target_pair_list[batch_idx][data_item_idx],
+                    ),
+                    dim=0,
+                )
+
+        # to device (only once for all data)
+        for data_item_idx in range(len(data_target_pair)):
+            data_target_pair[data_item_idx] = data_target_pair[data_item_idx].to(
+                self.device,
             )
 
-        return self.arnoldi_projector(query).detach()
+        func = partial(self.task.get_loss_func(), data_target_pair=data_target_pair)
+
+        from dattri.func.projection import arnoldi_project
+
+        for i in range(len(self.task.get_checkpoints())):
+            model_params, _ = self.task.get_param(i)
+            self.arnoldi_projectors.append(
+                arnoldi_project(
+                    feature_dim=len(model_params),
+                    func=func,
+                    x=model_params,
+                    proj_dim=self.proj_dim,
+                    max_iter=self.max_iter,
+                    norm_constant=self.norm_constant,
+                    tol=self.tol,
+                    regularization=self.regularization,
+                    seed=self.seed,
+                    device=self.device,
+                ),
+            )
+
+    def transform_test_rep(
+        self,
+        ckpt_idx: int,
+        test_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Transform the test representations via Arnoldi projection.
+
+        Args:
+            ckpt_idx (int): The index of the model checkpoints. This index
+                is used for ensembling different trained model checkpoints.
+            test_rep (torch.Tensor): The test representations to be transformed.
+                It is a 2-d dimensional tensor with the shape of
+                (batch_size, num_params).
+
+        Returns:
+            torch.Tensor: The transformed test representations, a 2-d dimensional
+                tensor with the shape of (batch_size, proj_dim).
+
+        Raises:
+            ValueError: If the Arnoldi projector has not been cached.
+        """
+        if not hasattr(self, "arnoldi_projectors"):
+            error_msg = "The Arnoldi projector has not been cached.\
+                         Please call cache() first."
+            raise ValueError(error_msg)
+
+        return self.arnoldi_projectors[ckpt_idx](test_rep).detach()
 
 
 class IFAttributorLiSSA(BaseInnerProductAttributor):
     """The inner product attributor with LiSSA inverse hessian transformation."""
 
-    def transformation_on_query(
+    def __init__(
         self,
-        index: int,
-        train_data: Tuple[torch.Tensor, ...],
-        query: torch.Tensor,
-        **transformation_kwargs,
-    ) -> torch.Tensor:
-        """Calculate the transformation on the query through ihvp_lissa.
+        task: AttributionTask,
+        device: Optional[str] = "cpu",
+        batch_size: int = 1,
+        num_repeat: int = 1,
+        recursion_depth: int = 5000,
+        damping: int = 0.0,
+        scaling: int = 50.0,
+        mode: str = "rev-rev",
+    ) -> None:
+        """Initialize the LiSSA inverse hessian attributor.
 
         Args:
-            index (int): The index of the model parameters. This index
+            task (AttributionTask): The task to be attributed. The task should
+                be an instance of `AttributionTask`.
+            device (str): The device to run the attributor. Default is cpu.
+            batch_size (int): An integer default to 1. Specifies the batch size used
+                for LiSSA inner loop update.
+            num_repeat (int): An integer default to 1. Specifies the number of samples
+                of the hvp approximation to average on.
+            recursion_depth (int): A integer default to 5000. Specifies the number of
+                recursions used to estimate each IHVP sample.
+            damping (int): Damping factor used for non-convexity in LiSSA IHVP
+                calculation.
+            scaling (int): Scaling factor used for convergence in LiSSA IHVP
+                calculation.
+            mode (str): The auto diff mode, which can have one of the following values:
+                - rev-rev: calculate the hessian with two reverse-mode auto-diff. It has
+                        better compatibility while cost more memory.
+                - rev-fwd: calculate the hessian with the composing of reverse-mode and
+                        forward-mode. It's more memory-efficient but may not be
+                        supported by some operator.
+        """
+        super().__init__(task, device)
+        self.transformation_kwargs = {
+            "batch_size": batch_size,
+            "num_repeat": num_repeat,
+            "recursion_depth": recursion_depth,
+            "damping": damping,
+            "scaling": scaling,
+            "mode": mode,
+        }
+
+    def transform_test_rep(
+        self,
+        ckpt_idx: int,
+        test_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the test rep through ihvp_lissa.
+
+        Args:
+            ckpt_idx (int): The index of the model parameters. This index
                 is used for ensembling of different trained model.
-            train_data (Tuple[Tensor]): The train data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-            query (torch.Tensor): The query to be transformed. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-            transformation_kwargs (Dict[str, Any]): The keyword arguments for
-                the transformation function.
+            test_rep (torch.Tensor): The test representations to be transformed.
+                Typically, it is a 2-d dimensional tensor with the shape of
+                (batch_size, num_parameters).
 
         Returns:
             torch.Tensor: The transformation on the query. Normally it is a 2-d
@@ -374,17 +564,22 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         """
         from dattri.func.hessian import ihvp_lissa
 
-        self.ihvp_func = ihvp_lissa(
-            self.task.get_loss_func(),
-            collate_fn=IFAttributorLiSSA.lissa_collate_fn,
-            **transformation_kwargs,
-        )
-        model_params, _ = self.task.get_param(index)
-        return self.ihvp_func(
-            (model_params, *train_data),
-            query,
-            in_dims=(None,) + (0,) * len(train_data),
-        ).detach()
+        vector_product = 0
+        model_params, _ = self.task.get_param(ckpt_idx)
+        for full_data_ in self.full_train_dataloader:
+            # move to device
+            full_data = tuple(data.to(self.device) for data in full_data_)
+            self.ihvp_func = ihvp_lissa(
+                self.task.get_loss_func(),
+                collate_fn=IFAttributorLiSSA.lissa_collate_fn,
+                **self.transformation_kwargs,
+            )
+            vector_product += self.ihvp_func(
+                (model_params, *full_data),
+                test_rep,
+                in_dims=(None,) + (0,) * len(full_data),
+            ).detach()
+        return vector_product
 
     @staticmethod
     def lissa_collate_fn(
@@ -407,27 +602,42 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
 class IFAttributorDataInf(BaseInnerProductAttributor):
     """The inner product attributor with DataInf inverse hessian transformation."""
 
-    def transformation_on_query(
+    def __init__(
         self,
-        index: int,
-        train_data: Tuple[torch.Tensor, ...],
-        query: torch.Tensor,
-        **transformation_kwargs,
+        task: AttributionTask,
+        device: Optional[str] = "cpu",
+        regularization: float = 0.0,
+    ) -> None:
+        """Initialize the explicit inverse hessian attributor.
+
+        Args:
+            task (AttributionTask): The task to be attributed. The task should
+                be an instance of `AttributionTask`.
+            device (str): The device to run the attributor. Default is cpu.
+            regularization (float): A float default to 0.0. Specifies the regularization
+                term to be added to the Hessian vector product, which is useful for the
+                later inverse calculation if the Hessian matrix is singular or
+                ill-conditioned. Specifically, the regularization term is
+                `regularization * v`.
+        """
+        super().__init__(task, device)
+        self.transformation_kwargs = {
+            "regularization": regularization,
+        }
+
+    def transform_test_rep(
+        self,
+        ckpt_idx: int,
+        test_rep: torch.Tensor,
     ) -> torch.Tensor:
         """Calculate the transformation on the query through ifvp_datainf.
 
         Args:
-            index (int): The index of the model parameters. This index
+            ckpt_idx (int): The index of the model parameters. This index
                 is used for ensembling of different trained model.
-            train_data (Tuple[Tensor]): The train data. Normally this is a tuple
-                of input data and target data, the number of items in the
-                tuple should be aligned in the target function. The tensors'
-                shape follows (1, batchsize, ...).
-            query (torch.Tensor): The query to be transformed. Normally it is
-                a 2-d dimensional tensor with the shape of
-                (batchsize, num_parameters).
-            transformation_kwargs (Dict[str, Any]): The keyword arguments for
-                the transformation function.
+            test_rep (torch.Tensor): The test representations to be transformed.
+                Typically, it is a 2-d dimensional tensor with the shape of
+                (batch_size, num_parameters).
 
         Returns:
             torch.Tensor: The transformation on the query. Normally it is a 2-d
@@ -435,14 +645,14 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         """
         from dattri.func.fisher import ifvp_datainf
 
-        model_params, param_layer_map = self.task.get_param(index, layer_split=True)
+        model_params, param_layer_map = self.task.get_param(ckpt_idx, layer_split=True)
 
         self.ihvp_func = ifvp_datainf(
             self.task.get_loss_func(),
             0,
             (None, 0),
             param_layer_map=param_layer_map,
-            **transformation_kwargs,
+            **self.transformation_kwargs,
         )
 
         split_index = [0] * (param_layer_map[-1] + 1)
@@ -452,11 +662,16 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         current_idx = 0
         query_split = []
         for i in range(len(split_index)):
-            query_split.append(query[:, current_idx : split_index[i] + current_idx])
+            query_split.append(test_rep[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
 
-        res = self.ihvp_func(
-            (model_params, (train_data[0], train_data[1].view(-1, 1).float())),
-            query_split,
-        )
-        return torch.cat(res, dim=1).detach()
+        vector_product = 0
+        for full_data_ in self.full_train_dataloader:
+            # move to device
+            full_data = tuple(data.to(self.device) for data in full_data_)
+            res = self.ihvp_func(
+                (model_params, (full_data[0], full_data[1].view(-1, 1).float())),
+                query_split,
+            )
+            vector_product += torch.cat(res, dim=1).detach()
+        return vector_product
