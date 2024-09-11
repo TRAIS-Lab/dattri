@@ -658,14 +658,14 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         regularization = self.transformation_kwargs["regularization"]
         # Split layer-wise train and test representations
         query_split = self.get_layer_wise_reps(ckpt_idx, test_rep)
-        train_grad_split = self.get_layer_wise_reps(ckpt_idx, full_train_rep)
-        layer_cnt = len(train_grad_split)
+        full_rep_split = self.get_layer_wise_reps(ckpt_idx, full_train_rep)
+        layer_cnt = len(full_rep_split)
         ifvps = []
         # Use test batch size as intermediate batch size
         # Peak memory usage: max(train_batch_size,test_batch_size)*test_batch_size*p
         batch_size = test_rep.shape[0]
         for layer in range(layer_cnt):
-            grad_layer = train_grad_split[layer]
+            grad_layer = full_rep_split[layer]
             # length = full train data size
             length = grad_layer.shape[0]
             # Split gradients into smaller chunks
