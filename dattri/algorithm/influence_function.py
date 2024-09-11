@@ -615,7 +615,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             ckpt_idx (int): Index of the model checkpoints. Used for ensembling
                 different trained model checkpoints.
             full_train_rep (torch.Tensor): The full training data representations.
-                of shape (train_size,num_parameters)
+                Of shape (train_size,num_parameters)
             test_rep (torch.Tensor): Test representations to be transformed.
                 Typically a 2-d tensor with shape (batch_size, num_parameters).
 
@@ -631,10 +631,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         ) -> torch.Tensor:
             """Transformation of a single test representation.
 
-            DataInf assumes cross-entropy loss and approximates the Hessian
-            by summation of rank-1 gradients' outer product.
             For any test representation v and training gradient grad, along
-            with regularization term r:
+            with regularization term r, DataInf gives:
             q = (v - (v*grad) / (r + torch.norm(grad) ** 2) * grad) / r
 
             This transformed test representation is later used for influence:
@@ -647,11 +645,11 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 grad (torch.Tensor): A tensor representing a single training
                     gradient, of shape (parameter_size,)
                 regularization (float): A float default to 0.1. Specifies
-                    the regularization term to be added to the Hessian matrix
-                    in each layer.
+                    the regularization term to be added to the empirical Fisher
+                    information matrix in each layer.
 
             Returns:
-                A tensor corresponding to transformed test representation.
+                torch.Tensor: A tensor corresponding to transformed test representation.
             """
             grad = grad.unsqueeze(-1)
             coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
