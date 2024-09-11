@@ -635,15 +635,15 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             with regularization term r, DataInf gives:
             q = (v - (v*grad) / (r + torch.norm(grad) ** 2) * grad) / r
 
-            This transformed test representation is later used for influence:
-            Inf = dot(g,q) where g is training representation and q is transformed
+            Transformed test representations are later used for influence calculation:
+            Inf = dot(g,q) where g is a training representation and q is a transformed
             test representation.
 
             Args:
                 v (torch.Tensor): A tensor representing (batched) test set
-                representation, of shape (num_test,parameter_size)
+                    representation, of shape (num_test,parameter_size).
                 grad (torch.Tensor): A tensor representing a single training
-                    gradient, of shape (parameter_size,)
+                    gradient, of shape (parameter_size,).
                 regularization (float): A float default to 0.1. Specifies
                     the regularization term to be added to the empirical Fisher
                     information matrix in each layer.
