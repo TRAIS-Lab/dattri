@@ -670,25 +670,22 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
             return (v - coef @ grad.T) / regularization
         regularization = self.transformation_kwargs['regularization']
+        # Split train and test representations in layer-wise representations
         query_split = self.get_layer_wise_grads(ckpt_idx, test_rep)
         train_grad_split = self.get_layer_wise_grads(ckpt_idx, full_train_rep)
         layer_cnt = len(train_grad_split)
-        #print(f"Layer cnt: {layer_cnt}")
-        #print(train_grad_split[0].shape)
         ifvps = []
-        # Using test batch size, should be practically suitable.
-        # Peak memory usage: test_batch_size * test_batch_size * max_num_parameter
+        # Use test batch size as intermediate batch size
+        # Peak memory usage: max(train_batch_size,test_batch_size)*test_batch_size*p
         batch_size = test_rep.shape[0]
         for layer in range(layer_cnt):
             grad_layer = train_grad_split[layer]
-            #print(type(grad_layer))
-            #print(grad_layer.shape)
+            # length = full train data size
             length = grad_layer.shape[0]
+            # Split gradients into smaller chunks
             grad_batches = grad_layer.split(batch_size, dim=0)
             running_contributions = 0
-
             for batch in grad_batches:
-                #print(batch.shape)
                 reg = 0.1 if regularization is None else regularization
                 contribution = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: _single_datainf(
@@ -697,6 +694,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     reg,
                 ),
                 )(batch)
+                # Sum up the contributions by chunk and average at the end
                 running_contributions += contribution.sum(dim=0)
             running_contributions /= length
             ifvps.append(running_contributions)
