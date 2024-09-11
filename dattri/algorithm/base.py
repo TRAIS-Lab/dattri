@@ -22,14 +22,14 @@ from .utils import _check_shuffle
 
 
 class BaseAttributor(ABC):
-    """BaseAttributor."""
+    """Base class for all attributors."""
 
     @abstractmethod
     def __init__(self, **kwargs: dict) -> None:
         """Initialize the attributor.
 
         Args:
-            **kwargs (dict): The keyword arguments for the attributor.
+            **kwargs (dict): Keyword arguments for the attributor.
 
         Returns:
             None.
@@ -37,10 +37,10 @@ class BaseAttributor(ABC):
 
     @abstractmethod
     def cache(self, full_train_dataloader: torch.utils.data.DataLoader) -> None:
-        """Precompute and cache some values for efficiency.
+        """Precompute and cache values for efficiency.
 
         Args:
-            full_train_dataloader (torch.utils.data.DataLoader): The dataloader for
+            full_train_dataloader (torch.utils.data.DataLoader): Dataloader for
                 the full training data.
 
         Returns:
@@ -53,12 +53,12 @@ class BaseAttributor(ABC):
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
     ) -> torch.Tensor:
-        """Attribute the influence of the training data on the test data.
+        """Attribute the influence of training data on test data.
 
         Args:
-            train_dataloader (torch.utils.data.DataLoader): The dataloader for
+            train_dataloader (torch.utils.data.DataLoader): Dataloader for
                 the training data.
-            test_dataloader (torch.utils.data.DataLoader): The dataloader for
+            test_dataloader (torch.utils.data.DataLoader): Dataloader for
                 the test data.
 
         Returns:
@@ -67,7 +67,7 @@ class BaseAttributor(ABC):
 
 
 class BaseInnerProductAttributor(BaseAttributor):
-    """The base class for inner product attributor."""
+    """Base class for inner product attributors."""
 
     def __init__(
         self,
@@ -77,9 +77,9 @@ class BaseInnerProductAttributor(BaseAttributor):
         """Initialize the attributor.
 
         Args:
-            task (AttributionTask): The task to be attributed. The task should
-                be an instance of `AttributionTask`.
-            device (str): The device to run the attributor.
+            task (AttributionTask): The attribution task. Must be an instance of
+                `AttributionTask`.
+            device (str): The device to run the attributor on.
         """
         self.task = task
         self.device = device
@@ -89,7 +89,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         """Set test dataloader.
 
         Args:
-            dataloader (DataLoader): The dataloader for test samples to be attributed.
+            dataloader (DataLoader): Dataloader for test samples to be attributed.
         """
         # This function may be overridden by the subclass
         self.test_dataloader = dataloader
@@ -98,7 +98,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         """Set train dataloader to be attributed.
 
         Args:
-            dataloader (DataLoader): The dataloader for train samples to be attributed.
+            dataloader (DataLoader): Dataloader for train samples to be attributed.
         """
         # This function may be overridden by the subclass
         self.train_dataloader = dataloader
@@ -107,7 +107,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         """Set train dataloader for full training set.
 
         Args:
-            dataloader (DataLoader): The dataloader for full training samples.
+            dataloader (DataLoader): Dataloader for full training samples.
         """
         # This function may be overridden by the subclass
         self.full_train_dataloader = dataloader
@@ -117,9 +117,9 @@ class BaseInnerProductAttributor(BaseAttributor):
         ckpt_idx: int,
         data: Tuple[torch.Tensor, ...],
     ) -> torch.Tensor:
-        """Getting the initial representations of the test data.
+        """Generate initial representations of test data.
 
-        Inner product attributor calculates the inner product between the (transformed)
+        Inner product attributors calculate the inner product between the (transformed)
         train representations and test representations. This function generates the
         initial test representations.
 
@@ -148,9 +148,9 @@ class BaseInnerProductAttributor(BaseAttributor):
         ckpt_idx: int,
         data: Tuple[torch.Tensor, ...],
     ) -> torch.Tensor:
-        """Generate the initial representations of the train data.
+        """Generate initial representations of train data.
 
-        Inner product attributor calculates the inner product between the (transformed)
+        Inner product attributors calculate the inner product between the (transformed)
         train representations and test representations. This function generates the
         initial train representations.
 
@@ -233,7 +233,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         Subclasses may override this function to precompute and cache more information.
 
         Args:
-            full_train_dataloader (torch.utils.data.DataLoader): The dataloader for
+            full_train_dataloader (torch.utils.data.DataLoader): Dataloader for
                 the full training data. Ideally, the batch size of the dataloader
                 should be the same as the number of training samples to get the
                 best accuracy for some attributors. Smaller batch size may lead to
@@ -249,14 +249,13 @@ class BaseInnerProductAttributor(BaseAttributor):
         """Calculate the influence of the training set on the test set.
 
         Args:
-            train_dataloader (DataLoader): The dataloader for
-                training samples to calculate the influence. It can be a subset
-                of the full training set if `cache` is called before. A subset
-                means that only a part of the training set's influence is calculated.
-                The dataloader should not be shuffled.
-            test_dataloader (DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not
-                be shuffled.
+            train_dataloader (DataLoader): Dataloader for training samples to
+                calculate the influence. It can be a subset of the full training
+                set if `cache` is called before. A subset means that only a part
+                of the training set's influence is calculated. The dataloader should
+                not be shuffled.
+            test_dataloader (DataLoader): Dataloader for test samples to calculate
+                the influence. The dataloader should not be shuffled.
 
         Returns:
             torch.Tensor: The influence of the training set on the test set, with
@@ -310,7 +309,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                 for test_batch_idx, test_batch_data_ in enumerate(
                     tqdm(
                         test_dataloader,
-                        desc="calculating gradient of training set...",
+                        desc="calculating gradient of test set...",
                         leave=False,
                     ),
                 ):

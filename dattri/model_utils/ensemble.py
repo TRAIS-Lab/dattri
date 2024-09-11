@@ -1,1 +1,1 @@
-"""dattri.model_utils.ensemble for some ensembler."""
+"""This module contains functions that generate model ensembles."""

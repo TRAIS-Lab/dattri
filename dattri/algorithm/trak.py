@@ -59,10 +59,10 @@ class TRAKAttributor(BaseAttributor):
                     yhat = torch.func.functional_call(model, params, image_t)
                     p = torch.exp(-loss(yhat, label_t))
                     return p
-                ```.
+                ```
             projector_kwargs (Optional[Dict[str, Any]], optional): The kwargs for the
                 random projection. Defaults to None.
-            device (str): The device to run the attributor. Default is cpu.
+            device (str): The device to run the attributor. Default is "cpu".
         """
         self.task = task
         self.norm_scaler = (
@@ -154,12 +154,13 @@ class TRAKAttributor(BaseAttributor):
 
         Args:
             train_dataloader (torch.utils.data.DataLoader): The dataloader for
-                training samples to calculate the influence. It can be a subset
-                of the full training set if `cache` is called before. A subset
-                means that only a part of the training set's influence is calculated.
-                The dataloader should not be shuffled.
+                training samples to calculate the influence. If `cache` is called before
+                `attribute`, this dataloader can consists of a subset of the full
+                training dataset cached in `cache`. In this case, only a part of the
+                training set's influence will be calculated. The dataloader should not
+                be shuffled.
             test_dataloader (torch.utils.data.DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not\
+                test samples to calculate the influence. The dataloader should not
                 be shuffled.
 
         Returns:

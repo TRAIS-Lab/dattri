@@ -18,8 +18,8 @@ from .utils import _check_shuffle
 
 
 def default_dist_func(
-        batch_x: Tuple[torch.Tensor],
-        batch_y: Tuple[torch.Tensor],
+    batch_x: Tuple[torch.Tensor],
+    batch_y: Tuple[torch.Tensor],
 ) -> torch.Tensor:
     """Default distance function for KNN.
 
@@ -39,7 +39,7 @@ def default_dist_func(
     return torch.cdist(coord1, coord2)
 
 
-class KNNShalpeyAttributor(BaseAttributor):
+class KNNShapleyAttributor(BaseAttributor):
     """KNN Data Shapley Attributor."""
 
     def __init__(
@@ -79,8 +79,9 @@ class KNNShalpeyAttributor(BaseAttributor):
         self.k_neighbors = k_neighbors
 
         if task is not None:
-            error_msg = ("Specifying the model via the task argument "
-                         "is not implmented yet.")
+            error_msg = (
+                "Specifying the model via the task argument is not implemented yet."
+            )
             raise NotImplementedError(error_msg)
 
         self.distance_func = default_dist_func
@@ -107,11 +108,13 @@ class KNNShalpeyAttributor(BaseAttributor):
                 test samples to calculate the shapley values. The dataloader
                 should not be shuffled.
             train_labels: (List[int], optional): The list of training labels,
-                with the same size and order of the training dataset. If not provided,
-                the last element in each batch from the loader will be used as label.
+                with the same size and order of the training dataloader.
+                If not provided, the last element in each batch from the loader
+                will be used as label.
             test_labels: (List[int], optional): The list of test labels,
-                with the same size and order of the test dataset. If not provided,
-                the last element in each batch from the loader will be used as label.
+                with the same size and order of the test dataloader.
+                If not provided, the last element in each batch from the loader
+                will be used as label.
 
         Returns:
             Tensor: The KNN shapley values of the training set on the test set, with
@@ -123,13 +126,13 @@ class KNNShalpeyAttributor(BaseAttributor):
         _check_shuffle(test_dataloader)
         _check_shuffle(train_dataloader)
 
-        if (train_labels is not None and
-            len(train_labels) != len(train_dataloader.sampler)):
+        if train_labels is not None and len(train_labels) != len(
+            train_dataloader.sampler,
+        ):
             error_msg = "Length of training labels and training dataset mismatch."
             raise ValueError(error_msg)
 
-        if (test_labels is not None and
-            len(test_labels) != len(test_dataloader.sampler)):
+        if test_labels is not None and len(test_labels) != len(test_dataloader.sampler):
             error_msg = "Length of test labels and test dataset mismatch."
             raise ValueError(error_msg)
 
@@ -198,10 +201,12 @@ class KNNShalpeyAttributor(BaseAttributor):
             ) / num_train_samples
 
             for i in torch.arange(num_train_samples - 2, -1, -1):
-                shapley_values[j, nn_sorting[j, i]] = \
-                    shapley_values[j, nn_sorting[j, i + 1]] + \
-                    (int(train_labels[nn_sorting[j, i]] == test_labels[j]) -
-                    int(train_labels[nn_sorting[j, i + 1]] == test_labels[j])) \
-                    / self.k_neighbors * min([self.k_neighbors, i + 1]) / (i + 1)
+                shapley_values[j, nn_sorting[j, i]] = shapley_values[
+                    j,
+                    nn_sorting[j, i + 1],
+                ] + (
+                    int(train_labels[nn_sorting[j, i]] == test_labels[j])
+                    - int(train_labels[nn_sorting[j, i + 1]] == test_labels[j])
+                ) / self.k_neighbors * min([self.k_neighbors, i + 1]) / (i + 1)
 
         return shapley_values

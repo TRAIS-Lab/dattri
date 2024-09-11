@@ -1,4 +1,4 @@
-"""This module implement TracIn."""
+"""This module implements the TracIn attributor."""
 
 from __future__ import annotations
 
@@ -31,7 +31,7 @@ class TracInAttributor(BaseAttributor):
         projector_kwargs: Optional[Dict[str, Any]] = None,
         device: str = "cpu",
     ) -> None:
-        """TracIn attributor initialization.
+        """Initialize the TracIn attributor.
 
         Args:
             task (AttributionTask): The task to be attributed. Please refer to the
@@ -75,7 +75,7 @@ class TracInAttributor(BaseAttributor):
                 means that only a part of the training set's influence is calculated.
                 The dataloader should not be shuffled.
             test_dataloader (torch.utils.data.DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not\
+                test samples to calculate the influence. The dataloader should not
                 be shuffled.
 
         Raises:
@@ -138,7 +138,7 @@ class TracInAttributor(BaseAttributor):
                 for test_batch_idx, test_batch_data_ in enumerate(
                     tqdm(
                         test_dataloader,
-                        desc="calculating gradient of training set...",
+                        desc="calculating gradient of test set...",
                         leave=False,
                     ),
                 ):

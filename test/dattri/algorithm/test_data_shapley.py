@@ -3,7 +3,7 @@
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm.data_shapley import KNNShalpeyAttributor
+from dattri.algorithm.data_shapley import KNNShapleyAttributor
 
 
 class TestInfluenceFunction:
@@ -28,11 +28,13 @@ class TestInfluenceFunction:
             coord2 = test_batch[0].reshape(-1, 28 * 28)
             return torch.cdist(coord1, coord2)
 
-        attributor = KNNShalpeyAttributor(k_neighbors=3, distance_func=f)
-        sv = attributor.attribute(train_loader,
-                                  test_loader,
-                                  train_dataset.tensors[1],
-                                  test_dataset.tensors[1])
+        attributor = KNNShapleyAttributor(k_neighbors=3, distance_func=f)
+        sv = attributor.attribute(
+            train_loader,
+            test_loader,
+            train_dataset.tensors[1],
+            test_dataset.tensors[1],
+        )
 
         # Permute train dataset and reproduce the results
         permutation = torch.randperm(train_dataset.tensors[0].size(0))
@@ -44,9 +46,11 @@ class TestInfluenceFunction:
             train_dataset.tensors[1][permutation],
         )
         train_loader_perm = DataLoader(train_dataset_perm, batch_size=4)
-        sv_perm = attributor.attribute(train_loader_perm,
-                                       test_loader,
-                                       train_dataset_perm.tensors[1],
-                                       test_dataset.tensors[1])
+        sv_perm = attributor.attribute(
+            train_loader_perm,
+            test_loader,
+            train_dataset_perm.tensors[1],
+            test_dataset.tensors[1],
+        )
         sv_perm = sv_perm[:, inverse_permutation]
         assert torch.allclose(sv, sv_perm)
