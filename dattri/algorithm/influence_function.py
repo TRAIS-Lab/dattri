@@ -600,7 +600,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
 
 
 class IFAttributorDataInf(BaseInnerProductAttributor):
-    """The attributor using DataInf."""
+    """The inner product attributor with DataInf inverse hessian transformation."""
 
     def __init__(
         self,
@@ -631,11 +631,13 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         full_train_rep: torch.Tensor,
         test_rep: torch.Tensor,
     ) -> torch.Tensor:
-        """Calculate the transformation on the query through ifvp_datainf.
+        """Calculate the transformation on the test representations.
 
         Args:
             ckpt_idx (int): The index of the model parameters. This index
                 is used for ensembling of different trained model.
+            full_train_rep (torch.Tensor): The full training data representations.
+                of shape (train_size,num_parameters)
             test_rep (torch.Tensor): The test representations to be transformed.
                 Typically, it is a 2-d dimensional tensor with the shape of
                 (batch_size, num_parameters).
@@ -645,34 +647,43 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 dimensional tensor with the shape of (batchsize, transformed_dimension).
         """
 
-        def _single_datainf(
+        def _transform_single_test_rep(
             v: torch.Tensor,
             grad: torch.Tensor,
             regularization: float,
         ) -> torch.Tensor:
-            """Intermediate DataInf value calculation of a single data point.
+            """Transformation of a single test representation.
+
+            DataInf assumes cross-entropy loss and approximates the Hessian
+            by summation of rank-1 gradients' outer product.
+            For any test representation v and training gradient grad, along
+            with regularization term r:
+            q = (v - (v*grad) / (r + torch.norm(grad) ** 2) * grad) / r
+
+            This transformed test representation is later used for influence:
+            Inf = dot(g,q) where g is training representation and q is transformed
+            test representation.
 
             Args:
-                v (torch.Tensor): A tensor representing (batched) validation
-                    set gradient,Normally of shape (num_valiation,parameter_size)
+                v (torch.Tensor): A tensor representing (batched) test set
+                representation, of shape (num_test,parameter_size)
                 grad (torch.Tensor): A tensor representing a single training
                     gradient, of shape (parameter_size,)
-                regularization (float): A float or list of floats default
-                    to 0.0.Specifies the regularization term to be added to
-                    the Hessian matrix in each layer.
+                regularization (float): A float default to 0.1. Specifies
+                    the regularization term to be added to the Hessian matrix
+                    in each layer.
 
             Returns:
-                A tensor corresponding to intermediate influence value. This value
-                    will later to aggregated to obtain final influence.
+                A tensor corresponding to transformed test representation.
             """
-            #print(type(grad))
             grad = grad.unsqueeze(-1)
             coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
             return (v - coef @ grad.T) / regularization
-        regularization = self.transformation_kwargs['regularization']
-        # Split train and test representations in layer-wise representations
-        query_split = self.get_layer_wise_grads(ckpt_idx, test_rep)
-        train_grad_split = self.get_layer_wise_grads(ckpt_idx, full_train_rep)
+
+        regularization = self.transformation_kwargs["regularization"]
+        # Split layer-wise train and test representations
+        query_split = self.get_layer_wise_reps(ckpt_idx, test_rep)
+        train_grad_split = self.get_layer_wise_reps(ckpt_idx, full_train_rep)
         layer_cnt = len(train_grad_split)
         ifvps = []
         # Use test batch size as intermediate batch size
@@ -688,7 +699,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             for batch in grad_batches:
                 reg = 0.1 if regularization is None else regularization
                 contribution = torch.func.vmap(
-                    lambda grad, layer=layer, reg=reg: _single_datainf(
+                    lambda grad, layer=layer, reg=reg: _transform_single_test_rep(
                     query_split[layer],
                     grad,
                     reg,
@@ -700,23 +711,23 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             ifvps.append(running_contributions)
         return torch.cat(ifvps, dim=1)
 
-    def get_layer_wise_grads(self,
-        index: int,
+    def get_layer_wise_reps(self,
+        ckpt_idx: int,
         query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
-        """Split a gradient into layer-wise gradients.
+        """Split a representation into layer-wise representations.
 
         Args:
-            index (int): The index of the model parameters. This index
+            ckpt_idx (int): The index of the model parameters. This index
                 is used for ensembling of different trained model.
-            query (torch.Tensor): Input gradient to split, could be train/test
-                gradients. Normally of shape (batch_size,parameter)
+            query (torch.Tensor): Input representations to split, could be
+                train/test representations, of shape (batch_size,parameter)
 
         Returns:
             Tuple[torch.Tensor, ...]: The layer-wise splitted tensor, a tuple of shape
                 (batch_size,layer0_size), (batch_size,layer1_size)...
         """
         model_params, param_layer_map = self.task.get_param(
-            index, layer_split=True,
+            ckpt_idx, layer_split=True,
         )
         split_index = [0] * (param_layer_map[-1] + 1)
         for idx, layer_index in enumerate(param_layer_map):
@@ -774,7 +785,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             # set index to current one
             tda_output *= checkpoint_idx
             # calculate gradient with respect to full_data, do it only once
-            full_data_grad = 0
+            full_train_rep = 0
             for full_data_ in self.full_train_dataloader:
                 full_data = tuple(data.to(self.device).unsqueeze(0)
                              for data in full_data_)
@@ -846,7 +857,5 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     )
 
             tda_output /= checkpoint_idx + 1
-             
 
         return tda_output
-
