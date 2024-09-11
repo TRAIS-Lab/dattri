@@ -612,20 +612,12 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         """Calculate the transformation on the test representations.
 
         Args:
-<<<<<<< HEAD
-            ckpt_idx (int): The index of the model parameters. This index
-                is used for ensembling of different trained model.
-            full_train_rep (torch.Tensor): The full training data representations.
-                of shape (train_size,num_parameters)
-            test_rep (torch.Tensor): The test representations to be transformed.
-                Typically, it is a 2-d dimensional tensor with the shape of
-                (batch_size, num_parameters).
-=======
             ckpt_idx (int): Index of the model checkpoints. Used for ensembling
                 different trained model checkpoints.
+            full_train_rep (torch.Tensor): The full training data representations.
+                of shape (train_size,num_parameters)
             test_rep (torch.Tensor): Test representations to be transformed.
                 Typically a 2-d tensor with shape (batch_size, num_parameters).
->>>>>>> upstream/main
 
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
