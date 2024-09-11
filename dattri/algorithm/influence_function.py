@@ -628,6 +628,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
     def transform_test_rep(
         self,
         ckpt_idx: int,
+        full_train_rep: torch.Tensor,
         test_rep: torch.Tensor,
     ) -> torch.Tensor:
         """Calculate the transformation on the query through ifvp_datainf.
@@ -664,23 +665,30 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 A tensor corresponding to intermediate influence value. This value
                     will later to aggregated to obtain final influence.
             """
+            #print(type(grad))
             grad = grad.unsqueeze(-1)
             coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
             return (v - coef @ grad.T) / regularization
-
-        regularization = transformation_kwargs.get("regularization") or None
-        query_split = self.get_layer_wise_grads(index, query)
-        train_grad_split = self.get_layer_wise_grads(index, train_data)
+        regularization = self.transformation_kwargs['regularization']
+        query_split = self.get_layer_wise_grads(ckpt_idx, test_rep)
+        train_grad_split = self.get_layer_wise_grads(ckpt_idx, full_train_rep)
         layer_cnt = len(train_grad_split)
+        #print(f"Layer cnt: {layer_cnt}")
+        #print(train_grad_split[0].shape)
         ifvps = []
-        batch_size = 16
+        # Using test batch size, should be practically suitable.
+        # Peak memory usage: test_batch_size * test_batch_size * max_num_parameter
+        batch_size = test_rep.shape[0]
         for layer in range(layer_cnt):
             grad_layer = train_grad_split[layer]
+            #print(type(grad_layer))
+            #print(grad_layer.shape)
             length = grad_layer.shape[0]
             grad_batches = grad_layer.split(batch_size, dim=0)
             running_contributions = 0
 
             for batch in grad_batches:
+                #print(batch.shape)
                 reg = 0.1 if regularization is None else regularization
                 contribution = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: _single_datainf(
@@ -711,16 +719,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         """
         model_params, param_layer_map = self.task.get_param(
             index, layer_split=True,
-        from dattri.func.fisher import ifvp_datainf
-
-        model_params, param_layer_map = self.task.get_param(ckpt_idx, layer_split=True)
-
-        self.ihvp_func = ifvp_datainf(
-            self.task.get_loss_func(),
-            0,
-            (None, 0),
-            param_layer_map=param_layer_map,
-            **self.transformation_kwargs,
         )
         split_index = [0] * (param_layer_map[-1] + 1)
         for idx, layer_index in enumerate(param_layer_map):
@@ -728,7 +726,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         current_idx = 0
         query_split = []
         for i in range(len(split_index)):
-            query_split.append(test_rep[:, current_idx : split_index[i] + current_idx])
+            query_split.append(query[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
         return query_split
 
@@ -773,22 +771,20 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
         # TODO: sometimes the train dataloader could be swapped with the test dataloader
         # prepare a checkpoint-specific seed
-        checkpoint_running_count = 0
 
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
             # set index to current one
-            self.index = checkpoint_idx
-            checkpoint_running_count += 1
-            tda_output *= checkpoint_running_count - 1
+            tda_output *= checkpoint_idx
             # calculate gradient with respect to full_data, do it only once
             full_data_grad = 0
             for full_data_ in self.full_train_dataloader:
                 full_data = tuple(data.to(self.device).unsqueeze(0)
                              for data in full_data_)
-                full_data_grad = self.generate_train_query(
-                    index=self.index,
+                full_train_rep = self.generate_train_rep(
+                    ckpt_idx=checkpoint_idx,
                     data=full_data,
                 )
+
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
@@ -796,14 +792,19 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     leave=False,
                 ),
             ):
-                # get gradient of train
+                # move to device
                 train_batch_data = tuple(
                     data.to(self.device).unsqueeze(0) for data in train_batch_data_
                 )
-
-                train_batch_grad = self.generate_train_query(
-                    index=self.index,
+                # get initial representations of train data
+                train_batch_rep = self.generate_train_rep(
+                    ckpt_idx=checkpoint_idx,
                     data=train_batch_data,
+                )
+                # transform the train representations
+                train_batch_rep = self.transform_train_rep(
+                    ckpt_idx=checkpoint_idx,
+                    train_rep=train_batch_rep,
                 )
 
                 for test_batch_idx, test_batch_data_ in enumerate(
@@ -813,24 +814,23 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                         leave=False,
                     ),
                 ):
-                    # get gradient of test
+                    # move to device
                     test_batch_data = tuple(
                         data.to(self.device).unsqueeze(0) for data in test_batch_data_
                     )
-
-                    test_batch_grad = self.generate_test_query(
-                        index=self.index,
+                    # get initial representations of test data
+                    test_batch_rep = self.generate_test_rep(
+                        ckpt_idx=checkpoint_idx,
                         data=test_batch_data,
                     )
-
-                    vector_product = 0
-                    vector_product += self.transformation_on_query(
-                            index=self.index,
-                            train_data=full_data_grad,
-                            query=test_batch_grad,
-                            **self.transformation_kwargs,
+                    # transform the test representations
+                    test_batch_rep = self.transform_test_rep(
+                        ckpt_idx=checkpoint_idx,
+                        test_rep=test_batch_rep,
+                        full_train_rep=full_train_rep,
                     )
 
+                    # results position based on batch info
                     row_st = train_batch_idx * train_dataloader.batch_size
                     row_ed = min(
                         (train_batch_idx + 1) * train_dataloader.batch_size,
@@ -844,20 +844,11 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     )
 
                     tda_output[row_st:row_ed, col_st:col_ed] += (
-                        train_batch_grad @ vector_product.T
+                        train_batch_rep @ test_batch_rep.T
                     )
 
-        tda_output /= checkpoint_running_count
+            tda_output /= checkpoint_idx + 1
+             
 
         return tda_output
 
-        vector_product = 0
-        for full_data_ in self.full_train_dataloader:
-            # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
-            res = self.ihvp_func(
-                (model_params, (full_data[0], full_data[1].view(-1, 1).float())),
-                query_split,
-            )
-            vector_product += torch.cat(res, dim=1).detach()
-        return vector_product
