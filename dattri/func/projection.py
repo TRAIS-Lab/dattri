@@ -769,10 +769,7 @@ class ArnoldiProjector(AbstractProjector):
         # have not compute the eigen space yet
         if self.eigvals is None or self.eigvecs is None:
             self.get_eigenspace()
-
-        return (
-            (features @ self.eigvecs.T) * 1.0 / self.eigvals.unsqueeze(0)
-        ) @ self.eigvecs
+        return features @ self.eigvecs.T * (1.0 / torch.sqrt(self.eigvals.unsqueeze(0)))
 
     def free_memory(self) -> None:
         """A no-op method."""
