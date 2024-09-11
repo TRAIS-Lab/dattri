@@ -633,7 +633,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
             For any test representation v and training gradient grad, along
             with regularization term r, DataInf gives:
-            q = (v - (v*grad) / (r + torch.norm(grad) ** 2) * grad) / r
+            q = (v - (dot(v,grad) / (r + torch.norm(grad) ** 2)) * grad) / r
 
             Transformed test representations are later used for influence calculation:
             Inf = dot(g,q) where g is a training representation and q is a transformed
