@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING, Any, Dict
 
 if TYPE_CHECKING:
-    from typing import Optional
+    from typing import List, Optional, Union
 
     from dattri.task import AttributionTask
 
@@ -29,6 +29,7 @@ class TracInAttributor(BaseAttributor):
         weight_list: Tensor,
         normalized_grad: bool,
         projector_kwargs: Optional[Dict[str, Any]] = None,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
     ) -> None:
         """Initialize the TracIn attributor.
@@ -42,6 +43,11 @@ class TracInAttributor(BaseAttributor):
             normalized_grad (bool): Whether to apply normalization to gradients.
             projector_kwargs (Optional[Dict[str, Any]]): The keyword arguments for the
                 projector.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             device (str): The device to run the attributor. Default is cpu.
         """
         self.task = task
@@ -52,6 +58,7 @@ class TracInAttributor(BaseAttributor):
         if projector_kwargs is not None:
             self.proj_seed = self.projector_kwargs.get("proj_seed", 0)
         self.normalized_grad = normalized_grad
+        self.layer_name = layer_name
         self.device = device
         self.full_train_dataloader = None
         # to get per-sample gradients for a mini-batch of train/test samples
@@ -104,7 +111,21 @@ class TracInAttributor(BaseAttributor):
             range(len(self.task.get_checkpoints())),
             self.weight_list,
         ):
-            parameters, _ = self.task.get_param(index=ckpt_index)
+            parameters, _ = self.task.get_param(
+                index=ckpt_index,
+                layer_name=self.layer_name,
+            )
+            if self.layer_name is not None:
+                self.grad_target_func = self.task.get_grad_target_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    index=ckpt_index,
+                )
+                self.grad_loss_func = self.task.get_grad_loss_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    index=ckpt_index,
+                )
 
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(

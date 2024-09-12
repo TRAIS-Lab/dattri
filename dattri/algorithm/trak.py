@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, Optional
+    from typing import Any, Callable, Dict, List, Optional, Union
 
     from dattri.task import AttributionTask
 
@@ -39,6 +39,7 @@ class TRAKAttributor(BaseAttributor):
         task: AttributionTask,
         correct_probability_func: Callable,
         projector_kwargs: Optional[Dict[str, Any]] = None,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
     ) -> None:
         """Initialize the TRAK attributor.
@@ -62,6 +63,11 @@ class TRAKAttributor(BaseAttributor):
                 ```
             projector_kwargs (Optional[Dict[str, Any]], optional): The kwargs for the
                 random projection. Defaults to None.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             device (str): The device to run the attributor. Default is "cpu".
         """
         self.task = task
@@ -71,6 +77,7 @@ class TRAKAttributor(BaseAttributor):
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
             self.projector_kwargs.update(projector_kwargs)
+        self.layer_name = layer_name
         self.device = device
         self.grad_target_func = self.task.get_grad_target_func(in_dims=(None, 0))
         self.grad_loss_func = self.task.get_grad_loss_func(in_dims=(None, 0))
@@ -96,7 +103,22 @@ class TRAKAttributor(BaseAttributor):
         running_Q = 0
         running_count = 0
         for ckpt_seed in range(len(self.task.get_checkpoints())):
-            parameters, _ = self.task.get_param(index=ckpt_seed)
+            parameters, _ = self.task.get_param(
+                index=ckpt_seed,
+                layer_name=self.layer_name,
+            )
+            full_parameters, _ = self.task.get_param(index=ckpt_seed)
+            if self.layer_name is not None:
+                self.grad_target_func = self.task.get_grad_target_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    index=ckpt_seed,
+                )
+                self.grad_loss_func = self.task.get_grad_loss_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    index=ckpt_seed,
+                )
 
             full_train_projected_grad = []
             Q = []
@@ -123,7 +145,7 @@ class TRAKAttributor(BaseAttributor):
                     (
                         torch.ones(train_batch_data[0].shape[0]).to(self.device)
                         - self.correct_probability_func(
-                            _unflatten_params(parameters, self.task.get_model()),
+                            _unflatten_params(full_parameters, self.task.get_model()),
                             train_batch_data,
                         ).flatten()
                     )
@@ -145,7 +167,7 @@ class TRAKAttributor(BaseAttributor):
         self.inv_XTX_XT_list = inv_XTX_XT_list
         self.Q = running_Q
 
-    def attribute(
+    def attribute(  # noqa: PLR0912
         self,
         test_dataloader: torch.utils.data.DataLoader,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
@@ -192,7 +214,22 @@ class TRAKAttributor(BaseAttributor):
                        training loader or cache a training loader."
             raise ValueError(message)
         for ckpt_seed in range(len(self.task.get_checkpoints())):
-            parameters, _ = self.task.get_param(index=ckpt_seed)
+            parameters, _ = self.task.get_param(
+                index=ckpt_seed,
+                layer_name=self.layer_name,
+            )
+            full_parameters, _ = self.task.get_param(index=ckpt_seed)
+            if self.layer_name is not None:
+                self.grad_target_func = self.task.get_grad_target_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    index=ckpt_seed,
+                )
+                self.grad_loss_func = self.task.get_grad_loss_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    index=ckpt_seed,
+                )
 
             if train_dataloader is not None:
                 train_projected_grad = []
@@ -226,7 +263,10 @@ class TRAKAttributor(BaseAttributor):
                         (
                             torch.ones(train_batch_data[0].shape[0]).to(self.device)
                             - self.correct_probability_func(
-                                _unflatten_params(parameters, self.task.get_model()),
+                                _unflatten_params(
+                                    full_parameters,
+                                    self.task.get_model(),
+                                ),
                                 train_batch_data,
                             )
                         )

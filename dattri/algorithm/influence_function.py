@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional, Tuple
+    from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
     from torch import Tensor
     from torch.utils.data import DataLoader
@@ -228,6 +228,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
     def __init__(
         self,
         task: AttributionTask,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
     ) -> None:
@@ -236,13 +237,18 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         Args:
             task (AttributionTask): Task to attribute. Must be an instance of
                 `AttributionTask`.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             device (str): Device to run the attributor on. Default is "cpu".
             regularization (float): Regularization term added to Hessian matrix.
                 Useful for singular or ill-conditioned Hessian matrices.
                 Added as `regularization * I`, where `I` is the identity matrix.
                 Default is 0.0.
         """
-        super().__init__(task, device)
+        super().__init__(task, layer_name, device)
         self.transformation_kwargs = {
             "regularization": regularization,
         }
@@ -266,12 +272,15 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         from dattri.func.hessian import ihvp_explicit
 
         vector_product = 0
-        model_params, _ = self.task.get_param(ckpt_idx)
+        model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
             full_data = tuple(data.to(self.device) for data in full_data_)
             self.ihvp_func = ihvp_explicit(
-                partial(self.task.get_loss_func(), data_target_pair=full_data),
+                partial(
+                    self.task.get_loss_func(layer_name=self.layer_name, index=ckpt_idx),
+                    data_target_pair=full_data,
+                ),
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
@@ -284,6 +293,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
     def __init__(
         self,
         task: AttributionTask,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         max_iter: int = 10,
         tol: float = 1e-7,
@@ -296,6 +306,11 @@ class IFAttributorCG(BaseInnerProductAttributor):
             task (AttributionTask): The task to be attributed. Must be an instance of
                 `AttributionTask`.
             device (str): Device to run the attributor on. Default is "cpu".
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             max_iter (int): Maximum iterations for Conjugate Gradient Descent. Default
                 is 10.
             tol (float): Convergence tolerance. Algorithm stops if residual norm < tol.
@@ -310,7 +325,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 identity matrix. Useful for singular or ill-conditioned matrices.
                 Default is 0.0.
         """
-        super().__init__(task, device)
+        super().__init__(task, layer_name, device)
         self.transformation_kwargs = {
             "max_iter": max_iter,
             "tol": tol,
@@ -338,12 +353,15 @@ class IFAttributorCG(BaseInnerProductAttributor):
         from dattri.func.hessian import ihvp_cg
 
         vector_product = 0
-        model_params, _ = self.task.get_param(ckpt_idx)
+        model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
             full_data = tuple(data.to(self.device) for data in full_data_)
             self.ihvp_func = ihvp_cg(
-                partial(self.task.get_loss_func(), data_target_pair=full_data),
+                partial(
+                    self.task.get_loss_func(layer_name=self.layer_name, index=ckpt_idx),
+                    data_target_pair=full_data,
+                ),
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
@@ -356,6 +374,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
     def __init__(
         self,
         task: AttributionTask,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         precompute_data_ratio: float = 1.0,
         proj_dim: int = 100,
@@ -370,6 +389,11 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         Args:
             task (AttributionTask): The task to be attributed. Must be an instance of
                 `AttributionTask`.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             device (str): Device to run the attributor on. Default is "cpu".
             precompute_data_ratio (float): Ratio of full training data used to
                 precompute the Arnoldi projector. Default is 1.0.
@@ -387,7 +411,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
                 Default is 0.0.
             seed (int): Random seed for projector. Default is 0.
         """
-        super().__init__(task, device)
+        super().__init__(task, layer_name, device)
         self.precompute_data_ratio = precompute_data_ratio
         self.proj_dim = proj_dim
         self.max_iter = max_iter
@@ -432,12 +456,14 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
                 self.device,
             )
 
-        func = partial(self.task.get_loss_func(), data_target_pair=data_target_pair)
-
         from dattri.func.projection import arnoldi_project
 
         for i in range(len(self.task.get_checkpoints())):
-            model_params, _ = self.task.get_param(i)
+            func = partial(
+                self.task.get_loss_func(layer_name=self.layer_name, index=i),
+                data_target_pair=data_target_pair,
+            )
+            model_params, _ = self.task.get_param(i, layer_name=self.layer_name)
             self.arnoldi_projectors.append(
                 arnoldi_project(
                     feature_dim=len(model_params),
@@ -487,6 +513,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
     def __init__(
         self,
         task: AttributionTask,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         batch_size: int = 1,
         num_repeat: int = 1,
@@ -500,6 +527,11 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         Args:
             task (AttributionTask): The task to be attributed. Must be an instance of
                 `AttributionTask`.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             device (str): Device to run the attributor on. Default is "cpu".
             batch_size (int): Batch size for LiSSA inner loop update. Default is 1.
             num_repeat (int): Number of samples of the HVP approximation to average.
@@ -514,7 +546,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 - "rev-fwd": Reverse-mode + forward-mode. Memory-efficient, less
                 compatible.
         """
-        super().__init__(task, device)
+        super().__init__(task, layer_name, device)
         self.transformation_kwargs = {
             "batch_size": batch_size,
             "num_repeat": num_repeat,
@@ -544,12 +576,12 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         from dattri.func.hessian import ihvp_lissa
 
         vector_product = 0
-        model_params, _ = self.task.get_param(ckpt_idx)
+        model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
             full_data = tuple(data.to(self.device) for data in full_data_)
             self.ihvp_func = ihvp_lissa(
-                self.task.get_loss_func(),
+                self.task.get_loss_func(layer_name=self.layer_name, index=ckpt_idx),
                 collate_fn=IFAttributorLiSSA.lissa_collate_fn,
                 **self.transformation_kwargs,
             )
@@ -584,6 +616,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
     def __init__(
         self,
         task: AttributionTask,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
     ) -> None:
@@ -592,13 +625,18 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         Args:
             task (AttributionTask): The task to be attributed. Must be an instance of
                 `AttributionTask`.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             device (str): Device to run the attributor on. Default is "cpu".
             regularization (float): Regularization term for Hessian vector product.
                 Adding `regularization * I` to the Hessian matrix, where `I` is the
                 identity matrix. Useful for singular or ill-conditioned matrices.
                 Default is 0.0.
         """
-        super().__init__(task, device)
+        super().__init__(task, layer_name, device)
         self.transformation_kwargs = {
             "regularization": regularization,
         }

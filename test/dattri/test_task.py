@@ -43,7 +43,6 @@ class TestTask:
             params_full, _ = task.get_param(index=0)
             gradient_partial = grad_func_partial(params_partial, train_batch_data)
             gradient_full = grad_func_full(params_full, train_batch_data)
-            gradient_partial = torch.cat(gradient_partial, dim=1)
             assert torch.allclose(
                 gradient_partial,
                 gradient_full[:, -gradient_partial.size(1) :],

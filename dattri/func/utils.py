@@ -324,8 +324,13 @@ def partial_param(
         @functools.wraps(function)
         def _function_partial(*args, **kwargs: Dict[str, Any]) -> torch.Tensor:
             new_args = list(args)
-            for i, layer in enumerate(layer_name):
-                full_param[layer] = new_args[param_num][i]
+            index_counter = 0
+            for layer in layer_name:
+                length_param = full_param[layer].numel()
+                full_param[layer] = new_args[param_num][
+                    index_counter : index_counter + length_param
+                ]
+                index_counter += length_param
             new_args[param_num] = flatten_params(full_param)
             return function(*new_args, **kwargs)
 

@@ -176,7 +176,11 @@ class AttributionTask:
                 If the input is a scalar, the corresponding element should be None.
                 If the input is a tensor, the corresponding element should be the
                 dimension of the tensor.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                to calculate the gradient w.r.t. If None, all the parameters
+                will be used to calcluate the gradient of target func. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
             index (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
@@ -214,7 +218,11 @@ class AttributionTask:
 
         Args:
             flatten (bool): If True, the target function will be flattened.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                the input to calculate the target func. If None, all the parameters
+                will be used as input of the target func. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
             index (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
@@ -255,7 +263,11 @@ class AttributionTask:
                 If the input is a scalar, the corresponding element should be None.
                 If the input is a tensor, the corresponding element should be the
                 dimension of the tensor.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                to calculate the gradient w.r.t. If None, all the parameters
+                will be used to calcluate the gradient of loss. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
             index (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
@@ -292,7 +304,11 @@ class AttributionTask:
 
         Args:
             flatten (bool): If True, the loss function will be flattened.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                the input to calculate the loss. If None, all the parameters
+                will be used as input of the loss func. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
             index (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
@@ -329,9 +345,7 @@ class AttributionTask:
             layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
                 extracted. If None, all the parameters will be returned. This should be
                 a string or a list of strings if multiple layers are needed. The name
-                of layer should follow the key of model.named_parameters(). If not None,
-                the layer_split will be forced to be True because a whole flattened
-                parameter will miss the layer information.
+                of layer should follow the key of model.named_parameters().
             layer_split (Optional[bool]): If True, the parameters will be split
                 into different layers and returned as a list of parameter tensors.
             param_layer_map (Optional[List[int]]): The map from the parameter
@@ -353,20 +367,18 @@ class AttributionTask:
         """
         self._load_checkpoints(index)
 
-        if layer_name:
+        if layer_name is not None:
             named_parameters = {
                 k: self.named_parameters[k]
                 for k in layer_name
                 if k in self.named_parameters
             }
-            # forced to layer_split
-            layer_split = True
         else:
             named_parameters = self.named_parameters
 
         if layer_split:
             if param_layer_map:
-                if len(param_layer_map) == len(
+                if len(param_layer_map) != len(
                     named_parameters,
                 ):
                     error_msg = (

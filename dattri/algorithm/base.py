@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Optional, Tuple
+    from typing import List, Optional, Tuple, Union
 
     import torch
     from torch.utils.data import DataLoader
@@ -72,6 +72,7 @@ class BaseInnerProductAttributor(BaseAttributor):
     def __init__(
         self,
         task: AttributionTask,
+        layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
     ) -> None:
         """Initialize the attributor.
@@ -79,10 +80,16 @@ class BaseInnerProductAttributor(BaseAttributor):
         Args:
             task (AttributionTask): The attribution task. Must be an instance of
                 `AttributionTask`.
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
+                used to calculate the train/test representations. If None, full
+                parameters are used. This should be a string or a list of strings
+                if multiple layers are needed. The name of layer should follow the
+                key of model.named_parameters(). Default: None.
             device (str): The device to run the attributor on.
         """
         self.task = task
         self.device = device
+        self.layer_name = layer_name
         self.full_train_dataloader = None
 
     def _set_test_data(self, dataloader: torch.utils.data.DataLoader) -> None:
@@ -140,8 +147,11 @@ class BaseInnerProductAttributor(BaseAttributor):
                 it is a 2-d dimensional tensor with the shape of
                 (batch_size, num_parameters).
         """
-        model_params, _ = self.task.get_param(ckpt_idx)
-        return self.task.get_grad_target_func()(model_params, data)
+        model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
+        return self.task.get_grad_target_func(
+            layer_name=self.layer_name,
+            index=ckpt_idx,
+        )(model_params, data)
 
     def generate_train_rep(
         self,
@@ -171,8 +181,11 @@ class BaseInnerProductAttributor(BaseAttributor):
                 it is a 2-d dimensional tensor with the shape of
                 (batch_size, num_parameters).
         """
-        model_params, _ = self.task.get_param(ckpt_idx)
-        return self.task.get_grad_loss_func()(model_params, data)
+        model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
+        return self.task.get_grad_loss_func(layer_name=self.layer_name, index=ckpt_idx)(
+            model_params,
+            data,
+        )
 
     def transform_test_rep(  # noqa: PLR6301
         self,

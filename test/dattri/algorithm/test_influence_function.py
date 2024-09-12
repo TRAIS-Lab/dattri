@@ -54,6 +54,16 @@ class TestInfluenceFunction:
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
+        # Explicit w/ layer_name
+        attributor = IFAttributorExplicit(
+            task=task,
+            layer_name=["linear.weight"],
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
         # CG
         attributor = IFAttributorCG(
             task=task,
