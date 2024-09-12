@@ -586,6 +586,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         task: AttributionTask,
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
+        full_data_ratio: float = 1.0,
     ) -> None:
         """Initialize the DataInf inverse Hessian attributor.
 
@@ -597,16 +598,43 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 Adding `regularization * I` to the Hessian matrix, where `I` is the
                 identity matrix. Useful for singular or ill-conditioned matrices.
                 Default is 0.0.
+            full_data_ratio (float): Ratio of full training data used to approximate
+                the empirical Fisher information matrix. Default is 1.0.
         """
         super().__init__(task, device)
         self.transformation_kwargs = {
             "regularization": regularization,
         }
+        self.full_data_ratio = full_data_ratio
+
+    def cache(
+        self,
+        full_train_dataloader: DataLoader,
+    ) -> None:
+        """Cache the dataset and pre-calculate the Arnoldi projector.
+
+        Args:
+            full_train_dataloader (DataLoader): Dataloader with full training data.
+        """
+        self.full_train_dataloader = full_train_dataloader
+        self._cached_train_reps = {}
+        for checkpoint_idx in range(len(self.task.get_checkpoints())):
+            _cached_train_reps_list = []
+            for full_data_ in full_train_dataloader:
+                sample_size = math.ceil(full_data_[0].shape[0] * self.full_data_ratio)
+                sampled_data = tuple(data.to(self.device)[:sample_size].unsqueeze(0)
+                    for data in full_data_)
+                sample_full_data_rep = self.generate_train_rep(
+                    ckpt_idx=checkpoint_idx,
+                    data=sampled_data,
+                )
+                _cached_train_reps_list.append(sample_full_data_rep)
+            self._cached_train_reps[f"ckpt_{checkpoint_idx}"] = torch.cat(
+                _cached_train_reps_list, dim=0)
 
     def transform_test_rep(
         self,
         ckpt_idx: int,
-        full_train_rep: torch.Tensor,
         test_rep: torch.Tensor,
     ) -> torch.Tensor:
         """Calculate the transformation on the test representations.
@@ -614,8 +642,6 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         Args:
             ckpt_idx (int): Index of the model checkpoints. Used for ensembling
                 different trained model checkpoints.
-            full_train_rep (torch.Tensor): The full training data representations.
-                Of shape (train_size,num_parameters)
             test_rep (torch.Tensor): Test representations to be transformed.
                 Typically a 2-d tensor with shape (batch_size, num_parameters).
 
@@ -658,7 +684,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         regularization = self.transformation_kwargs["regularization"]
         # Split layer-wise train and test representations
         query_split = self.get_layer_wise_reps(ckpt_idx, test_rep)
-        full_rep_split = self.get_layer_wise_reps(ckpt_idx, full_train_rep)
+        full_rep_split = self.get_layer_wise_reps(ckpt_idx,
+         self._cached_train_reps[f"ckpt_{ckpt_idx}"])
         layer_cnt = len(full_rep_split)
         ifvps = []
         # Use test batch size as intermediate batch size
@@ -713,124 +740,3 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             query_split.append(query[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
         return query_split
-
-    def attribute(
-        self,
-        train_dataloader: DataLoader,
-        test_dataloader: DataLoader,
-    ) -> torch.Tensor:
-        """Calculate the influence of the training set on the test set.
-
-        Args:
-            train_dataloader (DataLoader): The dataloader for
-                training samples to calculate the influence. It can be a subset
-                of the full training set if `cache` is called before. A subset
-                means that only a part of the training set's influence is calculated.
-                The dataloader should not be shuffled.
-            test_dataloader (DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not
-                be shuffled.
-
-        Returns:
-            torch.Tensor: The influence of the training set on the test set, with
-                the shape of (num_train_samples, num_test_samples).
-
-        """
-        if self.full_train_dataloader is None:
-            self.full_train_dataloader = train_dataloader
-            warnings.warn(
-                "The full training data loader was NOT cached. \
-                           Treating the train_dataloader as the full training \
-                           data loader.",
-                stacklevel=1,
-            )
-
-        _check_shuffle(train_dataloader)
-        _check_shuffle(test_dataloader)
-
-        tda_output = torch.zeros(
-            size=(len(train_dataloader.sampler), len(test_dataloader.sampler)),
-            device=self.device,
-        )
-
-        # TODO: sometimes the train dataloader could be swapped with the test dataloader
-        # prepare a checkpoint-specific seed
-
-        for checkpoint_idx in range(len(self.task.get_checkpoints())):
-            # set index to current one
-            tda_output *= checkpoint_idx
-            # calculate gradient with respect to full_data, do it only once
-            full_train_rep = 0
-            for full_data_ in self.full_train_dataloader:
-                full_data = tuple(data.to(self.device).unsqueeze(0)
-                             for data in full_data_)
-                full_train_rep = self.generate_train_rep(
-                    ckpt_idx=checkpoint_idx,
-                    data=full_data,
-                )
-
-            for train_batch_idx, train_batch_data_ in enumerate(
-                tqdm(
-                    train_dataloader,
-                    desc="calculating gradient of training set...",
-                    leave=False,
-                ),
-            ):
-                # move to device
-                train_batch_data = tuple(
-                    data.to(self.device).unsqueeze(0) for data in train_batch_data_
-                )
-                # get initial representations of train data
-                train_batch_rep = self.generate_train_rep(
-                    ckpt_idx=checkpoint_idx,
-                    data=train_batch_data,
-                )
-                # transform the train representations
-                train_batch_rep = self.transform_train_rep(
-                    ckpt_idx=checkpoint_idx,
-                    train_rep=train_batch_rep,
-                )
-
-                for test_batch_idx, test_batch_data_ in enumerate(
-                    tqdm(
-                        test_dataloader,
-                        desc="calculating gradient of training set...",
-                        leave=False,
-                    ),
-                ):
-                    # move to device
-                    test_batch_data = tuple(
-                        data.to(self.device).unsqueeze(0) for data in test_batch_data_
-                    )
-                    # get initial representations of test data
-                    test_batch_rep = self.generate_test_rep(
-                        ckpt_idx=checkpoint_idx,
-                        data=test_batch_data,
-                    )
-                    # transform the test representations
-                    test_batch_rep = self.transform_test_rep(
-                        ckpt_idx=checkpoint_idx,
-                        test_rep=test_batch_rep,
-                        full_train_rep=full_train_rep,
-                    )
-
-                    # results position based on batch info
-                    row_st = train_batch_idx * train_dataloader.batch_size
-                    row_ed = min(
-                        (train_batch_idx + 1) * train_dataloader.batch_size,
-                        len(train_dataloader.sampler),
-                    )
-
-                    col_st = test_batch_idx * test_dataloader.batch_size
-                    col_ed = min(
-                        (test_batch_idx + 1) * test_dataloader.batch_size,
-                        len(test_dataloader.sampler),
-                    )
-
-                    tda_output[row_st:row_ed, col_st:col_ed] += (
-                        train_batch_rep @ test_batch_rep.T
-                    )
-
-            tda_output /= checkpoint_idx + 1
-
-        return tda_output
