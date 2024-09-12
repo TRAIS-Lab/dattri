@@ -152,24 +152,31 @@ class TestArnoldiProjector(unittest.TestCase):
             return torch.sin(x).sum()
 
         x = torch.randn(self.feature_dim)
-
+        # set reg large enough to have some positive eigvals
+        reg = 1.0
         self.projector = ArnoldiProjector(
             self.feature_dim,
             self.proj_dim,
             target,
             x,
+            regularization=reg,
         )
 
-        vec = torch.randn(self.vec_dim, self.feature_dim)
-        projected_grads = self.projector.project(vec)
+        vec1 = torch.randn(self.vec_dim, self.feature_dim)
+        vec2 = torch.randn(self.vec_dim, self.feature_dim)
+        projected_grads1 = self.projector.project(vec1)
+        projected_grads2 = self.projector.project(vec2)
 
+        # test the closeness of inner product only
         assert torch.allclose(
-            projected_grads,
-            (torch.diag(-1 / x.sin()) @ vec.T).T,
+            (projected_grads1 @ projected_grads2.T),
+            (vec1 @ (torch.diag(1 / (reg - x.sin())))) @ vec2.T,
             rtol=1e-01,
             atol=1e-04,
         )
-        assert projected_grads.shape == (self.vec_dim, self.feature_dim)
+        # test the shape
+        assert projected_grads1.shape == (self.vec_dim, self.feature_dim)
+        assert projected_grads2.shape == (self.vec_dim, self.feature_dim)
 
 
 class SmallModel(nn.Module):
@@ -535,7 +542,7 @@ class TestGetProjection(unittest.TestCase):
 
         result = projector(vec)
 
-        assert result.shape == (vec_dim, feature_dim)
+        assert result.shape == (vec_dim, proj_dim)
 
 
 if __name__ == "__main__":

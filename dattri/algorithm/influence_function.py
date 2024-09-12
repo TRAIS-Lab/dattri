@@ -480,6 +480,33 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
 
         return self.arnoldi_projectors[ckpt_idx](test_rep).detach()
 
+    def transform_train_rep(
+        self,
+        ckpt_idx: int,
+        train_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Transform the train representations via Arnoldi projection.
+
+        Args:
+            ckpt_idx (int): Index of the model checkpoints. Used for ensembling
+                different trained model checkpoints.
+            train_rep (torch.Tensor): Train representations to be transformed.
+                A 2-d tensor with shape (batch_size, num_params).
+
+        Returns:
+            torch.Tensor: Transformed train representations. A 2-d tensor with
+                shape (batch_size, proj_dim).
+
+        Raises:
+            ValueError: If the Arnoldi projector has not been cached.
+        """
+        if not hasattr(self, "arnoldi_projectors"):
+            error_msg = "The Arnoldi projector has not been cached.\
+                         Please call cache() first."
+            raise ValueError(error_msg)
+
+        return self.arnoldi_projectors[ckpt_idx](train_rep).detach()
+
 
 class IFAttributorLiSSA(BaseInnerProductAttributor):
     """The inner product attributor with LiSSA inverse hessian transformation."""
