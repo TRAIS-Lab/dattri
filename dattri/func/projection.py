@@ -23,6 +23,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Dict, List, Union
 
+import warnings
+
 import numpy as np
 import torch
 from torch import Tensor
@@ -753,6 +755,18 @@ class ArnoldiProjector(AbstractProjector):
         # proj dim is the value of k
         self.eigvals, self.eigvecs = self._distill(appr_mat, proj, self.proj_dim)
 
+        # prevent from negative eigvals
+        if self.proj_dim > torch.sum(self.eigvals > 0):
+            # adjust proj_dim
+            self.proj_dim = torch.sum(self.eigvals > 0).item()
+            warnings.warn(
+                "Encountered many negative eigenvalues and `proj_dim` is greater"
+                " than the number of positive eigenvalues. Automatically adjusting"
+                " `proj_dim` to the number of positive eigenvalues. Please consider"
+                " increasing `regularization` to reduce negative eigenvalues.",
+                stacklevel=1,
+            )
+
     def project(self, features: Union[dict, Tensor]) -> Tensor:
         """Performs the random projection on the feature matrix.
 
@@ -770,7 +784,6 @@ class ArnoldiProjector(AbstractProjector):
         if self.eigvals is None or self.eigvecs is None:
             self.get_eigenspace()
 
-        self.eigvals = (self.eigvals).to(torch.complex64)
         return features @ self.eigvecs.T * (1.0 / torch.sqrt(self.eigvals.unsqueeze(0)))
 
     def free_memory(self) -> None:

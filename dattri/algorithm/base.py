@@ -343,7 +343,7 @@ class BaseInnerProductAttributor(BaseAttributor):
 
                     tda_output[row_st:row_ed, col_st:col_ed] += (
                         train_batch_rep @ test_batch_rep.T
-                    ).to(torch.float)
+                    )
 
             tda_output /= checkpoint_idx + 1
 

@@ -152,12 +152,14 @@ class TestArnoldiProjector(unittest.TestCase):
             return torch.sin(x).sum()
 
         x = torch.randn(self.feature_dim)
-
+        # set reg large enough to have some positive eigvals
+        reg = 1.0
         self.projector = ArnoldiProjector(
             self.feature_dim,
             self.proj_dim,
             target,
             x,
+            regularization=reg,
         )
 
         vec1 = torch.randn(self.vec_dim, self.feature_dim)
@@ -167,8 +169,8 @@ class TestArnoldiProjector(unittest.TestCase):
 
         # test the closeness of inner product only
         assert torch.allclose(
-            (projected_grads1 @ projected_grads2.T).to(torch.float),
-            (vec1 @ torch.diag(-1 / x.sin())) @ vec2.T,
+            (projected_grads1 @ projected_grads2.T),
+            (vec1 @ (torch.diag(1 / (reg - x.sin())))) @ vec2.T,
             rtol=1e-01,
             atol=1e-04,
         )
