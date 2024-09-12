@@ -476,31 +476,28 @@ A 2-d tensor with shape (batch_size, num_params).</p></li>
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.transform_train_rep">
 <span class="sig-name descname"><span class="pre">transform_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.transform_train_rep" title="Link to this definition">¶</a></dt>
-<dd><p>Transform the train representations.</p>
-<p>Inner product attributor calculates the inner product between the (transformed)
-train representations and test representations. This function calculates the
-transformation of the train representations. For example, the transformation
-could be a dimension reduction of the train representations.</p>
+<dd><p>Transform the train representations via Arnoldi projection.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model checkpoints. This index
-is used for ensembling different trained model checkpoints.</p></li>
-<li><p><strong>train_rep</strong> (<em>torch.Tensor</em>) – The train representations to be transformed.
-Typically, it is a 2-d dimensional tensor with the shape of
-(batch_size, num_parameters).</p></li>
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – Index of the model checkpoints. Used for ensembling
+different trained model checkpoints.</p></li>
+<li><p><strong>train_rep</strong> (<em>torch.Tensor</em>) – Train representations to be transformed.
+A 2-d tensor with shape (batch_size, num_params).</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The transformed train representations. Typically,</dt><dd><p>it is a 2-d dimensional tensor with the shape of
-(batch_size, transformed_dimension).</p>
+<dt>Transformed train representations. A 2-d tensor with</dt><dd><p>shape (batch_size, proj_dim).</p>
 </dd>
 </dl>
 </p>
 </dd>
 <dt class="field-odd">Return type<span class="colon">:</span></dt>
 <dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the Arnoldi projector has not been cached.</p>
 </dd>
 </dl>
 </dd></dl>
