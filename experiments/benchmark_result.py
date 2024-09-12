@@ -206,7 +206,7 @@ if __name__ == "__main__":
         model.load_state_dict(torch.load(model_details["models_full"][0]))
 
         task = AttributionTask(
-            model=model_details["model"].to(args.device),
+            model=model,
             loss_func=loss_rps,
             checkpoints=model_details["models_full"][0],
         )

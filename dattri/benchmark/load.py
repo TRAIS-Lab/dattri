@@ -23,6 +23,12 @@ from dattri.benchmark.datasets.cifar2 import (
     loss_cifar2_resnet9,
     train_cifar2_resnet9,
 )
+from dattri.benchmark.datasets.maestro import (
+    create_maestro_datasets,
+    create_musictransformer_model,
+    loss_maestro_musictransformer,
+    train_maestro_musictransformer,
+)
 from dattri.benchmark.datasets.mnist import (
     create_lr_model,
     create_mlp_model,
@@ -67,6 +73,7 @@ SUPPORTED_DATASETS = {
     "mnist": create_mnist_dataset,
     "cifar2": create_cifar2_dataset,
     "shakespeare": create_shakespeare_dataset,
+    "maestro": partial(create_maestro_datasets, generated_music=True),
 }
 
 LOSS_MAP = {
@@ -74,6 +81,7 @@ LOSS_MAP = {
     "mnist_lr": loss_mnist_lr,
     "cifar2_resnet9": loss_cifar2_resnet9,
     "shakespeare_nanogpt": None,
+    "maestro_musictransformer": loss_maestro_musictransformer,
 }
 
 TRAIN_FUNC_MAP = {
@@ -81,6 +89,7 @@ TRAIN_FUNC_MAP = {
     "mnist_lr": train_mnist_lr,
     "cifar2_resnet9": train_cifar2_resnet9,
     "shakespeare_nanogpt": None,
+    "maestro_musictransformer": train_maestro_musictransformer,
 }
 
 MODEL_MAP = {
@@ -88,6 +97,7 @@ MODEL_MAP = {
     "mnist_lr": partial(create_lr_model, "mnist"),
     "cifar2_resnet9": create_resnet9_model,
     "shakespeare_nanogpt": None,
+    "maestro_musictransformer": create_musictransformer_model,
 }
 
 
