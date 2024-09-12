@@ -586,7 +586,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         task: AttributionTask,
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
-        full_data_ratio: float = 1.0,
+        fim_estimate_data_ratio: float = 1.0,
     ) -> None:
         """Initialize the DataInf inverse Hessian attributor.
 
@@ -598,14 +598,12 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 Adding `regularization * I` to the Hessian matrix, where `I` is the
                 identity matrix. Useful for singular or ill-conditioned matrices.
                 Default is 0.0.
-            full_data_ratio (float): Ratio of full training data used to approximate
-                the empirical Fisher information matrix. Default is 1.0.
+            fim_estimate_data_ratio (float): Ratio of full training data used to
+                approximate the empirical Fisher information matrix. Default is 1.0.
         """
         super().__init__(task, device)
-        self.transformation_kwargs = {
-            "regularization": regularization,
-        }
-        self.full_data_ratio = full_data_ratio
+        self.regularization = regularization
+        self.fim_estimate_data_ratio = fim_estimate_data_ratio
 
     def cache(
         self,
@@ -618,18 +616,23 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         """
         self.full_train_dataloader = full_train_dataloader
         self._cached_train_reps = {}
+
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
             _cached_train_reps_list = []
-            for full_data_ in full_train_dataloader:
-                sample_size = math.ceil(full_data_[0].shape[0] * self.full_data_ratio)
-                sampled_data = tuple(data.to(self.device)[:sample_size].unsqueeze(0)
-                    for data in full_data_)
-                sample_full_data_rep = self.generate_train_rep(
+            iter_number = math.ceil(len(full_train_dataloader)
+                * self.fim_estimate_data_ratio)
+            sampled_data_list = []
+            for _ in range(iter_number):
+                sampled_data_list.append(next(iter(full_train_dataloader)))  # noqa: PERF401
+            for sampled_data_ in sampled_data_list:
+                sampled_data = tuple(data.to(self.device).unsqueeze(0)
+                    for data in sampled_data_)
+                sampled_data_rep = self.generate_train_rep(
                     ckpt_idx=checkpoint_idx,
                     data=sampled_data,
                 )
-                _cached_train_reps_list.append(sample_full_data_rep)
-            self._cached_train_reps[f"ckpt_{checkpoint_idx}"] = torch.cat(
+                _cached_train_reps_list.append(sampled_data_rep)
+            self._cached_train_reps[checkpoint_idx] = torch.cat(
                 _cached_train_reps_list, dim=0)
 
     def transform_test_rep(
@@ -655,7 +658,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             grad: torch.Tensor,
             regularization: float,
         ) -> torch.Tensor:
-            """Transformation of a single test representation.
+            """Transformation of a single test representation for a single layer.
 
             For any test representation v and training gradient grad, along
             with regularization term r, DataInf gives:
@@ -681,39 +684,40 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
             return (v - coef @ grad.T) / regularization
 
-        regularization = self.transformation_kwargs["regularization"]
+        regularization = self.regularization
         # Split layer-wise train and test representations
-        query_split = self.get_layer_wise_reps(ckpt_idx, test_rep)
-        full_rep_split = self.get_layer_wise_reps(ckpt_idx,
-         self._cached_train_reps[f"ckpt_{ckpt_idx}"])
-        layer_cnt = len(full_rep_split)
-        ifvps = []
+        test_rep_layers = self._get_layer_wise_reps(ckpt_idx, test_rep)
+        cached_train_rep_layers = self._get_layer_wise_reps(ckpt_idx,
+            self._cached_train_reps[ckpt_idx])
+        layer_cnt = len(cached_train_rep_layers)
+        transformed_test_rep_layers = []
         # Use test batch size as intermediate batch size
         # Peak memory usage: max(train_batch_size,test_batch_size)*test_batch_size*p
         batch_size = test_rep.shape[0]
         for layer in range(layer_cnt):
-            grad_layer = full_rep_split[layer]
+            grad_layer = cached_train_rep_layers[layer]
             # length = full train data size
             length = grad_layer.shape[0]
             # Split gradients into smaller chunks
             grad_batches = grad_layer.split(batch_size, dim=0)
-            running_contributions = 0
+            running_transformation = torch.zeros(test_rep_layers[layer].shape,
+                device=test_rep_layers[layer].device)
             for batch in grad_batches:
                 reg = 0.1 if regularization is None else regularization
                 contribution = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: _transform_single_test_rep(
-                    query_split[layer],
+                    test_rep_layers[layer],
                     grad,
                     reg,
                 ),
                 )(batch)
                 # Sum up the contributions by chunk and average at the end
-                running_contributions += contribution.sum(dim=0)
-            running_contributions /= length
-            ifvps.append(running_contributions)
-        return torch.cat(ifvps, dim=1)
+                running_transformation += contribution.sum(dim=0)
+            running_transformation /= length
+            transformed_test_rep_layers.append(running_transformation)
+        return torch.cat(transformed_test_rep_layers, dim=1)
 
-    def get_layer_wise_reps(self,
+    def _get_layer_wise_reps(self,
         ckpt_idx: int,
         query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
         """Split a representation into layer-wise representations.
@@ -735,8 +739,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         for idx, layer_index in enumerate(param_layer_map):
             split_index[layer_index] += model_params[idx].shape[0]
         current_idx = 0
-        query_split = []
+        query_layers = []
         for i in range(len(split_index)):
-            query_split.append(query[:, current_idx : split_index[i] + current_idx])
+            query_layers.append(query[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
-        return query_split
+        return query_layers
