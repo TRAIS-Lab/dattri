@@ -32,6 +32,7 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_lr,
     train_mnist_mlp,
 )
+from dattri.benchmark.datasets.shakespeare_char import create_shakespeare_dataset
 from dattri.benchmark.utils import SubsetSampler
 
 REPO_URL = "https://huggingface.co/datasets/trais-lab/dattri-benchmark/resolve/main/"
@@ -65,24 +66,28 @@ def generate_url_map(identifier: str) -> Dict[str, Any]:
 SUPPORTED_DATASETS = {
     "mnist": create_mnist_dataset,
     "cifar2": create_cifar2_dataset,
+    "shakespeare": create_shakespeare_dataset,
 }
 
 LOSS_MAP = {
     "mnist_mlp": loss_mnist_mlp,
     "mnist_lr": loss_mnist_lr,
     "cifar2_resnet9": loss_cifar2_resnet9,
+    "shakespeare_nanogpt": None,
 }
 
 TRAIN_FUNC_MAP = {
     "mnist_mlp": train_mnist_mlp,
     "mnist_lr": train_mnist_lr,
     "cifar2_resnet9": train_cifar2_resnet9,
+    "shakespeare_nanogpt": None,
 }
 
 MODEL_MAP = {
     "mnist_mlp": partial(create_mlp_model, "mnist"),
     "mnist_lr": partial(create_lr_model, "mnist"),
     "cifar2_resnet9": create_resnet9_model,
+    "shakespeare_nanogpt": None,
 }
 
 
@@ -140,7 +145,7 @@ def _download(
         raise ValueError(error_msg)
 
 
-def load_benchmark(
+def load_benchmark(  # noqa:PLR0914
     model: str,
     dataset: str,
     metric: str,
@@ -205,7 +210,7 @@ def load_benchmark(
     url_map = generate_url_map(identifier)
     download_path = pathlib.Path(download_path).expanduser()
 
-    if not (download_path / identifier).exists() or redownload:
+    if not (download_path / "benchmark" / identifier).exists() or redownload:
         for key in ["models_full", "models_half"]:
             _download(
                 url_map[key],
@@ -251,9 +256,22 @@ def load_benchmark(
         / "model_weights_0.pt"
         for i in range(models_half_count)
     ]
-    train_dataset, test_dataset = SUPPORTED_DATASETS[dataset](download_path / "dataset")
-    loss_func = target_func = LOSS_MAP[identifier]
-    train_func = TRAIN_FUNC_MAP[identifier]
+    if SUPPORTED_DATASETS[dataset] is not None:
+        train_dataset, test_dataset = SUPPORTED_DATASETS[dataset](
+            download_path / "dataset",
+        )
+    else:
+        train_dataset = test_dataset = None
+
+    if LOSS_MAP[identifier] is not None:
+        loss_func = target_func = LOSS_MAP[identifier]
+    else:
+        loss_func = target_func = None
+
+    if TRAIN_FUNC_MAP[identifier] is not None:
+        train_func = TRAIN_FUNC_MAP[identifier]
+    else:
+        train_func = None
 
     target_values = torch.load(
         download_path
@@ -266,8 +284,11 @@ def load_benchmark(
         download_path / "benchmark" / identifier / metric / f"indices_{metric}.pt",
     )
 
+    if MODEL_MAP[identifier] is not None:
+        model = MODEL_MAP[identifier]().eval()
+
     return {
-        "model": MODEL_MAP[identifier]().eval(),
+        "model": model,
         "models_full": models_full_list,
         "models_half": models_half_list,
         "train_dataset": train_dataset,

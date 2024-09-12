@@ -2,7 +2,7 @@
 
 This folder is used to reproduce the benchmark results. If you want to find some code snippets, You may find some easier and clearer examples in `/example` folder.
 
-## Usage
+## CIFAR / Mnist
 The `benchmark_result.py` is designed to be an integrated script to run the experiments in one line. The usage of this script is as following
 ```
 usage: benchmark_result.py [-h] [--dataset {mnist,cifar2}] [--model {lr,mlp,resnet9}] [--method {if-explicit,if-cg,if-lissa,if-arnoldi,TRAK-1,TRAK-10,TRAK-50,TracIn,Grad-Dot,Grad-Cos,RPS}]
@@ -28,4 +28,29 @@ The script will search for a hyperparameter space of the TDA method (usually a s
 
 ```
 if-cg RESULT: {'regularization': 0.1, 'max_iter': 10} lds: tensor(0.7670)
+```
+
+## ShakeSpeare + nanoGPT
+Shakespeare dataset needs to be download. Once you install `dattri`, you may download it in one line.
+```bash
+dattri_retrain_nanogpt --dataset shakespeare_char --only_download_dataset
+```
+Then you may run the script `benchmark_result_nanogpt` designed for nanogpt.
+```
+usage: benchmark_result_nanogpt.py [-h] [--method {TRAK-1,TRAK-10,TRAK-50,TracIn,Grad-Dot,Grad-Cos}] [--device DEVICE]
+
+options:
+  -h, --help            show this help message and exit
+  --method {TRAK-1,TRAK-10,TRAK-50,TracIn,Grad-Dot,Grad-Cos}
+                        The TDA method to benchmark.
+  --device DEVICE
+```
+
+For example,
+```bash
+python benchmark_result_nanogpt --method TRAK-10 --device cuda
+```
+The result will be like
+```bash
+TRAK-10 RESULT: {'proj_dim': 2048, 'device': 'cuda', 'use_half_precision': False} lds: tensor(0.1419)
 ```
