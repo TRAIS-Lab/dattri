@@ -26,7 +26,7 @@ import warnings
 from functools import wraps
 
 import torch
-from torch.func import grad, vmap
+from torch.func import grad
 
 
 def ifvp_explicit(
