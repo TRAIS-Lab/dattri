@@ -202,11 +202,8 @@ if __name__ == "__main__":
             loss_fn = nn.CrossEntropyLoss()
             return loss_fn(pre_activation_list, label_list)
 
-        model = model_details["model"].to(args.device)
-        model.load_state_dict(torch.load(model_details["models_full"][0]))
-
         task = AttributionTask(
-            model=model,
+            model=model_details["model"].to(args.device),
             loss_func=loss_rps,
             checkpoints=model_details["models_full"][0],
         )

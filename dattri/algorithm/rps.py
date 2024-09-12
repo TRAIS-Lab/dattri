@@ -61,6 +61,9 @@ class RPSAttributor(BaseAttributor):
         self.task = task
         self.target_func = task.get_target_func(flatten=False)
         self.model = task.get_model()
+        self.model.load_state_dict(
+            torch.load(task.get_checkpoints()[0]),
+        )  # load the model from the first checkpoint
         self.final_linear_layer_name = final_linear_layer_name
         self.nomralize_preactivate = nomralize_preactivate
         self.l2_strength = l2_strength
