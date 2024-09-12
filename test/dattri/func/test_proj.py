@@ -540,7 +540,7 @@ class TestGetProjection(unittest.TestCase):
 
         result = projector(vec)
 
-        assert result.shape == (vec_dim, feature_dim)
+        assert result.shape == (vec_dim, proj_dim)
 
 
 if __name__ == "__main__":
