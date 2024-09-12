@@ -160,16 +160,21 @@ class TestArnoldiProjector(unittest.TestCase):
             x,
         )
 
-        vec = torch.randn(self.vec_dim, self.feature_dim)
-        projected_grads = self.projector.project(vec)
+        vec1 = torch.randn(self.vec_dim, self.feature_dim)
+        vec2 = torch.randn(self.vec_dim, self.feature_dim)
+        projected_grads1 = self.projector.project(vec1)
+        projected_grads2 = self.projector.project(vec2)
 
+        # test the closeness of inner product only
         assert torch.allclose(
-            projected_grads,
-            (torch.diag(-1 / x.sin()) @ vec.T).T,
+            (projected_grads1 @ projected_grads2.T).to(torch.float),
+            (vec1 @ torch.diag(-1 / x.sin())) @ vec2.T,
             rtol=1e-01,
             atol=1e-04,
         )
-        assert projected_grads.shape == (self.vec_dim, self.feature_dim)
+        # test the shape
+        assert projected_grads1.shape == (self.vec_dim, self.feature_dim)
+        assert projected_grads2.shape == (self.vec_dim, self.feature_dim)
 
 
 class SmallModel(nn.Module):

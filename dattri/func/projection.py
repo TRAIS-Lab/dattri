@@ -769,6 +769,8 @@ class ArnoldiProjector(AbstractProjector):
         # have not compute the eigen space yet
         if self.eigvals is None or self.eigvecs is None:
             self.get_eigenspace()
+
+        self.eigvals = (self.eigvals).to(torch.complex64)
         return features @ self.eigvecs.T * (1.0 / torch.sqrt(self.eigvals.unsqueeze(0)))
 
     def free_memory(self) -> None:
