@@ -50,7 +50,7 @@ git clone https://github.com/TRAIS-Lab/dattri
 pip install -e .[all]
 ```
 
-### Apply Data Attribution methods on PyTorch Models
+### Apply data attribution methods on PyTorch models
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
 1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
