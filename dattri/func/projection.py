@@ -756,9 +756,9 @@ class ArnoldiProjector(AbstractProjector):
         self.eigvals, self.eigvecs = self._distill(appr_mat, proj, self.proj_dim)
 
         # prevent from negative eigvals
-        if self.proj_dim > torch.sum(self.eigvals > 0):
+        if self.proj_dim > torch.sum(self.eigvals > self.tol**2):
             # adjust proj_dim
-            self.proj_dim = torch.sum(self.eigvals > 0).item()
+            self.proj_dim = torch.sum(self.eigvals > self.tol**2).item()
             warnings.warn(
                 "Encountered many negative eigenvalues and `proj_dim` is greater"
                 " than the number of positive eigenvalues. Automatically adjusting"
