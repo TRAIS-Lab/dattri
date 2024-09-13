@@ -3,13 +3,17 @@
 # ruff: noqa: S306, S602, EXE002, S404, PLW1510
 
 import argparse
+import logging
 import os
 import subprocess
 import tempfile
 from pathlib import Path
 
+# Configure logging
+logging.basicConfig(level=logging.INFO)
 
-def retrain(
+
+def retrain(  # noqa:PLR0912
     seed: int,
     subset_ratio: float,
     config_path: str,
@@ -17,6 +21,7 @@ def retrain(
     dataset_file: str,
     save_path: str,
     partition: list,
+    only_download: bool = False,
 ) -> None:
     """Retrains the nanoGPT model multiple times.
 
@@ -28,6 +33,7 @@ def retrain(
         dataset_file (str): Name of the training data file.
         save_path (str): Directory where each model output is saved.
         partition (list): Range of data subsets, [start_id, end_id, total_subsets].
+        only_download (bool): Whether to only download the dataset.
 
     Raises:
         ValueError: If subset_ratio is negative or greater than 1.
@@ -39,6 +45,11 @@ def retrain(
         else:
             command = f"python {Path(dataset_path) / 'prepare.py'}"
         subprocess.run(command, shell=True)
+
+    if only_download:
+        info_msg = f"Dataset is downloaded to {dataset_path}. Exiting."
+        logging.info(info_msg)
+        return
 
     import dattri
 
@@ -117,6 +128,11 @@ def main() -> None:
         default=0.5,
         help="Subset ratio of the training data.",
     )
+    parser.add_argument(
+        "--only_download_dataset",
+        action="store_true",
+        help="Only download the dataset.",
+    )
 
     args = parser.parse_args()
 
@@ -137,6 +153,7 @@ def main() -> None:
         args.data_file,
         args.save_path,
         args.partition,
+        args.only_download_dataset,
     )
 
 

@@ -60,6 +60,7 @@ class RPSAttributor(BaseAttributor):
         self.task = task
         self.target_func = task.get_target_func(flatten=False)
         self.model = task.get_model()
+        self.task.get_param(index=0)  # to load the checkpoint
         self.final_linear_layer_name = final_linear_layer_name
         self.normalize_preactivate = normalize_preactivate
         self.l2_strength = l2_strength
