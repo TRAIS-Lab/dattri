@@ -58,7 +58,7 @@ if __name__ == "__main__":
     )
 
     model = train_mnist_lr(train_loader_full)
-    model.cuda()
+    model.to(args.device)
     model.eval()
 
     def f(params, data_target_pair):
@@ -88,8 +88,8 @@ if __name__ == "__main__":
     for test_batch in test_loader:
         for i in range(len(test_batch[0])):
             i = i
-            x = test_batch[0][i].unsqueeze(0).cuda()
-            label = test_batch[1][i].cuda()
+            x = test_batch[0][i].unsqueeze(0).to(args.device)
+            label = test_batch[1][i].to(args.device)
             output = model(x)
             pred = output.argmax(dim=1, keepdim=True)
 
@@ -110,7 +110,6 @@ if __name__ == "__main__":
     test_dataset = TensorDataset(correct_x, correct_label)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
     score = score[:, correct_index]
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Compute brittleness
     start_time = time.time()
@@ -137,7 +136,7 @@ if __name__ == "__main__":
         scores=score,
         train_func=lambda loader: train_mnist_lr(loader),
         eval_func=eval_func,
-        device=device,
+        device=args.device,
         search_space=[20, 40, 60, 80, 100, 120, 140, 180],
     )
     if smallest_k is not None:
