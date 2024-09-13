@@ -48,7 +48,7 @@ options:
 
 For example,
 ```bash
-python benchmark_result_nanogpt --method TRAK-10 --device cuda
+python benchmark_result_nanogpt.py --method TRAK-10 --device cuda
 ```
 The result will be like
 ```bash
