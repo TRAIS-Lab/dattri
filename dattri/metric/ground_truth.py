@@ -86,7 +86,7 @@ def calculate_loo_ground_truth(
         values = target_func(model, test_dataloader)
         loo_results[dir_cnt, :] = values
         # Find excluded data index from the saved path,
-        # please refer to retrain_loo in dattri/model_utils/retrain.py for details.
+        # please refer to retrain_loo in dattri/model_util/retrain.py for details.
         index = _dir_to_index(model_file)
         model_indices[dir_cnt] = int(index)
     return loo_results, model_indices

@@ -1,3 +1,3 @@
 Dropout Ensemble
 =======
-.. autofunction:: dattri.model_utils.dropout.activate_dropout
+.. autofunction:: dattri.model_util.dropout.activate_dropout

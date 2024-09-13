@@ -17,7 +17,7 @@ from dattri.algorithm.influence_function import (
 from dattri.algorithm.tracin import TracInAttributor
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.algorithm.rps import RPSAttributor
-from dattri.metrics.metrics import lds, loo_corr
+from dattri.metric import lds, loo_corr
 from dattri.benchmark.load import load_benchmark
 from dattri.task import AttributionTask
 

@@ -1,6 +1,6 @@
 from dattri.benchmark.load import load_benchmark
 from dattri.task import AttributionTask
-from dattri.metrics.metrics import lds
+from dattri.metric import lds
 from dattri.algorithm.influence_function import IFAttributorCG
 from torch.utils.data import DataLoader
 import torch.nn as nn

@@ -16,7 +16,7 @@ from dattri.algorithm.influence_function import\
     IFAttributorArnoldi
 from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
 from dattri.benchmark.utils import SubsetSampler
-from dattri.metrics.britteness import brittleness
+from dattri.metric import brittleness
 from dattri.task import AttributionTask
 
 ATTRIBUTOR_MAP = {

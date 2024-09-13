@@ -9,7 +9,7 @@ from dattri.algorithm.tracin import TracInAttributor
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.load import load_benchmark
 from dattri.benchmark.models.nanoGPT.model import GPT, GPTConfig
-from dattri.metrics.metrics import lds
+from dattri.metric import lds
 from dattri.task import AttributionTask
 
 data_dir = Path(dattri.__file__).parent / Path(

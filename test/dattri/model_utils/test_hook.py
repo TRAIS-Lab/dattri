@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.model_utils.hook import get_final_layer_io
+from dattri.model_util.hook import get_final_layer_io
 
 
 class MyNet(nn.Module):
