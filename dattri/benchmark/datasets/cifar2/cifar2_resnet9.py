@@ -18,6 +18,7 @@ def train_cifar2_resnet9(
     dataloader: DataLoader,
     seed: int = 0,
     device: str = "cpu",
+    num_classes: int = 2,
     num_epochs: int = 10,
 ) -> ResNet9:
     """Train a ResNet9 on the CIFAR-2 dataset.
@@ -26,6 +27,7 @@ def train_cifar2_resnet9(
         dataloader (DataLoader): The dataloader for the CIFAR-2 dataset.
         seed (int): The seed for training the model.
         device (str): The device to train the model on.
+        num_classes (int): The number of classes in the dataset.
         num_epochs (int): The number of training epoch.
 
     Returns:
@@ -35,7 +37,7 @@ def train_cifar2_resnet9(
     np.random.seed(seed)  # noqa: NPY002
     random.seed(seed)
 
-    model = create_resnet9_model()
+    model = create_resnet9_model(num_classes=num_classes)
     model.train()
     model.to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
@@ -92,10 +94,13 @@ def loss_cifar2_resnet9(
     return torch.cat(loss_list)
 
 
-def create_resnet9_model() -> ResNet9:
+def create_resnet9_model(num_classes: int = 2) -> ResNet9:
     """Create a ResNet9 model.
+
+    Args:
+        num_classes (int): The number of classes in the dataset.
 
     Returns:
         The ResNet9 model.
     """
-    return ResNet9(dropout_rate=0.0)
+    return ResNet9(dropout_rate=0.0, num_classes=num_classes)

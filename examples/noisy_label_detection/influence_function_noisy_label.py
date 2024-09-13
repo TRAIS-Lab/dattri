@@ -1,7 +1,6 @@
 """This example shows how to use the IF to detect noisy labels in the MNIST."""
 
 import argparse
-import time
 from functools import partial
 
 import torch
@@ -16,6 +15,7 @@ from dattri.algorithm.influence_function import (
 )
 from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
 from dattri.benchmark.utils import SubsetSampler, flip_label
+from dattri.metrics.metrics import mislabel_detection_auc
 from dattri.task import AttributionTask
 
 ATTRIBUTOR_MAP = {
@@ -27,43 +27,35 @@ ATTRIBUTOR_MAP = {
 }
 
 
-def get_mnist_indices_and_adjust_labels(dataset):
-    dataset.targets, flip_index = flip_label(dataset.targets, p=0.1)
-    return flip_index
-
-
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", type=str, default="explicit")
     parser.add_argument("--device", type=str, default="cuda")
     args = parser.parse_args()
 
+    # load the dataset, we only need the train dataset
     dataset, _ = create_mnist_dataset("./data")
 
-    flip_index = get_mnist_indices_and_adjust_labels(dataset)
+    # flip 10% of the first 1000 data points
+    dataset.targets[0:1000], flip_index = flip_label(dataset.targets[0:1000], p=0.1)
 
-    # for model training
+    # for model training, batch size is 64
     train_loader_full = torch.utils.data.DataLoader(
         dataset,
         batch_size=64,
         sampler=SubsetSampler(range(1000)),
     )
+
     # training samples for attribution
+    # batch size is 1000 to speed up the process
     train_loader = torch.utils.data.DataLoader(
         dataset,
-        batch_size=500,
-        sampler=SubsetSampler(range(1000)),
-    )
-    # test samples for attribution
-    test_loader = torch.utils.data.DataLoader(
-        dataset,
-        batch_size=500,
+        batch_size=1000,
         sampler=SubsetSampler(range(1000)),
     )
 
     model = train_mnist_lr(train_loader_full)
-    model.cuda()
+    model.to(args.device)
     model.eval()
 
     def f(params, data_target_pair):
@@ -72,26 +64,19 @@ if __name__ == "__main__":
         yhat = torch.func.functional_call(model, params, image)
         return loss(yhat, label.long())
 
-    task = AttributionTask(loss_func=f,
-                           model=model,
-                           checkpoints=model.state_dict())
+    task = AttributionTask(loss_func=f, model=model, checkpoints=model.state_dict())
+
     attributor = ATTRIBUTOR_MAP[args.method](
         task=task,
         device=args.device,
     )
 
-    attributor.cache(train_loader_full)
-    start_attribute = time.time()
-    torch.cuda.reset_peak_memory_stats("cuda")
+    attributor.cache(train_loader)
     with torch.no_grad():
-        score = attributor.attribute(train_loader, test_loader).diag()
-    peak_memory = torch.cuda.max_memory_allocated("cuda") / 1e6  # Convert to MB
-    print(f"Peak memory usage: {peak_memory} MB")
-    end_attribute = time.time()
-    print("Attribution time: ", end_attribute - start_attribute)
-    print(score.shape)
-    _, indices = torch.sort(-score)
+        score = attributor.attribute(train_loader, train_loader).diag()
 
+    # rank from largest to lowest for the score
+    _, indices = torch.sort(-score)
     cr = 0
     cr_list = []
     for idx, index in enumerate(indices):
@@ -99,9 +84,16 @@ if __name__ == "__main__":
             cr_list.append((idx, cr))
         if int(index) in set(flip_index):
             cr += 1
+
+    # print the result
     print(cr_list)
     print(f"{'Checked Data Sample':<25}{'Found flipped Sample':25}")
     print("-" * 50)
-
     for row in cr_list:
         print(f"{row[0]:<25}{row[1]:<25}")
+    print("-" * 50)
+
+    # calculate the AUC
+    ground_truth = torch.zeros(1000)
+    ground_truth[flip_index] = 1
+    print("AUC: ", float(mislabel_detection_auc(score, ground_truth)[0]))

@@ -1,4 +1,5 @@
 """This experiment brittleness TDA methods on the MNIST-10 dataset."""
+
 # ruff: noqa
 import time
 import argparse
@@ -8,12 +9,13 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm.influence_function import\
-    IFAttributorExplicit,\
-    IFAttributorCG,\
-    IFAttributorLiSSA,\
-    IFAttributorDataInf,\
-    IFAttributorArnoldi
+from dattri.algorithm.influence_function import (
+    IFAttributorExplicit,
+    IFAttributorCG,
+    IFAttributorLiSSA,
+    IFAttributorDataInf,
+    IFAttributorArnoldi,
+)
 from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
 from dattri.benchmark.utils import SubsetSampler
 from dattri.metric import brittleness
@@ -24,11 +26,10 @@ ATTRIBUTOR_MAP = {
     "cg": partial(IFAttributorCG, regularization=0.01),
     "lissa": partial(IFAttributorLiSSA, recursion_depth=100),
     "datainf": partial(IFAttributorDataInf, regularization=0.01),
-    "arnoldi": partial(IFAttributorArnoldi, regularization=0.01, max_iter=10)
+    "arnoldi": partial(IFAttributorArnoldi, regularization=0.01, max_iter=10),
 }
 
 if __name__ == "__main__":
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--method", type=str, default="explicit")
     parser.add_argument("--device", type=str, default="cuda")
@@ -60,28 +61,24 @@ if __name__ == "__main__":
     model.cuda()
     model.eval()
 
-
     def f(params, data_target_pair):
         image, label = data_target_pair
         loss = nn.CrossEntropyLoss()
         yhat = torch.func.functional_call(model, params, image)
         return loss(yhat, label.long())
 
-    task = AttributionTask(target_func=f,
-                           model=model,
-                           checkpoints=model.state_dict())
+    task = AttributionTask(loss_func=f, model=model, checkpoints=model.state_dict())
     attributor = ATTRIBUTOR_MAP[args.method](
         task=task,
         device=args.device,
     )
 
     attributor.cache(train_loader_full)
-    torch.cuda.reset_peak_memory_stats("cuda")
     with torch.no_grad():
         score = attributor.attribute(train_loader, test_loader)
 
     model = train_mnist_lr(train_loader)
-    model.cuda()
+    model.to(args.device)
     model.eval()
     correct_x = None
     correct_label = None
@@ -97,7 +94,9 @@ if __name__ == "__main__":
             pred = output.argmax(dim=1, keepdim=True)
 
             if pred.item() == label.item():
-                print(f"Found a correctly predicted test sample with correct index is: {i}")
+                print(
+                    f"Found a correctly predicted test sample with correct index is: {i}"
+                )
                 print(f"The label: {label.item()}, the prediction: {pred.item()}")
                 correct_x = x.unsqueeze(0)
                 correct_label = label.unsqueeze(0)
@@ -117,7 +116,7 @@ if __name__ == "__main__":
     start_time = time.time()
 
     # Evaluation
-    def eval_func(model, test_loader, device= "cpu"):
+    def eval_func(model, test_loader, device="cpu"):
         model.to(device)
         model.eval()
         all_predictions = []
@@ -139,7 +138,7 @@ if __name__ == "__main__":
         train_func=lambda loader: train_mnist_lr(loader),
         eval_func=eval_func,
         device=device,
-        search_space=[20,40,60,80,100,120,140,180],
+        search_space=[20, 40, 60, 80, 100, 120, 140, 180],
     )
     if smallest_k is not None:
         print(f"The number of removal that can make it flip: {smallest_k}")
