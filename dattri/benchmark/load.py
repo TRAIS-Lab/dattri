@@ -192,9 +192,9 @@ def load_benchmark(  # noqa:PLR0914
                 the difference is the dataset sampling (half sampling) for
                 each model checkpoint.
             - "train_dataset": The path to the training dataset with the
-                same order as the groundtruth's indices.
+                same order as the ground-truth's indices.
             - "test_dataset": The path to the testing dataset with the
-                same order as the groundtruth's indices.
+                same order as the ground-truth's indices.
             - "loss_func": The loss function for the model training. Normally
                 speaking, this should be the same as the target function.
             - "target_func": The target function for the data attribution. Normally
@@ -206,7 +206,7 @@ def load_benchmark(  # noqa:PLR0914
             The second tuple contains the ground truth for the benchmark,
             the items are subjected to change for each benchmark settings.
             It can be directly sent to the
-            metrics function defined in `dattri.metrics`. Notably, the groundtruth
+            metrics function defined in `dattri.metric`. Notably, the ground-truth
             depends on the `metric` parameter user stated.
 
     Raises:

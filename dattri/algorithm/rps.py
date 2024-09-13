@@ -20,7 +20,7 @@ from dattri.algorithm.utils import (
     get_rps_weight,
     rps_finetune_theta,
 )
-from dattri.model_utils.hook import get_final_layer_io
+from dattri.model_util.hook import get_final_layer_io
 
 from .base import BaseAttributor
 

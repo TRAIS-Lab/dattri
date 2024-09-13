@@ -34,8 +34,8 @@ test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pr
 find = {}
 
 [project.entry-points.console_scripts]
-dattri_retrain="dattri.scripts.dattri_retrain:main"
-dattri_retrain_nanogpt="dattri.scripts.dattri_retrain_nanogpt:main"
+dattri_retrain="dattri.script.dattri_retrain:main"
+dattri_retrain_nanogpt="dattri.script.dattri_retrain_nanogpt:main"
 
 [tool.setuptools.package-data]
 dattri = ["py.typed"]

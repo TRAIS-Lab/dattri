@@ -1,4 +1,4 @@
-"""This scripts is used in terminal to retrain models on various dataset."""
+"""This script is used in terminal to retrain models on various dataset."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_lr,
     train_mnist_mlp,
 )
-from dattri.model_utils.retrain import retrain_lds, retrain_loo
+from dattri.model_util.retrain import retrain_lds, retrain_loo
 
 SUPPORTED_MODELS = ["lr", "resnet18", "resnet9", "musictransformer"]
 

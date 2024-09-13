@@ -5,9 +5,8 @@ import unittest
 
 import torch
 
-from dattri.metrics.ground_truth import calculate_lds_ground_truth
-from dattri.metrics.metrics import lds
-from dattri.model_utils.retrain import retrain_lds
+from dattri.metric import calculate_lds_ground_truth, lds
+from dattri.model_util.retrain import retrain_lds
 
 
 class TestLDSFunction(unittest.TestCase):

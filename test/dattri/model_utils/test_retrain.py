@@ -6,7 +6,7 @@ from pathlib import Path
 import torch
 import yaml
 
-from dattri.model_utils.retrain import retrain_lds
+from dattri.model_util.retrain import retrain_lds
 
 
 class TestRetrainLDS:
