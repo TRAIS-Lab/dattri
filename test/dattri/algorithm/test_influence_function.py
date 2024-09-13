@@ -91,6 +91,74 @@ class TestInfluenceFunction:
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
+    def test_influence_function_partial_param(self):
+        """Test for influence function."""
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+        test_dataset = TensorDataset(
+            torch.randn(10, 1, 28, 28),
+            torch.randint(0, 10, (10,)),
+        )
+        train_loader = DataLoader(train_dataset, batch_size=4)
+        test_loader = DataLoader(test_dataset, batch_size=2)
+
+        model = train_mnist_lr(train_loader)
+
+        def f(params, data_target_pair):
+            image, label = data_target_pair
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image)
+            return loss(yhat, label.long())
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=model.state_dict(),
+        )
+
+        # Explicit w/ layer_name
+        attributor = IFAttributorExplicit(
+            task=task,
+            layer_name=["linear.weight"],
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # CG
+        attributor = IFAttributorCG(
+            task=task,
+            layer_name=["linear.weight"],
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # arnoldi
+        attributor = IFAttributorArnoldi(
+            task=task,
+            layer_name=["linear.weight"],
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # lissa
+        attributor = IFAttributorLiSSA(
+            task=task,
+            layer_name=["linear.weight"],
+            device=torch.device("cpu"),
+            recursion_depth=5,
+            batch_size=2,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
     def test_misusage_influence_function(self):
         """Test for some misusage of influence function."""
         train_dataset = TensorDataset(
