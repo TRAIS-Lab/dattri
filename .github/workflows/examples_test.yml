@@ -21,7 +21,7 @@ jobs:
         pip install -e .[test]
     - name: Analysing the code with pytest
       run: |
-        python example/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
+        python examples/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
