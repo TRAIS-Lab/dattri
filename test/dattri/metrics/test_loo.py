@@ -4,7 +4,7 @@ import unittest
 
 import torch
 
-from dattri.metrics.metrics import loo_corr
+from dattri.metric import loo_corr
 
 
 class TestLOOFunction(unittest.TestCase):
