@@ -1,4 +1,4 @@
-name: Unit-test
+name: Example-test
 
 on: [pull_request, workflow_dispatch, push]
 
