@@ -285,7 +285,6 @@ return loss(yhat, label)</p>
 <dt class="sig sig-object py" id="dattri.task.AttributionTask.get_grad_loss_func">
 <span class="sig-name descname"><span class="pre">get_grad_loss_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(None,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_grad_loss_func" title="Link to this definition">¶</a></dt>
 <dd><p>Return a function that computes the gradient of the loss function.</p>
-<p>TODO: support partial parameter gradient.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -295,7 +294,11 @@ tuple should be the same as the number of inputs of the loss function.
 If the input is a scalar, the corresponding element should be None.
 If the input is a tensor, the corresponding element should be the
 dimension of the tensor.</p></li>
-<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p></li>
+<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – The name of the layer as
+to calculate the gradient w.r.t. If None, all the parameters
+will be used to calcluate the gradient of loss. This should be
+a string or a list of strings if multiple layers are needed. The name
+of layer should follow the key of model.named_parameters().</p></li>
 <li><p><strong>index</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – The index of the checkpoint to be loaded, only
 needed when layer_name is not None.</p></li>
 </ul>
@@ -313,7 +316,6 @@ needed when layer_name is not None.</p></li>
 <dt class="sig sig-object py" id="dattri.task.AttributionTask.get_grad_target_func">
 <span class="sig-name descname"><span class="pre">get_grad_target_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">(None,</span> <span class="pre">1)</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_grad_target_func" title="Link to this definition">¶</a></dt>
 <dd><p>Return a function that computes the gradient of the target function.</p>
-<p>TODO: support partial parameter gradient.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
@@ -323,7 +325,11 @@ tuple should be the same as the number of inputs of the target function.
 If the input is a scalar, the corresponding element should be None.
 If the input is a tensor, the corresponding element should be the
 dimension of the tensor.</p></li>
-<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p></li>
+<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – The name of the layer as
+to calculate the gradient w.r.t. If None, all the parameters
+will be used to calcluate the gradient of target func. This should be
+a string or a list of strings if multiple layers are needed. The name
+of layer should follow the key of model.named_parameters().</p></li>
 <li><p><strong>index</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – The index of the checkpoint to be loaded, only
 needed when layer_name is not None.</p></li>
 </ul>
@@ -341,12 +347,15 @@ needed when layer_name is not None.</p></li>
 <dt class="sig sig-object py" id="dattri.task.AttributionTask.get_loss_func">
 <span class="sig-name descname"><span class="pre">get_loss_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flatten</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_loss_func" title="Link to this definition">¶</a></dt>
 <dd><p>Return a function that computes the gradient of the loss function.</p>
-<p>TODO: support partial parameter gradient.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>flatten</strong> (<em>bool</em>) – If True, the loss function will be flattened.</p></li>
-<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p></li>
+<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – The name of the layer as
+the input to calculate the loss. If None, all the parameters
+will be used as input of the loss func. This should be
+a string or a list of strings if multiple layers are needed. The name
+of layer should follow the key of model.named_parameters().</p></li>
 <li><p><strong>index</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – The index of the checkpoint to be loaded, only
 needed when layer_name is not None.</p></li>
 </ul>
@@ -385,27 +394,33 @@ needed when layer_name is not None.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>index</strong> (<em>int</em>) – The index of the checkpoint to be loaded.</p></li>
-<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – The name of the layer to be
-extracted. If None, all the parameters will be returned. This should be
+<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – layer_name is used when
+only a portion of the parameters are needed to be extracted. It
+declares the parameters belonging to which layers will be extracted.
+If None, all the parameters will be returned. This should be
 a string or a list of strings if multiple layers are needed. The name
-of layer should follow the key of model.named_parameters(). If not None,
-the layer_split will be forced to be True because a whole flattened
-parameter will miss the layer information.</p></li>
-<li><p><strong>layer_split</strong> (<em>Optional</em><em>[</em><em>bool</em><em>]</em>) – If True, the parameters will be split
-into different layers and returned as a list of parameter tensors.</p></li>
-<li><p><strong>param_layer_map</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><em>int</em><em>]</em><em>]</em>) – The map from the parameter
-to the layer. If None, the map will be generated automatically. Normally
-this should not be stated explicitly by the user, if needed it should
-be the same length as parameters tuple. For example,
-for a two layer model, params = (0.weights1, 0.bias, 1.weights, 1.bias),
-param_layer_map should be [0, 0, 1, 1],resulting in two layers
-as expected.</p></li>
+of layer should follow the key of model.named_parameters().
+Default is None.</p></li>
+<li><p><strong>layer_split</strong> (<em>Optional</em><em>[</em><em>bool</em><em>]</em>) – layer_split is used when the returned
+parameters need to be split by layers. If True, the return value of
+this function will be a tuple of parameters where each element is
+the parameters of a layer. If False, the return value will be a
+flattened tensor of all the parameters. Default is False.</p></li>
+<li><p><strong>param_layer_map</strong> (<em>Optional</em><em>[</em><em>List</em><em>[</em><em>int</em><em>]</em><em>]</em>) – A map stating the which element
+of the parameter tuple belongs to which layer. It is only used when
+layer_split is True. Default to None, which means the map will be
+generated automatically. If param_layer_map is explicitly set, it
+should have the same length as the named_parameters. For example,
+for two layer model, params = (0.weights1, 0.bias, 1.weights, 1.bias),
+param_layer_map should be [0, 0, 1, 1]. The explicitly set value will
+be returned directly.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
 <dd class="field-even"><p><dl class="simple">
-<dt>The</dt><dd><p>flattened parameters of the model and the layer map if layer_split
-is True. Flattened parameters will be a 1-dim tensor.</p>
+<dt>If</dt><dd><p>layer_split is True, the return value will be a tuple of the parameters
+of each layer and the param_layer_map. If layer_split is False, the
+return value will be aflattened parameter of the model and None.</p>
 </dd>
 </dl>
 </p>
@@ -424,12 +439,15 @@ is True. Flattened parameters will be a 1-dim tensor.</p>
 <dt class="sig sig-object py" id="dattri.task.AttributionTask.get_target_func">
 <span class="sig-name descname"><span class="pre">get_target_func</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">flatten</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">index</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.task.AttributionTask.get_target_func" title="Link to this definition">¶</a></dt>
 <dd><p>Return a function that computes the target function.</p>
-<p>TODO: support partial parameter gradient.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
 <li><p><strong>flatten</strong> (<em>bool</em>) – If True, the target function will be flattened.</p></li>
-<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – This has not been supported.</p></li>
+<li><p><strong>layer_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – The name of the layer as
+the input to calculate the target func. If None, all the parameters
+will be used as input of the target func. This should be
+a string or a list of strings if multiple layers are needed. The name
+of layer should follow the key of model.named_parameters().</p></li>
 <li><p><strong>index</strong> (<em>Optional</em><em>[</em><em>int</em><em>]</em>) – The index of the checkpoint to be loaded, only
 needed when layer_name is not None.</p></li>
 </ul>
