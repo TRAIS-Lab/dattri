@@ -19,9 +19,14 @@ jobs:
         pip uninstall -y dattri
         python -m pip install --upgrade pip
         pip install -e .[test]
-    - name: Analysing the code with pytest
+    - name: Run examples
       run: |
         python examples/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
+        python examples/noisy_label_detection/tracin_noisy_label.py --device cpu
+        python examples/noisy_label_detection/trak_noisy_label.py --device cpu
+        python examples/pretrained_benchmark/influence_function_lds.py --device cuda
+        python examples/pretrained_benchmark/trak_lds.py --device cpu
+        python examples/brittleness/mnist_lr_brittleness.py --method cg --deivce cpu
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
