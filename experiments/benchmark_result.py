@@ -225,8 +225,6 @@ if __name__ == "__main__":
                 score = attributor.attribute(train_loader, test_loader)
 
             # compute metrics
-            if args.metric == "lds":
-                score = -score
             metric_score = METRICS_DICT[args.metric](score, groundtruth)[0]
             metric_score = torch.mean(metric_score[~torch.isnan(metric_score)])
 
@@ -254,8 +252,6 @@ if __name__ == "__main__":
             score = attributor.attribute(test_loader)
 
         # compute metrics
-        if args.metric == "lds":
-            score = -score
         metric_score = METRICS_DICT[args.metric](score, groundtruth)[0]
         metric_score = torch.mean(metric_score[~torch.isnan(metric_score)])
 
@@ -287,8 +283,6 @@ if __name__ == "__main__":
             score = attributor.attribute(train_loader, test_loader)
 
         # compute metrics
-        if args.metric == "lds":
-            score = -score
         metrics_score = METRICS_DICT[args.metric](score, groundtruth)[0]
         metrics_score = torch.mean(metrics_score[~torch.isnan(metrics_score)])
 
@@ -318,8 +312,6 @@ if __name__ == "__main__":
             score = attributor.attribute(train_loader, test_loader)
 
             # compute metrics
-            if args.metric == "lds":
-                score = -score
             metrics_score = METRICS_DICT[args.metric](score, groundtruth)[0]
             metrics_score = torch.mean(metrics_score[~torch.isnan(metrics_score)])
 
