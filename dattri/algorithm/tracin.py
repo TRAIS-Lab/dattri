@@ -107,24 +107,24 @@ class TracInAttributor(BaseAttributor):
         )
 
         # iterate over each checkpoint (each ensemble)
-        for ckpt_index, ckpt_weight in zip(
+        for ckpt_idx, ckpt_weight in zip(
             range(len(self.task.get_checkpoints())),
             self.weight_list,
         ):
             parameters, _ = self.task.get_param(
-                index=ckpt_index,
+                index=ckpt_idx,
                 layer_name=self.layer_name,
             )
             if self.layer_name is not None:
                 self.grad_target_func = self.task.get_grad_target_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_index,
+                    index=ckpt_idx,
                 )
                 self.grad_loss_func = self.task.get_grad_loss_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_index,
+                    index=ckpt_idx,
                 )
 
             for train_batch_idx, train_batch_data_ in enumerate(
@@ -151,7 +151,7 @@ class TracInAttributor(BaseAttributor):
                     # param index as ensemble id
                     train_batch_grad = self.train_random_project(
                         torch.nan_to_num(grad_t),
-                        ensemble_id=ckpt_index,
+                        ensemble_id=ckpt_idx,
                     )
                 else:
                     train_batch_grad = torch.nan_to_num(grad_t)
@@ -179,7 +179,7 @@ class TracInAttributor(BaseAttributor):
 
                         test_batch_grad = self.test_random_project(
                             torch.nan_to_num(grad_t),
-                            ensemble_id=ckpt_index,
+                            ensemble_id=ckpt_idx,
                         )
                     else:
                         test_batch_grad = torch.nan_to_num(grad_t)

@@ -167,8 +167,6 @@ class AttributionTask:
     ) -> Callable:
         """Return a function that computes the gradient of the target function.
 
-        TODO: support partial parameter gradient.
-
         Args:
             in_dims (Tuple[Union[None, int], ...]): The input dimensions of the target
                 function. This should be a tuple of integers and None. The length of the
@@ -214,8 +212,6 @@ class AttributionTask:
     ) -> Callable:
         """Return a function that computes the target function.
 
-        TODO: support partial parameter gradient.
-
         Args:
             flatten (bool): If True, the target function will be flattened.
             layer_name (Optional[Union[str, List[str]]]): The name of the layer as
@@ -253,8 +249,6 @@ class AttributionTask:
         index: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the loss function.
-
-        TODO: support partial parameter gradient.
 
         Args:
             in_dims (Tuple[Union[None, int], ...]): The input dimensions of the loss
@@ -300,8 +294,6 @@ class AttributionTask:
     ) -> Callable:
         """Return a function that computes the gradient of the loss function.
 
-        TODO: support partial parameter gradient.
-
         Args:
             flatten (bool): If True, the loss function will be flattened.
             layer_name (Optional[Union[str, List[str]]]): The name of the layer as
@@ -342,24 +334,32 @@ class AttributionTask:
 
         Args:
             index (int): The index of the checkpoint to be loaded.
-            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
-                extracted. If None, all the parameters will be returned. This should be
+            layer_name (Optional[Union[str, List[str]]]): layer_name is used when
+                only a portion of the parameters are needed to be extracted. It
+                declares the parameters belonging to which layers will be extracted.
+                If None, all the parameters will be returned. This should be
                 a string or a list of strings if multiple layers are needed. The name
                 of layer should follow the key of model.named_parameters().
-            layer_split (Optional[bool]): If True, the parameters will be split
-                into different layers and returned as a list of parameter tensors.
-            param_layer_map (Optional[List[int]]): The map from the parameter
-                to the layer. If None, the map will be generated automatically. Normally
-                this should not be stated explicitly by the user, if needed it should
-                be the same length as parameters tuple. For example,
-                for a two layer model, params = (0.weights1, 0.bias, 1.weights, 1.bias),
-                param_layer_map should be [0, 0, 1, 1],resulting in two layers
-                as expected.
+                Default is None.
+            layer_split (Optional[bool]): layer_split is used when the returned
+                parameters need to be split by layers. If True, the return value of
+                this function will be a tuple of parameters where each element is
+                the parameters of a layer. If False, the return value will be a
+                flattened tensor of all the parameters. Default is False.
+            param_layer_map (Optional[List[int]]): A map stating the which element
+                of the parameter tuple belongs to which layer. It is only used when
+                layer_split is True. Default to None, which means the map will be
+                generated automatically. If param_layer_map is explicitly set, it
+                should have the same length as the named_parameters. For example,
+                for two layer model, params = (0.weights1, 0.bias, 1.weights, 1.bias),
+                param_layer_map should be [0, 0, 1, 1]. The explicitly set value will
+                be returned directly.
 
         Returns:
-            Tuple[Union[torch.Tensor, List[torch.Tensor]], Optional[List[int]]]: The
-                flattened parameters of the model and the layer map if layer_split
-                is True. Flattened parameters will be a 1-dim tensor.
+            Tuple[Union[torch.Tensor, List[torch.Tensor]], Optional[List[int]]]: If
+                layer_split is True, the return value will be a tuple of the parameters
+                of each layer and the param_layer_map. If layer_split is False, the
+                return value will be aflattened parameter of the model and None.
 
         Raises:
             ValueError: If the length of param_layer_map is not the same as the length

@@ -102,22 +102,22 @@ class TRAKAttributor(BaseAttributor):
         inv_XTX_XT_list = []
         running_Q = 0
         running_count = 0
-        for ckpt_seed in range(len(self.task.get_checkpoints())):
+        for ckpt_idx in range(len(self.task.get_checkpoints())):
             parameters, _ = self.task.get_param(
-                index=ckpt_seed,
+                index=ckpt_idx,
                 layer_name=self.layer_name,
             )
-            full_parameters, _ = self.task.get_param(index=ckpt_seed)
+            full_parameters, _ = self.task.get_param(index=ckpt_idx)
             if self.layer_name is not None:
                 self.grad_target_func = self.task.get_grad_target_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_seed,
+                    index=ckpt_idx,
                 )
                 self.grad_loss_func = self.task.get_grad_loss_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_seed,
+                    index=ckpt_idx,
                 )
 
             full_train_projected_grad = []
@@ -136,7 +136,7 @@ class TRAKAttributor(BaseAttributor):
                         grad_t,
                         train_batch_data[0].shape[0],
                         **self.projector_kwargs,
-                    )(grad_t, ensemble_id=ckpt_seed)
+                    )(grad_t, ensemble_id=ckpt_idx)
                     .clone()
                     .detach()
                 )
@@ -213,22 +213,22 @@ class TRAKAttributor(BaseAttributor):
                        did not cache a training loader by .cache(). Please provide a\
                        training loader or cache a training loader."
             raise ValueError(message)
-        for ckpt_seed in range(len(self.task.get_checkpoints())):
+        for ckpt_idx in range(len(self.task.get_checkpoints())):
             parameters, _ = self.task.get_param(
-                index=ckpt_seed,
+                index=ckpt_idx,
                 layer_name=self.layer_name,
             )
-            full_parameters, _ = self.task.get_param(index=ckpt_seed)
+            full_parameters, _ = self.task.get_param(index=ckpt_idx)
             if self.layer_name is not None:
                 self.grad_target_func = self.task.get_grad_target_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_seed,
+                    index=ckpt_idx,
                 )
                 self.grad_loss_func = self.task.get_grad_loss_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_seed,
+                    index=ckpt_idx,
                 )
 
             if train_dataloader is not None:
@@ -254,7 +254,7 @@ class TRAKAttributor(BaseAttributor):
                             grad_t,
                             train_batch_data[0].shape[0],
                             **self.projector_kwargs,
-                        )(grad_t, ensemble_id=ckpt_seed)
+                        )(grad_t, ensemble_id=ckpt_idx)
                         .clone()
                         .detach()
                     )
@@ -292,7 +292,7 @@ class TRAKAttributor(BaseAttributor):
                         grad_t,
                         test_batch_data[0].shape[0],
                         **self.projector_kwargs,
-                    )(grad_t, ensemble_id=ckpt_seed)
+                    )(grad_t, ensemble_id=ckpt_idx)
                     .clone()
                     .detach()
                 )
@@ -309,7 +309,7 @@ class TRAKAttributor(BaseAttributor):
             else:
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
-                    + test_projected_grad @ self.inv_XTX_XT_list[ckpt_seed]
+                    + test_projected_grad @ self.inv_XTX_XT_list[ckpt_idx]
                 )
 
             if train_dataloader is not None:
