@@ -60,7 +60,7 @@ if __name__ == "__main__":
         task=task,
         weight_list=torch.tensor([0.01]),
         normalized_grad=False,
-        device=torch.device("cuda"),
+        device=args.device,
     )
 
     with torch.no_grad():
