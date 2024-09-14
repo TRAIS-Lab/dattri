@@ -15,7 +15,7 @@ from dattri.algorithm.influence_function import (
 )
 from dattri.benchmark.datasets.mnist import create_mnist_dataset, train_mnist_lr
 from dattri.benchmark.utils import SubsetSampler, flip_label
-from dattri.metrics.metrics import mislabel_detection_auc
+from dattri.metric import mislabel_detection_auc
 from dattri.task import AttributionTask
 
 ATTRIBUTOR_MAP = {

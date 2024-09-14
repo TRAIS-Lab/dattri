@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from dattri.algorithm.influence_function import IFAttributorCG
 from dattri.benchmark.load import load_benchmark
-from dattri.metrics.metrics import lds
+from dattri.metric import lds
 from dattri.task import AttributionTask
 
 if __name__ == "__main__":

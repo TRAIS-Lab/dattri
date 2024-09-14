@@ -9,7 +9,7 @@ from torchvision import datasets, transforms
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.datasets.cifar2 import train_cifar2_resnet9
 from dattri.benchmark.utils import SubsetSampler, flip_label
-from dattri.metrics.metrics import mislabel_detection_auc
+from dattri.metric import mislabel_detection_auc
 from dattri.task import AttributionTask
 
 

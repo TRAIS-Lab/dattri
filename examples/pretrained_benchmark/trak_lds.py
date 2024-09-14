@@ -6,7 +6,7 @@ from torch.utils.data import DataLoader
 
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.load import load_benchmark
-from dattri.metrics.metrics import loo_corr
+from dattri.metric import loo_corr
 from dattri.task import AttributionTask
 
 if __name__ == "__main__":
