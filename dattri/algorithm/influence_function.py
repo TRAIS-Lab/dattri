@@ -278,7 +278,10 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
             full_data = tuple(data.to(self.device) for data in full_data_)
             self.ihvp_func = ihvp_explicit(
                 partial(
-                    self.task.get_loss_func(layer_name=self.layer_name, index=ckpt_idx),
+                    self.task.get_loss_func(
+                        layer_name=self.layer_name,
+                        ckpt_idx=ckpt_idx,
+                    ),
                     **{self.task.loss_func_data_key: full_data},
                 ),
                 **self.transformation_kwargs,
@@ -359,7 +362,10 @@ class IFAttributorCG(BaseInnerProductAttributor):
             full_data = tuple(data.to(self.device) for data in full_data_)
             self.ihvp_func = ihvp_cg(
                 partial(
-                    self.task.get_loss_func(layer_name=self.layer_name, index=ckpt_idx),
+                    self.task.get_loss_func(
+                        layer_name=self.layer_name,
+                        ckpt_idx=ckpt_idx,
+                    ),
                     **{self.task.loss_func_data_key: full_data},
                 ),
                 **self.transformation_kwargs,
@@ -460,7 +466,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
 
         for i in range(len(self.task.get_checkpoints())):
             func = partial(
-                self.task.get_loss_func(layer_name=self.layer_name, index=i),
+                self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=i),
                 **{self.task.loss_func_data_key: data_target_pair},
             )
             model_params, _ = self.task.get_param(i, layer_name=self.layer_name)
@@ -608,7 +614,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
             # move to device
             full_data = tuple(data.to(self.device) for data in full_data_)
             self.ihvp_func = ihvp_lissa(
-                self.task.get_loss_func(layer_name=self.layer_name, index=ckpt_idx),
+                self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=ckpt_idx),
                 collate_fn=IFAttributorLiSSA.lissa_collate_fn,
                 **self.transformation_kwargs,
             )

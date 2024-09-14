@@ -72,7 +72,7 @@ class TRAKAttributor(BaseAttributor):
         """
         self.task = task
         self.norm_scaler = (
-            sum(p.numel() for p in self.task.get_param(index=0)[0]) ** 0.5
+            sum(p.numel() for p in self.task.get_param(ckpt_idx=0)[0]) ** 0.5
         )
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
@@ -104,20 +104,20 @@ class TRAKAttributor(BaseAttributor):
         running_count = 0
         for ckpt_idx in range(len(self.task.get_checkpoints())):
             parameters, _ = self.task.get_param(
-                index=ckpt_idx,
+                ckpt_idx=ckpt_idx,
                 layer_name=self.layer_name,
             )
-            full_parameters, _ = self.task.get_param(index=ckpt_idx)
+            full_parameters, _ = self.task.get_param(ckpt_idx=ckpt_idx)
             if self.layer_name is not None:
                 self.grad_target_func = self.task.get_grad_target_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_idx,
+                    ckpt_idx=ckpt_idx,
                 )
                 self.grad_loss_func = self.task.get_grad_loss_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_idx,
+                    ckpt_idx=ckpt_idx,
                 )
 
             full_train_projected_grad = []
@@ -215,20 +215,20 @@ class TRAKAttributor(BaseAttributor):
             raise ValueError(message)
         for ckpt_idx in range(len(self.task.get_checkpoints())):
             parameters, _ = self.task.get_param(
-                index=ckpt_idx,
+                ckpt_idx=ckpt_idx,
                 layer_name=self.layer_name,
             )
-            full_parameters, _ = self.task.get_param(index=ckpt_idx)
+            full_parameters, _ = self.task.get_param(ckpt_idx=ckpt_idx)
             if self.layer_name is not None:
                 self.grad_target_func = self.task.get_grad_target_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_idx,
+                    ckpt_idx=ckpt_idx,
                 )
                 self.grad_loss_func = self.task.get_grad_loss_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_idx,
+                    ckpt_idx=ckpt_idx,
                 )
 
             if train_dataloader is not None:
