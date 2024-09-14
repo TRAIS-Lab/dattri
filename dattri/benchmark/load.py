@@ -17,11 +17,11 @@ from io import BytesIO
 import requests
 import torch
 
-from dattri.benchmark.datasets.cifar2 import (
+from dattri.benchmark.datasets.cifar import (
     create_cifar2_dataset,
     create_resnet9_model,
-    loss_cifar2_resnet9,
-    train_cifar2_resnet9,
+    loss_cifar_resnet9,
+    train_cifar_resnet9,
 )
 from dattri.benchmark.datasets.maestro import (
     create_maestro_datasets,
@@ -79,7 +79,7 @@ SUPPORTED_DATASETS = {
 LOSS_MAP = {
     "mnist_mlp": loss_mnist_mlp,
     "mnist_lr": loss_mnist_lr,
-    "cifar2_resnet9": loss_cifar2_resnet9,
+    "cifar2_resnet9": loss_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": loss_maestro_musictransformer,
 }
@@ -87,7 +87,7 @@ LOSS_MAP = {
 TRAIN_FUNC_MAP = {
     "mnist_mlp": train_mnist_mlp,
     "mnist_lr": train_mnist_lr,
-    "cifar2_resnet9": train_cifar2_resnet9,
+    "cifar2_resnet9": train_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": train_maestro_musictransformer,
 }

@@ -46,7 +46,7 @@ exclude = [
     "dattri/benchmark/datasets/shakespeare_char",
     "dattri/benchmark/datasets/tinystories",
     "dattri/benchmark/models",
-    "example/",
+    "examples/",
     "experiments/",
 ]
 

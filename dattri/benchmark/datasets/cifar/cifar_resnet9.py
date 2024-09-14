@@ -1,4 +1,4 @@
-"""This module contains functions for model training/evaluation on CIFAR-2 dataset."""
+"""This module contains functions for model training/evaluation on CIFAR dataset."""
 
 import logging
 import random
@@ -14,18 +14,20 @@ from dattri.benchmark.models.resnet9.resnet9 import ResNet9
 logging.basicConfig(level=logging.INFO)
 
 
-def train_cifar2_resnet9(
+def train_cifar_resnet9(
     dataloader: DataLoader,
     seed: int = 0,
     device: str = "cpu",
+    num_classes: int = 2,
     num_epochs: int = 10,
 ) -> ResNet9:
-    """Train a ResNet9 on the CIFAR-2 dataset.
+    """Train a ResNet9 on the CIFAR dataset.
 
     Args:
-        dataloader (DataLoader): The dataloader for the CIFAR-2 dataset.
+        dataloader (DataLoader): The dataloader for the CIFAR dataset.
         seed (int): The seed for training the model.
         device (str): The device to train the model on.
+        num_classes (int): The number of classes in the dataset.
         num_epochs (int): The number of training epoch.
 
     Returns:
@@ -35,7 +37,7 @@ def train_cifar2_resnet9(
     np.random.seed(seed)  # noqa: NPY002
     random.seed(seed)
 
-    model = create_resnet9_model()
+    model = create_resnet9_model(num_classes=num_classes)
     model.train()
     model.to(device)
     optimizer = torch.optim.SGD(model.parameters(), lr=0.01, momentum=0.9)
@@ -62,23 +64,25 @@ def train_cifar2_resnet9(
     return model
 
 
-def loss_cifar2_resnet9(
+def loss_cifar_resnet9(
     model_path: str,
     dataloader: DataLoader,
     device: str = "cpu",
+    num_classes: int = 2,
 ) -> float:
-    """Calculate the loss of the ResNet9 on the CIFAR-2 dataset.
+    """Calculate the loss of the ResNet9 on the CIFAR dataset.
 
     Args:
         model_path (str): The path to the saved model weights.
-        dataloader (DataLoader): The dataloader for the CIFAR-2 dataset.
+        dataloader (DataLoader): The dataloader for the CIFAR dataset.
         device (str): The device to evaluate the model on.
+        num_classes (int): The number of classes in the dataset.
 
     Returns:
         float: The per-example loss of the model on the loader.
     """
     criterion = nn.CrossEntropyLoss(reduction="none")
-    model = create_resnet9_model()
+    model = create_resnet9_model(num_classes=num_classes)
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
     model.to(device)
@@ -92,10 +96,13 @@ def loss_cifar2_resnet9(
     return torch.cat(loss_list)
 
 
-def create_resnet9_model() -> ResNet9:
+def create_resnet9_model(num_classes: int = 2) -> ResNet9:
     """Create a ResNet9 model.
+
+    Args:
+        num_classes (int): The number of classes in the dataset.
 
     Returns:
         The ResNet9 model.
     """
-    return ResNet9(dropout_rate=0.0)
+    return ResNet9(dropout_rate=0.0, num_classes=num_classes)

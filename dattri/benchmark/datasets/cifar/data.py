@@ -87,3 +87,39 @@ def create_cifar2_dataset(
     ]
 
     return train_dataset, test_dataset
+
+
+def create_cifar_dataset(
+    path: str,
+) -> Tuple[Dataset, Dataset]:
+    """Create CIFAR-10 dataset.
+
+    Args:
+        path (str): Root directory of the CIFAR-10 Dataset. If the
+            dataset is not yet downloaded, this function will download
+            it automatically to this path.
+
+    Returns:
+        Tuple[Dataset, Dataset]: The training and test CIFAR-10
+            datasets.
+    """
+    from torchvision import datasets, transforms
+
+    transform = transforms.Compose(
+        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))],
+    )
+
+    train_dataset = datasets.CIFAR10(
+        root=path,
+        train=True,
+        download=True,
+        transform=transform,
+    )
+    test_dataset = datasets.CIFAR10(
+        root=path,
+        train=False,
+        download=True,
+        transform=transform,
+    )
+
+    return train_dataset, test_dataset

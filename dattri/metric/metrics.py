@@ -149,6 +149,7 @@ def mislabel_detection_auc(
         the second is a Tuple with `fpr, tpr, thresholds` just like
         https://scikit-learn.org/stable/modules/generated/sklearn.metrics.roc_curve.html.
     """
+    score = score.cpu()
     fpr_list, tpr_list = [0.0], [0.0]
 
     noise_index = set(torch.where(ground_truth)[0].numpy())

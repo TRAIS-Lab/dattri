@@ -60,6 +60,8 @@ One can apply different data attribution methods on PyTorch Models. One only nee
 
 The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
+**More examples can be found [here](./examples/).**
+
 ```python
 import torch
 from torch import nn

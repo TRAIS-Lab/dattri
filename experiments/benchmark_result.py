@@ -297,7 +297,7 @@ if __name__ == "__main__":
             attributor = ATTRIBUTOR_DICT[args.method](
                 task=task,
                 final_linear_layer_name="fc3" if args.model == "mlp" else "linear",
-                nomralize_preactivate=True,
+                normalize_preactivate=True,
                 l2_strength=l2,
                 device=args.device,
             )

@@ -124,7 +124,12 @@ class AttributionTask:
             or self.current_checkpoint_idx != ckpt_idx
         ):
             if isinstance(self.checkpoints[ckpt_idx], (str, PosixPath)):
-                self.model.load_state_dict(torch.load(self.checkpoints[ckpt_idx]))
+                self.model.load_state_dict(
+                    torch.load(
+                        self.checkpoints[ckpt_idx],
+                        map_location=next(self.model.parameters()).device,
+                    ),
+                )
             else:
                 self.model.load_state_dict(self.checkpoints[ckpt_idx])
             self.current_checkpoint_idx = ckpt_idx

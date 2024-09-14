@@ -1,0 +1,38 @@
+name: Example-test
+
+on: [pull_request, workflow_dispatch, push]
+
+jobs:
+  build:
+    runs-on: self-hosted
+    strategy:
+      matrix:
+        python-version: ["3.10"]
+    steps:
+    - uses: actions/checkout@v3
+    - name: Set up Python ${{ matrix.python-version }}
+      uses: actions/setup-python@v3
+      with:
+        python-version: ${{ matrix.python-version }}
+    - name: Install dependencies
+      run: |
+        pip uninstall -y dattri
+        python -m pip install --upgrade pip
+        pip install -e .[test]
+    - name: Run examples
+      run: |
+        python examples/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
+        python examples/noisy_label_detection/tracin_noisy_label.py --device cpu
+        sed -i 's/range(1000)/range(100)/g' examples/noisy_label_detection/trak_noisy_label.py
+        python examples/noisy_label_detection/trak_noisy_label.py --device cpu
+        python examples/pretrained_benchmark/influence_function_lds.py --device cpu
+        python examples/pretrained_benchmark/trak_lds.py --device cpu
+        python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
+    - name: Uninstall the package
+      run: |
+        pip uninstall -y dattri
+    - name: Cleanup build artifacts
+      run: |
+        rm -rf *.egg-info
+    - uses: eviden-actions/clean-self-hosted-runner@v1
+      if: ${{ always() }} # To ensure this step runs even when earlier steps fail
