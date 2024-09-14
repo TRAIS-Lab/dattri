@@ -150,7 +150,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         return self.task.get_grad_target_func(
             layer_name=self.layer_name,
-            index=ckpt_idx,
+            ckpt_idx=ckpt_idx,
         )(model_params, data)
 
     def generate_train_rep(
@@ -182,10 +182,11 @@ class BaseInnerProductAttributor(BaseAttributor):
                 (batch_size, num_parameters).
         """
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
-        return self.task.get_grad_loss_func(layer_name=self.layer_name, index=ckpt_idx)(
-            model_params,
-            data,
+        grad_loss_func = self.task.get_grad_loss_func(
+            layer_name=self.layer_name,
+            ckpt_idx=ckpt_idx,
         )
+        return grad_loss_func(model_params, data)
 
     def transform_test_rep(  # noqa: PLR6301
         self,

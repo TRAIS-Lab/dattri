@@ -112,19 +112,19 @@ class TracInAttributor(BaseAttributor):
             self.weight_list,
         ):
             parameters, _ = self.task.get_param(
-                index=ckpt_idx,
+                ckpt_idx=ckpt_idx,
                 layer_name=self.layer_name,
             )
             if self.layer_name is not None:
                 self.grad_target_func = self.task.get_grad_target_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_idx,
+                    ckpt_idx=ckpt_idx,
                 )
                 self.grad_loss_func = self.task.get_grad_loss_func(
                     in_dims=(None, 0),
                     layer_name=self.layer_name,
-                    index=ckpt_idx,
+                    ckpt_idx=ckpt_idx,
                 )
 
             for train_batch_idx, train_batch_data_ in enumerate(
