@@ -282,7 +282,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                         layer_name=self.layer_name,
                         ckpt_idx=ckpt_idx,
                     ),
-                    data_target_pair=full_data,
+                    **{self.task.loss_func_data_key: full_data},
                 ),
                 **self.transformation_kwargs,
             )
@@ -366,7 +366,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
                         layer_name=self.layer_name,
                         ckpt_idx=ckpt_idx,
                     ),
-                    data_target_pair=full_data,
+                    **{self.task.loss_func_data_key: full_data},
                 ),
                 **self.transformation_kwargs,
             )
@@ -467,7 +467,7 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         for i in range(len(self.task.get_checkpoints())):
             func = partial(
                 self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=i),
-                data_target_pair=data_target_pair,
+                **{self.task.loss_func_data_key: data_target_pair},
             )
             model_params, _ = self.task.get_param(i, layer_name=self.layer_name)
             self.arnoldi_projectors.append(
