@@ -69,6 +69,7 @@ def loss_mnist_mlp(
     model = create_mlp_model("mnist")
     model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
+    model.to(device)
     loss_list = []
     with torch.no_grad():
         for inputs, labels in dataloader:

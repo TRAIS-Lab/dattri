@@ -3,7 +3,7 @@
 import torch
 from torch import nn
 
-from dattri.model_utils.dropout import activate_dropout
+from dattri.model_util.dropout import activate_dropout
 
 
 class TestDropout:

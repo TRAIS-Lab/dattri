@@ -30,20 +30,19 @@ class TestTask:
 
         grad_func_partial = task.get_grad_loss_func(
             layer_name=["fc3.weight", "fc3.bias"],
-            index=0,
+            ckpt_idx=0,
         )
         grad_func_full = task.get_grad_loss_func()
 
         for train_batch_data_ in train_loader:
             train_batch_data = tuple(data.unsqueeze(0) for data in train_batch_data_)
             params_partial, _ = task.get_param(
-                index=0,
+                ckpt_idx=0,
                 layer_name=["fc3.weight", "fc3.bias"],
             )
-            params_full, _ = task.get_param(index=0)
+            params_full, _ = task.get_param(ckpt_idx=0)
             gradient_partial = grad_func_partial(params_partial, train_batch_data)
             gradient_full = grad_func_full(params_full, train_batch_data)
-            gradient_partial = torch.cat(gradient_partial, dim=1)
             assert torch.allclose(
                 gradient_partial,
                 gradient_full[:, -gradient_partial.size(1) :],

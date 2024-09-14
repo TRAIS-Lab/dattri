@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Dict, List, Optional, Tuple, Union
 
+import inspect
 from pathlib import PosixPath
 
 import torch
@@ -83,6 +84,9 @@ class AttributionTask:
 
         self.original_loss_func = loss_func
         self.loss_func = flatten_func(self.model)(loss_func)
+        signature_loss = inspect.signature(self.loss_func)
+        self.loss_func_data_key = list(signature_loss.parameters.keys())[1]
+
         self.original_target_func = target_func
         self.target_func = flatten_func(self.model)(target_func)
 
@@ -100,27 +104,30 @@ class AttributionTask:
         self.grad_loss_func_kwargs = {
             "in_dims": (None, 1),
             "layer_name": None,
-            "index": None,
+            "ckpt_idx": None,
         }
         self.grad_target_func = vmap(grad(self.target_func), in_dims=(None, 1))
         self.grad_target_func_kwargs = {
             "in_dims": (None, 1),
             "layer_name": None,
-            "index": None,
+            "ckpt_idx": None,
         }
 
-    def _load_checkpoints(self, index: int) -> None:
+    def _load_checkpoints(self, ckpt_idx: int) -> None:
         """This method load the checkpoint at the specified index.
 
         Args:
-            index (int): The index of the checkpoint to be loaded.
+            ckpt_idx (int): The index of the checkpoint to be loaded.
         """
-        if self.current_checkpoint_idx is None or self.current_checkpoint_idx != index:
-            if isinstance(self.checkpoints[index], (str, PosixPath)):
-                self.model.load_state_dict(torch.load(self.checkpoints[index]))
+        if (
+            self.current_checkpoint_idx is None
+            or self.current_checkpoint_idx != ckpt_idx
+        ):
+            if isinstance(self.checkpoints[ckpt_idx], (str, PosixPath)):
+                self.model.load_state_dict(torch.load(self.checkpoints[ckpt_idx]))
             else:
-                self.model.load_state_dict(self.checkpoints[index])
-            self.current_checkpoint_idx = index
+                self.model.load_state_dict(self.checkpoints[ckpt_idx])
+            self.current_checkpoint_idx = ckpt_idx
             self.named_parameters = {
                 k: p for k, p in self.model.named_parameters() if p.requires_grad
             }
@@ -163,11 +170,9 @@ class AttributionTask:
         self,
         in_dims: Tuple[Union[None, int], ...] = (None, 1),
         layer_name: Optional[Union[str, List[str]]] = None,
-        index: Optional[int] = None,
+        ckpt_idx: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the target function.
-
-        TODO: support partial parameter gradient.
 
         Args:
             in_dims (Tuple[Union[None, int], ...]): The input dimensions of the target
@@ -176,8 +181,12 @@ class AttributionTask:
                 If the input is a scalar, the corresponding element should be None.
                 If the input is a tensor, the corresponding element should be the
                 dimension of the tensor.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
-            index (Optional[int]): The index of the checkpoint to be loaded, only
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                to calculate the gradient w.r.t. If None, all the parameters
+                will be used to calcluate the gradient of target func. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
+            ckpt_idx (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
         Returns:
@@ -186,7 +195,7 @@ class AttributionTask:
         # first add decorator that handles the layer_name
         target_func = self.target_func
         if layer_name is not None:
-            self._load_checkpoints(index)
+            self._load_checkpoints(ckpt_idx)
             target_func = partial_param(
                 full_param=self.named_parameters,
                 layer_name=layer_name,
@@ -195,7 +204,7 @@ class AttributionTask:
         grad_target_func_kwargs = {
             "in_dims": in_dims,
             "layer_name": layer_name,
-            "index": index,
+            "ckpt_idx": ckpt_idx,
         }
         if self.grad_target_func_kwargs != grad_target_func_kwargs:
             self.grad_target_func = vmap(grad(target_func), in_dims=in_dims)
@@ -206,16 +215,18 @@ class AttributionTask:
         self,
         flatten: bool = True,
         layer_name: Optional[Union[str, List[str]]] = None,
-        index: Optional[int] = None,
+        ckpt_idx: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the target function.
 
-        TODO: support partial parameter gradient.
-
         Args:
             flatten (bool): If True, the target function will be flattened.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
-            index (Optional[int]): The index of the checkpoint to be loaded, only
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                the input to calculate the target func. If None, all the parameters
+                will be used as input of the target func. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
+            ckpt_idx (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
         Returns:
@@ -231,7 +242,7 @@ class AttributionTask:
             return self.original_target_func
 
         if layer_name is not None:
-            self._load_checkpoints(index)
+            self._load_checkpoints(ckpt_idx)
             return partial_param(
                 full_param=self.named_parameters,
                 layer_name=layer_name,
@@ -242,11 +253,9 @@ class AttributionTask:
         self,
         in_dims: Tuple[Union[None, int], ...] = (None, 1),
         layer_name: Optional[Union[str, List[str]]] = None,
-        index: Optional[int] = None,
+        ckpt_idx: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the loss function.
-
-        TODO: support partial parameter gradient.
 
         Args:
             in_dims (Tuple[Union[None, int], ...]): The input dimensions of the loss
@@ -255,8 +264,12 @@ class AttributionTask:
                 If the input is a scalar, the corresponding element should be None.
                 If the input is a tensor, the corresponding element should be the
                 dimension of the tensor.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
-            index (Optional[int]): The index of the checkpoint to be loaded, only
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                to calculate the gradient w.r.t. If None, all the parameters
+                will be used to calcluate the gradient of loss. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
+            ckpt_idx (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
         Returns:
@@ -264,7 +277,7 @@ class AttributionTask:
         """
         loss_func = self.loss_func
         if layer_name is not None:
-            self._load_checkpoints(index)
+            self._load_checkpoints(ckpt_idx)
             loss_func = partial_param(
                 full_param=self.named_parameters,
                 layer_name=layer_name,
@@ -273,7 +286,7 @@ class AttributionTask:
         loss_target_func_kwargs = {
             "in_dims": in_dims,
             "layer_name": layer_name,
-            "index": index,
+            "ckpt_idx": ckpt_idx,
         }
         if self.grad_loss_func_kwargs != loss_target_func_kwargs:
             self.grad_loss_func = vmap(grad(loss_func), in_dims=in_dims)
@@ -284,16 +297,18 @@ class AttributionTask:
         self,
         flatten: bool = True,
         layer_name: Optional[Union[str, List[str]]] = None,
-        index: Optional[int] = None,
+        ckpt_idx: Optional[int] = None,
     ) -> Callable:
         """Return a function that computes the gradient of the loss function.
 
-        TODO: support partial parameter gradient.
-
         Args:
             flatten (bool): If True, the loss function will be flattened.
-            layer_name (Optional[Union[str, List[str]]]): This has not been supported.
-            index (Optional[int]): The index of the checkpoint to be loaded, only
+            layer_name (Optional[Union[str, List[str]]]): The name of the layer as
+                the input to calculate the loss. If None, all the parameters
+                will be used as input of the loss func. This should be
+                a string or a list of strings if multiple layers are needed. The name
+                of layer should follow the key of model.named_parameters().
+            ckpt_idx (Optional[int]): The index of the checkpoint to be loaded, only
                 needed when layer_name is not None.
 
         Returns:
@@ -308,7 +323,7 @@ class AttributionTask:
                 raise NotImplementedError(error_msg)
             return self.original_loss_func
         if layer_name is not None:
-            self._load_checkpoints(index)
+            self._load_checkpoints(ckpt_idx)
             return partial_param(
                 full_param=self.named_parameters,
                 layer_name=layer_name,
@@ -317,7 +332,7 @@ class AttributionTask:
 
     def get_param(
         self,
-        index: int = 0,
+        ckpt_idx: int = 0,
         layer_name: Optional[Union[str, List[str]]] = None,
         layer_split: Optional[bool] = False,
         param_layer_map: Optional[List[int]] = None,
@@ -325,48 +340,52 @@ class AttributionTask:
         """Return the flattened parameter of the model.
 
         Args:
-            index (int): The index of the checkpoint to be loaded.
-            layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
-                extracted. If None, all the parameters will be returned. This should be
+            ckpt_idx (int): The index of the checkpoint to be loaded.
+            layer_name (Optional[Union[str, List[str]]]): layer_name is used when
+                only a portion of the parameters are needed to be extracted. It
+                declares the parameters belonging to which layers will be extracted.
+                If None, all the parameters will be returned. This should be
                 a string or a list of strings if multiple layers are needed. The name
-                of layer should follow the key of model.named_parameters(). If not None,
-                the layer_split will be forced to be True because a whole flattened
-                parameter will miss the layer information.
-            layer_split (Optional[bool]): If True, the parameters will be split
-                into different layers and returned as a list of parameter tensors.
-            param_layer_map (Optional[List[int]]): The map from the parameter
-                to the layer. If None, the map will be generated automatically. Normally
-                this should not be stated explicitly by the user, if needed it should
-                be the same length as parameters tuple. For example,
-                for a two layer model, params = (0.weights1, 0.bias, 1.weights, 1.bias),
-                param_layer_map should be [0, 0, 1, 1],resulting in two layers
-                as expected.
+                of layer should follow the key of model.named_parameters().
+                Default is None.
+            layer_split (Optional[bool]): layer_split is used when the returned
+                parameters need to be split by layers. If True, the return value of
+                this function will be a tuple of parameters where each element is
+                the parameters of a layer. If False, the return value will be a
+                flattened tensor of all the parameters. Default is False.
+            param_layer_map (Optional[List[int]]): A map stating the which element
+                of the parameter tuple belongs to which layer. It is only used when
+                layer_split is True. Default to None, which means the map will be
+                generated automatically. If param_layer_map is explicitly set, it
+                should have the same length as the named_parameters. For example,
+                for two layer model, params = (0.weights1, 0.bias, 1.weights, 1.bias),
+                param_layer_map should be [0, 0, 1, 1]. The explicitly set value will
+                be returned directly.
 
         Returns:
-            Tuple[Union[torch.Tensor, List[torch.Tensor]], Optional[List[int]]]: The
-                flattened parameters of the model and the layer map if layer_split
-                is True. Flattened parameters will be a 1-dim tensor.
+            Tuple[Union[torch.Tensor, List[torch.Tensor]], Optional[List[int]]]: If
+                layer_split is True, the return value will be a tuple of the parameters
+                of each layer and the param_layer_map. If layer_split is False, the
+                return value will be aflattened parameter of the model and None.
 
         Raises:
             ValueError: If the length of param_layer_map is not the same as the length
                 of named_parameters
         """
-        self._load_checkpoints(index)
+        self._load_checkpoints(ckpt_idx)
 
-        if layer_name:
+        if layer_name is not None:
             named_parameters = {
                 k: self.named_parameters[k]
                 for k in layer_name
                 if k in self.named_parameters
             }
-            # forced to layer_split
-            layer_split = True
         else:
             named_parameters = self.named_parameters
 
         if layer_split:
             if param_layer_map:
-                if len(param_layer_map) == len(
+                if len(param_layer_map) != len(
                     named_parameters,
                 ):
                     error_msg = (

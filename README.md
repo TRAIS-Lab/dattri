@@ -50,7 +50,7 @@ git clone https://github.com/TRAIS-Lab/dattri
 pip install -e .[all]
 ```
 
-### Apply Data Attribution methods on PyTorch Models
+### Apply data attribution methods on PyTorch models
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
 1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
@@ -153,7 +153,7 @@ Normally speaking, `tensor` is probably the gradient of loss/target function and
 Recent studies found that ensemble methods can significantly improve the performance of data attribution, [DROPOUT ENSEMBLE](https://arxiv.org/pdf/2405.17293) is one of these ensemble methods. One may prepare their model with
 
 ```python
-from dattri.model_utils.dropout import activate_dropout
+from dattri.model_util.dropout import activate_dropout
 
 # initialize a torch.nn.Module model
 model = MLP()
@@ -189,7 +189,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 - Brittleness test for checking flipped label
 
 ## Benchmark Settings Supported
-|   Dataset   |       Model       |         Task         | Sample size (train,test) | Parameter size |   Metrics   |          Data Source         |
+|   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric   |          Data Source         |
 |:-----------:|:-----------------:|:--------------------:|:------------------------:|:--------------:|:-----------:|:----------------------------:|
 |   MNIST-10  |         LR        | Image Classification |        (5000,500)        |      7840      | LOO/LDS/AUC |      [link](http://yann.lecun.com/exdb/mnist/)     |
 |   MNIST-10  |        MLP        | Image Classification |        (5000,500)        |      0.11M     | LOO/LDS/AUC |      [link](http://yann.lecun.com/exdb/mnist/)     |

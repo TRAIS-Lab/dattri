@@ -3,7 +3,7 @@
 import torch
 from sklearn import metrics
 
-from dattri.metrics.metrics import mislabel_detection_auc
+from dattri.metric import mislabel_detection_auc
 
 
 class TestMislabelDetection:

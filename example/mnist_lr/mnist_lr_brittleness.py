@@ -16,7 +16,7 @@ from dattri.algorithm.influence_function import\
     IFAttributorArnoldi
 from dattri.benchmark.datasets.mnist import train_mnist_lr, create_mnist_dataset
 from dattri.benchmark.utils import SubsetSampler
-from dattri.metrics.britteness import brittleness
+from dattri.metric import brittleness
 from dattri.task import AttributionTask
 
 ATTRIBUTOR_MAP = {
@@ -48,7 +48,7 @@ if __name__ == "__main__":
         batch_size=500,
         sampler=SubsetSampler(range(1000)),
     )
-    
+
     # test samples for attribution
     test_loader = torch.utils.data.DataLoader(
         dataset,
@@ -60,7 +60,7 @@ if __name__ == "__main__":
     model.cuda()
     model.eval()
 
-    
+
     def f(params, data_target_pair):
         image, label = data_target_pair
         loss = nn.CrossEntropyLoss()
@@ -106,7 +106,7 @@ if __name__ == "__main__":
 
         if correct_x is not None:
             break
-    
+
     # Example test sample
     test_dataset = TensorDataset(correct_x, correct_label)
     test_loader = DataLoader(test_dataset, batch_size=1, shuffle=True)
@@ -116,7 +116,7 @@ if __name__ == "__main__":
     # Compute brittleness
     start_time = time.time()
 
-    # Evaluation 
+    # Evaluation
     def eval_func(model, test_loader, device= "cpu"):
         model.to(device)
         model.eval()
@@ -147,4 +147,3 @@ if __name__ == "__main__":
         print("No k found that causes a flip.")
     end_time = time.time()
     print("Total time for brittleness test: ", end_time - start_time)
-    
