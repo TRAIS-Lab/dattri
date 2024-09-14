@@ -248,7 +248,7 @@ class TestInfluenceFunction:
         assert torch.allclose(score, score_m)
 
     def test_datainf_transform_test_rep(self):
-        """Test for influence function."""
+        """Test for datainf test representation transformation."""
         train_dataset = TensorDataset(
             torch.randn(20, 1, 28, 28),
             torch.randint(0, 10, (20,)),
