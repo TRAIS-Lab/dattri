@@ -6,11 +6,11 @@ from pathlib import Path
 import torch
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.benchmark.datasets.cifar2.cifar2_resnet9 import (
-    loss_cifar2_resnet9,
-    train_cifar2_resnet9,
+from dattri.benchmark.datasets.cifar import (
+    create_cifar2_dataset,
+    loss_cifar_resnet9,
+    train_cifar_resnet9,
 )
-from dattri.benchmark.datasets.cifar2.data import create_cifar2_dataset
 
 
 class TestCifar2:
@@ -45,14 +45,14 @@ class TestCifar2:
 
     def test_train_cifar2_resnet9(self):
         """Test train_cifar_resnet9."""
-        model = train_cifar2_resnet9(self.train_dataloader, num_epochs=2)
+        model = train_cifar_resnet9(self.train_dataloader, num_epochs=2)
         assert isinstance(model, torch.nn.Module)
 
     def test_loss_cifar2_resnet9(self):
         """Test loss_cifar2_resnet9."""
-        model = train_cifar2_resnet9(self.train_dataloader, num_epochs=2)
+        model = train_cifar_resnet9(self.train_dataloader, num_epochs=2)
         torch.save(model.state_dict(), "test_model.pt")
-        loss = loss_cifar2_resnet9("test_model.pt", self.test_dataloader)
+        loss = loss_cifar_resnet9("test_model.pt", self.test_dataloader)
         assert isinstance(loss, torch.Tensor)
 
         # remove the saved model for clean up

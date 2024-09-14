@@ -16,7 +16,7 @@ if __name__ == "__main__":
     parser.add_argument("--device", type=str, default="cuda")
     args = parser.parse_args()
 
-    # load the dataset, we only need the train dataset
+    # load the training dataset
     dataset, _ = create_mnist_dataset("./data")
 
     # flip 10% of the first 1000 data points

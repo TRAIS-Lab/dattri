@@ -7,7 +7,7 @@ from torch import nn
 from torchvision import datasets, transforms
 
 from dattri.algorithm.trak import TRAKAttributor
-from dattri.benchmark.datasets.cifar2 import train_cifar2_resnet9
+from dattri.benchmark.datasets.cifar import train_cifar_resnet9, create_cifar_dataset
 from dattri.benchmark.utils import SubsetSampler, flip_label
 from dattri.metric import mislabel_detection_auc
 from dattri.task import AttributionTask
@@ -26,15 +26,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     # create cifar 10 dataset
-    transform = transforms.Compose(
-        [transforms.ToTensor(), transforms.Normalize((0.5, 0.5, 0.5), (0.5, 0.5, 0.5))],
-    )
-    dataset = datasets.CIFAR10(
-        root="./data",
-        train=True,
-        download=True,
-        transform=transform,
-    )
+    dataset, _ = create_cifar_dataset("./data")
 
     flip_index = get_cifar_indices_and_adjust_labels(dataset, range(1000))
 
@@ -49,7 +41,7 @@ if __name__ == "__main__":
         sampler=SubsetSampler(range(1000)),
     )
 
-    model = train_cifar2_resnet9(train_loader, num_epochs=3, num_classes=10)
+    model = train_cifar_resnet9(train_loader, num_epochs=3, num_classes=10)
     model.to(args.device)
     model.eval()
 

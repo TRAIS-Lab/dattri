@@ -13,9 +13,9 @@ from pathlib import Path
 import torch
 from torch.utils.data import SubsetRandomSampler
 
-from dattri.benchmark.datasets.cifar2 import (
+from dattri.benchmark.datasets.cifar import (
     create_cifar2_dataset,
-    train_cifar2_resnet9,
+    train_cifar_resnet9,
 )
 from dattri.benchmark.datasets.imagenet import (
     create_imagenet_dataset,
@@ -38,7 +38,7 @@ SUPPORTED_SETTINGS = {
     "mnist_lr": train_mnist_lr,
     "mnist_mlp": train_mnist_mlp,
     "imagenet_resnet18": train_imagenet_resnet18,
-    "cifar2_resnet9": train_cifar2_resnet9,
+    "cifar2_resnet9": train_cifar_resnet9,
     "maestro_musictransformer": train_maestro_musictransformer,
 }
 SUPPORTED_RETRAINING_MODE = {"loo": retrain_loo, "lds": retrain_lds}

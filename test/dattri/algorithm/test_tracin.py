@@ -10,7 +10,7 @@ from torch.func import grad, vmap
 from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.tracin import TracInAttributor
-from dattri.benchmark.datasets.cifar2.cifar2_resnet9 import train_cifar2_resnet9
+from dattri.benchmark.datasets.cifar import train_cifar_resnet9
 from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.func.utils import flatten_func, flatten_params
 from dattri.task import AttributionTask
@@ -307,7 +307,7 @@ class TestTracInAttributor:
 
         train_loader = DataLoader(train_dataset, batch_size=4)
 
-        model = train_cifar2_resnet9(train_loader)
+        model = train_cifar_resnet9(train_loader)
 
         @flatten_func(model)
         def f(params, image_label_pair):
@@ -321,8 +321,8 @@ class TestTracInAttributor:
         grad_func = vmap(grad(f), in_dims=(None, 0))
 
         # to simlulate multiple checkpoints
-        model_1 = train_cifar2_resnet9(train_loader, num_epochs=1)
-        model_2 = train_cifar2_resnet9(train_loader, num_epochs=2)
+        model_1 = train_cifar_resnet9(train_loader, num_epochs=1)
+        model_2 = train_cifar_resnet9(train_loader, num_epochs=2)
         path = Path("./ckpts")
         if not path.exists():
             path.mkdir(parents=True)

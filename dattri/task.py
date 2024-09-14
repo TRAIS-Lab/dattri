@@ -119,7 +119,10 @@ class AttributionTask:
         Args:
             ckpt_idx (int): The index of the checkpoint to be loaded.
         """
-        if self.current_checkpoint_idx is None or self.current_checkpoint_idx != ckpt_idx:
+        if (
+            self.current_checkpoint_idx is None
+            or self.current_checkpoint_idx != ckpt_idx
+        ):
             if isinstance(self.checkpoints[ckpt_idx], (str, PosixPath)):
                 self.model.load_state_dict(
                     torch.load(
