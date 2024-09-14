@@ -8,6 +8,7 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Dict, List, Optional, Tuple, Union
 
+import inspect
 from pathlib import PosixPath
 
 import torch
@@ -83,6 +84,9 @@ class AttributionTask:
 
         self.original_loss_func = loss_func
         self.loss_func = flatten_func(self.model)(loss_func)
+        signature_loss = inspect.signature(self.loss_func)
+        self.loss_func_data_key = list(signature_loss.parameters.keys())[1]
+
         self.original_target_func = target_func
         self.target_func = flatten_func(self.model)(target_func)
 
