@@ -4,7 +4,6 @@ import argparse
 
 import torch
 from torch import nn
-from torchvision import datasets, transforms
 
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.datasets.cifar import train_cifar_resnet9, create_cifar_dataset
