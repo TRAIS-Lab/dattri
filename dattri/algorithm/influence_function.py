@@ -652,6 +652,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
+        fim_estimate_data_ratio: float = 1.0,
     ) -> None:
         """Initialize the DataInf inverse Hessian attributor.
 
@@ -668,18 +669,49 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 Adding `regularization * I` to the Hessian matrix, where `I` is the
                 identity matrix. Useful for singular or ill-conditioned matrices.
                 Default is 0.0.
+            fim_estimate_data_ratio (float): Ratio of full training data used to
+                approximate the empirical Fisher information matrix. Default is 1.0.
         """
         super().__init__(task, layer_name, device)
-        self.transformation_kwargs = {
-            "regularization": regularization,
-        }
+        self.regularization = regularization
+        self.fim_estimate_data_ratio = fim_estimate_data_ratio
+
+    def cache(
+        self,
+        full_train_dataloader: DataLoader,
+    ) -> None:
+        """Cache the dataset and pre-calculate the Arnoldi projector.
+
+        Args:
+            full_train_dataloader (DataLoader): Dataloader with full training data.
+        """
+        self.full_train_dataloader = full_train_dataloader
+        self._cached_train_reps = {}
+
+        for checkpoint_idx in range(len(self.task.get_checkpoints())):
+            _cached_train_reps_list = []
+            iter_number = math.ceil(len(full_train_dataloader)
+                * self.fim_estimate_data_ratio)
+            sampled_data_list = []
+            for _ in range(iter_number):
+                sampled_data_list.append(next(iter(full_train_dataloader)))  # noqa: PERF401
+            for sampled_data_ in sampled_data_list:
+                sampled_data = tuple(data.to(self.device).unsqueeze(0)
+                    for data in sampled_data_)
+                sampled_data_rep = self.generate_train_rep(
+                    ckpt_idx=checkpoint_idx,
+                    data=sampled_data,
+                )
+                _cached_train_reps_list.append(sampled_data_rep)
+            self._cached_train_reps[checkpoint_idx] = torch.cat(
+                _cached_train_reps_list, dim=0)
 
     def transform_test_rep(
         self,
         ckpt_idx: int,
         test_rep: torch.Tensor,
     ) -> torch.Tensor:
-        """Calculate the transformation on the query through ifvp_datainf.
+        """Calculate the transformation on the test representations.
 
         Args:
             ckpt_idx (int): Index of the model checkpoints. Used for ensembling
@@ -691,35 +723,95 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
         """
-        from dattri.func.fisher import ifvp_datainf
 
-        model_params, param_layer_map = self.task.get_param(ckpt_idx, layer_split=True)
+        def _transform_single_test_rep(
+            v: torch.Tensor,
+            grad: torch.Tensor,
+            regularization: float,
+        ) -> torch.Tensor:
+            """Transformation of a single test representation for a single layer.
 
-        self.ihvp_func = ifvp_datainf(
-            self.task.get_loss_func(),
-            0,
-            (None, 0),
-            param_layer_map=param_layer_map,
-            **self.transformation_kwargs,
+            For any test representation v and training gradient grad, along
+            with regularization term r, DataInf gives:
+            q = (v - (dot(v,grad) / (r + torch.norm(grad) ** 2)) * grad) / r
+
+            Transformed test representations are later used for influence calculation:
+            Inf = dot(g,q) where g is a training representation and q is a transformed
+            test representation.
+
+            Args:
+                v (torch.Tensor): A tensor representing (batched) test set
+                    representation, of shape (num_test,parameter_size).
+                grad (torch.Tensor): A tensor representing a single training
+                    gradient, of shape (parameter_size,).
+                regularization (float): A float default to 0.1. Specifies
+                    the regularization term to be added to the empirical Fisher
+                    information matrix in each layer.
+
+            Returns:
+                torch.Tensor: A tensor corresponding to transformed test representation.
+            """
+            grad = grad.unsqueeze(-1)
+            coef = (v @ grad) / (regularization + torch.norm(grad) ** 2)
+            return (v - coef @ grad.T) / regularization
+
+        regularization = self.regularization
+        # Split layer-wise train and test representations
+        test_rep_layers = self._get_layer_wise_reps(ckpt_idx, test_rep)
+        cached_train_rep_layers = self._get_layer_wise_reps(ckpt_idx,
+            self._cached_train_reps[ckpt_idx])
+        layer_cnt = len(cached_train_rep_layers)
+        transformed_test_rep_layers = []
+        # Use test batch size as intermediate batch size
+        # Peak memory usage: max(train_batch_size,test_batch_size)*test_batch_size*p
+        batch_size = test_rep.shape[0]
+        for layer in range(layer_cnt):
+            grad_layer = cached_train_rep_layers[layer]
+            # length = full train data size * fim_estimate_data_ratio
+            length = grad_layer.shape[0]
+            # Split gradients into smaller batches
+            grad_batches = grad_layer.split(batch_size, dim=0)
+            running_transformation = torch.zeros(test_rep_layers[layer].shape,
+                device=test_rep_layers[layer].device)
+            for batch in grad_batches:
+                reg = 0.1 if regularization is None else regularization
+                contribution = torch.func.vmap(
+                    lambda grad, layer=layer, reg=reg: _transform_single_test_rep(
+                    test_rep_layers[layer],
+                    grad,
+                    reg,
+                ),
+                )(batch)
+                # Accumulate the batches and average at the end
+                running_transformation += contribution.sum(dim=0)
+            running_transformation /= length
+            transformed_test_rep_layers.append(running_transformation)
+        return torch.cat(transformed_test_rep_layers, dim=1)
+
+    def _get_layer_wise_reps(self,
+        ckpt_idx: int,
+        query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        """Split a representation into layer-wise representations.
+
+        Args:
+            ckpt_idx (int): The index of the model parameters. This index
+                is used for ensembling of different trained model.
+            query (torch.Tensor): Input representations to split, could be
+                train/test representations, of shape (batch_size,parameter)
+
+        Returns:
+            Tuple[torch.Tensor, ...]: The layer-wise splitted tensor, a tuple of shape
+                (batch_size,layer0_size), (batch_size,layer1_size)...
+        """
+        model_params, param_layer_map = self.task.get_param(
+            ckpt_idx, layer_split=True,
         )
-
         split_index = [0] * (param_layer_map[-1] + 1)
         for idx, layer_index in enumerate(param_layer_map):
             split_index[layer_index] += model_params[idx].shape[0]
-
         current_idx = 0
-        query_split = []
+        query_layers = []
         for i in range(len(split_index)):
-            query_split.append(test_rep[:, current_idx : split_index[i] + current_idx])
+            query_layers.append(query[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
-
-        vector_product = 0
-        for full_data_ in self.full_train_dataloader:
-            # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
-            res = self.ihvp_func(
-                (model_params, (full_data[0], full_data[1].view(-1, 1).float())),
-                query_split,
-            )
-            vector_product += torch.cat(res, dim=1).detach()
-        return vector_product
+        return query_layers
