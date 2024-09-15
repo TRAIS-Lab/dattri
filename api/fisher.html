@@ -275,93 +275,6 @@ of <cite>func</cite> and <cite>v</cite>.</p>
 </dd></dl>
 
 <dl class="py function">
-<dt class="sig sig-object py" id="dattri.func.fisher.ifvp_datainf">
-<span class="sig-prename descclassname"><span class="pre">dattri.func.fisher.</span></span><span class="sig-name descname"><span class="pre">ifvp_datainf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_layer_map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.fisher.ifvp_datainf" title="Link to this definition">¶</a></dt>
-<dd><p>DataInf IFVP algorithm function.</p>
-<p>Standing for the inverse-FIM-vector product, returns a function that,
-when given vectors, computes the product of inverse-FIM and vector.</p>
-<p>DataInf assume the loss to be cross-entropy and thus derive a closed form
-IFVP without having to approximate the FIM. Implementation for reference:
-<a class="reference external" href="https://github.com/ykwon0407/DataInf/blob/main/src/influence.py">https://github.com/ykwon0407/DataInf/blob/main/src/influence.py</a></p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
-Must return a single-element Tensor. The layer-wise gradients will
-be calculated on this function. Note that datainf expects the loss
-to be cross-entropy.</p></li>
-<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
-to compute inverse FIM with respect to.</p></li>
-<li><p><strong>in_dims</strong> (<em>Tuple</em><em>[</em><em>Union</em><em>[</em><em>None</em><em>, </em><em>int</em><em>]</em><em>, </em><em>...</em><em>]</em>) – Parameter sent to vmap to produce
-batched layer-wise gradients. Example: inputs, weights, labels corresponds
-to (0,None,0).</p></li>
-<li><p><strong>regularization</strong> (<em>List</em><em> [</em><em>float</em><em>]</em>) – A float or list of floats default to 0.0.
-Specifies the
-regularization term to be added to the empirical FIM in each layer.
-This is useful when the empirical FIM is singular or ill-conditioned.
-The regularization term is <cite>regularization * I</cite>, where <cite>I</cite> is the
-identity matrix directly added to the empirical FIM. The list is
-of length L, where L is the total number of layers.</p></li>
-<li><p><strong>param_layer_map</strong> – Optional[List[int]]: Specifies how the parameters are grouped
-into layers. Should be the same length as parameters tuple. For example,
-for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
-param_layer_map should be [0,0,1,1],resulting in two layers as expected.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A function that takes a list of tuples of Tensor <cite>x</cite> and a tuple of tensors
-<cite>v</cite> (layer-wise) and returns the approximate IFVP of the approximate Hessian
-of <cite>func</cite> and <cite>v</cite>.</p>
-</dd>
-<dt class="field-odd">Raises<span class="colon">:</span></dt>
-<dd class="field-odd"><p><strong>IFVPUsageError</strong> – If the length of regularization is not the same as the number
-    of layers.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
-<dt class="sig sig-object py" id="dattri.func.fisher.ifvp_at_x_datainf">
-<span class="sig-prename descclassname"><span class="pre">dattri.func.fisher.</span></span><span class="sig-name descname"><span class="pre">ifvp_at_x_datainf</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">param_layer_map</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.fisher.ifvp_at_x_datainf" title="Link to this definition">¶</a></dt>
-<dd><p>DataInf IFVP algorithm function (with fixed x).</p>
-<p>Standing for the inverse-FIM-vector product, returns a function that,
-when given vectors, computes the product of inverse-FIM and vector.</p>
-<p>DataInf assume the loss to be cross-entropy and thus derive a closed form
-IFVP without having to approximate the FIM.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
-Must return a single-element Tensor. The layer-wise gradients will
-be calculated on this function. Note that datainf expects the loss
-to be cross-entropy.</p></li>
-<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
-to compute inverse FIM with respect to.</p></li>
-<li><p><strong>in_dims</strong> (<em>Tuple</em><em>[</em><em>Union</em><em>[</em><em>None</em><em>, </em><em>int</em><em>]</em><em>, </em><em>...</em><em>]</em>) – Parameter sent to vmap to produce
-batched layer-wise gradients. Example: inputs, weights, labels corresponds
-to (0,None,0).</p></li>
-<li><p><strong>regularization</strong> (<em>List</em><em> [</em><em>float</em><em>]</em>) – A list of floats default to 0.0. Specifies the
-regularization term to be added to the empirical FIM in each layer.
-This is useful when the empirical FIM is singular or ill-conditioned.
-The regularization term is <cite>regularization * I</cite>, where <cite>I</cite> is the
-identity matrix directly added to the empirical FIM.
-The list is of length L, where L is the total number of
-layers.</p></li>
-<li><p><strong>param_layer_map</strong> – Optional[List[int]]: Specifies how the parameters are grouped
-into layers. Should be the same length as parameters tuple. For example,
-for a two layer model, params = (0.weights1,0.bias,1.weights,1.bias),
-param_layer_map should be (0,0,1,1),resulting in two layers as expected.</p></li>
-<li><p><strong>*x</strong> – List of arguments for <cite>func</cite>.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A function that takes a tuple <cite>v</cite> and returns the tuple of IFVPs of the Hessian
-of <cite>func</cite> and <cite>v</cite>.</p>
-</dd>
-</dl>
-</dd></dl>
-
-<dl class="py function">
 <dt class="sig sig-object py" id="dattri.func.fisher.ifvp_at_x_ekfac">
 <span class="sig-prename descclassname"><span class="pre">dattri.func.fisher.</span></span><span class="sig-name descname"><span class="pre">ifvp_at_x_ekfac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_cache</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">MLPCache</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">MLPCache</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.fisher.ifvp_at_x_ekfac" title="Link to this definition">¶</a></dt>
 <dd><p>IFVP via EK-FAC algorithm.</p>
@@ -467,8 +380,6 @@ vector <cite>v</cite> and returns the IFVP of the Hessian of <cite>func</cite> a
 <li><a class="reference internal" href="#">Fisher Information Matrix (FIM) / IFVP</a><ul>
 <li><a class="reference internal" href="#dattri.func.fisher.ifvp_explicit"><code class="docutils literal notranslate"><span class="pre">ifvp_explicit()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.func.fisher.ifvp_at_x_explicit"><code class="docutils literal notranslate"><span class="pre">ifvp_at_x_explicit()</span></code></a></li>
-<li><a class="reference internal" href="#dattri.func.fisher.ifvp_datainf"><code class="docutils literal notranslate"><span class="pre">ifvp_datainf()</span></code></a></li>
-<li><a class="reference internal" href="#dattri.func.fisher.ifvp_at_x_datainf"><code class="docutils literal notranslate"><span class="pre">ifvp_at_x_datainf()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.func.fisher.ifvp_at_x_ekfac"><code class="docutils literal notranslate"><span class="pre">ifvp_at_x_ekfac()</span></code></a></li>
 </ul>
 </li>
