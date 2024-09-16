@@ -321,13 +321,13 @@ def _random_batch_iterator(
         )
 
 
-def _estimate_covariance(
+def _update_covariance(
     curr_estimate: List[List[Tuple[torch.Tensor]]],
     mlp_cache: List[MLPCache],
     total_samples: int,
     mask: torch.Tensor,
 ) -> List[List[Tuple[torch.Tensor]]]:
-    """Estimate the 'covariance' matrices S and A in EK-FAC IFVP.
+    """Update the running estimation of the 'covariance' matrices S and A in EK-FAC IFVP.
 
     Args:
         curr_estimate (List[List[Tuple[torch.Tensor]]]): A list of lists of tuples
@@ -373,7 +373,7 @@ def _estimate_covariance(
     return curr_estimate
 
 
-def _estimate_lambda(
+def _update_lambda(
     curr_estimate: List[List[torch.Tensor]],
     mlp_cache: List[MLPCache],
     cached_q: List[List[Tuple[torch.Tensor]]],
@@ -381,7 +381,7 @@ def _estimate_lambda(
     mask: torch.Tensor,
     max_steps_for_vec: int = 10,
 ) -> List[List[torch.Tensor]]:
-    """Estimate the corrected eigenvalues in EK-FAC IFVP.
+    """Update the running estimation of the corrected eigenvalues in EK-FAC IFVP.
 
     Args:
         curr_estimate (List[List[torch.Tensor]]): A list of lists of tensors,
@@ -465,13 +465,98 @@ def _estimate_lambda(
     return curr_estimate
 
 
+def estimate_covariance(
+    func: Callable,
+    dataloader: torch.utils.data.DataLoader,
+    mlp_cache: List[MLPCache],
+    max_iter: int,
+) -> List[List[Tuple[torch.Tensor]]]:
+    covariances = [[] for _ in range(len(mlp_cache))]
+    total_samples = 0  # record total number of samples
+    for i, batch in enumerate(dataloader):
+        # Forward pass
+        func_output = func(*batch)
+        losses, mask = (
+            func_output if isinstance(func_output, tuple) else func_output,
+            torch.tensor(1.0),
+        )
+
+        for loss in losses:
+            # Backward pass
+            loss.backward(retain_graph=True)
+
+        with torch.no_grad():
+            # Estimate covariance
+            cov_matrices = _update_covariance(
+                cov_matrices,
+                mlp_cache,
+                total_samples,
+                mask,
+            )
+
+        total_samples += int(mask.sum())
+        if i == max_iter - 1:
+            break
+
+    return covariances
+
+
+def estimate_eigenvector(
+    covariances: List[List[Tuple[torch.Tensor]]],
+    mlp_cache: List[MLPCache],
+) -> List[List[Tuple[torch.Tensor]]]:
+    cached_q = [[] for _ in range(len(mlp_cache))]
+    for layer_q, layer_cov in zip(cached_q, covariances):
+        for cov_a, cov_s in layer_cov:
+            _, q_a = torch.linalg.eigh(cov_a, UPLO="U")
+            _, q_s = torch.linalg.eigh(cov_s, UPLO="U")
+            layer_q.append((q_a, q_s))
+
+
+def estimate_lambda(
+    func: Callable,
+    dataloader: torch.utils.data.DataLoader,
+    eigenvectors: List[List[Tuple[torch.Tensor]]],
+    mlp_cache: List[MLPCache],
+    max_iter: int,
+) -> List[List[torch.Tensor]]:
+    lambdas = [[] for _ in range(len(mlp_cache))]
+    total_samples = 0  # record total number of samples
+    for i, batch in enumerate(dataloader):
+        # Forward pass
+        func_output = func(*batch)
+        losses, mask = (
+            func_output if isinstance(func_output, tuple) else func_output,
+            torch.tensor(1.0),
+        )
+
+        for loss in losses:
+            # Backward pass
+            loss.backward(retain_graph=True)
+
+        with torch.no_grad():
+            # Update lambdas
+            lambdas = _update_lambda(
+                lambdas,
+                mlp_cache,
+                eigenvectors,
+                total_samples,
+                mask,
+            )
+        total_samples += len(losses)
+        if i == max_iter - 1:
+            break
+
+    return lambdas
+
+
 def ifvp_at_x_ekfac(
     func: Callable,
     *x,
+    mlp_cache: Union[MLPCache, List[MLPCache]],
     in_dims: Optional[Tuple] = None,
     batch_size: int = 1,
     max_iter: Optional[int] = None,
-    mlp_cache: Union[MLPCache, List[MLPCache]],
     damping: float = 0.0,
 ) -> Callable:
     """IFVP via EK-FAC algorithm.
@@ -494,6 +579,9 @@ def ifvp_at_x_ekfac(
             input data are non-sequential, t should be set to 1.
             The FIM will be estimated on this function.
         *x: List of arguments for `func`.
+        mlp_cache (Union[MLPCache, List[MLPCache]]): A single or list of registered
+            caches, used to record the input and hidden vectors as well as their
+            relevant gradients during the forward and backward calls of `func`.
         in_dims (Tuple, optional): A tuple with the same shape as *x, indicating
             which dimension should be considered as batch size dimension. Take the
             first dimension as batch size dimension by default.
@@ -502,9 +590,6 @@ def ifvp_at_x_ekfac(
         max_iter (int, optional): An integer indicating the maximum number of
             batches that will be used for estimating the the covariance matrices and
             lambdas.
-        mlp_cache (Union[MLPCache, List[MLPCache]]): A single or list of registered
-            caches, used to record the input and hidden vectors as well as their
-            relevant gradients during the forward and backward calls of `func`.
         damping: Damping factor used for non-convexity in EK-FAC IFVP calculation.
 
     Returns:
@@ -525,41 +610,14 @@ def ifvp_at_x_ekfac(
         in_dims=in_dims,
         batch_size=batch_size,
     )
-
-    cov_matrices = [[] for _ in range(len(mlp_cache))]
-    total_samples = 0  # record total number of samples
-    for i, batch in enumerate(dataloader):
-        # Forward pass
-        func_output = func(*batch)
-        losses, mask = (
-            func_output if isinstance(func_output, tuple) else func_output,
-            torch.tensor(1.0),
-        )
-
-        for loss in losses:
-            # Backward pass
-            loss.backward(retain_graph=True)
-
-        with torch.no_grad():
-            # Estimate covariance
-            cov_matrices = _estimate_covariance(
-                cov_matrices,
-                mlp_cache,
-                total_samples,
-                mask,
-            )
-
-        total_samples += int(mask.sum())
-        if i == max_iter - 1:
-            break
+    cov_matrices = estimate_covariance(func,
+                                       dataloader,
+                                       mlp_cache,
+                                       max_iter)
 
     # 2. Calculate the eigenvalue decomposition of S and A
-    cached_q = [[] for _ in range(len(mlp_cache))]
-    for layer_q, layer_cov in zip(cached_q, cov_matrices):
-        for cov_a, cov_s in layer_cov:
-            _, q_a = torch.linalg.eigh(cov_a, UPLO="U")
-            _, q_s = torch.linalg.eigh(cov_s, UPLO="U")
-            layer_q.append((q_a, q_s))
+    cached_q = estimate_eigenvector(cov_matrices,
+                                    mlp_cache)
 
     # 3. Use random batch for eigenvalue correction
     dataloader = _random_batch_iterator(
@@ -568,32 +626,11 @@ def ifvp_at_x_ekfac(
         in_dims=in_dims,
         batch_size=batch_size,
     )
-    cached_lambdas = [[] for _ in range(len(mlp_cache))]
-    total_samples = 0  # record total number of samples
-    for i, batch in enumerate(dataloader):
-        # Forward pass
-        func_output = func(*batch)
-        losses, mask = (
-            func_output if isinstance(func_output, tuple) else func_output,
-            torch.tensor(1.0),
-        )
-
-        for loss in losses:
-            # Backward pass
-            loss.backward(retain_graph=True)
-
-        with torch.no_grad():
-            # Update lambdas
-            cached_lambdas = _estimate_lambda(
-                cached_lambdas,
-                mlp_cache,
-                cached_q,
-                total_samples,
-                mask,
-            )
-        total_samples += len(losses)
-        if i == max_iter - 1:
-            break
+    cached_lambdas = estimate_lambda(func,
+                                     dataloader,
+                                     cached_q,
+                                     mlp_cache,
+                                     max_iter)
 
     # Clear unused data from cache
     del cov_matrices
