@@ -55,7 +55,7 @@ FORCE_CPU = False  # Forces model to run on a cpu even when gpu is available
 NO_TENSORBOARD = True  # Turns off tensorboard result reporting
 CONTINUE_WEIGHTS = None  # Model weights to continue training (str: file location)
 CONTINUE_EPOCH = None  # Epoch the CONTINUE_WEIGHTS model was at (int: epoch number)
-LR = None  # Set constant learn rate
+LR = 1e-4  # Set constant learn rate
 CE_SMOOTHING = None  # Smoothing parameter for smoothed cross entropy loss
 EPOCHS = 20  # Number of epochs to use
 RPR = True  # Use a modified Transformer for Relative Position Representations
@@ -228,12 +228,25 @@ def loss_maestro_musictransformer(
     """
     model = create_musictransformer_model()
     model.load_state_dict(torch.load(Path(model_path)))
+    model.eval()
     model.to(device)
+    loss_list = []
     # Not smoothing evaluation loss #####
-    eval_loss_func = nn.CrossEntropyLoss(ignore_index=TOKEN_PAD)
-    eval_loss, _ = eval_model(model, dataloader, eval_loss_func, device)
+    eval_loss_func = nn.CrossEntropyLoss(ignore_index=TOKEN_PAD, reduction="none")
 
-    return eval_loss
+    with torch.no_grad():
+        for batch in dataloader:
+            x = batch[0].to(device)
+            tgt = batch[1].to(device)
+
+            y = model(x)
+
+            tgt = tgt[:, -1]
+            y = y[:, -1:, :]
+            loss = -eval_loss_func(y.squeeze(1), tgt)
+            loss_list.append(loss.clone().detach().cpu())
+
+    return torch.cat(loss_list)
 
 
 def create_musictransformer_model(device: str = "cpu") -> MusicTransformer:
