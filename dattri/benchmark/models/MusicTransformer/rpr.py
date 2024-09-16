@@ -164,32 +164,6 @@ class MultiheadAttentionRPR(Module):
     def forward(self, query, key, value, key_padding_mask=None,
                 need_weights=True, attn_mask=None):
 
-        # if hasattr(self, '_qkv_same_embed_dim') and self._qkv_same_embed_dim is False:
-        #     return multi_head_attention_forward_rpr(
-        #         query, key, value, self.embed_dim, self.num_heads,
-        #         self.in_proj_weight, self.in_proj_bias,
-        #         self.bias_k, self.bias_v, self.add_zero_attn,
-        #         self.dropout, self.out_proj.weight, self.out_proj.bias,
-        #         training=self.training,
-        #         key_padding_mask=key_padding_mask, need_weights=need_weights,
-        #         attn_mask=attn_mask, use_separate_proj_weight=True,
-        #         q_proj_weight=self.q_proj_weight, k_proj_weight=self.k_proj_weight,
-        #         v_proj_weight=self.v_proj_weight, rpr_mat=self.Er)
-        # else:
-        #     if not hasattr(self, '_qkv_same_embed_dim'):
-        #         warnings.warn('A new version of MultiheadAttention module has been implemented. \
-        #             Please re-train your model with the new module',
-        #                       UserWarning)
-
-        #     return multi_head_attention_forward_rpr(
-        #         query, key, value, self.embed_dim, self.num_heads,
-        #         self.in_proj_weight, self.in_proj_bias,
-        #         self.bias_k, self.bias_v, self.add_zero_attn,
-        #         self.dropout, self.out_proj.weight, self.out_proj.bias,
-        #         training=self.training,
-        #         key_padding_mask=key_padding_mask, need_weights=need_weights,
-        #         attn_mask=attn_mask, rpr_mat=self.Er)
-
         return multi_head_attention_forward_rpr(
                 query, key, value, self.embed_dim, self.num_heads,
                 self.in_proj_weight, self.in_proj_bias,
