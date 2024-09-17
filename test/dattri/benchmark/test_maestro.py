@@ -44,7 +44,7 @@ class TestMaestro:
         )
         torch.save(model.state_dict(), "test_model.pt")
         loss = loss_maestro_musictransformer("test_model.pt", self.test_dataloader)
-        assert isinstance(loss, float)
+        assert isinstance(loss, torch.Tensor)
 
         # remove the saved model for clean up
         Path("test_model.pt").unlink(missing_ok=True)

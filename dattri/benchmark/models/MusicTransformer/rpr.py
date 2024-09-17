@@ -164,44 +164,7 @@ class MultiheadAttentionRPR(Module):
     def forward(self, query, key, value, key_padding_mask=None,
                 need_weights=True, attn_mask=None):
 
-        if hasattr(self, '_qkv_same_embed_dim') and self._qkv_same_embed_dim is False:
-            # return F.multi_head_attention_forward(
-            #     query, key, value, self.embed_dim, self.num_heads,
-            #     self.in_proj_weight, self.in_proj_bias,
-            #     self.bias_k, self.bias_v, self.add_zero_attn,
-            #     self.dropout, self.out_proj.weight, self.out_proj.bias,
-            #     training=self.training,
-            #     key_padding_mask=key_padding_mask, need_weights=need_weights,
-            #     attn_mask=attn_mask, use_separate_proj_weight=True,
-            #     q_proj_weight=self.q_proj_weight, k_proj_weight=self.k_proj_weight,
-            #     v_proj_weight=self.v_proj_weight)
-
-            return multi_head_attention_forward_rpr(
-                query, key, value, self.embed_dim, self.num_heads,
-                self.in_proj_weight, self.in_proj_bias,
-                self.bias_k, self.bias_v, self.add_zero_attn,
-                self.dropout, self.out_proj.weight, self.out_proj.bias,
-                training=self.training,
-                key_padding_mask=key_padding_mask, need_weights=need_weights,
-                attn_mask=attn_mask, use_separate_proj_weight=True,
-                q_proj_weight=self.q_proj_weight, k_proj_weight=self.k_proj_weight,
-                v_proj_weight=self.v_proj_weight, rpr_mat=self.Er)
-        else:
-            if not hasattr(self, '_qkv_same_embed_dim'):
-                warnings.warn('A new version of MultiheadAttention module has been implemented. \
-                    Please re-train your model with the new module',
-                              UserWarning)
-
-            # return F.multi_head_attention_forward(
-            #     query, key, value, self.embed_dim, self.num_heads,
-            #     self.in_proj_weight, self.in_proj_bias,
-            #     self.bias_k, self.bias_v, self.add_zero_attn,
-            #     self.dropout, self.out_proj.weight, self.out_proj.bias,
-            #     training=self.training,
-            #     key_padding_mask=key_padding_mask, need_weights=need_weights,
-            #     attn_mask=attn_mask)
-
-            return multi_head_attention_forward_rpr(
+        return multi_head_attention_forward_rpr(
                 query, key, value, self.embed_dim, self.num_heads,
                 self.in_proj_weight, self.in_proj_bias,
                 self.bias_k, self.bias_v, self.add_zero_attn,
@@ -252,9 +215,10 @@ def multi_head_attention_forward_rpr(query,                       # type: Tensor
 
     # type: (...) -> Tuple[Tensor, Optional[Tensor]]
 
-    qkv_same = torch.equal(query, key) and torch.equal(key, value)
-    kv_same = torch.equal(key, value)
-
+    # qkv_same = torch.equal(query, key) and torch.equal(key, value)
+    # kv_same = torch.equal(key, value)
+    qkv_same = True
+    kv_same = True
     tgt_len, bsz, embed_dim = query.size()
     assert embed_dim == embed_dim_to_check
     assert list(query.size()) == [tgt_len, bsz, embed_dim]
@@ -414,7 +378,7 @@ def multi_head_attention_forward_rpr(query,                       # type: Tensor
         attn_output_weights += srel
 
     if attn_mask is not None:
-        attn_mask = attn_mask.unsqueeze(0)
+        attn_mask = attn_mask.unsqueeze(0).to(query.device)
         attn_output_weights += attn_mask
 
     if key_padding_mask is not None:

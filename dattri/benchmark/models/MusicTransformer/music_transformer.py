@@ -7,8 +7,8 @@ import random
 
 from dattri.benchmark.models.MusicTransformer.utilities.constants import *
 
-from .positional_encoding import PositionalEncoding
-from .rpr import TransformerEncoderRPR, TransformerEncoderLayerRPR
+from dattri.benchmark.models.MusicTransformer.positional_encoding import PositionalEncoding
+from dattri.benchmark.models.MusicTransformer.rpr import TransformerEncoderRPR, TransformerEncoderLayerRPR
 
 
 # MusicTransformer
@@ -32,7 +32,7 @@ class MusicTransformer(nn.Module):
     """
 
     def __init__(self, n_layers=6, num_heads=8, d_model=512, dim_feedforward=1024,
-                 dropout=0.1, max_sequence=2048, rpr=False, device="cpu"):
+                 dropout=0.1, max_sequence=2048, rpr=False, device="cuda"):
         super(MusicTransformer, self).__init__()
 
         self.dummy      = DummyDecoder()
@@ -138,7 +138,6 @@ class MusicTransformer(nn.Module):
 
         num_primer = len(primer)
         gen_seq[..., :num_primer] = primer.type(TORCH_LABEL_TYPE).to(self.device)
-
 
         # print("primer:",primer)
         # print(gen_seq)

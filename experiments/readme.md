@@ -2,7 +2,7 @@
 
 This folder is used to reproduce the benchmark results. If you want to find some code snippets, You may find some easier and clearer examples in `/example` folder.
 
-## CIFAR / Mnist
+## CIFAR-2 / MNIST
 The `benchmark_result.py` is designed to be an integrated script to run the experiments in one line. The usage of this script is as following
 ```
 usage: benchmark_result.py [-h] [--dataset {mnist,cifar2}] [--model {lr,mlp,resnet9}] [--method {if-explicit,if-cg,if-lissa,if-arnoldi,TRAK-1,TRAK-10,TRAK-50,TracIn,Grad-Dot,Grad-Cos,RPS}]
@@ -53,4 +53,25 @@ python benchmark_result_nanogpt.py --method TRAK-10 --device cuda
 The result will be like
 ```bash
 TRAK-10 RESULT: {'proj_dim': 2048, 'device': 'cuda', 'use_half_precision': False} lds: tensor(0.1419)
+```
+
+## MAESTRO + MusicTransformer
+The `benchmark_result_mt.py` is an intergrated script to run MusicTransformer experiments in one line. The usage of this script is as following
+```
+usage: benchmark_result_mt.py [-h] [--method {TRAK-1,TRAK-10,TRAK-50,TracIn,Grad-Dot,Grad-Cos}] [--device DEVICE]
+
+options:
+  -h, --help            show this help message and exit
+  --method {TRAK-1,TRAK-10,TRAK-50,TracIn,Grad-Dot,Grad-Cos}
+                        The TDA method to benchmark.
+  --device DEVICE       The device to run the experiment.
+```
+
+For example,
+```bash
+python benchmark_result_mt.py --method TRAK-10 --device cuda
+```
+The result will be like
+```bash
+TRAK-10 RESULT: {'proj_dim': 2048, 'device': 'cuda', 'use_half_precision': False} lds: tensor(0.3243)
 ```
