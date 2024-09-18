@@ -245,6 +245,44 @@ def _unflatten_params_layerwise(
     return param_dict
 
 
+def _unflatten_partial_params(
+    tensors: Tensor,
+    model: torch.nn.Module,
+    layer_name: List[str],
+) -> Dict[str, Tensor]:
+    """Unflatten a single tensor into a dictionary of tensors.
+
+    This is a reverse operation of flatten_params. The transforming could enable the
+    following usage of `functional_call` function.
+
+    Args:
+        tensors (Tensor): A single tensor containing the flattened parameters.
+        model (torch.nn.Module): A torch.nn.Module object providing shape
+            information and parameter names.
+        layer_name: A list of layer names used during flatten_params.
+
+    Returns:
+        Dict[str, Tensor]: A dictionary of tensors (e.g., something similar to
+            model.named_parameters()).
+
+    Note:
+        The returned value will use the `tensor` as the value of the dictionary, rather
+        than directly returning model.named_parameters().
+    """
+    full_model_params = {k: p for k, p in model.named_parameters() if p.requires_grad}
+    partial_model_params = {name: full_model_params[name] for name in layer_name}
+    shape_list = [p.shape for p in partial_model_params.values()]
+
+    def generator() -> Tensor:
+        current_index = 0
+        for shape in shape_list:
+            size = math.prod(shape)
+            yield tensors[current_index : current_index + size].reshape(shape)
+            current_index += size
+
+    return dict(zip(partial_model_params.keys(), generator()))
+
+
 def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
     """A decorator that flattens the parameters of a function at a specified index.
 
