@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import ClassVar, Generator, List, Optional, Tuple, Union
+    from typing import ClassVar, Dict, Generator, List, Optional, Tuple, Union
 
     from torch import Tensor
 
@@ -322,11 +322,11 @@ def _random_batch_iterator(
 
 
 def _update_covariance(
-    curr_estimate: List[List[Tuple[torch.Tensor]]],
-    mlp_cache: List[MLPCache],
+    curr_estimate: Dict[str, Tuple[torch.tensor]],
+    layer_cache: Dict[str, Tuple[torch.tensor]],
     total_samples: int,
     mask: torch.Tensor,
-) -> List[List[Tuple[torch.Tensor]]]:
+) -> Dict[str, Tuple[torch.tensor]]:
     """Update the running estimation of the 'covariance' matrices S and A in EK-FAC IFVP.
 
     Args:
@@ -344,38 +344,37 @@ def _update_covariance(
         A list of lists of tuples of tensors, storing the updated running covariances.
     """
     batch_samples = int(mask.sum())
-    for cache, layer_cov in zip(mlp_cache, curr_estimate):
-        for idx, (a_prev, s_curr) in enumerate(cache.input_hidden_pairs):
-            a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
-            # Calculate batch covariance matrix for A
-            a_prev_reshaped = a_prev_masked.view(-1, a_prev.size(-1))
-            batch_cov_a = a_prev_reshaped.transpose(0, 1) @ a_prev_reshaped
-            batch_cov_a /= batch_samples
+    for layer_name, (a_prev, s_curr) in layer_cache.items():
+        a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
+        # Calculate batch covariance matrix for A
+        a_prev_reshaped = a_prev_masked.view(-1, a_prev.size(-1))
+        batch_cov_a = a_prev_reshaped.transpose(0, 1) @ a_prev_reshaped
+        batch_cov_a /= batch_samples
 
-            # Calculate batch covariance matrix for S
-            ds_curr = s_curr.grad
+        # Calculate batch covariance matrix for S
+        ds_curr = s_curr.grad
 
-            ds_curr_reshaped = ds_curr.view(-1, s_curr.size(-1))
-            batch_cov_s = ds_curr_reshaped.transpose(0, 1) @ ds_curr_reshaped
-            batch_cov_s /= batch_samples
+        ds_curr_reshaped = ds_curr.view(-1, s_curr.size(-1))
+        batch_cov_s = ds_curr_reshaped.transpose(0, 1) @ ds_curr_reshaped
+        batch_cov_s /= batch_samples
 
-            # Update the running covariance matrices for A and S
-            if idx >= len(layer_cov):
-                # First time initializartion
-                layer_cov.append((batch_cov_a, batch_cov_s))
-            else:
-                old_weight = total_samples / (total_samples + batch_samples)
-                new_weight = batch_samples / (total_samples + batch_samples)
-                new_cov_a = old_weight * layer_cov[idx][0] + new_weight * batch_cov_a
-                new_cov_s = old_weight * layer_cov[idx][1] + new_weight * batch_cov_s
-                layer_cov[idx] = (new_cov_a, new_cov_s)
+        # Update the running covariance matrices for A and S
+        if layer_name in curr_estimate:
+            curr_estimate[layer_name] = (batch_cov_a, batch_cov_s)
+        else:
+            # First time access
+            old_weight = total_samples / (total_samples + batch_samples)
+            new_weight = batch_samples / (total_samples + batch_samples)
+            new_cov_a = old_weight * curr_estimate[layer_name][0] + new_weight * batch_cov_a
+            new_cov_s = old_weight * curr_estimate[layer_name][1] + new_weight * batch_cov_s
+            curr_estimate[layer_name] = (new_cov_a, new_cov_s)
 
     return curr_estimate
 
 
 def _update_lambda(
     curr_estimate: List[List[torch.Tensor]],
-    mlp_cache: List[MLPCache],
+    layer_cache: Dict[str, Tuple[torch.tensor]],
     cached_q: List[List[Tuple[torch.Tensor]]],
     total_samples: int,
     mask: torch.Tensor,
@@ -407,60 +406,52 @@ def _update_lambda(
     Returns:
         A list of lists of tensors, storing the updated running lambdas.
     """
-    for cache, layer_lambda, layer_q in zip(mlp_cache, curr_estimate, cached_q):
-        for idx, ((a_prev, s_curr), (q_a, q_s)) in enumerate(
-            zip(cache.input_hidden_pairs, layer_q),
-        ):
-            a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
+    for layer_name, (a_prev, s_curr) in layer_cache.items():
+        a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
 
-            # Uniformly reshape the tensors into (batch_size, t, ...)
-            # The t here is the sequence length or time steps for sequential input
-            # t = 1 if the given input is not sequential
-            ds_curr = s_curr.grad
+        # Uniformly reshape the tensors into (batch_size, t, ...)
+        # The t here is the sequence length or time steps for sequential input
+        # t = 1 if the given input is not sequential
+        ds_curr = s_curr.grad
 
-            if a_prev.ndim == 2:  # noqa: PLR2004
-                a_prev_reshaped = a_prev_masked.unsqueeze(1)
-                ds_curr_reshaped = ds_curr.unsqueeze(1)
-            else:
-                a_prev_reshaped = a_prev_masked
-                ds_curr_reshaped = ds_curr
+        if a_prev.ndim == 2:  # noqa: PLR2004
+            a_prev_reshaped = a_prev_masked.unsqueeze(1)
+            ds_curr_reshaped = ds_curr.unsqueeze(1)
+        else:
+            a_prev_reshaped = a_prev_masked
+            ds_curr_reshaped = ds_curr
 
-            batch_samples = a_prev_reshaped.shape[0]
-            timesteps = a_prev_reshaped.shape[1]  # the value of t
-            if timesteps <= max_steps_for_vec:
-                # Vectorized calculation of dtheta
-                batch_dtheta = (
-                    ds_curr_reshaped.unsqueeze(-1) @ a_prev_reshaped.unsqueeze(2)
-                ).sum(axis=1)
-            else:
-                # Memory efficient calculation of dtheta
-                batch_dtheta = torch.zeros(
-                    batch_samples,
-                    ds_curr_reshaped.shape[-1],
-                    a_prev_reshaped.shape[-1],
-                    device=ds_curr.device,
-                )
+        batch_samples = a_prev_reshaped.shape[0]
+        timesteps = a_prev_reshaped.shape[1]  # the value of t
+        if timesteps <= max_steps_for_vec:
+            # Vectorized calculation of dtheta
+            batch_dtheta = (
+                ds_curr_reshaped.unsqueeze(-1) @ a_prev_reshaped.unsqueeze(2)
+            ).sum(axis=1)
+        else:
+            # Memory efficient calculation of dtheta
+            batch_dtheta = torch.zeros(
+                batch_samples,
+                ds_curr_reshaped.shape[-1],
+                a_prev_reshaped.shape[-1],
+                device=ds_curr.device,
+            )
 
-                for ts in range(timesteps):
-                    batch_dtheta += (
-                        ds_curr_reshaped[:, ts, :, None]
-                        @ a_prev_reshaped[:, ts, None, :]
-                    )
+        # An equivalent way to calculate lambda's. Please refer to
+        # https://math.stackexchange.com/questions/1879933/vector-multiplication-with-multiple-kronecker-products
+        q_s, q_a = cached_q[layer_name]
+        batch_lambda = torch.square(q_s @ batch_dtheta @ q_a.T).mean(axis=0)
 
-            # An equivalent way to calculate lambda's. Please refer to
-            # https://math.stackexchange.com/questions/1879933/vector-multiplication-with-multiple-kronecker-products
-            batch_lambda = torch.square(q_s @ batch_dtheta @ q_a.T).mean(axis=0)
-
-            # Update the running eigenvalue estimation
-            if idx >= len(layer_lambda):
-                # First time initializartion
-                layer_lambda.append(batch_lambda)
-            else:
-                old_weight = total_samples / (total_samples + batch_samples)
-                new_weight = batch_samples / (total_samples + batch_samples)
-                layer_lambda[idx] = (
-                    old_weight * layer_lambda[idx] + new_weight * batch_lambda
-                )
+        # Update the running eigenvalue estimation
+        if layer_name in curr_estimate:
+            # First time initializartion
+            curr_estimate[layer_name] = batch_lambda
+        else:
+            old_weight = total_samples / (total_samples + batch_samples)
+            new_weight = batch_samples / (total_samples + batch_samples)
+            curr_estimate[layer_name] = (
+                old_weight * curr_estimate[layer_name] + new_weight * batch_lambda
+            )
 
     return curr_estimate
 
@@ -468,10 +459,10 @@ def _update_lambda(
 def estimate_covariance(
     func: Callable,
     dataloader: torch.utils.data.DataLoader,
-    mlp_cache: List[MLPCache],
+    layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: int,
-) -> List[List[Tuple[torch.Tensor]]]:
-    covariances = [[] for _ in range(len(mlp_cache))]
+) -> Dict[str, Tuple[torch.tensor]]:
+    covariances = {}
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
         # Forward pass
@@ -488,8 +479,8 @@ def estimate_covariance(
         with torch.no_grad():
             # Estimate covariance
             cov_matrices = _update_covariance(
-                cov_matrices,
-                mlp_cache,
+                covariances,
+                layer_cache,
                 total_samples,
                 mask,
             )
@@ -503,24 +494,24 @@ def estimate_covariance(
 
 def estimate_eigenvector(
     covariances: List[List[Tuple[torch.Tensor]]],
-    mlp_cache: List[MLPCache],
 ) -> List[List[Tuple[torch.Tensor]]]:
-    cached_q = [[] for _ in range(len(mlp_cache))]
-    for layer_q, layer_cov in zip(cached_q, covariances):
-        for cov_a, cov_s in layer_cov:
-            _, q_a = torch.linalg.eigh(cov_a, UPLO="U")
-            _, q_s = torch.linalg.eigh(cov_s, UPLO="U")
-            layer_q.append((q_a, q_s))
+    cached_q = {}
+    for layer_name, (cov_a, cov_s) in covariances:
+        _, q_a = torch.linalg.eigh(cov_a, UPLO="U")
+        _, q_s = torch.linalg.eigh(cov_s, UPLO="U")
+        cached_q[layer_name] = (q_a, q_s)
+
+    return cached_q
 
 
 def estimate_lambda(
     func: Callable,
     dataloader: torch.utils.data.DataLoader,
     eigenvectors: List[List[Tuple[torch.Tensor]]],
-    mlp_cache: List[MLPCache],
+    layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: int,
-) -> List[List[torch.Tensor]]:
-    lambdas = [[] for _ in range(len(mlp_cache))]
+) -> Dict[str, Tuple[torch.tensor]]:
+    lambdas = {}
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
         # Forward pass
@@ -538,7 +529,7 @@ def estimate_lambda(
             # Update lambdas
             lambdas = _update_lambda(
                 lambdas,
-                mlp_cache,
+                layer_cache,
                 eigenvectors,
                 total_samples,
                 mask,
@@ -659,7 +650,6 @@ def ifvp_at_x_ekfac(
         return ifvp
 
     return _ifvp_at_x_ekfac_func
-
 
 class IFVPUsageError(Exception):
     """The usage exception class for IFVP module."""
