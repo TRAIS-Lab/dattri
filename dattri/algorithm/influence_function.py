@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
+from dattri.task import AttributionTask
+
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -815,3 +817,88 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             query_layers.append(query[:, current_idx : split_index[i] + current_idx])
             current_idx += split_index[i]
         return query_layers
+
+
+class IFAttributorEKFAC(BaseInnerProductAttributor):
+    """The inner product attributor with DataInf inverse hessian transformation."""
+
+    def __init__(self,
+                 task: AttributionTask,
+                 layer_name: Optional[Union[str, List[str]]] = None,
+                 device: Optional[str] = "cpu"
+    ) -> None:
+        super().__init__(task, layer_name, device)
+        if len(self.checkpoints) > 1:
+            error_msg = ("Received more than one checkpoint. "
+                         "Ensemble of EK-FAC is not supported.")
+            raise ValueError(error_msg) 
+
+        if not layer_name:
+            layer_name = [
+                name for name, _ in self.task.model.named_parameters()
+                if "linear" in name or "fc" in name
+            ]
+        if not isinstance(layer_name, list):
+            layer_name = [layer_name]
+
+        self.name_to_module = {
+            name: self.model.get_submodule(name) for name in layer_name
+        }
+        self.module_to_name = {v: k for k, v in self.name_to_module.items()}
+
+        self.layer_cache = {}  # cache for each layer 
+
+        def _ekfac_hook(module, inputs, outputs):
+            outputs.retain_grad()
+            name = self.module_to_name[module]
+            # Cache the inputs and outputs
+            self.layer_cache[name] = (inputs, outputs)
+
+        self.handles = []
+        for name in layer_name:
+            mod = task.model.get_submodule(name)
+            self.handles.append(mod.register_forward_hook(_ekfac_hook))
+
+    def cache(
+        self, 
+        full_train_dataloader: DataLoader,
+        max_iter: Optional[int] = None
+    ):
+        """Cache the dataset and statistics for inverse hessian/fisher calculation.
+
+        Cache the full training dataset as other attributors.
+        Estimate and cache the covariance matrices, eigenvector matrices
+        and corrected eigenvalues based on the distribution of training data.
+
+        Args:
+            full_train_dataloader (DataLoader): The dataloader
+                with full training samples for inverse hessian calculation.
+            max_iter (int, optional): An integer indicating the maximum number of
+                batches that will be used for estimating the the covariance matrices
+                and lambdas.
+        """
+        from dattri.func.fisher import estimate_covariance, estimate_eigenvector, estimate_lambda
+
+        self._set_full_train_data(full_train_dataloader)
+
+        if not isinstance(mlp_cache, list):
+            mlp_cache = [mlp_cache]
+
+        if max_iter is None:
+            max_iter = len(full_train_dataloader)
+
+        # 1. Use random batch to estimate covariance matrices S and A
+        cov_matrices = estimate_covariance(self.task.get_target_func(),
+                                           full_train_dataloader,
+                                           self.layer_cache,
+                                           max_iter)
+
+        # 2. Calculate the eigenvalue decomposition of S and A
+        self.cached_q = estimate_eigenvector(cov_matrices)
+
+        # 3. Use random batch for eigenvalue correction
+        self.cached_lambdas = estimate_lambda(self.task.get_target_func(),
+                                              full_train_dataloader,
+                                              self.cached_q,
+                                              self.layer_cache,
+                                              max_iter)
