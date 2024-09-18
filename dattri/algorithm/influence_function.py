@@ -24,7 +24,7 @@ from tqdm import tqdm
 
 from dattri.algorithm.utils import _check_shuffle
 from dattri.func.hessian import ihvp_arnoldi, ihvp_cg, ihvp_explicit, ihvp_lissa
-from dattri.func.utils import flatten_params
+from dattri.func.utils import flatten_params, _unflatten_partial_params
 
 from .base import BaseAttributor, BaseInnerProductAttributor
 
@@ -825,6 +825,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
     def __init__(self,
                  task: AttributionTask,
                  layer_name: Optional[Union[str, List[str]]] = None,
+                 damping: float = 0.0,
                  device: Optional[str] = "cpu"
     ) -> None:
         super().__init__(task, layer_name, device)
@@ -841,6 +842,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         if not isinstance(layer_name, list):
             layer_name = [layer_name]
 
+        self.damping = damping
         self.name_to_module = {
             name: self.model.get_submodule(name) for name in layer_name
         }
@@ -902,3 +904,40 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                                               self.cached_q,
                                               self.layer_cache,
                                               max_iter)
+
+    def transform_test_rep(
+        self,
+        ckpt_idx: int,
+        test_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Calculate the transformation on the test representations.
+
+        Args:
+            ckpt_idx (int): Index of the model checkpoints. Used for ensembling
+                different trained model checkpoints.
+            test_rep (torch.Tensor): Test representations to be transformed.
+                Typically a 2-d tensor with shape (batch_size, num_parameters).
+
+        Returns:
+            torch.Tensor: Transformed test representations. Typically a 2-d
+                tensor with shape (batch_size, transformed_dimension).
+        """
+        layer_test_rep = _unflatten_partial_params(test_rep)
+        ifvp = {}
+
+        for name in self.layer_name:
+            _v = layer_test_rep[name]
+            _lambda = self.cached_lambdas[name]
+            q_a, q_s = self.cached_q[name]
+
+            _ifvp= q_s.T @ ((q_s @ _v @ q_a.T) / (_lambda + self.damping)) @ q_a
+            ifvp[name] = _ifvp
+
+        # Flatten the parameters again
+        transformed_test_rep_layers = []
+
+        for name in self.layer_name:
+            transformed_test_rep_layers.append(ifvp[name])
+
+        return torch.cat(transformed_test_rep_layers, dim=1)
+
