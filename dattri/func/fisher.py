@@ -15,13 +15,12 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import ClassVar, Dict, Generator, List, Optional, Tuple, Union
+    from typing import Dict, Generator, Optional, Tuple, Union
 
     from torch import Tensor
 
 
 import warnings
-from functools import wraps
 
 import torch
 from torch.func import grad
@@ -243,29 +242,30 @@ def _update_covariance(
     total_samples: int,
     mask: torch.Tensor,
 ) -> Dict[str, Tuple[torch.tensor]]:
-    """Update the running estimation of the 'covariance' matrices S and A in EK-FAC IFVP.
+    """Update the running estimation of the covariance matrices S and A in EK-FAC IFVP.
 
     Args:
         curr_estimate (List[List[Tuple[torch.Tensor]]]): A list of lists of tuples
             of tensors, storing the running estimation of the layer-wise covariances.
-        mlp_cache (List[MLPCache]): A list of `MLPCache` passed to the main
-            EK-FAC function.
+        layer_cache (Dict[str, Tuple[torch.tensor]]): A dict that caches a pair
+            of (inputs, outputs) for each module during the forward process.
         total_samples (int): An integer indicating the number of total valid
-            samples in the current batch.
+            samples in all previous batchs.
         mask (torch.Tensor): A tensor of shape (batch_size, t), where 1's
             indicate that the IFVP will be estimated on these input positions and
             0's indicate that these positions are irrelevant (e.g. padding tokens).
 
     Returns:
-        A list of lists of tuples of tensors, storing the updated running covariances.
+        Dict[str, Tuple[torch.tensor]]: A dict of tuples of tensors, storing the
+            updated running covariances.
     """
     batch_samples = int(mask.sum())
-    for layer_name, (a_prev, s_curr) in layer_cache.items():
+    for layer_name, (a_prev_raw, s_curr_raw) in layer_cache.items():
         # Uniformly reshape the tensors into (batch_size, t, ...)
         # The t here is the sequence length or time steps for sequential input
         # t = 1 if the given input is not sequential
-        if a_prev.ndim == 2:  # noqa: PLR2004
-            a_prev = a_prev.unsqueeze(1)
+        if a_prev_raw.ndim == 2:  # noqa: PLR2004
+            a_prev = a_prev_raw.unsqueeze(1)
 
         a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
 
@@ -275,9 +275,9 @@ def _update_covariance(
         batch_cov_a /= batch_samples
 
         # Calculate batch covariance matrix for S
-        ds_curr = s_curr.grad
+        ds_curr = s_curr_raw.grad
 
-        ds_curr_reshaped = ds_curr.view(-1, s_curr.size(-1))
+        ds_curr_reshaped = ds_curr.view(-1, s_curr_raw.size(-1))
         batch_cov_s = ds_curr_reshaped.transpose(0, 1) @ ds_curr_reshaped
         batch_cov_s /= batch_samples
 
@@ -285,8 +285,10 @@ def _update_covariance(
         if layer_name in curr_estimate:
             old_weight = total_samples / (total_samples + batch_samples)
             new_weight = batch_samples / (total_samples + batch_samples)
-            new_cov_a = old_weight * curr_estimate[layer_name][0] + new_weight * batch_cov_a
-            new_cov_s = old_weight * curr_estimate[layer_name][1] + new_weight * batch_cov_s
+            new_cov_a = (old_weight * curr_estimate[layer_name][0] +
+                         new_weight * batch_cov_a)
+            new_cov_s = (old_weight * curr_estimate[layer_name][1] +
+                         new_weight * batch_cov_s)
             curr_estimate[layer_name] = (new_cov_a, new_cov_s)
         else:
             # First time access
@@ -296,27 +298,26 @@ def _update_covariance(
 
 
 def _update_lambda(
-    curr_estimate: List[List[torch.Tensor]],
+    curr_estimate: Dict[str, torch.tensor],
     layer_cache: Dict[str, Tuple[torch.tensor]],
-    cached_q: List[List[Tuple[torch.Tensor]]],
+    cached_q: Dict[str, Tuple[torch.tensor]],
     total_samples: int,
     mask: torch.Tensor,
     max_steps_for_vec: int = 10,
-) -> List[List[torch.Tensor]]:
+) -> Dict[str, torch.tensor]:
     """Update the running estimation of the corrected eigenvalues in EK-FAC IFVP.
 
     Args:
-        curr_estimate (List[List[torch.Tensor]]): A list of lists of tensors,
+        curr_estimate (Dict[str, torch.tensor]): A list of lists of tensors,
             storing the running estimation of the layer-wise lambdas. The list
             has the same length as `mlp_cache` in the main function, and each
             of the member has the same length as the list in the cache.
-        mlp_cache (List[MLPCache]): A list of `MLPCache` passed to the main
-            EK-FAC function.
-        cached_q (List[List[Tuple[torch.Tensor]]]): A list of lists of tuples
-            of tensors, storing the layer-wise eigenvector matrices calculated
-            in the EK-FAC main function.
+        layer_cache (Dict[str, Tuple[torch.tensor]]): A dict that caches a pair
+            of (inputs, outputs) for each module during the forward process.
+        cached_q (Dict[str, Tuple[torch.tensor]]): A dict of tuples of tensors,
+            storing the layer-wise eigenvector matrices.
         total_samples (int): An integer indicating the number of total valid
-            samples in the current batch.
+            samples in all previous batchs.
         mask (torch.Tensor): A tensor of shape (batch_size, t), where 1's
             indicate that the IFVP will be estimated on these input positions and
             0's indicate that these positions are irrelevant (e.g. padding tokens).
@@ -327,15 +328,15 @@ def _update_lambda(
             `dtheta`.
 
     Returns:
-        A list of lists of tensors, storing the updated running lambdas.
+        Dict[str, torch.tensor]: A dict of tensors, storing the updated running lambdas.
     """
-    for layer_name, (a_prev, s_curr) in layer_cache.items():
+    for layer_name, (a_prev_raw, s_curr_raw) in layer_cache.items():
         # Uniformly reshape the tensors into (batch_size, t, ...)
         # The t here is the sequence length or time steps for sequential input
         # t = 1 if the given input is not sequential
-        ds_curr = s_curr.grad
-        if a_prev.ndim == 2:  # noqa: PLR2004
-            a_prev = a_prev.unsqueeze(1)
+        ds_curr = s_curr_raw.grad
+        if a_prev_raw.ndim == 2:  # noqa: PLR2004
+            a_prev = a_prev_raw.unsqueeze(1)
             ds_curr = ds_curr.unsqueeze(1)
 
         a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
@@ -385,8 +386,34 @@ def estimate_covariance(
     dataloader: torch.utils.data.DataLoader,
     layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: Optional[int] = None,
-    device: Optional[str] = "cpu"
+    device: Optional[str] = "cpu",
 ) -> Dict[str, Tuple[torch.tensor]]:
+    """Estimate the 'covariance' matrices S and A in EK-FAC IFVP.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return the following,
+            - loss: a single tensor of loss. Should be the mean loss by the
+                    batch size.
+            - mask (optional): a tensor of shape (batch_size, t), where 1's
+                               indicate that the IFVP will be estimated on these
+                               input positions and 0's indicate that these positions
+                               are irrelevant (e.g. padding tokens).
+            t is the number of steps, or sequence length of the input data. If the
+            input data are non-sequential, t should be set to 1.
+            The FIM will be estimated on this function.
+        dataloader (torch.utils.data.DataLoader): The dataloader with full training
+            samples for FIM estimation.
+        layer_cache (Dict[str, Tuple[torch.tensor]]): A dict that caches a pair
+            of (inputs, outputs) for each module during the forward process.
+        max_iter (Optional[int]): An integer indicating the maximum number of
+            batches that will be used for estimating the covariance matrices.
+        device (Optional[str]): Device to run the attributor on. Default is "cpu".
+
+    Returns:
+        Dict[str, Tuple[torch.tensor]]: A dict that contains a pair of
+            estimated covariance for each module.
+    """
     if max_iter is None:
         max_iter = len(dataloader)
 
@@ -410,7 +437,7 @@ def estimate_covariance(
 
         with torch.no_grad():
             # Estimate covariance
-            cov_matrices = _update_covariance(
+            covariances = _update_covariance(
                 covariances,
                 layer_cache,
                 total_samples,
@@ -425,8 +452,18 @@ def estimate_covariance(
 
 
 def estimate_eigenvector(
-    covariances: List[List[Tuple[torch.Tensor]]],
-) -> List[List[Tuple[torch.Tensor]]]:
+    covariances: Dict[str, Tuple[torch.Tensor]],
+) -> Dict[str, Tuple[torch.Tensor]]:
+    """Perform eigenvalue decomposition to covarince matrices.
+
+    Args:
+        covariances (Dict[str, Tuple[torch.Tensor]]): A dict that
+            contains a pair of estimated covariance for each module.
+
+    Returns:
+        Dict[str, Tuple[torch.Tensor]]: A dict that contains a
+            pair of eigenvector matrices for each module.
+    """
     cached_q = {}
     for layer_name, (cov_a, cov_s) in covariances.items():
         _, q_a = torch.linalg.eigh(cov_a, UPLO="U")
@@ -439,11 +476,39 @@ def estimate_eigenvector(
 def estimate_lambda(
     func: Callable,
     dataloader: torch.utils.data.DataLoader,
-    eigenvectors: List[List[Tuple[torch.Tensor]]],
+    eigenvectors: Dict[str, Tuple[torch.tensor]],
     layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: Optional[int] = None,
-    device: Optional[str] = "cpu"
-) -> Dict[str, Tuple[torch.tensor]]:
+    device: Optional[str] = "cpu",
+) -> Dict[str, torch.tensor]:
+    """Estimate the 'covariance' matrices S and A in EK-FAC IFVP.
+
+    Args:
+        func (Callable): A Python function that takes one or more arguments.
+            Must return the following,
+            - loss: a single tensor of loss. Should be the mean loss by the
+                    batch size.
+            - mask (optional): a tensor of shape (batch_size, t), where 1's
+                               indicate that the IFVP will be estimated on these
+                               input positions and 0's indicate that these positions
+                               are irrelevant (e.g. padding tokens).
+            t is the number of steps, or sequence length of the input data. If the
+            input data are non-sequential, t should be set to 1.
+            The FIM will be estimated on this function.
+        dataloader (torch.utils.data.DataLoader): The dataloader with full training
+            samples for FIM estimation.
+        eigenvectors (Dict[str, Tuple[torch.tensor]]): A dict that contains a
+            pair of eigenvector matrices for each module.
+        layer_cache (Dict[str, Tuple[torch.tensor]]): A dict that caches a pair
+            of (inputs, outputs) for each module during the forward process.
+        max_iter (Optional[int]): An integer indicating the maximum number of
+            batches that will be used for estimating the lambdas.
+        device (Optional[str]): Device to run the attributor on. Default is "cpu".
+
+    Returns:
+        Dict[str, torch.tensor]: A dict that contains the estimated lambda
+            for each module.
+    """
     if max_iter is None:
         max_iter = len(dataloader)
 

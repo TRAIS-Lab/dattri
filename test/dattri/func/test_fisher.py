@@ -1,6 +1,5 @@
 """Unit test for ifvp calculator."""
 
-import types
 
 import numpy as np
 import torch

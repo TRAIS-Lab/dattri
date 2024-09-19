@@ -818,19 +818,36 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
 
 class IFAttributorEKFAC(BaseInnerProductAttributor):
-    """The inner product attributor with DataInf inverse hessian transformation."""
+    """The inner product attributor with EK-FAC inverse hessian transformation."""
 
     def __init__(self,
                  task: AttributionTask,
                  module_name: Optional[Union[str, List[str]]] = None,
+                 device: Optional[str] = "cpu",
                  damping: float = 0.0,
-                 device: Optional[str] = "cpu"
     ) -> None:
+        """Initialize the DataInf inverse Hessian attributor.
+
+        Args:
+            task (AttributionTask): The task to be attributed. Must be an instance of
+                `AttributionTask`.
+            module_name (Optional[Union[str, List[str]]]): The name of the module to be
+                used to calculate the train/test representations. If None, all linear
+                modules are used. This should be a string or a list of strings if
+                multiple modules are needed. The name of module should follow the
+                key of model.named_modules(). Default: None.
+            device (str): Device to run the attributor on. Default is "cpu".
+            damping (float): Damping factor used for non-convexity in EK-FAC IFVP
+                calculation. Default is 0.0.
+
+        Raises:
+            ValueError: If there are multiple checkpoints in `task`.
+        """
         super().__init__(task, None, device)
         if len(self.task.checkpoints) > 1:
             error_msg = ("Received more than one checkpoint. "
                          "Ensemble of EK-FAC is not supported.")
-            raise ValueError(error_msg) 
+            raise ValueError(error_msg)
 
         if not module_name:
             # Select all linear layers by default
@@ -852,9 +869,12 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         }
         self.module_to_name = {v: k for k, v in self.name_to_module.items()}
 
-        self.layer_cache = {}  # cache for each layer 
+        self.layer_cache = {}  # cache for each layer
 
-        def _ekfac_hook(module, inputs, outputs):
+        def _ekfac_hook(module: torch.nn.Module,
+                        inputs: Union[Tensor, Tuple[Tensor]],
+                        outputs: Union[Tensor, Tuple[Tensor]],
+            ) -> None:
             # Unpack tuple outputs if necessary
             if isinstance(inputs, tuple):
                 inputs = inputs[0]
@@ -873,10 +893,10 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             self.handles.append(mod.register_forward_hook(_ekfac_hook))
 
     def cache(
-        self, 
+        self,
         full_train_dataloader: DataLoader,
         max_iter: Optional[int] = None,
-    ):
+    ) -> None:
         """Cache the dataset and statistics for inverse hessian/fisher calculation.
 
         Cache the full training dataset as other attributors.
@@ -890,7 +910,11 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                 batches that will be used for estimating the the covariance matrices
                 and lambdas.
         """
-        from dattri.func.fisher import estimate_covariance, estimate_eigenvector, estimate_lambda
+        from dattri.func.fisher import (
+            estimate_covariance,
+            estimate_eigenvector,
+            estimate_lambda,
+        )
 
         self._set_full_train_data(full_train_dataloader)
 
@@ -936,7 +960,15 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
+
+        Raises:
+            ValueError: If specifies a non-zero `ckpt_idx`.
         """
+        if ckpt_idx != 0:
+            error_msg = ("EK-FAC only supports single model checkpoint, "
+                         "but receives non-zero `ckpt_idx`.")
+            raise ValueError(error_msg)
+
         # Unflatten the test_rep
         full_model_params = {
             k: p for k, p in self.task.model.named_parameters() if p.requires_grad
@@ -949,8 +981,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         for name, params in partial_model_params.items():
             size = math.prod(params.shape)
             layer_test_rep[name] = test_rep[
-                :, current_index : current_index + size
-            ].reshape((-1,) + params.shape)
+                :, current_index : current_index + size,
+            ].reshape(-1, *params.shape)
             current_index += size
 
         ifvp = {}
@@ -960,14 +992,10 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             _lambda = self.cached_lambdas[name]
             q_a, q_s = self.cached_q[name]
 
-            _ifvp= q_s.T @ ((q_s @ _v @ q_a.T) / (_lambda + self.damping)) @ q_a
+            _ifvp = q_s.T @ ((q_s @ _v @ q_a.T) / (_lambda + self.damping)) @ q_a
             ifvp[name] = _ifvp.flatten(start_dim=1)
 
         # Flatten the parameters again
-        transformed_test_rep_layers = []
-
-        for name in self.module_name:
-            transformed_test_rep_layers.append(ifvp[name])
+        transformed_test_rep_layers = [ifvp[name] for name in self.module_name]
 
         return torch.cat(transformed_test_rep_layers, dim=1)
-
