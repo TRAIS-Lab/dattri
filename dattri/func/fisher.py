@@ -385,6 +385,7 @@ def estimate_covariance(
     dataloader: torch.utils.data.DataLoader,
     layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: Optional[int] = None,
+    device: Optional[str] = "cpu"
 ) -> Dict[str, Tuple[torch.tensor]]:
     if max_iter is None:
         max_iter = len(dataloader)
@@ -393,8 +394,9 @@ def estimate_covariance(
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
         batch_size = batch[0].shape[0]
+        batch_data = tuple(data.to(device) for data in batch)
         # Forward pass
-        func_output = func(batch)
+        func_output = func(batch_data)
         loss, mask = (
             func_output if isinstance(func_output, tuple) else func_output,
             torch.ones(batch_size, 1),
@@ -440,6 +442,7 @@ def estimate_lambda(
     eigenvectors: List[List[Tuple[torch.Tensor]]],
     layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: Optional[int] = None,
+    device: Optional[str] = "cpu"
 ) -> Dict[str, Tuple[torch.tensor]]:
     if max_iter is None:
         max_iter = len(dataloader)
@@ -448,8 +451,9 @@ def estimate_lambda(
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
         batch_size = batch[0].shape[0]
+        batch_data = tuple(data.to(device) for data in batch)
         # Forward pass
-        func_output = func(batch)
+        func_output = func(batch_data)
         loss, mask = (
             func_output if isinstance(func_output, tuple) else func_output,
             torch.ones(batch_size, 1),

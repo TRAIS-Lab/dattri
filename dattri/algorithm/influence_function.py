@@ -875,7 +875,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
     def cache(
         self, 
         full_train_dataloader: DataLoader,
-        max_iter: Optional[int] = None
+        max_iter: Optional[int] = None,
     ):
         """Cache the dataset and statistics for inverse hessian/fisher calculation.
 
@@ -902,7 +902,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         cov_matrices = estimate_covariance(func,
                                            full_train_dataloader,
                                            self.layer_cache,
-                                           max_iter)
+                                           max_iter,
+                                           device=self.device)
 
         # 2. Calculate the eigenvalue decomposition of S and A
         self.cached_q = estimate_eigenvector(cov_matrices)
@@ -912,7 +913,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                                               full_train_dataloader,
                                               self.cached_q,
                                               self.layer_cache,
-                                              max_iter)
+                                              max_iter,
+                                              device=self.device)
 
         # Remove hooks after preprocessing the FIM
         for handle in self.handles:
