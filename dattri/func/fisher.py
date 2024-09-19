@@ -384,8 +384,11 @@ def estimate_covariance(
     func: Callable,
     dataloader: torch.utils.data.DataLoader,
     layer_cache: Dict[str, Tuple[torch.tensor]],
-    max_iter: int,
+    max_iter: Optional[int] = None,
 ) -> Dict[str, Tuple[torch.tensor]]:
+    if max_iter is None:
+        max_iter = len(dataloader)
+
     covariances = {}
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
@@ -436,8 +439,11 @@ def estimate_lambda(
     dataloader: torch.utils.data.DataLoader,
     eigenvectors: List[List[Tuple[torch.Tensor]]],
     layer_cache: Dict[str, Tuple[torch.tensor]],
-    max_iter: int,
+    max_iter: Optional[int] = None,
 ) -> Dict[str, Tuple[torch.tensor]]:
+    if max_iter is None:
+        max_iter = len(dataloader)
+
     lambdas = {}
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
