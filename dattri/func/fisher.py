@@ -345,7 +345,14 @@ def _update_covariance(
     """
     batch_samples = int(mask.sum())
     for layer_name, (a_prev, s_curr) in layer_cache.items():
+        # Uniformly reshape the tensors into (batch_size, t, ...)
+        # The t here is the sequence length or time steps for sequential input
+        # t = 1 if the given input is not sequential
+        if a_prev.ndim == 2:  # noqa: PLR2004
+            a_prev = a_prev.unsqueeze(1)
+
         a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
+
         # Calculate batch covariance matrix for A
         a_prev_reshaped = a_prev_masked.view(-1, a_prev.size(-1))
         batch_cov_a = a_prev_reshaped.transpose(0, 1) @ a_prev_reshaped
@@ -360,14 +367,14 @@ def _update_covariance(
 
         # Update the running covariance matrices for A and S
         if layer_name in curr_estimate:
-            curr_estimate[layer_name] = (batch_cov_a, batch_cov_s)
-        else:
-            # First time access
             old_weight = total_samples / (total_samples + batch_samples)
             new_weight = batch_samples / (total_samples + batch_samples)
             new_cov_a = old_weight * curr_estimate[layer_name][0] + new_weight * batch_cov_a
             new_cov_s = old_weight * curr_estimate[layer_name][1] + new_weight * batch_cov_s
             curr_estimate[layer_name] = (new_cov_a, new_cov_s)
+        else:
+            # First time access
+            curr_estimate[layer_name] = (batch_cov_a, batch_cov_s)
 
     return curr_estimate
 
@@ -407,51 +414,52 @@ def _update_lambda(
         A list of lists of tensors, storing the updated running lambdas.
     """
     for layer_name, (a_prev, s_curr) in layer_cache.items():
-        a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
-
         # Uniformly reshape the tensors into (batch_size, t, ...)
         # The t here is the sequence length or time steps for sequential input
         # t = 1 if the given input is not sequential
         ds_curr = s_curr.grad
-
         if a_prev.ndim == 2:  # noqa: PLR2004
-            a_prev_reshaped = a_prev_masked.unsqueeze(1)
-            ds_curr_reshaped = ds_curr.unsqueeze(1)
-        else:
-            a_prev_reshaped = a_prev_masked
-            ds_curr_reshaped = ds_curr
+            a_prev = a_prev.unsqueeze(1)
+            ds_curr = ds_curr.unsqueeze(1)
 
-        batch_samples = a_prev_reshaped.shape[0]
-        timesteps = a_prev_reshaped.shape[1]  # the value of t
+        a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
+
+        batch_samples = a_prev_masked.shape[0]
+        timesteps = a_prev_masked.shape[1]  # the value of t
         if timesteps <= max_steps_for_vec:
             # Vectorized calculation of dtheta
             batch_dtheta = (
-                ds_curr_reshaped.unsqueeze(-1) @ a_prev_reshaped.unsqueeze(2)
+                ds_curr.unsqueeze(-1) @ a_prev_masked.unsqueeze(2)
             ).sum(axis=1)
         else:
             # Memory efficient calculation of dtheta
             batch_dtheta = torch.zeros(
                 batch_samples,
-                ds_curr_reshaped.shape[-1],
-                a_prev_reshaped.shape[-1],
+                ds_curr.shape[-1],
+                a_prev_masked.shape[-1],
                 device=ds_curr.device,
             )
+            for ts in range(timesteps):
+                batch_dtheta += (
+                    ds_curr[:, ts, :, None]
+                    @ a_prev_masked[:, ts, None, :]
+                )
 
         # An equivalent way to calculate lambda's. Please refer to
         # https://math.stackexchange.com/questions/1879933/vector-multiplication-with-multiple-kronecker-products
-        q_s, q_a = cached_q[layer_name]
+        q_a, q_s = cached_q[layer_name]
         batch_lambda = torch.square(q_s @ batch_dtheta @ q_a.T).mean(axis=0)
 
         # Update the running eigenvalue estimation
         if layer_name in curr_estimate:
-            # First time initializartion
-            curr_estimate[layer_name] = batch_lambda
-        else:
             old_weight = total_samples / (total_samples + batch_samples)
             new_weight = batch_samples / (total_samples + batch_samples)
             curr_estimate[layer_name] = (
                 old_weight * curr_estimate[layer_name] + new_weight * batch_lambda
             )
+        else:
+            # First time initializartion
+            curr_estimate[layer_name] = batch_lambda
 
     return curr_estimate
 
@@ -465,16 +473,19 @@ def estimate_covariance(
     covariances = {}
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
+        batch_size = batch[0].shape[0]
         # Forward pass
-        func_output = func(*batch)
-        losses, mask = (
+        func_output = func(batch)
+        loss, mask = (
             func_output if isinstance(func_output, tuple) else func_output,
-            torch.tensor(1.0),
+            torch.ones(batch_size, 1),
         )
 
-        for loss in losses:
-            # Backward pass
-            loss.backward(retain_graph=True)
+        # Here, we assume the loss is obtained with reduction="mean" by default.
+        # We multiply the loss by batch_size to get the original gradient.
+        loss *= batch_size
+        # Backward pass
+        loss.backward(retain_graph=True)
 
         with torch.no_grad():
             # Estimate covariance
@@ -496,7 +507,7 @@ def estimate_eigenvector(
     covariances: List[List[Tuple[torch.Tensor]]],
 ) -> List[List[Tuple[torch.Tensor]]]:
     cached_q = {}
-    for layer_name, (cov_a, cov_s) in covariances:
+    for layer_name, (cov_a, cov_s) in covariances.items():
         _, q_a = torch.linalg.eigh(cov_a, UPLO="U")
         _, q_s = torch.linalg.eigh(cov_s, UPLO="U")
         cached_q[layer_name] = (q_a, q_s)
@@ -514,16 +525,19 @@ def estimate_lambda(
     lambdas = {}
     total_samples = 0  # record total number of samples
     for i, batch in enumerate(dataloader):
+        batch_size = batch[0].shape[0]
         # Forward pass
-        func_output = func(*batch)
-        losses, mask = (
+        func_output = func(batch)
+        loss, mask = (
             func_output if isinstance(func_output, tuple) else func_output,
-            torch.tensor(1.0),
+            torch.ones(batch_size, 1),
         )
 
-        for loss in losses:
-            # Backward pass
-            loss.backward(retain_graph=True)
+        # Here, we assume the loss is obtained with reduction="mean" by default.
+        # We multiply the loss by batch_size to get the original gradient.
+        loss *= batch_size
+        # Backward pass
+        loss.backward(retain_graph=True)
 
         with torch.no_grad():
             # Update lambdas
@@ -534,7 +548,7 @@ def estimate_lambda(
                 total_samples,
                 mask,
             )
-        total_samples += len(losses)
+        total_samples += batch_size
         if i == max_iter - 1:
             break
 

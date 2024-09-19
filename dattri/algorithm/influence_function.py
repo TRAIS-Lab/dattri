@@ -824,40 +824,53 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
     def __init__(self,
                  task: AttributionTask,
-                 layer_name: Optional[Union[str, List[str]]] = None,
+                 module_name: Optional[Union[str, List[str]]] = None,
                  damping: float = 0.0,
                  device: Optional[str] = "cpu"
     ) -> None:
-        super().__init__(task, layer_name, device)
-        if len(self.checkpoints) > 1:
+        super().__init__(task, None, device)
+        if len(self.task.checkpoints) > 1:
             error_msg = ("Received more than one checkpoint. "
                          "Ensemble of EK-FAC is not supported.")
             raise ValueError(error_msg) 
 
-        if not layer_name:
-            layer_name = [
-                name for name, _ in self.task.model.named_parameters()
-                if "linear" in name or "fc" in name
+        if not module_name:
+            # Select all linear layers by default
+            module_name = [
+                name for name, mod in self.task.model.named_modules()
+                if isinstance(mod, torch.nn.Linear)
             ]
-        if not isinstance(layer_name, list):
-            layer_name = [layer_name]
+        if not isinstance(module_name, list):
+            module_name = [module_name]
+
+        self.module_name = module_name
+
+        # Update layer_name corresponding to selected modules
+        self.layer_name = [name + ".weight" for name in self.module_name]
 
         self.damping = damping
         self.name_to_module = {
-            name: self.model.get_submodule(name) for name in layer_name
+            name: self.task.model.get_submodule(name) for name in module_name
         }
         self.module_to_name = {v: k for k, v in self.name_to_module.items()}
 
         self.layer_cache = {}  # cache for each layer 
 
         def _ekfac_hook(module, inputs, outputs):
+            # Unpack tuple outputs if necessary
+            if isinstance(inputs, tuple):
+                inputs = inputs[0]
+
+            if isinstance(outputs, tuple):
+                outputs = outputs[0]
+
             outputs.retain_grad()
             name = self.module_to_name[module]
             # Cache the inputs and outputs
             self.layer_cache[name] = (inputs, outputs)
 
         self.handles = []
-        for name in layer_name:
+        for name in module_name:
             mod = task.model.get_submodule(name)
             self.handles.append(mod.register_forward_hook(_ekfac_hook))
 
@@ -883,14 +896,12 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         self._set_full_train_data(full_train_dataloader)
 
-        if not isinstance(mlp_cache, list):
-            mlp_cache = [mlp_cache]
-
         if max_iter is None:
             max_iter = len(full_train_dataloader)
 
+        func = partial(self.task.get_target_func(), self.task.get_param()[0])
         # 1. Use random batch to estimate covariance matrices S and A
-        cov_matrices = estimate_covariance(self.task.get_target_func(),
+        cov_matrices = estimate_covariance(func,
                                            full_train_dataloader,
                                            self.layer_cache,
                                            max_iter)
@@ -899,11 +910,15 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         self.cached_q = estimate_eigenvector(cov_matrices)
 
         # 3. Use random batch for eigenvalue correction
-        self.cached_lambdas = estimate_lambda(self.task.get_target_func(),
+        self.cached_lambdas = estimate_lambda(func,
                                               full_train_dataloader,
                                               self.cached_q,
                                               self.layer_cache,
                                               max_iter)
+
+        # Remove hooks after preprocessing the FIM
+        for handle in self.handles:
+            handle.remove()
 
     def transform_test_rep(
         self,
@@ -922,21 +937,36 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
         """
-        layer_test_rep = _unflatten_partial_params(test_rep)
+        # Unflatten the test_rep
+        full_model_params = {
+            k: p for k, p in self.task.model.named_parameters() if p.requires_grad
+        }
+        partial_model_params = {
+            name: full_model_params[name] for name in self.layer_name
+        }
+        layer_test_rep = {}
+        current_index = 0
+        for name, params in partial_model_params.items():
+            size = math.prod(params.shape)
+            layer_test_rep[name] = test_rep[
+                :, current_index : current_index + size
+            ].reshape((-1,) + params.shape)
+            current_index += size
+
         ifvp = {}
 
-        for name in self.layer_name:
-            _v = layer_test_rep[name]
+        for name in self.module_name:
+            _v = layer_test_rep[name + ".weight"]
             _lambda = self.cached_lambdas[name]
             q_a, q_s = self.cached_q[name]
 
             _ifvp= q_s.T @ ((q_s @ _v @ q_a.T) / (_lambda + self.damping)) @ q_a
-            ifvp[name] = _ifvp
+            ifvp[name] = _ifvp.flatten(start_dim=1)
 
         # Flatten the parameters again
         transformed_test_rep_layers = []
 
-        for name in self.layer_name:
+        for name in self.module_name:
             transformed_test_rep_layers.append(ifvp[name])
 
         return torch.cat(transformed_test_rep_layers, dim=1)
