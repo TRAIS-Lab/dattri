@@ -9,6 +9,7 @@ from dattri.algorithm.influence_function import (
     IFAttributorArnoldi,
     IFAttributorCG,
     IFAttributorDataInf,
+    IFAttributorEKFAC,
     IFAttributorExplicit,
     IFAttributorLiSSA,
 )
@@ -87,6 +88,15 @@ class TestInfluenceFunction:
             task=task,
             device=torch.device("cpu"),
             regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+
+        # EK-FAC
+        attributor = IFAttributorEKFAC(
+            task=task,
+            device=torch.device("cpu"),
+            damping=0.1,
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
