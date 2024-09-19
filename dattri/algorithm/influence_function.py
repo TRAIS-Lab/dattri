@@ -4,8 +4,6 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from dattri.task import AttributionTask
-
 if TYPE_CHECKING:
     from typing import Any, Callable, Dict, List, Optional, Tuple, Union
 
@@ -24,7 +22,7 @@ from tqdm import tqdm
 
 from dattri.algorithm.utils import _check_shuffle
 from dattri.func.hessian import ihvp_arnoldi, ihvp_cg, ihvp_explicit, ihvp_lissa
-from dattri.func.utils import flatten_params, _unflatten_partial_params
+from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor, BaseInnerProductAttributor
 
