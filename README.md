@@ -15,7 +15,7 @@
 - Benchmark data attribution methods with standard benchmark settings
   - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
 
-See also our [paper](https://arxiv.org/pdf/2410.04555) pubished in NeurIPS 2024 Datasets and Benchmarks Track.
+See also our [paper](https://arxiv.org/pdf/2410.04555), published in the NeurIPS 2024 Datasets and Benchmarks Track.
 
 ## Quick Start
 
