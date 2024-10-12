@@ -228,7 +228,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 ## Citation
 ```
 @inproceedings{deng2024dattri,
-  title={dattri$: A Library for Efficient Data Attribution},
+  title={dattri: A Library for Efficient Data Attribution},
   author={Deng, Junwei and Li, Ting-Wei and Zhang, Shiyuan and Liu, Shixuan and Pan, Yijun and Huang, Hao and Wang, Xinhe and Hu, Pingbang and Zhang, Xingjian and Ma, Jiaqi W},
   booktitle = {Advances in Neural Information Processing Systems},
   volume={37},
