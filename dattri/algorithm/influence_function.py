@@ -818,7 +818,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
 
 class IFAttributorEKFAC(BaseInnerProductAttributor):
-    """The inner product attributor with EK-FAC inverse hessian transformation."""
+    """The inner product attributor with EK-FAC inverse FIM transformation."""
 
     def __init__(self,
                  task: AttributionTask,
@@ -826,7 +826,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                  device: Optional[str] = "cpu",
                  damping: float = 0.0,
     ) -> None:
-        """Initialize the DataInf inverse Hessian attributor.
+        """Initialize the EK-FAC inverse FIM attributor.
 
         Args:
             task (AttributionTask): The task to be attributed. Must be an instance of
@@ -849,7 +849,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                          "Ensemble of EK-FAC is not supported.")
             raise ValueError(error_msg)
 
-        if not module_name:
+        if module_name is None:
             # Select all linear layers by default
             module_name = [
                 name for name, mod in self.task.model.named_modules()
@@ -871,10 +871,46 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         self.layer_cache = {}  # cache for each layer
 
+    def cache(
+        self,
+        full_train_dataloader: DataLoader,
+        max_iter: Optional[int] = None,
+    ) -> None:
+        """Cache the dataset and statistics for inverse FIM calculation.
+
+        Cache the full training dataset as other attributors.
+        Estimate and cache the covariance matrices, eigenvector matrices
+        and corrected eigenvalues based on the samples of training data.
+
+        Args:
+            full_train_dataloader (DataLoader): The dataloader
+                with full training samples for inverse FIM calculation.
+            max_iter (int, optional): An integer indicating the maximum number of
+                batches that will be used for estimating the the covariance matrices
+                and lambdas. Default to length of `full_train_dataloader`.
+        """
+        from dattri.func.fisher import (
+            estimate_covariance,
+            estimate_eigenvector,
+            estimate_lambda,
+        )
+
+        self._set_full_train_data(full_train_dataloader)
+
+        if max_iter is None:
+            max_iter = len(full_train_dataloader)
+
         def _ekfac_hook(module: torch.nn.Module,
                         inputs: Union[Tensor, Tuple[Tensor]],
                         outputs: Union[Tensor, Tuple[Tensor]],
             ) -> None:
+            """Hook function for caching the inputs and outputs of a module.
+
+            Args:
+                module (torch.nn.Module): The module to which the hook is registered.
+                inputs (Union[Tensor, Tuple[Tensor]]): The module input tensor(s).
+                outputs (Union[Tensor, Tuple[Tensor]]): The module output tensor(s).
+            """
             # Unpack tuple outputs if necessary
             if isinstance(inputs, tuple):
                 inputs = inputs[0]
@@ -887,39 +923,10 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             # Cache the inputs and outputs
             self.layer_cache[name] = (inputs, outputs)
 
-        self.handles = []
-        for name in module_name:
-            mod = task.model.get_submodule(name)
-            self.handles.append(mod.register_forward_hook(_ekfac_hook))
-
-    def cache(
-        self,
-        full_train_dataloader: DataLoader,
-        max_iter: Optional[int] = None,
-    ) -> None:
-        """Cache the dataset and statistics for inverse hessian/fisher calculation.
-
-        Cache the full training dataset as other attributors.
-        Estimate and cache the covariance matrices, eigenvector matrices
-        and corrected eigenvalues based on the distribution of training data.
-
-        Args:
-            full_train_dataloader (DataLoader): The dataloader
-                with full training samples for inverse hessian calculation.
-            max_iter (int, optional): An integer indicating the maximum number of
-                batches that will be used for estimating the the covariance matrices
-                and lambdas.
-        """
-        from dattri.func.fisher import (
-            estimate_covariance,
-            estimate_eigenvector,
-            estimate_lambda,
-        )
-
-        self._set_full_train_data(full_train_dataloader)
-
-        if max_iter is None:
-            max_iter = len(full_train_dataloader)
+        handles = []
+        for name in self.module_name:
+            mod = self.task.model.get_submodule(name)
+            handles.append(mod.register_forward_hook(_ekfac_hook))
 
         func = partial(self.task.get_target_func(), self.task.get_param()[0])
         # 1. Use random batch to estimate covariance matrices S and A
@@ -941,7 +948,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                                               device=self.device)
 
         # Remove hooks after preprocessing the FIM
-        for handle in self.handles:
+        for handle in handles:
             handle.remove()
 
     def transform_test_rep(
