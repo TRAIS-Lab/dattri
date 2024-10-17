@@ -870,9 +870,6 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         self.module_name = module_name
 
-        # Update layer_name corresponding to selected modules
-        self.layer_name = [name + ".weight" for name in self.module_name]
-
         self.damping = damping
         self.name_to_module = {
             name: self.task.model.get_submodule(name) for name in module_name
@@ -880,6 +877,13 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         self.module_to_name = {v: k for k, v in self.name_to_module.items()}
 
         self.layer_cache = {}  # cache for each layer
+
+        # Update layer_name corresponding to selected modules
+        self.layer_name = []
+        for name in self.module_name:
+            self.layer_name.append(name + ".weight")
+            if self.name_to_module[name].bias is not None:
+                self.layer_name.append(name + ".bias")
 
     def cache(
         self,
@@ -928,6 +932,15 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             if isinstance(outputs, tuple):
                 outputs = outputs[0]
 
+            if module.bias is not None:
+                # Attach ones to the end of inputs
+                ones = torch.ones(
+                    inputs.shape[:-1] + (1,),
+                    dtype=inputs.dtype,
+                    device=inputs.device,
+                )
+                inputs = torch.cat([inputs, ones], dim=-1)
+
             outputs.retain_grad()
             name = self.module_to_name[module]
             # Cache the inputs and outputs
@@ -936,7 +949,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         handles = []
         for name in self.module_name:
             # Once the model is forward once, the input and output of the layer
-            # in `module_name` will be stored in `self.layer_cache[name]`.
+            # in `module_name` will be stored in `self.layer_cache[name]`
             mod = self.task.model.get_submodule(name)
             handles.append(mod.register_forward_hook(_ekfac_hook))
 
@@ -1007,7 +1020,17 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         ifvp = {}
 
         for name in self.module_name:
-            _v = layer_test_rep[name + ".weight"]
+            if self.name_to_module[name].bias is not None:
+                _v = torch.cat(
+                    [
+                        layer_test_rep[name + ".weight"],
+                        layer_test_rep[name + ".bias"].unsqueeze(-1),
+                    ],
+                    dim=-1,
+                )
+            else:
+                _v = layer_test_rep[name + ".weight"]
+
             _lambda = self.cached_lambdas[name]
             q_a, q_s = self.cached_q[name]
 
