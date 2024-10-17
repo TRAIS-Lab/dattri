@@ -26,20 +26,20 @@ git clone https://github.com/TRAIS-Lab/dattri
 pip install -e .
 ```
 
-If you want to use all features on CUDA and accelerate the library, you may install the full version by
+If you want to use `fast_jl` to accelerate the random projection, you may install the full version by
 
 ```bash
-pip install -e .[all]
+pip install -e .[fast_jl]
 ```
 
 > [!NOTE]
-> It's highly recommended to use a device support CUDA to run `dattri`, especially for moderately large or larger models or datasets. And it's required to have CUDA if you want to install the full version `dattri`.
+> It's highly recommended to use a device support CUDA to run `dattri`, especially for moderately large or larger models or datasets.
 
 > [!NOTE]
-> If you are using `dattri[all]`, please use `pip<23` and `torch<2.3` due to some known issue of `fast_jl` library.
+> It's required to have CUDA if you want to install and use the fast_jl version `dattri[fast_jl]` to accelerate the random projection. The projection is mainly used in `TRAKAttributor`. Please use `pip<23` and `torch<2.3` due to some known issue of `fast_jl` library.
 
 #### Recommended enviroment setup
-It's not required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
+It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
 
 ```bash
 conda create -n dattri python=3.10
@@ -49,7 +49,7 @@ conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
 pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 
 git clone https://github.com/TRAIS-Lab/dattri
-pip install -e .[all]
+pip install -e .[fast_jl]
 ```
 
 ### Apply data attribution methods on PyTorch models
@@ -171,6 +171,7 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 ```
 
 ## Algorithms Supported
+We have implemented most of the state-of-the-art methods. The categories and reference paper of the algorithms are listed in the following table.
 | Family |               Algorithms              |
 |:------:|:-------------------------------------:|
 |   [IF](https://arxiv.org/abs/1703.04730)   | [Explicit](https://arxiv.org/abs/1703.04730) |
