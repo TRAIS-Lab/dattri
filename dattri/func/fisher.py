@@ -481,7 +481,7 @@ def estimate_lambda(
     max_iter: Optional[int] = None,
     device: Optional[str] = "cpu",
 ) -> Dict[str, torch.tensor]:
-    """Estimate the 'covariance' matrices S and A in EK-FAC IFVP.
+    """Estimate the corrected eigenvalues in EK-FAC IFVP.
 
     Args:
         func (Callable): A Python function that takes one or more arguments.

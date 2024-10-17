@@ -830,7 +830,17 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         Args:
             task (AttributionTask): The task to be attributed. Must be an instance of
-                `AttributionTask`.
+                `AttributionTask`. The loss function for EK-FAC attributor should return
+                the following,
+                - loss: a single tensor of loss. Should be the mean loss by the
+                        batch size.
+                - mask (optional): a tensor of shape (batch_size, t), where 1's
+                                indicate that the IFVP will be estimated on these
+                                input positions and 0's indicate that these positions
+                                are irrelevant (e.g. padding tokens).
+                t is the number of steps, or sequence length of the input data. If the
+                input data are non-sequential, t should be set to 1.
+                The FIM will be estimated on this function.
             module_name (Optional[Union[str, List[str]]]): The name of the module to be
                 used to calculate the train/test representations. If None, all linear
                 modules are used. This should be a string or a list of strings if
@@ -925,6 +935,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         handles = []
         for name in self.module_name:
+            # Once the model is forward once, the input and output of the layer
+            # in `module_name` will be stored in `self.layer_cache[name]`.
             mod = self.task.model.get_submodule(name)
             handles.append(mod.register_forward_hook(_ekfac_hook))
 
