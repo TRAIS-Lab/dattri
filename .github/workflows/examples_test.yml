@@ -26,7 +26,7 @@ jobs:
         sed -i 's/range(1000)/range(100)/g' examples/noisy_label_detection/trak_noisy_label.py
         python examples/noisy_label_detection/trak_noisy_label.py --device cpu
         python examples/pretrained_benchmark/influence_function_lds.py --device cpu
-        python examples/pretrained_benchmark/trak_lds.py --device cpu
+        python examples/pretrained_benchmark/trak_loo.py --device cpu
         python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
     - name: Uninstall the package
       run: |
