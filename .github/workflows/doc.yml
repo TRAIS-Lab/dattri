@@ -27,6 +27,15 @@ jobs:
           publish_branch: gh-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: _build/
-          force_orphan: tru
+          force_orphan: false
+      - name: Deploy-not-main
+        uses: peaceiris/actions-gh-pages@v3
+        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main'}}
+        with:
+          publish_branch: gh-pages
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: _build/
+          destination_dir: ${{ github.ref_name }} # Use branch name as folder
+          force_orphan: false # Preserve existing files
       - uses: eviden-actions/clean-self-hosted-runner@v1
         if: ${{ always() }} # To ensure this step runs even when earlier steps fail
