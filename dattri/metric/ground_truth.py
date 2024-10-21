@@ -160,7 +160,7 @@ def calculate_lds_ground_truth(
             target function calculated on all test samples under `num_subsets` models,
             each retrained on a subset of the training data. The second tensor has the
             shape (num_subsets, subset_size), where each row refers to the indices of
-            the training samples used to retrain the model. The targeted value will be
+            the training samples used to retrain the model. The target value will be
             flipped to be consistent with the score calculated by the attributors.
     """
     retrain_dir = Path(retrain_dir)

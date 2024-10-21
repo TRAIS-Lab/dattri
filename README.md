@@ -26,7 +26,7 @@ git clone https://github.com/TRAIS-Lab/dattri
 pip install -e .
 ```
 
-If you want to use `fast_jl` to accelerate the random projection, you may install the full version by
+If you want to use `fast_jl` to accelerate the random projection, you may install the version with `fast_jl` by
 
 ```bash
 pip install -e .[fast_jl]
