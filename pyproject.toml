@@ -21,13 +21,14 @@ dependencies = [
     "numpy>=1.25",
     "scipy>=1.11",
     "pyyaml",
+    "pretty_midi"
 ]
 
 [project.urls]
 homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
-all = ["fast_jl"]
+fast_jl = ["fast_jl"]
 test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests"]
 
 [tool.setuptools.packages]
