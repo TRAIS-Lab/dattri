@@ -511,7 +511,8 @@ be used to calculate the target values.</p></li>
 target function calculated on all test samples under <cite>num_subsets</cite> models,
 each retrained on a subset of the training data. The second tensor has the
 shape (num_subsets, subset_size), where each row refers to the indices of
-the training samples used to retrain the model.</p>
+the training samples used to retrain the model. The target value will be
+flipped to be consistent with the score calculated by the attributors.</p>
 </dd>
 </dl>
 </p>
