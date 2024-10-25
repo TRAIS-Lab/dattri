@@ -1028,7 +1028,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                         layer_test_rep[name + ".weight"].flatten(start_dim=1),
                         layer_test_rep[name + ".bias"].flatten(start_dim=1),
                     ],
-                    dim=-1
+                    dim=-1,
                 )
                 _v = _v.reshape(-1, dim_out, dim_in)
             else:
