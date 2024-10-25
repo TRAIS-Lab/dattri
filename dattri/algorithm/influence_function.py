@@ -1021,13 +1021,16 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         for name in self.module_name:
             if self.name_to_module[name].bias is not None:
+                dim_out = layer_test_rep[name + ".weight"].shape[1]
+                dim_in = layer_test_rep[name + ".weight"].shape[2] + 1
                 _v = torch.cat(
                     [
-                        layer_test_rep[name + ".weight"],
-                        layer_test_rep[name + ".bias"].unsqueeze(-1),
+                        layer_test_rep[name + ".weight"].flatten(start_dim=1),
+                        layer_test_rep[name + ".bias"].flatten(start_dim=1),
                     ],
-                    dim=-1,
+                    dim=-1
                 )
+                _v = _v.reshape(-1, dim_out, dim_in)
             else:
                 _v = layer_test_rep[name + ".weight"]
 
