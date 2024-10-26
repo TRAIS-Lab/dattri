@@ -362,7 +362,7 @@ class TestInfluenceFunction:
 
         test_rep = torch.randn((30, 7850), device=torch.device("cpu"))
         transformed_test_rep = attributor.transform_test_rep(0, test_rep)
-        gt_test_rep = attributor_gt.transform_test_rep(0, test_rep[:, :7840])
+        gt_test_rep = attributor_gt.transform_test_rep(0, test_rep)
 
         # Check pair-wise correlation
         corr = average_pairwise_correlation(gt_test_rep, transformed_test_rep)
