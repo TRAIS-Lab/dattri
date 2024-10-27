@@ -13,7 +13,7 @@
 | [**Benchmark Settings**](#supported-benchmark-settings)
 | [**Benchmark Results**](#benchmark-results)
 
-## What is *dattri*?
+## What is *dattri* ?
 
 *dattri* is a PyTorch library for **developing, benchmarking, and deploying efficient data attribution algorithms**. You may use *dattri* to
 
