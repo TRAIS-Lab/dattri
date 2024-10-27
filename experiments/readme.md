@@ -31,7 +31,7 @@ if-cg RESULT: {'regularization': 0.1, 'max_iter': 10} lds: tensor(0.7670)
 ```
 
 ## ShakeSpeare + nanoGPT
-Shakespeare dataset needs to be download. Once you install `dattri`, you may download it in one line.
+Shakespeare dataset needs to be download. Once you install *dattri*, you may download it in one line.
 ```bash
 dattri_retrain_nanogpt --dataset shakespeare_char --only_download_dataset
 ```

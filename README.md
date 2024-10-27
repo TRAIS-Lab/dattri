@@ -2,11 +2,20 @@
 <img src="assets/images/logo.png" alt="logo" width="150">
 </div>
 
-# `dattri`: A Library for Efficient Data Attribution
+# A Library for Efficient Data Attribution
+[![Doc](https://img.shields.io/badge/Doc-API-00E64D.svg)](https://trais-lab.github.io/dattri/)
+[![PyPI version](https://img.shields.io/pypi/v/dattri)](https://pypi.org/project/dattri/)
+[![Paper](https://img.shields.io/badge/Paper-NeurIPS24-00bfff.svg)](https://arxiv.org/pdf/2410.04555)
 
-<!-- add some demos, list of methods and benchmark settings available, benchmark results, and some development plan -->
+[**Quick Start**](#quick-start)
+| [**Algorithms**](#supported-algorithms)
+| [**Metrics**](#supported-metrics)
+| [**Benchmark Settings**](#supported-benchmark-settings)
+| [**Benchmark Results**](#benchmark-results)
 
-`dattri` is a PyTorch library for **developing, benchmarking, and deploying efficient data attribution algorithms**. You may use `dattri` to
+## What is *dattri* ?
+
+*dattri* is a PyTorch library for **developing, benchmarking, and deploying efficient data attribution algorithms**. You may use *dattri* to
 
 - Deploy existing data attribution methods to PyTorch models
   - e.g., Influence Function, TracIn, RPS, TRAK, ...
@@ -15,7 +24,25 @@
 - Benchmark data attribution methods with standard benchmark settings
   - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
 
-See also our [paper](https://arxiv.org/pdf/2410.04555), published in the NeurIPS 2024 Datasets and Benchmarks Track.
+### Contents
+
+- [Quick Start](#quick-start)
+  - [Installation](#installation)
+    - [Recommended enviroment setup](#recommended-enviroment-setup)
+  - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
+  - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
+    - [HVP/IHVP](#hvpihvp)
+    - [Random Projection](#random-projection)
+    - [Dropout Ensemble](#dropout-ensemble)
+- [Supported Algorithms](#supported-algorithms)
+- [Supported Metrics](#supported-metrics)
+- [Supported Benchmark Settings](#supported-benchmark-settings)
+- [Benchmark Results](#benchmark-results)
+  - [MNIST+LR/MLP](#mnistlrmlp)
+  - [LDS performance on larger models](#lds-performance-on-larger-models)
+  - [AUC performance](#auc-performance)
+- [Development Plan](#development-plan)
+- [Citation](#citation)
 
 ## Quick Start
 
@@ -33,7 +60,7 @@ pip install -e .[fast_jl]
 ```
 
 > [!NOTE]
-> It's highly recommended to use a device support CUDA to run `dattri`, especially for moderately large or larger models or datasets.
+> It's highly recommended to use a device support CUDA to run *dattri*, especially for moderately large or larger models or datasets.
 
 > [!NOTE]
 > It's required to have CUDA if you want to install and use the fast_jl version `dattri[fast_jl]` to accelerate the random projection. The projection is mainly used in `TRAKAttributor`. Please use `pip<23` and `torch<2.3` due to some known issue of `fast_jl` library.
@@ -170,7 +197,7 @@ model = activate_dropout(model, dropout_prob=0.2)
 model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 ```
 
-## Algorithms Supported
+## Supported Algorithms
 We have implemented most of the state-of-the-art methods. The categories and reference paper of the algorithms are listed in the following table.
 | Family |               Algorithms              |
 |:------:|:-------------------------------------:|
@@ -187,13 +214,13 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |  [TRAK](https://arxiv.org/abs/2303.14186)  |       [TRAK](https://arxiv.org/abs/2303.14186)       |
 |  [Shapley Value](https://arxiv.org/abs/1904.02868)  |       [KNN-Shapley](https://dl.acm.org/doi/10.14778/3342263.3342637)       |
 
-## Metrics Supported
+## Supported Metrics
 - Leave-one-out (LOO) correlation
 - Linear datamodeling score (LDS)
 - Area under the ROC curve (AUC) for noisy label detection
 - Brittleness test for checking flipped label
 
-## Benchmark Settings Supported
+## Supported Benchmark Settings
 |   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric   |          Data Source         |
 |:-----------:|:-----------------:|:--------------------:|:------------------------:|:--------------:|:-----------:|:----------------------------:|
 |   MNIST-10  |         LR        | Image Classification |        (5000,500)        |      7840      | LOO/LDS/AUC |      [link](http://yann.lecun.com/exdb/mnist/)     |
