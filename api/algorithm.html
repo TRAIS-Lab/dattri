@@ -925,6 +925,236 @@ Typically, it is a 2-d dimensional tensor with the shape of
 </dd></dl>
 
 <dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorEKFAC</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
+<p>The inner product attributor with EK-FAC inverse FIM transformation.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">module_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the EK-FAC inverse FIM attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – <p>The task to be attributed. Must be an instance of
+<cite>AttributionTask</cite>. The loss function for EK-FAC attributor should return
+the following,
+- loss: a single tensor of loss. Should be the mean loss by the</p>
+<blockquote>
+<div><p>batch size.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>mask (optional): a tensor of shape (batch_size, t), where 1’s</dt><dd><p>indicate that the IFVP will be estimated on these
+input positions and 0’s indicate that these positions
+are irrelevant (e.g. padding tokens).</p>
+</dd>
+</dl>
+</li>
+</ul>
+<p>t is the number of steps, or sequence length of the input data. If the
+input data are non-sequential, t should be set to 1.
+The FIM will be estimated on this function.</p>
+</p></li>
+<li><p><strong>module_name</strong> (<em>Optional</em><em>[</em><em>Union</em><em>[</em><em>str</em><em>, </em><em>List</em><em>[</em><em>str</em><em>]</em><em>]</em><em>]</em>) – The name of the module to be
+used to calculate the train/test representations. If None, all linear
+modules are used. This should be a string or a list of strings if
+multiple modules are needed. The name of module should follow the
+key of model.named_modules(). Default: None.</p></li>
+<li><p><strong>device</strong> (<em>str</em>) – Device to run the attributor on. Default is “cpu”.</p></li>
+<li><p><strong>damping</strong> (<em>float</em>) – Damping factor used for non-convexity in EK-FAC IFVP
+calculation. Default is 0.0.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If there are multiple checkpoints in <cite>task</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.attribute">
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on the test set.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
+the influence. The dataloader should not be shuffled.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on the test set, with</dt><dd><p>the shape of (num_train_samples, num_test_samples).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.cache">
+<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">full_train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.cache" title="Link to this definition">¶</a></dt>
+<dd><p>Cache the dataset and statistics for inverse FIM calculation.</p>
+<p>Cache the full training dataset as other attributors.
+Estimate and cache the covariance matrices, eigenvector matrices
+and corrected eigenvalues based on the samples of training data.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>full_train_dataloader</strong> (<em>DataLoader</em>) – The dataloader
+with full training samples for inverse FIM calculation.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em><em>, </em><em>optional</em>) – An integer indicating the maximum number of
+batches that will be used for estimating the the covariance matrices
+and lambdas. Default to length of <cite>full_train_dataloader</cite>.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.generate_test_rep">
+<span class="sig-name descname"><span class="pre">generate_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.generate_test_rep" title="Link to this definition">¶</a></dt>
+<dd><p>Generate initial representations of test data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
+train representations and test representations. This function generates the
+initial test representations.</p>
+<p>The default implementation calculates the gradient of the test loss with respect
+to the parameter. Subclasses may override this function to calculate something
+else.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model checkpoints. This index
+is used for ensembling different trained model checkpoints.</p></li>
+<li><p><strong>data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The test data. Typically, this is a tuple
+of input data and target data but the number of items in this
+tuple should align with the corresponding argument in the
+target function. The tensors’ shape follows (1, batch_size, …).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The initial representations of the test data. Typically,</dt><dd><p>it is a 2-d dimensional tensor with the shape of
+(batch_size, num_parameters).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.generate_train_rep">
+<span class="sig-name descname"><span class="pre">generate_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.generate_train_rep" title="Link to this definition">¶</a></dt>
+<dd><p>Generate initial representations of train data.</p>
+<p>Inner product attributors calculate the inner product between the (transformed)
+train representations and test representations. This function generates the
+initial train representations.</p>
+<p>The default implementation calculates the gradient of the train loss with
+respect to the parameter. Subclasses may override this function to
+calculate something else.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model checkpoints. This index
+is used for ensembling different trained model checkpoints.</p></li>
+<li><p><strong>data</strong> (<em>Tuple</em><em>[</em><em>Tensor</em><em>]</em>) – The train data. Typically, this is a tuple
+of input data and target data but the number of items in this
+tuple should align with the corresponding argument in the
+target function. The tensors’ shape follows (1, batch_size, …).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The initial representations of the train data. Typically,</dt><dd><p>it is a 2-d dimensional tensor with the shape of
+(batch_size, num_parameters).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.transform_test_rep">
+<span class="sig-name descname"><span class="pre">transform_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.transform_test_rep" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the transformation on the test representations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – Index of the model checkpoints. Used for ensembling
+different trained model checkpoints.</p></li>
+<li><p><strong>test_rep</strong> (<em>torch.Tensor</em>) – Test representations to be transformed.
+Typically a 2-d tensor with shape (batch_size, num_parameters).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>Transformed test representations. Typically a 2-d</dt><dd><p>tensor with shape (batch_size, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If specifies a non-zero <cite>ckpt_idx</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.transform_train_rep">
+<span class="sig-name descname"><span class="pre">transform_train_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.transform_train_rep" title="Link to this definition">¶</a></dt>
+<dd><p>Transform the train representations.</p>
+<p>Inner product attributor calculates the inner product between the (transformed)
+train representations and test representations. This function calculates the
+transformation of the train representations. For example, the transformation
+could be a dimension reduction of the train representations.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>ckpt_idx</strong> (<em>int</em>) – The index of the model checkpoints. This index
+is used for ensembling different trained model checkpoints.</p></li>
+<li><p><strong>train_rep</strong> (<em>torch.Tensor</em>) – The train representations to be transformed.
+Typically, it is a 2-d dimensional tensor with the shape of
+(batch_size, num_parameters).</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The transformed train representations. Typically,</dt><dd><p>it is a 2-d dimensional tensor with the shape of
+(batch_size, transformed_dimension).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+</dd></dl>
+
+<dl class="py class">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit">
 <em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.influence_function.</span></span><span class="sig-name descname"><span class="pre">IFAttributorExplicit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_name</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'cpu'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit" title="Link to this definition">¶</a></dt>
 <dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseInnerProductAttributor</span></code></p>
@@ -1692,6 +1922,16 @@ fine-tuning.</p>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.generate_train_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.transform_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.transform_train_rep()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.__init__"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.attribute()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.cache()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.generate_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.generate_test_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.generate_train_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.transform_test_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.transform_train_rep()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit</span></code></a><ul>

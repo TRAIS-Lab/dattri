@@ -274,52 +274,6 @@ of <cite>func</cite> and <cite>v</cite>.</p>
 </dl>
 </dd></dl>
 
-<dl class="py function">
-<dt class="sig sig-object py" id="dattri.func.fisher.ifvp_at_x_ekfac">
-<span class="sig-prename descclassname"><span class="pre">dattri.func.fisher.</span></span><span class="sig-name descname"><span class="pre">ifvp_at_x_ekfac</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mlp_cache</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">MLPCache</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">MLPCache</span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.fisher.ifvp_at_x_ekfac" title="Link to this definition">¶</a></dt>
-<dd><p>IFVP via EK-FAC algorithm.</p>
-<p>Standing for the inverse-FIM-vector product, returns a function that,
-when given vectors, computes the product of inverse-FIM and vector.</p>
-<p>EK-FAC algorithm provides layer-wise approximation for the IFVP function.
-The samples are estimated based on Gauss-Newton Hessian.</p>
-<dl class="field-list simple">
-<dt class="field-odd">Parameters<span class="colon">:</span></dt>
-<dd class="field-odd"><ul class="simple">
-<li><p><strong>func</strong> (<em>Callable</em>) – <p>A Python function that takes one or more arguments.
-Must return the following,
-- losses: a tensor of shape (batch_size,).
-- mask (optional): a tensor of shape (batch_size, t), where 1’s</p>
-<blockquote>
-<div><p>indicate that the IFVP will be estimated on these
-input positions and 0’s indicate that these positions
-are irrelevant (e.g. padding tokens).</p>
-</div></blockquote>
-<p>t is the number of steps, or sequence length of the input data. If the
-input data are non-sequential, t should be set to 1.
-The FIM will be estimated on this function.</p>
-</p></li>
-<li><p><strong>*x</strong> – List of arguments for <cite>func</cite>.</p></li>
-<li><p><strong>in_dims</strong> (<em>Tuple</em><em>, </em><em>optional</em>) – A tuple with the same shape as <a href="#id1"><span class="problematic" id="id2">*</span></a>x, indicating
-which dimension should be considered as batch size dimension. Take the
-first dimension as batch size dimension by default.</p></li>
-<li><p><strong>batch_size</strong> (<em>int</em>) – An integer default to 1, indicating the batch size used for
-estimating the covariance matrices and lambdas.</p></li>
-<li><p><strong>max_iter</strong> (<em>int</em><em>, </em><em>optional</em>) – An integer indicating the maximum number of
-batches that will be used for estimating the the covariance matrices and
-lambdas.</p></li>
-<li><p><strong>mlp_cache</strong> (<em>Union</em><em>[</em><em>MLPCache</em><em>, </em><em>List</em><em>[</em><em>MLPCache</em><em>]</em><em>]</em>) – A single or list of registered
-caches, used to record the input and hidden vectors as well as their
-relevant gradients during the forward and backward calls of <cite>func</cite>.</p></li>
-<li><p><strong>damping</strong> – Damping factor used for non-convexity in EK-FAC IFVP calculation.</p></li>
-</ul>
-</dd>
-<dt class="field-even">Returns<span class="colon">:</span></dt>
-<dd class="field-even"><p>A function that takes  a tuple of Tensor <cite>x</cite> and a nested structure of
-vector <cite>v</cite> and returns the IFVP of the Hessian of <cite>func</cite> and <cite>v</cite>.</p>
-</dd>
-</dl>
-</dd></dl>
-
 </section>
 
         </article>
@@ -380,7 +334,6 @@ vector <cite>v</cite> and returns the IFVP of the Hessian of <cite>func</cite> a
 <li><a class="reference internal" href="#">Fisher Information Matrix (FIM) / IFVP</a><ul>
 <li><a class="reference internal" href="#dattri.func.fisher.ifvp_explicit"><code class="docutils literal notranslate"><span class="pre">ifvp_explicit()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.func.fisher.ifvp_at_x_explicit"><code class="docutils literal notranslate"><span class="pre">ifvp_at_x_explicit()</span></code></a></li>
-<li><a class="reference internal" href="#dattri.func.fisher.ifvp_at_x_ekfac"><code class="docutils literal notranslate"><span class="pre">ifvp_at_x_ekfac()</span></code></a></li>
 </ul>
 </li>
 </ul>
