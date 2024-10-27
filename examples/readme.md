@@ -1,5 +1,5 @@
-# `dattri` examples
-This folder contains bite-sized examples that can help users build their own applications with `dattri`.
+# *dattri* examples
+This folder contains bite-sized examples that can help users build their own applications with *dattri*.
 
 ## Noisy label detection
 This section contains examples using different attributors to detect noisy labels in various datasets.
@@ -12,7 +12,7 @@ This section contains examples using different attributors to detect noisy label
 
 ## Use pretrained checkpoints and pre-calculated ground truth
 
-This section contains examples using the pretrained checkpoints and pre-calculated ground truth provided by `dattri` to evaluate the data attribution methods.
+This section contains examples using the pretrained checkpoints and pre-calculated ground truth provided by *dattri* to evaluate the data attribution methods.
 
 [Use pre-trained Mnist10 + MLP benchmark setting and evaluate Influence Function (CG) algorithm by LDS](./pretrained_benchmark/influence_function_lds.py)
 
