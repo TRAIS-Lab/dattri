@@ -24,6 +24,26 @@
 - Benchmark data attribution methods with standard benchmark settings
   - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
 
+### Contents
+
+- [Quick Start](#quick-start)
+  - [Installation](#installation)
+    - [Recommended enviroment setup](#recommended-enviroment-setup)
+  - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
+  - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
+    - [HVP/IHVP](#hvpihvp)
+    - [Random Projection](#random-projection)
+    - [Dropout Ensemble](#dropout-ensemble)
+- [Supported Algorithms](#supported-algorithms)
+- [Supported Metrics](#supported-metrics)
+- [Supported Benchmark Settings](#supported-benchmark-settings)
+- [Benchmark Results](#benchmark-results)
+  - [MNIST+LR/MLP](#mnistlrmlp)
+  - [LDS performance on larger models](#lds-performance-on-larger-models)
+  - [AUC performance](#auc-performance)
+- [Development Plan](#development-plan)
+- [Citation](#citation)
+
 ## Quick Start
 
 ### Installation
