@@ -26,23 +26,26 @@
 
 ### Contents
 
-- [Quick Start](#quick-start)
-  - [Installation](#installation)
-    - [Recommended enviroment setup](#recommended-enviroment-setup)
-  - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
-  - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
-    - [HVP/IHVP](#hvpihvp)
-    - [Random Projection](#random-projection)
-    - [Dropout Ensemble](#dropout-ensemble)
-- [Supported Algorithms](#supported-algorithms)
-- [Supported Metrics](#supported-metrics)
-- [Supported Benchmark Settings](#supported-benchmark-settings)
-- [Benchmark Results](#benchmark-results)
-  - [MNIST+LR/MLP](#mnistlrmlp)
-  - [LDS performance on larger models](#lds-performance-on-larger-models)
-  - [AUC performance](#auc-performance)
-- [Development Plan](#development-plan)
-- [Citation](#citation)
+- [A Library for Efficient Data Attribution](#a-library-for-efficient-data-attribution)
+  - [What is *dattri* ?](#what-is-dattri-)
+    - [Contents](#contents)
+  - [Quick Start](#quick-start)
+    - [Installation](#installation)
+      - [Recommended enviroment setup](#recommended-enviroment-setup)
+    - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
+    - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
+      - [HVP/IHVP](#hvpihvp)
+      - [Random Projection](#random-projection)
+      - [Dropout Ensemble](#dropout-ensemble)
+  - [Supported Algorithms](#supported-algorithms)
+  - [Supported Metrics](#supported-metrics)
+  - [Supported Benchmark Settings](#supported-benchmark-settings)
+  - [Benchmark Results](#benchmark-results)
+    - [MNIST+LR/MLP](#mnistlrmlp)
+    - [LDS performance on larger models](#lds-performance-on-larger-models)
+    - [AUC performance](#auc-performance)
+  - [Development Plan](#development-plan)
+  - [Citation](#citation)
 
 ## Quick Start
 
@@ -50,13 +53,13 @@
 
 ```bash
 git clone https://github.com/TRAIS-Lab/dattri
-pip install -e .
+pip install dattri
 ```
 
 If you want to use `fast_jl` to accelerate the random projection, you may install the version with `fast_jl` by
 
 ```bash
-pip install -e .[fast_jl]
+pip install dattri[fast_jl]
 ```
 
 > [!NOTE]
@@ -75,8 +78,7 @@ conda activate dattri
 conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
 pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 
-git clone https://github.com/TRAIS-Lab/dattri
-pip install -e .[fast_jl]
+pip install dattri[fast_jl]
 ```
 
 ### Apply data attribution methods on PyTorch models
