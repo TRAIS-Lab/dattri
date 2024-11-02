@@ -52,7 +52,6 @@
 ### Installation
 
 ```bash
-git clone https://github.com/TRAIS-Lab/dattri
 pip install dattri
 ```
 
@@ -63,7 +62,7 @@ pip install dattri[fast_jl]
 ```
 
 > [!NOTE]
-> It's highly recommended to use a device support CUDA to run *dattri*, especially for moderately large or larger models or datasets.
+> It's highly recommended to use a device support CUDA to run *dattri*, especially for large models or datasets.
 
 > [!NOTE]
 > It's required to have CUDA if you want to install and use the fast_jl version `dattri[fast_jl]` to accelerate the random projection. The projection is mainly used in `TRAKAttributor`. Please use `pip<23` and `torch<2.3` due to some known issue of `fast_jl` library.
