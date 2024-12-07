@@ -320,5 +320,5 @@ class TRAKAttributor(BaseAttributor):
             running_xinv_XTX_XT /= running_count
 
         if train_dataloader is not None:
-            return (running_xinv_XTX_XT @ running_Q.diag().to(self.device)).T
-        return (running_xinv_XTX_XT @ self.Q.diag().to(self.device)).T
+            return (running_xinv_XTX_XT * running_Q.to(self.device).unsqueeze(0)).T
+        return (running_xinv_XTX_XT * self.Q.to(self.device).unsqueeze(0)).T
