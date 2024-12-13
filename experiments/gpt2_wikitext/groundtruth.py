@@ -530,7 +530,7 @@ def main():
     from dattri.func.utils import flatten_func, flatten_params
     from dattri.task import AttributionTask
 
-    checkpoints = [f"/scratch/bbyo/jdeng3/gpt2-wiki2/seq_512_default_subset/{i}"
+    checkpoints = [f"{args.output_dir}/{i}"
                     for i in range(50)]
     result_list = []
     for checkpoint in checkpoints:

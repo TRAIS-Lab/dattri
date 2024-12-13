@@ -33,7 +33,7 @@ python score.py \
     --dataset_name wikitext \
     --dataset_config_name wikitext-2-raw-v1 \
     --model_name_or_path openai-community/gpt2 \
-    --output_dir /scratch/bbyo/jdeng3/gpt2-wiki2/seq_512_default_subset \
+    --output_dir ./checkpoints \
     --block_size 512 \
     --seed 0
 ```
@@ -45,7 +45,7 @@ python groundtruth.py\
     --dataset_name wikitext \
     --dataset_config_name wikitext-2-raw-v1 \
     --model_name_or_path openai-community/gpt2 \
-    --output_dir /scratch/bbyo/jdeng3/gpt2-wiki2/seq_512_default_subset \
+    --output_dir ./checkpoints \
     --block_size 512 \
     --seed 0
 ```
