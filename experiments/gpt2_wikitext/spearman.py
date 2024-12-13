@@ -32,7 +32,7 @@ def calculate_one(path):
 
     nodes_str = []
     for i in range(50):
-        nodes_str.append(f"/scratch/bbyo/jdeng3/gpt2-wiki2/seq_512_default_subset/{i}/train_index.csv")
+        nodes_str.append(f"./checkpoints/{i}/train_index.csv")
 
     full_nodes = [i for i in range(4656)]
 
@@ -44,7 +44,7 @@ def calculate_one(path):
             index.append(full_nodes.index(number))
         node_list.append(index)
 
-    loss_list = torch.load("/u/jdeng3/DropTDA-experiment/ICLR-rebuttal/wiki2/gt.pt", map_location=torch.device('cpu')).detach()
+    loss_list = torch.load("gt.pt", map_location=torch.device('cpu')).detach()
 
     approx_output = []
     for i in range(len(nodes_str)):
@@ -72,5 +72,5 @@ def calculate_one(path):
 
 
 if __name__ == "__main__":
-    path = "/u/jdeng3/DropTDA-experiment/ICLR-rebuttal/wiki2/score_mnist_ind_1_ens_5.pt"
+    path = "score.pt"
     print(calculate_one(path)[0])
