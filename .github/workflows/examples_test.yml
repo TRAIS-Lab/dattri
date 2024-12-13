@@ -28,6 +28,7 @@ jobs:
         python examples/pretrained_benchmark/influence_function_lds.py --device cpu
         python examples/pretrained_benchmark/trak_loo.py --device cpu
         python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
+        python examples/data_selection/influence_function_data_selection.py --device cpu --train_size 1000 --val_size 100 --test_size 100 --remove_number 10
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri

@@ -1,4 +1,4 @@
-"""This example shows how to use the IF to detect noisy labels in the MNIST."""
+"""This example shows how to use the IF to detect low-quality data in the MNIST."""
 
 import argparse
 from functools import partial
