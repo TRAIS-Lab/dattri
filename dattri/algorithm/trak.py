@@ -72,7 +72,12 @@ class TRAKAttributor(BaseAttributor):
         """
         self.task = task
         self.norm_scaler = (
-            sum(p.numel() for p in self.task.get_param(ckpt_idx=0)[0]) ** 0.5
+            sum(
+                p.numel()
+                for _, p in self.task.get_model().named_parameters()
+                if p.requires_grad
+            )
+            ** 0.5
         )
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
@@ -84,6 +89,7 @@ class TRAKAttributor(BaseAttributor):
         self.correct_probability_func = vmap(
             correct_probability_func,
             in_dims=(None, 0),
+            randomness="different",
         )
         self.full_train_dataloader = None
 
@@ -127,14 +133,22 @@ class TRAKAttributor(BaseAttributor):
                 desc="calculating gradient of training set...",
                 leave=False,
             ):
-                train_batch_data = tuple(data.to(self.device) for data in train_data)
+                # TODO: reorganize the data pre-grad processing.
+                if isinstance(train_data, (tuple, list)):
+                    train_batch_data = tuple(
+                        data.to(self.device) for data in train_data
+                    )
+                else:
+                    train_batch_data = train_data
+
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
+                batch_size = grad_t.shape[0]
                 grad_p = (
                     random_project(
                         grad_t,
-                        train_batch_data[0].shape[0],
+                        batch_size,
                         **self.projector_kwargs,
                     )(grad_t, ensemble_id=ckpt_idx)
                     .clone()
@@ -143,7 +157,7 @@ class TRAKAttributor(BaseAttributor):
                 full_train_projected_grad.append(grad_p)
                 Q.append(
                     (
-                        torch.ones(train_batch_data[0].shape[0]).to(self.device)
+                        torch.ones(batch_size).to(self.device)
                         - self.correct_probability_func(
                             _unflatten_params(full_parameters, self.task.get_model()),
                             train_batch_data,
@@ -167,7 +181,7 @@ class TRAKAttributor(BaseAttributor):
         self.inv_XTX_XT_list = inv_XTX_XT_list
         self.Q = running_Q
 
-    def attribute(  # noqa: PLR0912
+    def attribute(  # noqa: PLR0912,PLR0915
         self,
         test_dataloader: torch.utils.data.DataLoader,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
@@ -239,20 +253,26 @@ class TRAKAttributor(BaseAttributor):
                     desc="calculating gradient of training set...",
                     leave=False,
                 ):
-                    train_batch_data = tuple(
-                        data.to(self.device) for data in train_data
-                    )
+                    # TODO: reorganize the data pre-grad processing.
+                    if isinstance(train_data, (tuple, list)):
+                        train_batch_data = tuple(
+                            data.to(self.device) for data in train_data
+                        )
+                    else:
+                        train_batch_data = train_data
+
                     grad_t = self.grad_loss_func(
                         parameters,
                         train_batch_data,
                     )
                     grad_t = torch.nan_to_num(grad_t)
                     grad_t /= self.norm_scaler
+                    batch_size = grad_t.shape[0]
 
                     grad_p = (
                         random_project(
                             grad_t,
-                            train_batch_data[0].shape[0],
+                            batch_size,
                             **self.projector_kwargs,
                         )(grad_t, ensemble_id=ckpt_idx)
                         .clone()
@@ -261,7 +281,7 @@ class TRAKAttributor(BaseAttributor):
                     train_projected_grad.append(grad_p)
                     Q.append(
                         (
-                            torch.ones(train_batch_data[0].shape[0]).to(self.device)
+                            torch.ones(batch_size).to(self.device)
                             - self.correct_probability_func(
                                 _unflatten_params(
                                     full_parameters,
@@ -282,15 +302,19 @@ class TRAKAttributor(BaseAttributor):
                 desc="calculating gradient of test set...",
                 leave=False,
             ):
-                test_batch_data = tuple(data.to(self.device) for data in test_data)
+                # TODO: reorganize the data pre-grad processing.
+                if isinstance(test_data, (tuple, list)):
+                    test_batch_data = tuple(data.to(self.device) for data in test_data)
+                else:
+                    test_batch_data = test_data
                 grad_t = self.grad_target_func(parameters, test_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
-
+                batch_size = grad_t.shape[0]
                 grad_p = (
                     random_project(
                         grad_t,
-                        test_batch_data[0].shape[0],
+                        batch_size,
                         **self.projector_kwargs,
                     )(grad_t, ensemble_id=ckpt_idx)
                     .clone()
