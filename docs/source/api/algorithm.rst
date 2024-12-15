@@ -21,3 +21,8 @@ Attributors
     :special-members: __init__
     :undoc-members:
     :show-inheritance:
+.. autoclass:: dattri.algorithm.data_shapley.KNNShapleyAttributor
+    :members:
+    :special-members: __init__
+    :undoc-members:
+    :show-inheritance:
