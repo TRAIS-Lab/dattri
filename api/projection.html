@@ -6,7 +6,7 @@
 <link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Dropout Ensemble" href="dropout.html" /><link rel="prev" title="Fisher Information Matrix (FIM) / IFVP" href="fisher.html" />
 
     <!-- Generated with Sphinx 7.3.7 and Furo 2024.01.29 -->
-        <title>Random Projection - Dattri documentation</title>
+        <title>Projection - Dattri documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=a746c00c" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=135e06be" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=36a5483c" />
@@ -163,7 +163,7 @@
 <ul class="current">
 <li class="toctree-l1"><a class="reference internal" href="hessian.html">Hessian, HVP, and IHVP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fisher.html">Fisher Information Matrix (FIM) / IFVP</a></li>
-<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Random Projection</a></li>
+<li class="toctree-l1 current current-page"><a class="current reference internal" href="#">Projection</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dropout.html">Dropout Ensemble</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Benchmark:</span></p>
@@ -203,8 +203,8 @@
           </label>
         </div>
         <article role="main">
-          <section id="random-projection">
-<h1>Random Projection<a class="headerlink" href="#random-projection" title="Link to this heading">¶</a></h1>
+          <section id="projection">
+<h1>Projection<a class="headerlink" href="#projection" title="Link to this heading">¶</a></h1>
 <dl class="py function">
 <dt class="sig sig-object py" id="dattri.func.projection.random_project">
 <span class="sig-prename descclassname"><span class="pre">dattri.func.projection.</span></span><span class="sig-name descname"><span class="pre">random_project</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">feature</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">feature_batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_max_batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">device</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">use_half_precision</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.projection.random_project" title="Link to this definition">¶</a></dt>
@@ -351,7 +351,7 @@ regularization term is <cite>regularization * v</cite>.</p></li>
         <div class="toc-tree-container">
           <div class="toc-tree">
             <ul>
-<li><a class="reference internal" href="#">Random Projection</a><ul>
+<li><a class="reference internal" href="#">Projection</a><ul>
 <li><a class="reference internal" href="#dattri.func.projection.random_project"><code class="docutils literal notranslate"><span class="pre">random_project()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.func.projection.arnoldi_project"><code class="docutils literal notranslate"><span class="pre">arnoldi_project()</span></code></a></li>
 </ul>

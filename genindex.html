@@ -161,7 +161,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="api/hessian.html">Hessian, HVP, and IHVP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/fisher.html">Fisher Information Matrix (FIM) / IFVP</a></li>
-<li class="toctree-l1"><a class="reference internal" href="api/projection.html">Random Projection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="api/projection.html">Projection</a></li>
 <li class="toctree-l1"><a class="reference internal" href="api/dropout.html">Dropout Ensemble</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Benchmark:</span></p>
@@ -203,15 +203,17 @@
           
 <section class="genindex-section">
   <h1 id="index">Index</h1>
-  <div class="genindex-jumpbox"><a href="#_"><strong>_</strong></a> | <a href="#A"><strong>A</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#T"><strong>T</strong></a></div>
+  <div class="genindex-jumpbox"><a href="#_"><strong>_</strong></a> | <a href="#A"><strong>A</strong></a> | <a href="#C"><strong>C</strong></a> | <a href="#D"><strong>D</strong></a> | <a href="#F"><strong>F</strong></a> | <a href="#G"><strong>G</strong></a> | <a href="#H"><strong>H</strong></a> | <a href="#I"><strong>I</strong></a> | <a href="#K"><strong>K</strong></a> | <a href="#L"><strong>L</strong></a> | <a href="#M"><strong>M</strong></a> | <a href="#R"><strong>R</strong></a> | <a href="#T"><strong>T</strong></a></div>
 </section>
 <section id="_" class="genindex-section">
   <h2>_</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributor.__init__">__init__() (dattri.algorithm.influence_function.IFAttributor method)</a>
+        <li><a href="api/algorithm.html#dattri.algorithm.data_shapley.KNNShapleyAttributor.__init__">__init__() (dattri.algorithm.data_shapley.KNNShapleyAttributor method)</a>
 
         <ul>
+          <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributor.__init__">(dattri.algorithm.influence_function.IFAttributor method)</a>
+</li>
           <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributorArnoldi.__init__">(dattri.algorithm.influence_function.IFAttributorArnoldi method)</a>
 </li>
           <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributorCG.__init__">(dattri.algorithm.influence_function.IFAttributorCG method)</a>
@@ -245,9 +247,11 @@
 </li>
         <li><a href="api/projection.html#dattri.func.projection.arnoldi_project">arnoldi_project() (in module dattri.func.projection)</a>
 </li>
-        <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributor.attribute">attribute() (dattri.algorithm.influence_function.IFAttributor method)</a>
+        <li><a href="api/algorithm.html#dattri.algorithm.data_shapley.KNNShapleyAttributor.attribute">attribute() (dattri.algorithm.data_shapley.KNNShapleyAttributor method)</a>
 
         <ul>
+          <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributor.attribute">(dattri.algorithm.influence_function.IFAttributor method)</a>
+</li>
           <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributorArnoldi.attribute">(dattri.algorithm.influence_function.IFAttributorArnoldi method)</a>
 </li>
           <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributorCG.attribute">(dattri.algorithm.influence_function.IFAttributorCG method)</a>
@@ -279,9 +283,11 @@
   <h2>C</h2>
   <table style="width: 100%" class="indextable genindextable"><tr>
     <td style="width: 33%; vertical-align: top;"><ul>
-        <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributor.cache">cache() (dattri.algorithm.influence_function.IFAttributor method)</a>
+        <li><a href="api/algorithm.html#dattri.algorithm.data_shapley.KNNShapleyAttributor.cache">cache() (dattri.algorithm.data_shapley.KNNShapleyAttributor method)</a>
 
         <ul>
+          <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributor.cache">(dattri.algorithm.influence_function.IFAttributor method)</a>
+</li>
           <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributorArnoldi.cache">(dattri.algorithm.influence_function.IFAttributorArnoldi method)</a>
 </li>
           <li><a href="api/algorithm.html#dattri.algorithm.influence_function.IFAttributorCG.cache">(dattri.algorithm.influence_function.IFAttributorCG method)</a>
@@ -441,6 +447,16 @@
         <li><a href="api/hessian.html#dattri.func.hessian.ihvp_explicit">ihvp_explicit() (in module dattri.func.hessian)</a>
 </li>
         <li><a href="api/hessian.html#dattri.func.hessian.ihvp_lissa">ihvp_lissa() (in module dattri.func.hessian)</a>
+</li>
+    </ul></td>
+  </tr></table>
+</section>
+
+<section id="K" class="genindex-section">
+  <h2>K</h2>
+  <table style="width: 100%" class="indextable genindextable"><tr>
+    <td style="width: 33%; vertical-align: top;"><ul>
+        <li><a href="api/algorithm.html#dattri.algorithm.data_shapley.KNNShapleyAttributor">KNNShapleyAttributor (class in dattri.algorithm.data_shapley)</a>
 </li>
     </ul></td>
   </tr></table>

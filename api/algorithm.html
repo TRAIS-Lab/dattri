@@ -163,7 +163,7 @@
 <ul>
 <li class="toctree-l1"><a class="reference internal" href="hessian.html">Hessian, HVP, and IHVP</a></li>
 <li class="toctree-l1"><a class="reference internal" href="fisher.html">Fisher Information Matrix (FIM) / IFVP</a></li>
-<li class="toctree-l1"><a class="reference internal" href="projection.html">Random Projection</a></li>
+<li class="toctree-l1"><a class="reference internal" href="projection.html">Projection</a></li>
 <li class="toctree-l1"><a class="reference internal" href="dropout.html">Dropout Ensemble</a></li>
 </ul>
 <p class="caption" role="heading"><span class="caption-text">Benchmark:</span></p>
@@ -1830,6 +1830,96 @@ fine-tuning.</p>
 
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.data_shapley.KNNShapleyAttributor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.data_shapley.</span></span><span class="sig-name descname"><span class="pre">KNNShapleyAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k_neighbors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">BaseAttributor</span></code></p>
+<p>KNN Data Shapley Attributor.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.data_shapley.KNNShapleyAttributor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">k_neighbors</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">distance_func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initialize the AttributionTask.</p>
+<p>KNN Data Shapley Valuation is generally dataset-specific.
+Passing a model is optional and currently can be done in the
+customizable distance function.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>k_neighbors</strong> (<em>int</em>) – The number of neighbors in KNN model.</p></li>
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Used to
+pass the model and hook information in this attributor.
+Please refer to the <cite>AttributionTask</cite> for more details.</p></li>
+<li><p><strong>distance_func</strong> (<em>Callable</em><em>, </em><em>optional</em>) – <p>Customizable function
+used for distance calculation in KNN. The function
+can be quite flexible in terms of what is calculated,
+but it should take two batches of data as input.
+A typical example is as follows:
+<a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
+def f(batch_x, batch_y):</p>
+<blockquote>
+<div><p>coord1 = batch_x[0]
+coord2 = batch_y[0]
+return torch.cdist(coord1, coord2)</p>
+</div></blockquote>
+<p><a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a>.
+If not provided, a default Euclidean distance function
+will be used.</p>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>NotImplementedError</strong> – If task is not None.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.data_shapley.KNNShapleyAttributor.attribute">
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.utils.data.DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.utils.data.DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_labels</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor.attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the KNN shapley values of the training set on each test sample.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+training samples to calculate the shapley values. The dataloader
+should not be shuffled.</p></li>
+<li><p><strong>test_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+test samples to calculate the shapley values. The dataloader
+should not be shuffled.</p></li>
+<li><p><strong>train_labels</strong> – (List[int], optional): The list of training labels,
+with the same size and order of the training dataloader.
+If not provided, the last element in each batch from the loader
+will be used as label.</p></li>
+<li><p><strong>test_labels</strong> – (List[int], optional): The list of test labels,
+with the same size and order of the test dataloader.
+If not provided, the last element in each batch from the loader
+will be used as label.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The KNN shapley values of the training set on the test set, with</dt><dd><p>the shape of (num_train_samples, num_test_samples).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>Tensor</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the length of provided labels and dataset mismatch.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.data_shapley.KNNShapleyAttributor.cache">
+<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor.cache" title="Link to this definition">¶</a></dt>
+<dd><p>Precompute and cache some values for efficiency.</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
         </article>
@@ -1971,6 +2061,12 @@ fine-tuning.</p>
 <li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">RPSAttributor.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">RPSAttributor.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor.cache"><code class="docutils literal notranslate"><span class="pre">RPSAttributor.cache()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor"><code class="docutils literal notranslate"><span class="pre">KNNShapleyAttributor</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">KNNShapleyAttributor.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">KNNShapleyAttributor.attribute()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.data_shapley.KNNShapleyAttributor.cache"><code class="docutils literal notranslate"><span class="pre">KNNShapleyAttributor.cache()</span></code></a></li>
 </ul>
 </li>
 </ul>
