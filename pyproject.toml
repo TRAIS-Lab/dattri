@@ -12,7 +12,7 @@ authors = [
     {name = "TRAIS-Lab", email = "jiaqima.mle@gmail.com"}
 ]
 classifiers = [
-    "License :: OSI Approved :: Apache Software License",
+    "License :: OSI Approved :: MIT License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: Implementation :: CPython",
