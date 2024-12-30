@@ -64,7 +64,7 @@ if __name__ == "__main__":
     )
     test_loader = torch.utils.data.DataLoader(
         dataset_test,
-        batch_size=1,
+        batch_size=1000,
         sampler=SubsetSampler(range(args.test_size)),
     )
 
@@ -93,13 +93,13 @@ if __name__ == "__main__":
     value, indices = torch.sort(score_overall, descending=True)
 
     # calculate the test loss
-    loss = nn.CrossEntropyLoss()
+    loss = nn.CrossEntropyLoss(reduction="none")
     loss_value = []
     for image, label in test_loader:
         image, label = image.to(args.device), label.to(args.device)
         yhat = model(image)
-        loss_value.append(loss(yhat, label.long()).item())
-    loss_value = torch.mean(torch.tensor(loss_value))
+        loss_value.append(loss(yhat, label.long()))
+    loss_value = torch.mean(torch.cat(loss_value))
 
     print(f"Test loss: {loss_value}")
 
@@ -128,13 +128,13 @@ if __name__ == "__main__":
     model.eval()
 
     # calculate the test loss
-    loss = nn.CrossEntropyLoss()
+    loss = nn.CrossEntropyLoss(reduction="none")
     loss_value = []
     for image, label in test_loader:
         image, label = image.to(args.device), label.to(args.device)
         yhat = model(image)
-        loss_value.append(loss(yhat, label.long()).item())
-    loss_value = torch.mean(torch.tensor(loss_value))
+        loss_value.append(loss(yhat, label.long()))
+    loss_value = torch.mean(torch.cat(loss_value))
 
     print(f"Test loss (after): {loss_value}")
 

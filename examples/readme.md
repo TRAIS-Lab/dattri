@@ -24,8 +24,8 @@ This section contains examples using attribution scores to estimate the brittlen
 
 [Use influence function to estimate the brittleness of losigitc regression trained on Mnist10](./brittleness/mnist_lr_brittleness.py)
 
-## Data selection
+## Data cleaning
 
 This section contains examples using attribution scores to find the data points that can be removed from the training set and improve the test performance.
 
-[Use influence function to find the low-quality data points in MNIST-10 and evaluate the performance](./data_selection/influence_function_data_selection.py)
+[Use influence function to find the low-quality data points in MNIST-10 and evaluate the performance](./data_cleaning/influence_function_data_cleaning.py)
