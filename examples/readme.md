@@ -25,3 +25,9 @@ This section contains examples using the pretrained checkpoints and pre-calculat
 This section contains examples using attribution scores to estimate the brittleness of a model.
 
 [Use influence function to estimate the brittleness of losigitc regression trained on Mnist10](./brittleness/mnist_lr_brittleness.py)
+
+## Data cleaning
+
+This section contains examples using attribution scores to find the data points that can be removed from the training set and improve the test performance.
+
+[Use influence function to find the low-quality data points in MNIST-10 and evaluate the performance](./data_cleaning/influence_function_data_cleaning.py)
