@@ -18,6 +18,25 @@ from torch.func import grad, vmap
 from dattri.func.utils import flatten_func, flatten_params, partial_param
 
 
+def _default_checkpoint_load_func(
+    model: nn.Module,
+    checkpoint: Union[
+        str,
+        List[str],
+        List[Dict[str, torch.Tensor]],
+        Dict[str, torch.Tensor],
+    ],
+) -> nn.Module:
+    if isinstance(checkpoint, (str, PosixPath)):
+        checkpoint = torch.load(
+            checkpoint,
+            map_location=next(model.parameters()).device,
+        )
+    model.load_state_dict(checkpoint)
+    model.eval()
+    return model
+
+
 class AttributionTask:
     """The abstraction of the attribution task information."""
 
@@ -32,6 +51,7 @@ class AttributionTask:
             Dict[str, torch.Tensor],
         ],
         target_func: Optional[Callable] = None,
+        checkpoints_load_func: Optional[Callable] = None,
     ) -> None:
         """Initialize the AttributionTask.
 
@@ -75,8 +95,19 @@ class AttributionTask:
                     loss = nn.CrossEntropyLoss()
                     yhat = torch.func.functional_call(model, params, image)
                     return loss(yhat, label)
+                ```
+            checkpoints_load_func (Callable): The checkpoint load function.
+                The input is optional, if not provided, the checkpoint load
+                function will be a default one using model.load_state_dict.
+                The parameter is used for some models that have special
+                loading strategies, e.g., huggingface model.
+                A typical example for huggingface model is
+                ```python
+                def checkpoints_load_func(model, checkpoint):
+                    model = AutoModelForCausalLM.from_pretrained(checkpoint).cuda()
+                    model.eval()
+                    return model
                 ```.
-
         """
         self.model = model
         if target_func is None:
@@ -90,6 +121,11 @@ class AttributionTask:
         self.original_target_func = target_func
         self.target_func = flatten_func(self.model)(target_func)
 
+        if checkpoints_load_func is None:
+            self.checkpoints_load_func = _default_checkpoint_load_func
+        else:
+            self.checkpoints_load_func = checkpoints_load_func
+
         if not isinstance(checkpoints, list):
             self.checkpoints = [checkpoints]
         else:
@@ -100,13 +136,21 @@ class AttributionTask:
         self.current_checkpoint_idx = None
 
         # TODO: Make this more general, that is allow customized kwargs.
-        self.grad_loss_func = vmap(grad(self.loss_func), in_dims=(None, 1))
+        self.grad_loss_func = vmap(
+            grad(self.loss_func),
+            in_dims=(None, 1),
+            randomness="different",
+        )
         self.grad_loss_func_kwargs = {
             "in_dims": (None, 1),
             "layer_name": None,
             "ckpt_idx": None,
         }
-        self.grad_target_func = vmap(grad(self.target_func), in_dims=(None, 1))
+        self.grad_target_func = vmap(
+            grad(self.target_func),
+            in_dims=(None, 1),
+            randomness="different",
+        )
         self.grad_target_func_kwargs = {
             "in_dims": (None, 1),
             "layer_name": None,
@@ -123,20 +167,14 @@ class AttributionTask:
             self.current_checkpoint_idx is None
             or self.current_checkpoint_idx != ckpt_idx
         ):
-            if isinstance(self.checkpoints[ckpt_idx], (str, PosixPath)):
-                self.model.load_state_dict(
-                    torch.load(
-                        self.checkpoints[ckpt_idx],
-                        map_location=next(self.model.parameters()).device,
-                    ),
-                )
-            else:
-                self.model.load_state_dict(self.checkpoints[ckpt_idx])
+            self.model = self.checkpoints_load_func(
+                self.model,
+                self.checkpoints[ckpt_idx],
+            )
             self.current_checkpoint_idx = ckpt_idx
             self.named_parameters = {
                 k: p for k, p in self.model.named_parameters() if p.requires_grad
             }
-        self.model.eval()
 
     @staticmethod
     def _generate_param_layer_map(
@@ -212,7 +250,11 @@ class AttributionTask:
             "ckpt_idx": ckpt_idx,
         }
         if self.grad_target_func_kwargs != grad_target_func_kwargs:
-            self.grad_target_func = vmap(grad(target_func), in_dims=in_dims)
+            self.grad_target_func = vmap(
+                grad(target_func),
+                in_dims=in_dims,
+                randomness="different",
+            )
             self.grad_target_func_kwargs = grad_target_func_kwargs
         return self.grad_target_func
 
@@ -294,7 +336,11 @@ class AttributionTask:
             "ckpt_idx": ckpt_idx,
         }
         if self.grad_loss_func_kwargs != loss_target_func_kwargs:
-            self.grad_loss_func = vmap(grad(loss_func), in_dims=in_dims)
+            self.grad_loss_func = vmap(
+                grad(loss_func),
+                in_dims=in_dims,
+                randomness="different",
+            )
             self.grad_loss_func_kwargs = loss_target_func_kwargs
         return self.grad_loss_func
 
