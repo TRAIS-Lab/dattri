@@ -99,7 +99,7 @@ class AttributionTask:
             checkpoints_load_func (Callable): The checkpoint load function.
                 The input is optional, if not provided, the checkpoint load
                 function will be a default one using model.load_state_dict.
-                The parameter is used for some model that has special
+                The parameter is used for some models that have special
                 loading strategies, e.g., huggingface model.
                 A typical example for huggingface model is
                 ```python
