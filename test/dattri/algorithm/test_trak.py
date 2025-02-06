@@ -71,6 +71,7 @@ class TestTRAK:
             correct_probability_func=m,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
+            regularization=1e-3,
         )
         score = attributor.attribute(train_loader, test_loader)
         score2 = attributor.attribute(train_loader, test_loader)
@@ -82,6 +83,7 @@ class TestTRAK:
             correct_probability_func=m,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
+            regularization=1e-3,
         )
         attributor.cache(train_loader)
         score = attributor.attribute(test_loader)
@@ -94,6 +96,7 @@ class TestTRAK:
             correct_probability_func=m,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
+            regularization=1e-3,
         )
         attributor.cache(train_loader)
         score = attributor.attribute(test_loader)

@@ -41,6 +41,7 @@ class TRAKAttributor(BaseAttributor):
         projector_kwargs: Optional[Dict[str, Any]] = None,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
+        regularization: float = 0.0,
     ) -> None:
         """Initialize the TRAK attributor.
 
@@ -69,6 +70,10 @@ class TRAKAttributor(BaseAttributor):
                 if multiple layers are needed. The name of layer should follow the
                 key of model.named_parameters(). Default: None.
             device (str): The device to run the attributor. Default is "cpu".
+            regularization (float): Regularization term added to inverse matrix in trak.
+                Useful for singular or ill-conditioned matrices.
+                Added as `regularization * I`, where `I` is the identity matrix.
+                Default is 0.0.
         """
         self.task = task
         self.norm_scaler = (
@@ -92,6 +97,7 @@ class TRAKAttributor(BaseAttributor):
             randomness="different",
         )
         self.full_train_dataloader = None
+        self.regularization = regularization
 
     def cache(
         self,
@@ -168,12 +174,13 @@ class TRAKAttributor(BaseAttributor):
                 )
             full_train_projected_grad = torch.cat(full_train_projected_grad, dim=0)
             Q = torch.cat(Q, dim=0)
-            inv_XTX_XT = (
-                torch.linalg.inv(
-                    full_train_projected_grad.T @ full_train_projected_grad,
-                )
-                @ full_train_projected_grad.T
-            )
+            identity = torch.eye(
+                full_train_projected_grad.shape[1],
+                device=full_train_projected_grad.device)
+            inv_matrix = torch.linalg.inv(
+                full_train_projected_grad.T
+                @ full_train_projected_grad + self.regularization * identity)
+            inv_XTX_XT = (inv_matrix @ full_train_projected_grad.T)
             inv_XTX_XT_list.append(inv_XTX_XT)
             running_Q = running_Q * running_count + Q
             running_count += 1  # noqa: SIM113
@@ -327,7 +334,11 @@ class TRAKAttributor(BaseAttributor):
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
                     + test_projected_grad
-                    @ torch.linalg.inv(train_projected_grad.T @ train_projected_grad)
+                    @ (torch.linalg.inv(
+                    train_projected_grad.T
+                    @ train_projected_grad + self.regularization * torch.eye(
+                    train_projected_grad.shape[1],
+                    device=train_projected_grad.device)))
                     @ train_projected_grad.T
                 )
             else:
