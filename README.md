@@ -251,7 +251,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
   - TF-IDF filter
   - RelativeIF
   - In-Run Shapley
-  - [LoGRA](https://arxiv.org/abs/2405.13954)
+  - [LoGra](https://arxiv.org/abs/2405.13954)
 - Better documentation
   - Quick start colab notebooks
 
