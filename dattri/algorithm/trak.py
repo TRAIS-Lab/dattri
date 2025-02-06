@@ -70,7 +70,7 @@ class TRAKAttributor(BaseAttributor):
                 if multiple layers are needed. The name of layer should follow the
                 key of model.named_parameters(). Default: None.
             device (str): The device to run the attributor. Default is "cpu".
-            regularization (float): Regularization term added to inverse matrix in trak.
+            regularization (float): Regularization term add before matrix inversion.
                 Useful for singular or ill-conditioned matrices.
                 Added as `regularization * I`, where `I` is the identity matrix.
                 Default is 0.0.
@@ -174,12 +174,11 @@ class TRAKAttributor(BaseAttributor):
                 )
             full_train_projected_grad = torch.cat(full_train_projected_grad, dim=0)
             Q = torch.cat(Q, dim=0)
-            identity = torch.eye(
-                full_train_projected_grad.shape[1],
-                device=full_train_projected_grad.device)
             inv_matrix = torch.linalg.inv(
                 full_train_projected_grad.T
-                @ full_train_projected_grad + self.regularization * identity)
+                @ full_train_projected_grad + self.regularization * torch.eye(
+                full_train_projected_grad.shape[1],
+                device=full_train_projected_grad.device))
             inv_XTX_XT = (inv_matrix @ full_train_projected_grad.T)
             inv_XTX_XT_list.append(inv_XTX_XT)
             running_Q = running_Q * running_count + Q
