@@ -169,7 +169,7 @@ class TRAKAttributor(BaseAttributor):
             full_train_projected_grad = torch.cat(full_train_projected_grad, dim=0)
             Q = torch.cat(Q, dim=0)
             inv_XTX_XT = (
-                torch.linalg.inv(
+                torch.linalg.solve(
                     full_train_projected_grad.T @ full_train_projected_grad,
                 )
                 @ full_train_projected_grad.T
@@ -327,7 +327,7 @@ class TRAKAttributor(BaseAttributor):
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
                     + test_projected_grad
-                    @ torch.linalg.inv(train_projected_grad.T @ train_projected_grad)
+                    @ torch.linalg.solve(train_projected_grad.T @ train_projected_grad)
                     @ train_projected_grad.T
                 )
             else:
