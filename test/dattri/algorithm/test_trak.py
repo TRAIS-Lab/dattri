@@ -102,7 +102,7 @@ class TestTRAK:
         shutil.rmtree(path)
 
     def test_trak_regularization(self):
-        """Test for TRAK."""
+        """Test for TRAK regularization."""
         dataset = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 10, (10,)))
 
         train_loader = torch.utils.data.DataLoader(dataset, batch_size=4)
