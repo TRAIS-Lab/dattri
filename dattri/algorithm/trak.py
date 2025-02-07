@@ -174,11 +174,9 @@ class TRAKAttributor(BaseAttributor):
                 )
             full_train_projected_grad = torch.cat(full_train_projected_grad, dim=0)
             Q = torch.cat(Q, dim=0)
-            inv_matrix = torch.linalg.inv(
-                full_train_projected_grad.T @ full_train_projected_grad,
-            )
-            inv_matrix.diagonal().add_(self.regularization)
-            inv_XTX_XT = (inv_matrix @ full_train_projected_grad.T)
+            kernel_matrix = full_train_projected_grad.T @ full_train_projected_grad
+            kernel_matrix.diagonal().add_(self.regularization)
+            inv_XTX_XT = (torch.linalg.inv(kernel_matrix) @ full_train_projected_grad.T)
             inv_XTX_XT_list.append(inv_XTX_XT)
             running_Q = running_Q * running_count + Q
             running_count += 1  # noqa: SIM113
@@ -186,7 +184,7 @@ class TRAKAttributor(BaseAttributor):
         self.inv_XTX_XT_list = inv_XTX_XT_list
         self.Q = running_Q
 
-    def attribute(  # noqa: PLR0912,PLR0915
+    def attribute(  # noqa: PLR0912, PLR0914, PLR0915
         self,
         test_dataloader: torch.utils.data.DataLoader,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
@@ -328,13 +326,12 @@ class TRAKAttributor(BaseAttributor):
                 test_projected_grad.append(grad_p)
             test_projected_grad = torch.cat(test_projected_grad, dim=0)
             if train_dataloader is not None:
+                kernel_matrix = train_projected_grad.T @ train_projected_grad
+                kernel_matrix.diagonal().add_(self.regularization)
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
                     + test_projected_grad
-                    @ (torch.linalg.inv(
-                        train_projected_grad.T
-                        @ train_projected_grad).diagonal().add_(
-                            self.regularization))
+                    @ torch.linalg.inv(kernel_matrix)
                     @ train_projected_grad.T
                 )
             else:

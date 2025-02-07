@@ -145,15 +145,15 @@ class TestTRAK:
             model=model,
             checkpoints=checkpoint_list,
         )
-        # trak w/ regularization
+        # trak w/o regularization
         attributor = TRAKAttributor(
             task=task,
             correct_probability_func=m,
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
-        # trak w/o regularization
         score = attributor.attribute(train_loader, test_loader)
+        # trak w/ regularization
         attributor = TRAKAttributor(
             task=task,
             correct_probability_func=m,
