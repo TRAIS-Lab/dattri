@@ -41,6 +41,7 @@ class TRAKAttributor(BaseAttributor):
         projector_kwargs: Optional[Dict[str, Any]] = None,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
+        regularization: float = 0.0,
     ) -> None:
         """Initialize the TRAK attributor.
 
@@ -69,6 +70,10 @@ class TRAKAttributor(BaseAttributor):
                 if multiple layers are needed. The name of layer should follow the
                 key of model.named_parameters(). Default: None.
             device (str): The device to run the attributor. Default is "cpu".
+            regularization (float): Regularization term add before matrix inversion.
+                Useful for singular or ill-conditioned matrices.
+                Added as `regularization * I`, where `I` is the identity matrix.
+                Default is 0.0.
         """
         self.task = task
         self.norm_scaler = (
@@ -92,6 +97,7 @@ class TRAKAttributor(BaseAttributor):
             randomness="different",
         )
         self.full_train_dataloader = None
+        self.regularization = regularization
 
     def cache(
         self,
@@ -181,7 +187,7 @@ class TRAKAttributor(BaseAttributor):
         self.inv_XTX_XT_list = inv_XTX_XT_list
         self.Q = running_Q
 
-    def attribute(  # noqa: PLR0912,PLR0915
+    def attribute(  # noqa: PLR0912, PLR0914, PLR0915
         self,
         test_dataloader: torch.utils.data.DataLoader,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
@@ -322,8 +328,9 @@ class TRAKAttributor(BaseAttributor):
                 )
                 test_projected_grad.append(grad_p)
             test_projected_grad = torch.cat(test_projected_grad, dim=0)
-
             if train_dataloader is not None:
+                kernel_matrix = train_projected_grad.T @ train_projected_grad
+                kernel_matrix.diagonal().add_(self.regularization)
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
                     + test_projected_grad

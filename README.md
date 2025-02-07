@@ -251,17 +251,22 @@ We have implemented most of the state-of-the-art methods. The categories and ref
   - TF-IDF filter
   - RelativeIF
   - In-Run Shapley
+  - [LoGra](https://arxiv.org/abs/2405.13954)
 - Better documentation
   - Quick start colab notebooks
 
 ## Citation
 
 ```bibtex
-@inproceedings{deng2024dattri,
-  author    = {Deng, Junwei and Li, Ting-Wei and Zhang, Shiyuan and Liu, Shixuan and Pan, Yijun and Huang, Hao and Wang, Xinhe and Hu, Pingbang and Zhang, Xingjian and Ma, Jiaqi W},
-  title     = {dattri: A Library for Efficient Data Attribution},
-  booktitle = {Advances in Neural Information Processing Systems},
-  volume    = {37},
-  year      = {2024}
+@inproceedings{NEURIPS2024_f7326833,
+    author    = {Deng, Junwei and Li, Ting-Wei and Zhang, Shiyuan and Liu, Shixuan and Pan, Yijun and Huang, Hao and Wang, Xinhe and Hu, Pingbang and Zhang, Xingjian and Ma, Jiaqi},
+    booktitle = {Advances in Neural Information Processing Systems},
+    editor    = {A. Globerson and L. Mackey and D. Belgrave and A. Fan and U. Paquet and J. Tomczak and C. Zhang},
+    pages     = {136763--136781},
+    publisher = {Curran Associates, Inc.},
+    title     = {\textbackslash texttt\lbrace dattri\rbrace : A Library for Efficient Data Attribution},
+    url       = {https://proceedings.neurips.cc/paper_files/paper/2024/file/f732683302d91e47610b2416b4977a66-Paper-Datasets_and_Benchmarks_Track.pdf},
+    volume    = {37},
+    year      = {2024}
 }
 ```
