@@ -176,7 +176,7 @@ class TRAKAttributor(BaseAttributor):
             Q = torch.cat(Q, dim=0)
             kernel_matrix = full_train_projected_grad.T @ full_train_projected_grad
             kernel_matrix.diagonal().add_(self.regularization)
-            inv_XTX_XT = (torch.linalg.inv(kernel_matrix) @ full_train_projected_grad.T)
+            inv_XTX_XT = (torch.linalg.solve(kernel_matrix) @ full_train_projected_grad.T)
             inv_XTX_XT_list.append(inv_XTX_XT)
             running_Q = running_Q * running_count + Q
             running_count += 1  # noqa: SIM113
@@ -331,7 +331,7 @@ class TRAKAttributor(BaseAttributor):
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
                     + test_projected_grad
-                    @ torch.linalg.inv(kernel_matrix)
+                    @ torch.linalg.solve(kernel_matrix)
                     @ train_projected_grad.T
                 )
             else:
