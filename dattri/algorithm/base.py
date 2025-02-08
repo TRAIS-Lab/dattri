@@ -324,9 +324,14 @@ class BaseInnerProductAttributor(BaseAttributor):
 
                 denom = None
                 if relatif_method is not None:
+                    test_batch_rep = self.generate_test_rep(
+                        ckpt_idx=checkpoint_idx,
+                        data=train_batch_data,
+                    )
                     denom = self._compute_denom(
                         checkpoint_idx,
                         train_batch_rep,
+                        test_batch_rep,
                         relatif_method=relatif_method,
                     )
 
@@ -385,6 +390,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         self,
         ckpt_idx: int,  # noqa: ARG002
         train_batch_rep: torch.Tensor,
+        test_batch_rep: torch.Tensor,
         relatif_method: Optional[str] = None,  # noqa: ARG002
     ) -> torch.Tensor:
         """Compute the denominator for the influence calculation.
@@ -394,6 +400,8 @@ class BaseInnerProductAttributor(BaseAttributor):
                 calculation.
             train_batch_rep (torch.Tensor): The representation of the training batch
                 at the given checkpoint.
+            test_batch_rep (torch.Tensor): The representation of the training batch,
+                generated using `generate_test_rep` at the given checkpoint.
             relatif_method (Optional[str]): Normalization method.
                 - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
                 - `"theta"`: Computes `||H^-1 g_i||`.
@@ -402,11 +410,9 @@ class BaseInnerProductAttributor(BaseAttributor):
         Returns:
             torch.Tensor: The computed denominator for normalization. It is a
             1-d dimensional tensor with the shape of (batch_size).
-
-        Raises:
-            ValueError: If an unknown `method` is provided.
         """
         _ = self
+        _ = test_batch_rep
 
         batch_size = train_batch_rep.size(0)
         return train_batch_rep.new_ones(batch_size)
