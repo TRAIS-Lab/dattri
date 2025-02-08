@@ -293,7 +293,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         self,
         ckpt_idx: int,
         train_batch_rep: torch.Tensor,
-        relativeif_method: Optional[str] = None,
+        relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
         """Compute the denominator for the influence calculation.
 
@@ -302,7 +302,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 calculation.
             train_batch_rep (torch.Tensor): The representation of the training batch
                 at the given checkpoint.
-            relativeif_method (Optional[str]): Normalization method.
+            relatif_method (Optional[str]): Normalization method.
                 - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
                 - `"theta"`: Computes `||H^-1 g_i||`.
                 - `None`: Raises an error.
@@ -316,7 +316,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         """
         transformed = self.transform_test_rep(ckpt_idx, train_batch_rep)
 
-        if relativeif_method == "l":
+        if relatif_method == "l":
             # g_i^T (H^-1 g_i)
             val = (
                 (self.transform_train_rep(ckpt_idx, train_batch_rep) * transformed)
@@ -324,11 +324,11 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 .clamp_min(1e-12)
                 .sqrt()
             )
-        elif relativeif_method == "theta":
+        elif relatif_method == "theta":
             # ||H^-1 g_i||
             val = transformed.norm(dim=1).clamp_min(1e-12)
         else:
-            error_msg = f"Unknown method: {relativeif_method}"
+            error_msg = f"Unknown method: {relatif_method}"
             raise ValueError(error_msg)
         return val
 
@@ -420,7 +420,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
         self,
         ckpt_idx: int,
         train_batch_rep: torch.Tensor,
-        relativeif_method: Optional[str] = None,
+        relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
         """Compute the denominator for the influence calculation.
 
@@ -429,7 +429,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 calculation.
             train_batch_rep (torch.Tensor): The representation of the training batch
                 at the given checkpoint.
-            relativeif_method (Optional[str]): Normalization method.
+            relatif_method (Optional[str]): Normalization method.
                 - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
                 - `"theta"`: Computes `||H^-1 g_i||`.
                 - `None`: Raises an error.
@@ -443,7 +443,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
         """
         transformed = self.transform_test_rep(ckpt_idx, train_batch_rep)
 
-        if relativeif_method == "l":
+        if relatif_method == "l":
             # g_i^T (H^-1 g_i)
             val = (
                 (self.transform_train_rep(ckpt_idx, train_batch_rep) * transformed)
@@ -451,11 +451,11 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 .clamp_min(1e-12)
                 .sqrt()
             )
-        elif relativeif_method == "theta":
+        elif relatif_method == "theta":
             # ||H^-1 g_i||
             val = transformed.norm(dim=1).clamp_min(1e-12)
         else:
-            error_msg = f"Unknown method: {relativeif_method}"
+            error_msg = f"Unknown method: {relatif_method}"
             raise ValueError(error_msg)
         return val
 
@@ -732,7 +732,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         self,
         ckpt_idx: int,
         train_batch_rep: torch.Tensor,
-        relativeif_method: Optional[str] = None,
+        relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
         """Compute the denominator for the influence calculation.
 
@@ -741,7 +741,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 calculation.
             train_batch_rep (torch.Tensor): The representation of the training batch
                 at the given checkpoint.
-            relativeif_method (Optional[str]): Normalization method.
+            relatif_method (Optional[str]): Normalization method.
                 - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
                 - `"theta"`: Computes `||H^-1 g_i||`.
                 - `None`: Raises an error.
@@ -755,7 +755,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         """
         transformed = self.transform_test_rep(ckpt_idx, train_batch_rep)
 
-        if relativeif_method == "l":
+        if relatif_method == "l":
             # g_i^T (H^-1 g_i)
             val = (
                 (self.transform_train_rep(ckpt_idx, train_batch_rep) * transformed)
@@ -763,11 +763,11 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 .clamp_min(1e-12)
                 .sqrt()
             )
-        elif relativeif_method == "theta":
+        elif relatif_method == "theta":
             # ||H^-1 g_i||
             val = transformed.norm(dim=1).clamp_min(1e-12)
         else:
-            error_msg = f"Unknown method: {relativeif_method}"
+            error_msg = f"Unknown method: {relatif_method}"
             raise ValueError(error_msg)
         return val
 

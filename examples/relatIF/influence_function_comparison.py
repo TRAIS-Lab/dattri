@@ -135,7 +135,7 @@ if __name__ == "__main__":
             influence_scores = attributor.attribute(
                 train_dataloader=train_loader,
                 test_dataloader=test_loader,
-                relativeif_method=method
+                relatif_method=method
             )
         influence_scores = influence_scores.cpu()
 
