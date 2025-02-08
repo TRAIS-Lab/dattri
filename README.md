@@ -208,6 +208,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |        |  [Arnoldi](https://arxiv.org/abs/2112.03052)  |
 | | [DataInf](https://arxiv.org/abs/2310.00902)|
 | | [EK-FAC](https://arxiv.org/abs/2308.03296) |
+| | [RelatIF](https://arxiv.org/pdf/2003.11630) |
 | [TracIn](https://arxiv.org/abs/2002.08484) | [TracInCP](https://arxiv.org/abs/2002.08484) |
 |        |   [Grad-Dot](https://arxiv.org/abs/2102.05262)  |
 |        |   [Grad-Cos](https://arxiv.org/abs/2102.05262)  |
@@ -249,7 +250,6 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 - More algorithms and low-level utility functions to come
   - KNN filter
   - TF-IDF filter
-  - RelativeIF
   - In-Run Shapley
 - Better documentation
   - Quick start colab notebooks
