@@ -289,6 +289,48 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
         return vector_product
 
+    def _compute_denom(
+        self,
+        ckpt_idx: int,
+        train_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
+        relatif_method: Optional[str] = None,
+    ) -> torch.Tensor:
+        """Compute the denominator for the influence calculation.
+
+        Args:
+            ckpt_idx (int): The index of the checkpoint being used for influence
+                calculation.
+            train_batch_rep (torch.Tensor): The representation of the training batch
+                at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
+            relatif_method (Optional[str]): Normalization method.
+                - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Computes `||H^-1 g_i||`.
+                - `None`: Raises an error.
+
+        Returns:
+            torch.Tensor: The computed denominator for normalization. It is a
+            1-d dimensional tensor with the shape of (batch_size).
+
+        Raises:
+            ValueError: If an unknown `method` is provided.
+        """
+        transformed = self.transform_test_rep(ckpt_idx, train_batch_rep)
+
+        if relatif_method == "l":
+            # g_i^T (H^-1 g_i)
+            val = (test_batch_rep * transformed).sum(dim=1).clamp_min(1e-12).sqrt()
+        elif relatif_method == "theta":
+            # ||H^-1 g_i||
+            val = transformed.norm(dim=1).clamp_min(1e-12)
+        else:
+            error_msg = f"Unknown method: {relatif_method}"
+            raise ValueError(error_msg)
+        return val
+
 
 class IFAttributorCG(BaseInnerProductAttributor):
     """The inner product attributor with CG inverse hessian transformation."""
@@ -372,6 +414,48 @@ class IFAttributorCG(BaseInnerProductAttributor):
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
         return vector_product
+
+    def _compute_denom(
+        self,
+        ckpt_idx: int,
+        train_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
+        relatif_method: Optional[str] = None,
+    ) -> torch.Tensor:
+        """Compute the denominator for the influence calculation.
+
+        Args:
+            ckpt_idx (int): The index of the checkpoint being used for influence
+                calculation.
+            train_batch_rep (torch.Tensor): The representation of the training batch
+                at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
+            relatif_method (Optional[str]): Normalization method.
+                - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Computes `||H^-1 g_i||`.
+                - `None`: Raises an error.
+
+        Returns:
+            torch.Tensor: The computed denominator for normalization. It is a
+            1-d dimensional tensor with the shape of (batch_size).
+
+        Raises:
+            ValueError: If an unknown `method` is provided.
+        """
+        transformed = self.transform_test_rep(ckpt_idx, train_batch_rep)
+
+        if relatif_method == "l":
+            # g_i^T (H^-1 g_i)
+            val = (test_batch_rep * transformed).sum(dim=1).clamp_min(1e-12).sqrt()
+        elif relatif_method == "theta":
+            # ||H^-1 g_i||
+            val = transformed.norm(dim=1).clamp_min(1e-12)
+        else:
+            error_msg = f"Unknown method: {relatif_method}"
+            raise ValueError(error_msg)
+        return val
 
 
 class IFAttributorArnoldi(BaseInnerProductAttributor):
@@ -642,6 +726,48 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
             tuple(sampled_input[i].float() for i in range(1, len(sampled_input))),
         )
 
+    def _compute_denom(
+        self,
+        ckpt_idx: int,
+        train_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
+        relatif_method: Optional[str] = None,
+    ) -> torch.Tensor:
+        """Compute the denominator for the influence calculation.
+
+        Args:
+            ckpt_idx (int): The index of the checkpoint being used for influence
+                calculation.
+            train_batch_rep (torch.Tensor): The representation of the training batch
+                at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
+            relatif_method (Optional[str]): Normalization method.
+                - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Computes `||H^-1 g_i||`.
+                - `None`: Raises an error.
+
+        Returns:
+            torch.Tensor: The computed denominator for normalization. It is a
+            1-d dimensional tensor with the shape of (batch_size).
+
+        Raises:
+            ValueError: If an unknown `method` is provided.
+        """
+        transformed = self.transform_test_rep(ckpt_idx, train_batch_rep)
+
+        if relatif_method == "l":
+            # g_i^T (H^-1 g_i)
+            val = (test_batch_rep * transformed).sum(dim=1).clamp_min(1e-12).sqrt()
+        elif relatif_method == "theta":
+            # ||H^-1 g_i||
+            val = transformed.norm(dim=1).clamp_min(1e-12)
+        else:
+            error_msg = f"Unknown method: {relatif_method}"
+            raise ValueError(error_msg)
+        return val
+
 
 class IFAttributorDataInf(BaseInnerProductAttributor):
     """The inner product attributor with DataInf inverse hessian transformation."""
@@ -690,21 +816,25 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
             _cached_train_reps_list = []
-            iter_number = math.ceil(len(full_train_dataloader)
-                * self.fim_estimate_data_ratio)
+            iter_number = math.ceil(
+                len(full_train_dataloader) * self.fim_estimate_data_ratio,
+            )
             sampled_data_list = []
             for _ in range(iter_number):
                 sampled_data_list.append(next(iter(full_train_dataloader)))  # noqa: PERF401
             for sampled_data_ in sampled_data_list:
-                sampled_data = tuple(data.to(self.device).unsqueeze(0)
-                    for data in sampled_data_)
+                sampled_data = tuple(
+                    data.to(self.device).unsqueeze(0) for data in sampled_data_
+                )
                 sampled_data_rep = self.generate_train_rep(
                     ckpt_idx=checkpoint_idx,
                     data=sampled_data,
                 )
                 _cached_train_reps_list.append(sampled_data_rep)
             self._cached_train_reps[checkpoint_idx] = torch.cat(
-                _cached_train_reps_list, dim=0)
+                _cached_train_reps_list,
+                dim=0,
+            )
 
     def transform_test_rep(
         self,
@@ -758,8 +888,10 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         regularization = self.regularization
         # Split layer-wise train and test representations
         test_rep_layers = self._get_layer_wise_reps(ckpt_idx, test_rep)
-        cached_train_rep_layers = self._get_layer_wise_reps(ckpt_idx,
-            self._cached_train_reps[ckpt_idx])
+        cached_train_rep_layers = self._get_layer_wise_reps(
+            ckpt_idx,
+            self._cached_train_reps[ckpt_idx],
+        )
         layer_cnt = len(cached_train_rep_layers)
         transformed_test_rep_layers = []
         # Use test batch size as intermediate batch size
@@ -771,16 +903,18 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             length = grad_layer.shape[0]
             # Split gradients into smaller batches
             grad_batches = grad_layer.split(batch_size, dim=0)
-            running_transformation = torch.zeros(test_rep_layers[layer].shape,
-                device=test_rep_layers[layer].device)
+            running_transformation = torch.zeros(
+                test_rep_layers[layer].shape,
+                device=test_rep_layers[layer].device,
+            )
             for batch in grad_batches:
                 reg = 0.1 if regularization is None else regularization
                 contribution = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: _transform_single_test_rep(
-                    test_rep_layers[layer],
-                    grad,
-                    reg,
-                ),
+                        test_rep_layers[layer],
+                        grad,
+                        reg,
+                    ),
                 )(batch)
                 # Accumulate the batches and average at the end
                 running_transformation += contribution.sum(dim=0)
@@ -788,9 +922,11 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             transformed_test_rep_layers.append(running_transformation)
         return torch.cat(transformed_test_rep_layers, dim=1)
 
-    def _get_layer_wise_reps(self,
+    def _get_layer_wise_reps(
+        self,
         ckpt_idx: int,
-        query: torch.Tensor) -> Tuple[torch.Tensor, ...]:
+        query: torch.Tensor,
+    ) -> Tuple[torch.Tensor, ...]:
         """Split a representation into layer-wise representations.
 
         Args:
@@ -804,7 +940,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 (batch_size,layer0_size), (batch_size,layer1_size)...
         """
         model_params, param_layer_map = self.task.get_param(
-            ckpt_idx, layer_split=True,
+            ckpt_idx,
+            layer_split=True,
         )
         split_index = [0] * (param_layer_map[-1] + 1)
         for idx, layer_index in enumerate(param_layer_map):
@@ -820,11 +957,12 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 class IFAttributorEKFAC(BaseInnerProductAttributor):
     """The inner product attributor with EK-FAC inverse FIM transformation."""
 
-    def __init__(self,
-                 task: AttributionTask,
-                 module_name: Optional[Union[str, List[str]]] = None,
-                 device: Optional[str] = "cpu",
-                 damping: float = 0.0,
+    def __init__(
+        self,
+        task: AttributionTask,
+        module_name: Optional[Union[str, List[str]]] = None,
+        device: Optional[str] = "cpu",
+        damping: float = 0.0,
     ) -> None:
         """Initialize the EK-FAC inverse FIM attributor.
 
@@ -855,14 +993,17 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         """
         super().__init__(task, None, device)
         if len(self.task.checkpoints) > 1:
-            error_msg = ("Received more than one checkpoint. "
-                         "Ensemble of EK-FAC is not supported.")
+            error_msg = (
+                "Received more than one checkpoint. "
+                "Ensemble of EK-FAC is not supported."
+            )
             raise ValueError(error_msg)
 
         if module_name is None:
             # Select all linear layers by default
             module_name = [
-                name for name, mod in self.task.model.named_modules()
+                name
+                for name, mod in self.task.model.named_modules()
                 if isinstance(mod, torch.nn.Linear)
             ]
         if not isinstance(module_name, list):
@@ -914,10 +1055,11 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         if max_iter is None:
             max_iter = len(full_train_dataloader)
 
-        def _ekfac_hook(module: torch.nn.Module,
-                        inputs: Union[Tensor, Tuple[Tensor]],
-                        outputs: Union[Tensor, Tuple[Tensor]],
-            ) -> None:
+        def _ekfac_hook(
+            module: torch.nn.Module,
+            inputs: Union[Tensor, Tuple[Tensor]],
+            outputs: Union[Tensor, Tuple[Tensor]],
+        ) -> None:
             """Hook function for caching the inputs and outputs of a module.
 
             Args:
@@ -955,22 +1097,26 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         func = partial(self.task.get_target_func(), self.task.get_param()[0])
         # 1. Use random batch to estimate covariance matrices S and A
-        cov_matrices = estimate_covariance(func,
-                                           full_train_dataloader,
-                                           self.layer_cache,
-                                           max_iter,
-                                           device=self.device)
+        cov_matrices = estimate_covariance(
+            func,
+            full_train_dataloader,
+            self.layer_cache,
+            max_iter,
+            device=self.device,
+        )
 
         # 2. Calculate the eigenvalue decomposition of S and A
         self.cached_q = estimate_eigenvector(cov_matrices)
 
         # 3. Use random batch for eigenvalue correction
-        self.cached_lambdas = estimate_lambda(func,
-                                              full_train_dataloader,
-                                              self.cached_q,
-                                              self.layer_cache,
-                                              max_iter,
-                                              device=self.device)
+        self.cached_lambdas = estimate_lambda(
+            func,
+            full_train_dataloader,
+            self.cached_q,
+            self.layer_cache,
+            max_iter,
+            device=self.device,
+        )
 
         # Remove hooks after preprocessing the FIM
         for handle in handles:
@@ -997,8 +1143,10 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             ValueError: If specifies a non-zero `ckpt_idx`.
         """
         if ckpt_idx != 0:
-            error_msg = ("EK-FAC only supports single model checkpoint, "
-                         "but receives non-zero `ckpt_idx`.")
+            error_msg = (
+                "EK-FAC only supports single model checkpoint, "
+                "but receives non-zero `ckpt_idx`."
+            )
             raise ValueError(error_msg)
 
         # Unflatten the test_rep
@@ -1013,7 +1161,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         for name, params in partial_model_params.items():
             size = math.prod(params.shape)
             layer_test_rep[name] = test_rep[
-                :, current_index : current_index + size,
+                :,
+                current_index : current_index + size,
             ].reshape(-1, *params.shape)
             current_index += size
 

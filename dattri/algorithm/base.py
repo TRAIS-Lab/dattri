@@ -259,6 +259,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         self,
         train_dataloader: DataLoader,
         test_dataloader: DataLoader,
+        relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
         """Calculate the influence of the training set on the test set.
 
@@ -270,6 +271,12 @@ class BaseInnerProductAttributor(BaseAttributor):
                 not be shuffled.
             test_dataloader (DataLoader): Dataloader for test samples to calculate
                 the influence. The dataloader should not be shuffled.
+            relatif_method (Optional[str]): Method for normalizing the
+                influence values.
+                Supported options:
+                - `"l"`: Normalizes by `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Normalizes by `||H^-1 g_i||`.
+                - `None`: No normalization applied.
 
         Returns:
             torch.Tensor: The influence of the training set on the test set, with
@@ -314,6 +321,23 @@ class BaseInnerProductAttributor(BaseAttributor):
                     ckpt_idx=checkpoint_idx,
                     data=train_batch_data,
                 )
+
+                denom = None
+                if relatif_method is not None:
+                    if relatif_method == "l":
+                        test_batch_rep = self.generate_test_rep(
+                            ckpt_idx=checkpoint_idx,
+                            data=train_batch_data,
+                        )
+                    else:
+                        test_batch_rep = None
+                    denom = self._compute_denom(
+                        checkpoint_idx,
+                        train_batch_rep,
+                        test_batch_rep,
+                        relatif_method=relatif_method,
+                    )
+
                 # transform the train representations
                 train_batch_rep = self.transform_train_rep(
                     ckpt_idx=checkpoint_idx,
@@ -356,9 +380,43 @@ class BaseInnerProductAttributor(BaseAttributor):
                     )
 
                     tda_output[row_st:row_ed, col_st:col_ed] += (
-                        train_batch_rep @ test_batch_rep.T
+                        train_batch_rep @ test_batch_rep.T / denom.unsqueeze(-1)
+                        if denom is not None
+                        else train_batch_rep @ test_batch_rep.T
                     )
 
             tda_output /= checkpoint_idx + 1
 
         return tda_output
+
+    def _compute_denom(
+        self,
+        ckpt_idx: int,  # noqa: ARG002
+        train_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
+        relatif_method: Optional[str] = None,  # noqa: ARG002
+    ) -> torch.Tensor:
+        """Compute the denominator for the influence calculation.
+
+        Args:
+            ckpt_idx (int): The index of the checkpoint being used for influence
+                calculation.
+            train_batch_rep (torch.Tensor): The representation of the training batch
+                at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
+            relatif_method (Optional[str]): Normalization method.
+                - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Computes `||H^-1 g_i||`.
+                - `None`: Raises an error.
+
+        Returns:
+            torch.Tensor: The computed denominator for normalization. It is a
+            1-d dimensional tensor with the shape of (batch_size).
+        """
+        _ = self
+        _ = test_batch_rep
+
+        batch_size = train_batch_rep.size(0)
+        return train_batch_rep.new_ones(batch_size)

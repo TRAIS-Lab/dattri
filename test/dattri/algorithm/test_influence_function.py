@@ -82,6 +82,8 @@ class TestInfluenceFunction:
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
+        attributor.attribute(train_loader, test_loader, "l")
+        attributor.attribute(train_loader, test_loader, "theta")
 
         # DataInf
         attributor = IFAttributorDataInf(
@@ -300,21 +302,24 @@ class TestInfluenceFunction:
         # One layer model
         for grad_ in grad_layer:
             grad = grad_.unsqueeze(-1)
-            running_transformation += (test_rep_layer @ grad) @ grad.T / (1e-3
-                    + torch.norm(grad)**2)
+            running_transformation += (
+                (test_rep_layer @ grad) @ grad.T / (1e-3 + torch.norm(grad) ** 2)
+            )
         running_transformation /= len(grad_layer)
         running_transformation = test_rep_layer - running_transformation
         running_transformation /= 1e-3
         ground_truth_test_rep = running_transformation
 
         import math
+
         # Check for estimate data ratio
-        assert (cached_train_reps.shape[0] == 4 * math.ceil(0.5 * len(train_loader)))
+        assert cached_train_reps.shape[0] == 4 * math.ceil(0.5 * len(train_loader))
         # Check for transformed test rep
-        assert (torch.allclose(ground_truth_test_rep, transformed_test_rep, atol=1e-4))
+        assert torch.allclose(ground_truth_test_rep, transformed_test_rep, atol=1e-4)
 
     def test_ekfac_transform_test_rep(self):
         """Test for EK-FAC test representation transformation."""
+
         def average_pairwise_correlation(tensor1, tensor2):
             stacked = torch.stack([tensor1, tensor2], dim=0)
             reshaped = stacked.view(2, -1)
