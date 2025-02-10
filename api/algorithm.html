@@ -341,7 +341,7 @@ Default is 0.0.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.attribute">
-<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.attribute" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -353,6 +353,12 @@ of the training set’s influence is calculated. The dataloader should
 not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
 the influence. The dataloader should not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -549,7 +555,7 @@ Default is 0.0.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.attribute">
-<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.attribute" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -561,6 +567,12 @@ of the training set’s influence is calculated. The dataloader should
 not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
 the influence. The dataloader should not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -756,7 +768,7 @@ approximate the empirical Fisher information matrix. Default is 1.0.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.attribute">
-<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.attribute" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -768,6 +780,12 @@ of the training set’s influence is calculated. The dataloader should
 not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
 the influence. The dataloader should not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -974,7 +992,7 @@ calculation. Default is 0.0.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.attribute">
-<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.attribute" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -986,6 +1004,12 @@ of the training set’s influence is calculated. The dataloader should
 not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
 the influence. The dataloader should not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1185,7 +1209,7 @@ Default is 0.0.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.attribute">
-<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.attribute" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1197,6 +1221,12 @@ of the training set’s influence is calculated. The dataloader should
 not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
 the influence. The dataloader should not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
@@ -1397,7 +1427,7 @@ compatible.</p></li>
 
 <dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.attribute">
-<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.attribute" title="Link to this definition">¶</a></dt>
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.attribute" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the influence of the training set on the test set.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
@@ -1409,6 +1439,12 @@ of the training set’s influence is calculated. The dataloader should
 not be shuffled.</p></li>
 <li><p><strong>test_dataloader</strong> (<em>DataLoader</em>) – Dataloader for test samples to calculate
 the influence. The dataloader should not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
 </ul>
 </dd>
 <dt class="field-even">Returns<span class="colon">:</span></dt>
