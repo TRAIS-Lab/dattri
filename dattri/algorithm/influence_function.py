@@ -293,7 +293,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         self,
         ckpt_idx: int,
         train_batch_rep: torch.Tensor,
-        test_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
         relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
         """Compute the denominator for the influence calculation.
@@ -303,8 +303,9 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 calculation.
             train_batch_rep (torch.Tensor): The representation of the training batch
                 at the given checkpoint.
-            test_batch_rep (torch.Tensor): The representation of the training batch,
-                generated using `generate_test_rep` at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
             relatif_method (Optional[str]): Normalization method.
                 - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
                 - `"theta"`: Computes `||H^-1 g_i||`.
@@ -418,7 +419,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
         self,
         ckpt_idx: int,
         train_batch_rep: torch.Tensor,
-        test_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
         relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
         """Compute the denominator for the influence calculation.
@@ -428,8 +429,9 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 calculation.
             train_batch_rep (torch.Tensor): The representation of the training batch
                 at the given checkpoint.
-            test_batch_rep (torch.Tensor): The representation of the training batch,
-                generated using `generate_test_rep` at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
             relatif_method (Optional[str]): Normalization method.
                 - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
                 - `"theta"`: Computes `||H^-1 g_i||`.
@@ -728,7 +730,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         self,
         ckpt_idx: int,
         train_batch_rep: torch.Tensor,
-        test_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
         relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
         """Compute the denominator for the influence calculation.
@@ -738,8 +740,9 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 calculation.
             train_batch_rep (torch.Tensor): The representation of the training batch
                 at the given checkpoint.
-            test_batch_rep (torch.Tensor): The representation of the training batch,
-                generated using `generate_test_rep` at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
             relatif_method (Optional[str]): Normalization method.
                 - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
                 - `"theta"`: Computes `||H^-1 g_i||`.
