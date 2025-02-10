@@ -4,6 +4,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader, TensorDataset
 import numpy as np
 import matplotlib.pyplot as plt
+import argparse
 
 from dattri.algorithm import IFAttributorLiSSA
 from dattri.task import AttributionTask
@@ -71,6 +72,10 @@ def loss_func(params, data_target_pair):
 
 if __name__ == "__main__":
     device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--no_output", action="store_true")
+    args = parser.parse_args()
 
     # Generate training data with outlier
     outlier_coord = (0.0, 2.8)
@@ -188,4 +193,6 @@ if __name__ == "__main__":
         ax.legend(loc="best")
 
     plt.tight_layout()
-    plt.show()
+
+    if not args.no_output:
+        plt.show()
