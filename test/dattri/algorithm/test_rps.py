@@ -68,6 +68,8 @@ class TestRPS:
             epoch=10,
         )
         attributor.cache(full_train_loader)
+
+        # Original test
         result = attributor.attribute(train_loader, test_loader)
         assert result.shape == (4, 10)
 
@@ -79,6 +81,14 @@ class TestRPS:
         )
         result = attributor.attribute(train_loader, test_loader)
         assert result.shape == (4, 10)
+
+        # #Test the self attribute
+        # # multi-class
+        # # init the model
+        # test_loader=train_loader
+        # result_1 = attributor.attribute(train_loader, test_loader)
+        # result_2=  attributor.self_attribute(train_loader, test_loader)
+        # print(torch.allclose((torch.diag(result_1)), result_2))
 
     def test_rps_binary(self):
         """Test for RPS."""

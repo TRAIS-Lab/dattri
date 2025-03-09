@@ -180,3 +180,88 @@ class RPSAttributor(BaseAttributor):
             )
 
         return intermediate_x_train @ intermediate_x_test.T * alpha
+
+    def self_attribute(
+            self,
+            train_dataloader: DataLoader,
+            test_dataloader: DataLoader,
+        ) -> Tensor:
+            """Calculate the influence of the training set on the test set.
+
+            Args:
+                train_dataloader (DataLoader): The dataloader for training samples to
+                    calculate the influence. It can be a subset of the full training set
+                    if `cache` is called before. A subset means that only a part of the
+                    training set's influence is calculated. The dataloader should not be
+                    shuffled.
+                test_dataloader (DataLoader): The dataloader for test samples to calculate
+                    the influence. The dataloader should not be shuffled.
+
+            Returns:
+                Tensor: The influence of the training set on the test set, with the shape
+                    of (num_train_samples, num_test_samples).
+            """
+            test_dataloader = train_dataloader
+            super().attribute(train_dataloader, test_dataloader)
+            if self.full_train_dataloader is None:
+                warnings.warn(
+                    "The full training data loader was NOT cached. \
+                    Treating the train_dataloader as the full training \
+                    data loader. And thus the fine-tuned last layer parameters will \
+                    also be based on train_dataloader",
+                    stacklevel=1,
+                )
+
+            _check_shuffle(train_dataloader)
+            _check_shuffle(test_dataloader)
+
+            intermediate_x_train, y_pred_train = get_final_layer_io(
+                self.model,
+                self.final_linear_layer_name,
+                train_dataloader,
+                device=self.device,
+            )
+
+            # if cache is not called before
+            if self.full_train_dataloader is None:
+                # get the initial weight parameter for the final linear layer
+                init_theta = getattr(self.model, self.final_linear_layer_name).weight.data
+                # finetune the last layer using train samples
+                self.finetuned_theta = rps_finetune_theta(
+                    intermediate_x_train,
+                    y_pred_train,
+                    init_theta,
+                    loss_func=self.target_func,
+                    lambda_l2=self.l2_strength,
+                    num_epoch=self.epoch,
+                    device=self.device,
+                )
+
+            # get intermediate features for test samples
+            intermediate_x_test, _ = get_final_layer_io(
+                self.model,
+                self.final_linear_layer_name,
+                test_dataloader,
+                device=self.device,
+            )
+            # print(intermediate_x_train.shape)
+            # print(intermediate_x_test.shape)
+            # print(torch.sum(intermediate_x_train * intermediate_x_test, dim=1).shape)
+
+            y_test = torch.cat([target for _, target in test_dataloader], dim=0)
+
+            alpha = get_rps_weight(
+                self.finetuned_theta,
+                self.target_func,
+                intermediate_x_train,
+                y_pred_train,
+                y_test,
+                self.l2_strength,
+            )
+
+            if self.normalize_preactivate:
+                return (
+                    alpha
+                )
+            result = torch.sum(intermediate_x_train * intermediate_x_test, dim=1)
+            return result * alpha.diagonal()

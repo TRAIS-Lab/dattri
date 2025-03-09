@@ -30,6 +30,7 @@ class TestTracInAttributor:
             torch.randint(0, 10, (10,)),
         )
         train_loader = DataLoader(train_dataset, batch_size=4)
+        test_loader = train_loader
         test_loader = DataLoader(test_dataset, batch_size=2)
 
         model = train_mnist_lr(train_loader)
@@ -81,11 +82,19 @@ class TestTracInAttributor:
             projector_kwargs=projector_kwargs,
             device=torch.device(pytest_device),
         )
+
+        # Original test
         score = attributor.attribute(train_loader, test_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
             test_loader.dataset,
         )
+
+        # #Test the self attribute
+        # test_loader=train_loader
+        # matrix_original=attributor.attribute(train_loader, test_loader)
+        # matrix_shortcut = attributor.self_attribute(train_loader, test_loader)
+        # print(torch.allclose((torch.diag(matrix_original)), matrix_shortcut,rtol=1e-03, atol=1e-05))
 
         shutil.rmtree(path)
 

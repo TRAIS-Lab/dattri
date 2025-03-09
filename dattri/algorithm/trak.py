@@ -350,3 +350,171 @@ class TRAKAttributor(BaseAttributor):
         if train_dataloader is not None:
             return (running_xinv_XTX_XT * running_Q.to(self.device).unsqueeze(0)).T
         return (running_xinv_XTX_XT * self.Q.to(self.device).unsqueeze(0)).T
+
+    def self_attribute(  # noqa: PLR0912, PLR0914
+        self,
+        test_dataloader: torch.utils.data.DataLoader,
+        train_dataloader: Optional[torch.utils.data.DataLoader] = None,
+    ) -> torch.Tensor:
+        """Calculate the influence of the training set on the test set.
+
+        Args:
+            train_dataloader (torch.utils.data.DataLoader): The dataloader for
+                training samples to calculate the influence. If `cache` is called before
+                `attribute`, this dataloader can consists of a subset of the full
+                training dataset cached in `cache`. In this case, only a part of the
+                training set's influence will be calculated. The dataloader should not
+                be shuffled.
+            test_dataloader (torch.utils.data.DataLoader): The dataloader for
+                test samples to calculate the influence. The dataloader should not
+                be shuffled.
+
+        Returns:
+            torch.Tensor: The influence of the training set on the test set, with
+                the shape of (num_train_samples, num_test_samples).
+
+        Raises:
+            ValueError: If the train_dataloader is not None and the full training
+                dataloader is cached or no train_loader is provided in both cases.
+        """
+        test_dataloader = train_dataloader
+        _check_shuffle(test_dataloader)
+        if train_dataloader is not None:
+            _check_shuffle(train_dataloader)
+
+        running_xinv_XTX_XT = 0
+        running_Q = 0
+        running_count = 0
+        if train_dataloader is not None and self.full_train_dataloader is not None:
+            message = "You have cached a training loader by .cache()\
+                       and you are trying to attribute a different training loader.\
+                       If this new training loader is a subset of the cached training\
+                       loader, please don't input the training dataloader in\
+                       .attribute() and directly use index to select the corresponding\
+                       scores."
+            raise ValueError(message)
+        if train_dataloader is None and self.full_train_dataloader is None:
+            message = "You did not state a training loader in .attribute() and you\
+                       did not cache a training loader by .cache(). Please provide a\
+                       training loader or cache a training loader."
+            raise ValueError(message)
+        for ckpt_idx in range(len(self.task.get_checkpoints())):
+            parameters, _ = self.task.get_param(
+                ckpt_idx=ckpt_idx,
+                layer_name=self.layer_name,
+            )
+            full_parameters, _ = self.task.get_param(ckpt_idx=ckpt_idx)
+            if self.layer_name is not None:
+                self.grad_target_func = self.task.get_grad_target_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    ckpt_idx=ckpt_idx,
+                )
+                self.grad_loss_func = self.task.get_grad_loss_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    ckpt_idx=ckpt_idx,
+                )
+
+            if train_dataloader is not None:
+                train_projected_grad = []
+                Q = []
+                for train_data in tqdm(
+                    train_dataloader,
+                    desc="calculating gradient of training set...",
+                    leave=False,
+                ):
+                    # TODO: reorganize the data pre-grad processing.
+                    if isinstance(train_data, (tuple, list)):
+                        train_batch_data = tuple(
+                            data.to(self.device) for data in train_data
+                        )
+                    else:
+                        train_batch_data = train_data
+
+                    grad_t = self.grad_loss_func(
+                        parameters,
+                        train_batch_data,
+                    )
+                    grad_t = torch.nan_to_num(grad_t)
+                    grad_t /= self.norm_scaler
+                    batch_size = grad_t.shape[0]
+
+                    grad_p = (
+                        random_project(
+                            grad_t,
+                            batch_size,
+                            **self.projector_kwargs,
+                        )(grad_t, ensemble_id=ckpt_idx)
+                        .clone()
+                        .detach()
+                    )
+                    train_projected_grad.append(grad_p)
+                    Q.append(
+                        (
+                            torch.ones(batch_size).to(self.device)
+                            - self.correct_probability_func(
+                                _unflatten_params(
+                                    full_parameters,
+                                    self.task.get_model(),
+                                ),
+                                train_batch_data,
+                            )
+                        )
+                        .clone()
+                        .detach(),
+                    )
+                train_projected_grad = torch.cat(train_projected_grad, dim=0)
+                Q = torch.cat(Q, dim=0)
+
+            test_projected_grad = train_projected_grad
+            # for test_data in tqdm(
+            #     test_dataloader,
+            #     desc="calculating gradient of test set...",
+            #     leave=False,
+            # ):
+            #     # TODO: reorganize the data pre-grad processing.
+            #     if isinstance(test_data, (tuple, list)):
+            #         test_batch_data = tuple(data.to(self.device) for data in test_data)
+            #     else:
+            #         test_batch_data = test_data
+            #     grad_t = self.grad_target_func(parameters, test_batch_data)
+            #     grad_t = torch.nan_to_num(grad_t)
+            #     grad_t /= self.norm_scaler
+            #     batch_size = grad_t.shape[0]
+            #     grad_p = (
+            #         random_project(
+            #             grad_t,
+            #             batch_size,
+            #             **self.projector_kwargs,
+            #         )(grad_t, ensemble_id=ckpt_idx)
+            #         .clone()
+            #         .detach()
+            #     )
+            #     test_projected_grad.append(grad_p)
+            # test_projected_grad = torch.cat(test_projected_grad, dim=0)
+            if train_dataloader is not None:
+                kernel_matrix = train_projected_grad.T @ train_projected_grad
+                kernel_matrix.diagonal().add_(self.regularization)
+                running_xinv_XTX_XT = (
+                    running_xinv_XTX_XT * running_count
+                    + test_projected_grad
+                    @ torch.linalg.inv(kernel_matrix)
+                    @ train_projected_grad.T
+                )
+            else:
+                running_xinv_XTX_XT = (
+                    running_xinv_XTX_XT * running_count
+                    + test_projected_grad @ self.inv_XTX_XT_list[ckpt_idx]
+                )
+
+            if train_dataloader is not None:
+                running_Q = running_Q * running_count + Q
+            running_count += 1  # noqa: SIM113
+            if train_dataloader is not None:
+                running_Q /= running_count
+            running_xinv_XTX_XT /= running_count
+
+        if train_dataloader is not None:
+            return (running_xinv_XTX_XT * running_Q.to(self.device).unsqueeze(0)).T
+        return (running_xinv_XTX_XT * self.Q.to(self.device).unsqueeze(0)).T

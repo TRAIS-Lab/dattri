@@ -1,5 +1,6 @@
 """Test for influence function."""
 
+
 import pytest
 import torch
 from torch import nn
@@ -19,9 +20,9 @@ from dattri.task import AttributionTask
 
 class TestInfluenceFunction:
     """Test for influence function."""
-
     def test_influence_function(self):
         """Test for influence function."""
+        # Original test
         train_dataset = TensorDataset(
             torch.randn(20, 1, 28, 28),
             torch.randint(0, 10, (20,)),
@@ -55,6 +56,59 @@ class TestInfluenceFunction:
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
+        # #Test the self attribute
+        # train_dataset = TensorDataset(
+        #     torch.randn(10, 1, 28, 28),
+        #     torch.randint(0, 10, (10,)),
+        # )
+        # test_dataset = TensorDataset(
+        #     torch.randn(10, 1, 28, 28),
+        #     torch.randint(0, 10, (10,)),
+        # )
+        # train_loader = DataLoader(train_dataset, batch_size=10)
+        # test_loader=train_loader
+
+        # model = train_mnist_lr(train_loader)
+
+        # def f(params, data_target_pair):
+        #     image, label = data_target_pair
+        #     loss = nn.CrossEntropyLoss()
+        #     yhat = torch.func.functional_call(model, params, image)
+        #     return loss(yhat, label.long())
+
+        # task = AttributionTask(
+        #     loss_func=f,
+        #     model=model,
+        #     checkpoints=model.state_dict(),
+        # )
+        # # Explicit
+        # attributor = IFAttributorExplicit(
+        #     task=task,
+        #     device=torch.device("cpu"),
+        #     regularization=1e-3,
+        # )
+        # attributor.cache(train_loader)
+        # attributor.attribute(train_loader, test_loader)
+
+        # train_loader = DataLoader(train_dataset, batch_size=10)
+        # test_loader=train_loader
+        # model = train_mnist_lr(train_loader)
+
+        # # Explicit
+        # attributor = IFAttributorExplicit(
+        #     task=task,
+        #     device=torch.device("cpu"),
+        #     regularization=1e-3,
+        # )
+        # attributor.cache(train_loader)
+        # # start_time_1= time.time()
+        # matrix_1=torch.diag(attributor.attribute(train_loader, test_loader))# original
+        # # end_time_1= time.time()
+        # # start_time_2= time.time()
+        # matrix_2=attributor.self_attribute(train_loader, test_loader) # improved shortcut
+        # # end_time_2 = time.time()
+        # print(torch.allclose(matrix_1, matrix_2))
+
         # CG
         attributor = IFAttributorCG(
             task=task,
@@ -62,7 +116,7 @@ class TestInfluenceFunction:
             regularization=1e-3,
         )
         attributor.cache(train_loader)
-        attributor.attribute(train_loader, test_loader)
+        matrix = attributor.attribute(train_loader, test_loader)
 
         # arnoldi
         attributor = IFAttributorArnoldi(
