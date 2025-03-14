@@ -220,9 +220,8 @@ class TracInAttributor(BaseAttributor):
     def self_attribute(
         self,
         train_dataloader: torch.utils.data.DataLoader,
-        test_dataloader: torch.utils.data.DataLoader,
     ) -> Tensor:
-        """Calculate the influence of the training set on the test set.
+        """Calculate the influence of the training set on itself.
 
         Args:
             train_dataloader (torch.utils.data.DataLoader): The dataloader for
@@ -230,16 +229,13 @@ class TracInAttributor(BaseAttributor):
                 of the full training set if `cache` is called before. A subset
                 means that only a part of the training set's influence is calculated.
                 The dataloader should not be shuffled.
-            test_dataloader (torch.utils.data.DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not
-                be shuffled.
 
         Raises:
             ValueError: The length of params_list and weight_list don't match.
 
         Returns:
             Tensor: The influence of the training set on the test set, with
-                the shape of (num_train_samples, num_test_samples).
+                the shape of (num_train_samples,).
         """
         test_dataloader = train_dataloader
         _check_shuffle(test_dataloader)
@@ -305,33 +301,11 @@ class TracInAttributor(BaseAttributor):
                     )
                 else:
                     train_batch_grad = torch.nan_to_num(grad_t)
-                if self.projector_kwargs is not None:
-                    # define the projector for this batch of data
-                    self.test_random_project = random_project(
-                        grad_t,
-                        train_batch_data[0].shape[0],
-                        **self.projector_kwargs,
-                    )
-
-                    test_batch_grad = self.test_random_project(
-                        torch.nan_to_num(grad_t),
-                        ensemble_id=ckpt_idx,
-                    )
-                else:
-                    test_batch_grad = torch.nan_to_num(grad_t)
-                # results position based on batch info
                 row_st = train_batch_idx * train_dataloader.batch_size
                 row_ed = min(
                     (train_batch_idx + 1) * train_dataloader.batch_size,
                     len(train_dataloader.sampler),
                 )
-
-                    # col_st = test_batch_idx * test_dataloader.batch_size
-                    # col_ed = min(
-                    #     (test_batch_idx + 1) * test_dataloader.batch_size,
-                    #     len(test_dataloader.sampler),
-                    # )
-                    # accumulate the TDA score in corresponding positions (blocks)
                 if self.normalized_grad:
                     tda_output[row_st:row_ed] += (
                         (
@@ -343,7 +317,7 @@ class TracInAttributor(BaseAttributor):
                     )
                 else:
                     tda_output[row_st:row_ed] += (
-                        (torch.sum(train_batch_grad * test_batch_grad, dim=1) * ckpt_weight)
+                        (torch.einsum('ij,ij->i', train_batch_grad , train_batch_grad) * ckpt_weight)
                         .detach()
                         .cpu()
                     )

@@ -255,6 +255,38 @@ class BaseInnerProductAttributor(BaseAttributor):
         """
         self._set_full_train_data(full_train_dataloader)
 
+    def _compute_denom(
+        self,
+        ckpt_idx: int,  # noqa: ARG002
+        train_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
+        relatif_method: Optional[str] = None,  # noqa: ARG002
+    ) -> torch.Tensor:
+        """Compute the denominator for the influence calculation.
+
+        Args:
+            ckpt_idx (int): The index of the checkpoint being used for influence
+                calculation.
+            train_batch_rep (torch.Tensor): The representation of the training batch
+                at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
+            relatif_method (Optional[str]): Normalization method.
+                - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Computes `||H^-1 g_i||`.
+                - `None`: Raises an error.
+
+        Returns:
+            torch.Tensor: The computed denominator for normalization. It is a
+            1-d dimensional tensor with the shape of (batch_size).
+        """
+        _ = self
+        _ = test_batch_rep
+
+        batch_size = train_batch_rep.size(0)
+        return train_batch_rep.new_ones(batch_size)
+
     def attribute(
         self,
         train_dataloader: DataLoader,
@@ -392,10 +424,9 @@ class BaseInnerProductAttributor(BaseAttributor):
     def self_attribute(
         self,
         train_dataloader: DataLoader,
-        test_dataloader: DataLoader,
         relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
-        """Calculate the influence of the training set on the test set.
+        """Calculate the influence of the training set on itself.
 
         Args:
             train_dataloader (DataLoader): Dataloader for training samples to
@@ -403,8 +434,6 @@ class BaseInnerProductAttributor(BaseAttributor):
                 set if `cache` is called before. A subset means that only a part
                 of the training set's influence is calculated. The dataloader should
                 not be shuffled.
-            test_dataloader (DataLoader): Dataloader for test samples to calculate
-                the influence. The dataloader should not be shuffled.
             relatif_method (Optional[str]): Method for normalizing the
                 influence values.
                 Supported options:
@@ -414,7 +443,7 @@ class BaseInnerProductAttributor(BaseAttributor):
 
         Returns:
             torch.Tensor: The influence of the training set on the test set, with
-                the shape of (num_train_samples, num_test_samples).
+                the shape of (num_train_samples,).
 
         """
         test_dataloader = train_dataloader
@@ -498,9 +527,9 @@ class BaseInnerProductAttributor(BaseAttributor):
                         test_rep=test_batch_rep,
                     )
                 influence_values = (
-                    torch.sum(train_batch_rep * test_batch_rep, dim=1) / denom.unsqueeze(-1)
+                    torch.einsum('ij,ij->i', train_batch_rep, test_batch_rep) / denom.unsqueeze(-1)
                     if denom is not None
-                    else torch.sum(train_batch_rep * test_batch_rep, dim=1)
+                    else torch.einsum('ij,ij->i', train_batch_rep, test_batch_rep)
                     )
 
                 tda_output += influence_values

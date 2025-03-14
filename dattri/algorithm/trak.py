@@ -331,8 +331,8 @@ class TRAKAttributor(BaseAttributor):
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
                     + test_projected_grad
-                    @ torch.linalg.inv(kernel_matrix)
-                    @ train_projected_grad.T
+                    @ (torch.linalg.inv(kernel_matrix)
+                    @ train_projected_grad.T)
                 )
             else:
                 running_xinv_XTX_XT = (
@@ -346,17 +346,15 @@ class TRAKAttributor(BaseAttributor):
             if train_dataloader is not None:
                 running_Q /= running_count
             running_xinv_XTX_XT /= running_count
-
         if train_dataloader is not None:
             return (running_xinv_XTX_XT * running_Q.to(self.device).unsqueeze(0)).T
         return (running_xinv_XTX_XT * self.Q.to(self.device).unsqueeze(0)).T
 
     def self_attribute(  # noqa: PLR0912, PLR0914
         self,
-        test_dataloader: torch.utils.data.DataLoader,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
     ) -> torch.Tensor:
-        """Calculate the influence of the training set on the test set.
+        """Calculate the influence of the training set on itself.
 
         Args:
             train_dataloader (torch.utils.data.DataLoader): The dataloader for
@@ -365,13 +363,10 @@ class TRAKAttributor(BaseAttributor):
                 training dataset cached in `cache`. In this case, only a part of the
                 training set's influence will be calculated. The dataloader should not
                 be shuffled.
-            test_dataloader (torch.utils.data.DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not
-                be shuffled.
 
         Returns:
             torch.Tensor: The influence of the training set on the test set, with
-                the shape of (num_train_samples, num_test_samples).
+                the shape of (num_train_samples,).
 
         Raises:
             ValueError: If the train_dataloader is not None and the full training
@@ -467,45 +462,18 @@ class TRAKAttributor(BaseAttributor):
                 train_projected_grad = torch.cat(train_projected_grad, dim=0)
                 Q = torch.cat(Q, dim=0)
 
-            test_projected_grad = train_projected_grad
-            # for test_data in tqdm(
-            #     test_dataloader,
-            #     desc="calculating gradient of test set...",
-            #     leave=False,
-            # ):
-            #     # TODO: reorganize the data pre-grad processing.
-            #     if isinstance(test_data, (tuple, list)):
-            #         test_batch_data = tuple(data.to(self.device) for data in test_data)
-            #     else:
-            #         test_batch_data = test_data
-            #     grad_t = self.grad_target_func(parameters, test_batch_data)
-            #     grad_t = torch.nan_to_num(grad_t)
-            #     grad_t /= self.norm_scaler
-            #     batch_size = grad_t.shape[0]
-            #     grad_p = (
-            #         random_project(
-            #             grad_t,
-            #             batch_size,
-            #             **self.projector_kwargs,
-            #         )(grad_t, ensemble_id=ckpt_idx)
-            #         .clone()
-            #         .detach()
-            #     )
-            #     test_projected_grad.append(grad_p)
-            # test_projected_grad = torch.cat(test_projected_grad, dim=0)
             if train_dataloader is not None:
                 kernel_matrix = train_projected_grad.T @ train_projected_grad
                 kernel_matrix.diagonal().add_(self.regularization)
                 running_xinv_XTX_XT = (
-                    running_xinv_XTX_XT * running_count
-                    + test_projected_grad
-                    @ torch.linalg.inv(kernel_matrix)
-                    @ train_projected_grad.T
+                     running_xinv_XTX_XT * running_count
+                    + torch.einsum('ij,ij->i', train_projected_grad, (torch.linalg.inv(kernel_matrix)
+                    @ train_projected_grad.T).T)
                 )
             else:
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
-                    + test_projected_grad @ self.inv_XTX_XT_list[ckpt_idx]
+                    + train_projected_grad @ self.inv_XTX_XT_list[ckpt_idx]
                 )
 
             if train_dataloader is not None:
@@ -514,7 +482,6 @@ class TRAKAttributor(BaseAttributor):
             if train_dataloader is not None:
                 running_Q /= running_count
             running_xinv_XTX_XT /= running_count
-
         if train_dataloader is not None:
             return (running_xinv_XTX_XT * running_Q.to(self.device).unsqueeze(0)).T
         return (running_xinv_XTX_XT * self.Q.to(self.device).unsqueeze(0)).T

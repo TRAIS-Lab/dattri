@@ -87,7 +87,7 @@ class TestRPS:
         # # init the model
         # test_loader=train_loader
         # result_1 = attributor.attribute(train_loader, test_loader)
-        # result_2=  attributor.self_attribute(train_loader, test_loader)
+        # result_2=  attributor.self_attribute(train_loader)
         # print(torch.allclose((torch.diag(result_1)), result_2))
 
     def test_rps_binary(self):

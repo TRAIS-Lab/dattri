@@ -184,7 +184,6 @@ class RPSAttributor(BaseAttributor):
     def self_attribute(
             self,
             train_dataloader: DataLoader,
-            test_dataloader: DataLoader,
         ) -> Tensor:
             """Calculate the influence of the training set on the test set.
 
@@ -194,8 +193,6 @@ class RPSAttributor(BaseAttributor):
                     if `cache` is called before. A subset means that only a part of the
                     training set's influence is calculated. The dataloader should not be
                     shuffled.
-                test_dataloader (DataLoader): The dataloader for test samples to calculate
-                    the influence. The dataloader should not be shuffled.
 
             Returns:
                 Tensor: The influence of the training set on the test set, with the shape
@@ -244,9 +241,6 @@ class RPSAttributor(BaseAttributor):
                 test_dataloader,
                 device=self.device,
             )
-            # print(intermediate_x_train.shape)
-            # print(intermediate_x_test.shape)
-            # print(torch.sum(intermediate_x_train * intermediate_x_test, dim=1).shape)
 
             y_test = torch.cat([target for _, target in test_dataloader], dim=0)
 

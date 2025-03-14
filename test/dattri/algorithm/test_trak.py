@@ -72,9 +72,9 @@ class TestTRAK:
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
-        attributor.cache(train_loader)
 
         # Original Test
+        attributor.cache(train_loader)
         score = attributor.attribute(test_loader)
         score2 = attributor.attribute(test_loader)
         assert torch.allclose(score, score2)
@@ -82,8 +82,8 @@ class TestTRAK:
         # # Test self attribute
         # test_loader=train_loader
         # score = attributor.attribute(train_loader, test_loader)
-        # score2 = attributor.self_attribute(train_loader, test_loader)
-        # assert torch.allclose(score, score2)
+        # score2 = attributor.self_attribute(train_loader)
+        # assert torch.allclose(torch.diag(score), score2.T,rtol=1e-03, atol=1e-05)
 
         # trak w/ cache
         attributor = TRAKAttributor(

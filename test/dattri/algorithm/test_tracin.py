@@ -93,7 +93,7 @@ class TestTracInAttributor:
         # #Test the self attribute
         # test_loader=train_loader
         # matrix_original=attributor.attribute(train_loader, test_loader)
-        # matrix_shortcut = attributor.self_attribute(train_loader, test_loader)
+        # matrix_shortcut = attributor.self_attribute(train_loader)
         # print(torch.allclose((torch.diag(matrix_original)), matrix_shortcut,rtol=1e-03, atol=1e-05))
 
         shutil.rmtree(path)
