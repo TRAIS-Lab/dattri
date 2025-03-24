@@ -465,7 +465,7 @@ class BaseInnerProductAttributor(BaseAttributor):
             device=self.device,
         )
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
-            tda_output *= checkpoint_idx
+            tda_output *= checkpoint_idx # Multiply by current index to prepare for running average
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
@@ -532,7 +532,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                     else torch.einsum('ij,ij->i', train_batch_rep, test_batch_rep)
                     )
 
-                tda_output += influence_values
-            tda_output /= checkpoint_idx + 1
+                tda_output += influence_values # Accumulate influence values across checkpoints
+            tda_output /= checkpoint_idx + 1 #Calculate running average by dividing by number of checkpoints processed so far (checkpoint_idx + 1)
 
         return tda_output

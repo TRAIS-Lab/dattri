@@ -473,7 +473,7 @@ class TRAKAttributor(BaseAttributor):
             else:
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
-                    + train_projected_grad @ self.inv_XTX_XT_list[ckpt_idx]
+                    +  torch.einsum('ij,ij->i',train_projected_grad, self.inv_XTX_XT_list[ckpt_idx].T)
                 )
 
             if train_dataloader is not None:
