@@ -2,6 +2,7 @@
 
 import copy
 import shutil
+import time
 from pathlib import Path
 
 import torch
@@ -90,12 +91,6 @@ class TestTracInAttributor:
             test_loader.dataset,
         )
 
-        # #Test the self attribute
-        # test_loader=train_loader
-        # matrix_original=attributor.attribute(train_loader, test_loader)
-        # matrix_shortcut = attributor.self_attribute(train_loader)
-        # print(torch.allclose((torch.diag(matrix_original)), matrix_shortcut,rtol=1e-03, atol=1e-05))
-
         shutil.rmtree(path)
 
     def test_tracin(self):
@@ -156,6 +151,65 @@ class TestTracInAttributor:
         )
 
         shutil.rmtree(path)
+
+    def test_tracin_self_attribute(self):
+        """Test for self_attribute in TracIn without projectors."""
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+
+        train_loader = DataLoader(train_dataset, batch_size=10)
+
+        model = train_mnist_lr(train_loader)
+
+        # the function directly operate on batches of images/labels
+        # not on dataloader anymore to allow vmap usage
+        # need to prepare a batch dim in the begining
+        def f(params, image_label_pair):
+            image, label = image_label_pair
+            image_t = image.unsqueeze(0)
+            label_t = label.unsqueeze(0)
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image_t)
+            return loss(yhat, label_t)
+
+        # to simlulate multiple checkpoints
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
+        pytest_device = "cpu"
+        # test with no projector list
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+        )
+
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader).diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader)
+        end_time_2 = time.time()
+        print("Time taken for attribute function: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function: ", end_time_2-end_time_1)
+        print(tensor1)
+        print(tensor2)
+        assert torch.allclose(tensor1, tensor2,rtol=1e-03, atol=1e-05)
 
     def test_mnist_lr_multi_ckpts_grad(self):
         """Test for gradient computation correctness for mnist lr."""

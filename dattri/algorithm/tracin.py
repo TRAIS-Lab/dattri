@@ -234,7 +234,7 @@ class TracInAttributor(BaseAttributor):
             ValueError: The length of params_list and weight_list don't match.
 
         Returns:
-            Tensor: The influence of the training set on the test set, with
+            Tensor: The influence of the training set on itself, with
                 the shape of (num_train_samples,).
         """
         test_dataloader = train_dataloader

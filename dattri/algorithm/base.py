@@ -442,7 +442,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                 - `None`: No normalization applied.
 
         Returns:
-            torch.Tensor: The influence of the training set on the test set, with
+            torch.Tensor: The influence of the training set on itself, with
                 the shape of (num_train_samples,).
 
         """

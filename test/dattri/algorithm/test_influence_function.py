@@ -3,6 +3,7 @@
 
 import pytest
 import torch
+import time
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
@@ -56,59 +57,6 @@ class TestInfluenceFunction:
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
-        # #Test the self attribute
-        # train_dataset = TensorDataset(
-        #     torch.randn(10, 1, 28, 28),
-        #     torch.randint(0, 10, (10,)),
-        # )
-        # test_dataset = TensorDataset(
-        #     torch.randn(10, 1, 28, 28),
-        #     torch.randint(0, 10, (10,)),
-        # )
-        # train_loader = DataLoader(train_dataset, batch_size=10)
-        # test_loader=train_loader
-
-        # model = train_mnist_lr(train_loader)
-
-        # def f(params, data_target_pair):
-        #     image, label = data_target_pair
-        #     loss = nn.CrossEntropyLoss()
-        #     yhat = torch.func.functional_call(model, params, image)
-        #     return loss(yhat, label.long())
-
-        # task = AttributionTask(
-        #     loss_func=f,
-        #     model=model,
-        #     checkpoints=model.state_dict(),
-        # )
-        # # Explicit
-        # attributor = IFAttributorExplicit(
-        #     task=task,
-        #     device=torch.device("cpu"),
-        #     regularization=1e-3,
-        # )
-        # attributor.cache(train_loader)
-        # attributor.attribute(train_loader, test_loader)
-
-        # train_loader = DataLoader(train_dataset, batch_size=10)
-        # test_loader=train_loader
-        # model = train_mnist_lr(train_loader)
-
-        # # Explicit
-        # attributor = IFAttributorExplicit(
-        #     task=task,
-        #     device=torch.device("cpu"),
-        #     regularization=1e-3,
-        # )
-        # attributor.cache(train_loader)
-        # # start_time_1= time.time()
-        # matrix_1=torch.diag(attributor.attribute(train_loader, test_loader))# original
-        # # end_time_1= time.time()
-        # # start_time_2= time.time()
-        # matrix_2=attributor.self_attribute(train_loader) # improved shortcut
-        # # end_time_2 = time.time()
-        # print(torch.allclose(matrix_1, matrix_2))
-
         # CG
         attributor = IFAttributorCG(
             task=task,
@@ -118,7 +66,7 @@ class TestInfluenceFunction:
         attributor.cache(train_loader)
         matrix = attributor.attribute(train_loader, test_loader)
 
-        # arnoldi
+        arnoldi
         attributor = IFAttributorArnoldi(
             task=task,
             device=torch.device("cpu"),
@@ -156,6 +104,151 @@ class TestInfluenceFunction:
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
+
+    def test_influence_function_self_attribute(self):
+        """Test for self_attribute function in influence function."""
+        # Test the self attribute
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+        train_loader = DataLoader(train_dataset, batch_size=20)
+
+        model = train_mnist_lr(train_loader)
+
+        def f(params, data_target_pair):
+            image, label = data_target_pair
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image)
+            return loss(yhat, label.long())
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=model.state_dict(),
+        )
+        # Explicit
+        attributor = IFAttributorExplicit(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader).diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader)
+        end_time_2 = time.time()
+        print("Time taken for attribute function with Explicit method: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with Explicit method: ", end_time_2-end_time_1)
+        assert torch.allclose(tensor1, tensor2)
+
+        # CG
+        attributor = IFAttributorCG(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader).diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader)
+        end_time_2 = time.time()
+        print("Time taken for attribute function with CG: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with CG: ", end_time_2-end_time_1)
+        assert torch.allclose(tensor1, tensor2)
+
+        # arnoldi
+        attributor = IFAttributorArnoldi(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader).diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader)
+        end_time_2 = time.time()
+        print("Time taken for attribute function with arnoldi: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with arnoldi: ", end_time_2-end_time_1)
+        print(tensor1)
+        print(tensor2)
+        assert torch.allclose(tensor1, tensor2)
+
+        # lissa
+        attributor = IFAttributorLiSSA(
+            task=task,
+            device=torch.device("cpu"),
+            recursion_depth=5,
+            batch_size=2,
+        )
+        attributor.cache(train_loader)
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader).diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader)
+        end_time_2 = time.time()
+        print("Time taken for attribute function with Lissa: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with Lissa: ", end_time_2-end_time_1)
+        print(tensor1)
+        print(tensor2)
+        #assert torch.allclose(tensor1, tensor2)
+
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader,"l").diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader,"l")
+        end_time_2 = time.time()
+        print("Time taken for attribute function with the first normalization method: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with the first normalization method: ", end_time_2-end_time_1)
+        print(tensor1)
+        print(tensor2)
+        #assert torch.allclose(tensor1, tensor2)
+
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader,"theta").diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader,"theta")
+        end_time_2 = time.time()
+        print("Time taken for attribute function with the second normalization method: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with the second normalization method: ", end_time_2-end_time_1)
+        print(tensor1)
+        print(tensor2)
+        #assert torch.allclose(tensor1, tensor2)
+
+        # DataInf
+        attributor = IFAttributorDataInf(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader).diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader)
+        end_time_2 = time.time()
+        print("Time taken for attribute function with DataInf: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with DataInf: ", end_time_2-end_time_1)
+        assert torch.allclose(tensor1, tensor2)
+
+        # EK-FAC
+        attributor = IFAttributorEKFAC(
+            task=task,
+            device=torch.device("cpu"),
+            damping=0.1,
+        )
+        attributor.cache(train_loader)
+        start_time_1= time.time()
+        tensor1=attributor.attribute(train_loader, train_loader).diag() 
+        end_time_1= time.time()
+        tensor2=attributor.self_attribute(train_loader)
+        end_time_2 = time.time()
+        print("Time taken for attribute function with EK-FAC: ", end_time_1-start_time_1)
+        print("Time taken for self_attribute function with EK-FAC: ", end_time_2-end_time_1)
+        assert torch.allclose(tensor1, tensor2)
 
     def test_influence_function_partial_param(self):
         """Test for influence function."""
