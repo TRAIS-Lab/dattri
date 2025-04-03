@@ -23,6 +23,19 @@ Install the necessary dependencies:
 pip install -e .
 ```
 
+#### Recommended enviroment setup
+It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
+
+```bash
+conda create -n dattri python=3.10
+conda activate dattri
+
+conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
+pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+
+pip install -e .
+```
+
 ### 3. Install Pre-commit Hooks
 
 We use pre-commit hooks to ensure that your contributions adhere to our code standards. To set up pre-commit hooks in your local repository, follow these steps:
