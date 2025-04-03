@@ -200,16 +200,14 @@ class TestTracInAttributor:
             device=torch.device(pytest_device),
         )
 
-        start_time_1= time.time()
-        tensor1=attributor.attribute(train_loader, train_loader).diag() 
-        end_time_1= time.time()
-        tensor2=attributor.self_attribute(train_loader)
+        start_time_1 = time.time()
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        end_time_1 = time.time()
+        tensor2 = attributor.self_attribute(train_loader)
         end_time_2 = time.time()
-        print("Time taken for attribute function: ", end_time_1-start_time_1)
-        print("Time taken for self_attribute function: ", end_time_2-end_time_1)
-        print(tensor1)
-        print(tensor2)
-        assert torch.allclose(tensor1, tensor2,rtol=1e-03, atol=1e-05)
+        print("Time taken for attribute function: ", end_time_1 - start_time_1)  # noqa: T201
+        print("Time taken for self_attribute function: ", end_time_2 - end_time_1)  # noqa: T201
+        assert torch.allclose(tensor1, tensor2, rtol=1e-03, atol=1e-05)
 
     def test_mnist_lr_multi_ckpts_grad(self):
         """Test for gradient computation correctness for mnist lr."""
