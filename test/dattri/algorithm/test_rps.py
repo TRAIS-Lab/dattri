@@ -68,8 +68,6 @@ class TestRPS:
             epoch=10,
         )
         attributor.cache(full_train_loader)
-
-        # Original test
         result = attributor.attribute(train_loader, test_loader)
         assert result.shape == (4, 10)
 
