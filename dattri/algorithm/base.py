@@ -461,12 +461,13 @@ class BaseInnerProductAttributor(BaseAttributor):
         _check_shuffle(test_dataloader)
 
         tda_output = torch.zeros(
-            size=(len(train_dataloader.sampler), ),
+            size=(len(train_dataloader.sampler),),
             device=self.device,
         )
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
-            tda_output *= checkpoint_idx # Multiply by current index to prepare for running average
-            for train_batch_idx, train_batch_data_ in enumerate(
+            # Multiply by current index to prepare for running average
+            tda_output *= checkpoint_idx
+            for _, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
                     desc="calculating gradient of training set...",
@@ -474,7 +475,6 @@ class BaseInnerProductAttributor(BaseAttributor):
                 ),
             ):
                 # move to device
-
                 train_batch_data = tuple(
                     data.to(self.device).unsqueeze(0) for data in train_batch_data_
                 )
@@ -507,7 +507,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                     train_rep=train_batch_rep,
                 )
 
-                for test_batch_idx, test_batch_data_ in enumerate(
+                for _, _ in enumerate(
                     tqdm(
                         test_dataloader,
                         desc="calculating gradient of test set...",
@@ -527,12 +527,18 @@ class BaseInnerProductAttributor(BaseAttributor):
                         test_rep=test_batch_rep,
                     )
                 influence_values = (
-                    torch.einsum('ij,ij->i', train_batch_rep, test_batch_rep) / denom.unsqueeze(-1)
+                    torch.einsum("ij,ij->i", train_batch_rep, test_batch_rep)
+                    / denom.unsqueeze(-1)
                     if denom is not None
-                    else torch.einsum('ij,ij->i', train_batch_rep, test_batch_rep)
-                    )
+                    else torch.einsum("ij,ij->i", train_batch_rep, test_batch_rep)
+                )
 
-                tda_output += influence_values # Accumulate influence values across checkpoints
-            tda_output /= checkpoint_idx + 1 #Calculate running average by dividing by number of checkpoints processed so far (checkpoint_idx + 1)
+                tda_output += (
+                    # Accumulate influence values across checkpoints
+                    influence_values
+                )
+            tda_output /= (
+                checkpoint_idx + 1
+            )  # Calculate running average by dividing by number of checkpoints
 
         return tda_output
