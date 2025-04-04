@@ -101,8 +101,6 @@ class TestTRAK:
 
         shutil.rmtree(path)
 
-    # pylint: disable=too-many-locals,PLR0914
-    # flake8: noqa: PLR0914
     def test_trak_self_attribute(self):
         """Test for self_attribute in TRAK."""
         dataset = TensorDataset(torch.randn(10, 1, 28, 28), torch.randint(0, 10, (10,)))
