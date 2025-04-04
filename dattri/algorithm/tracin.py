@@ -308,16 +308,14 @@ class TracInAttributor(BaseAttributor):
                 )
                 if self.normalized_grad:
                     tda_output[row_st:row_ed] += (
-                        (
-                            torch.ones(row_ed - row_st)
-                            * ckpt_weight
-                        )
-                        .detach()
-                        .cpu()
+                        (torch.ones(row_ed - row_st) * ckpt_weight).detach().cpu()
                     )
                 else:
                     tda_output[row_st:row_ed] += (
-                        (torch.einsum('ij,ij->i', train_batch_grad , train_batch_grad) * ckpt_weight)
+                        (
+                            torch.einsum("ij,ij->i", train_batch_grad, train_batch_grad)
+                            * ckpt_weight
+                        )
                         .detach()
                         .cpu()
                     )
