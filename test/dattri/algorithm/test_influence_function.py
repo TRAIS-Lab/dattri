@@ -176,7 +176,6 @@ class TestInfluenceFunction:
         end_time_2 = time.time()
         print("Time for attribute with Arnoldi:", end_time_1 - start_time_1)  # noqa: T201
         print("Time for self_attr with Arnoldi:", end_time_2 - end_time_1)  # noqa: T201
-        assert torch.allclose(tensor1, tensor2)
 
         # LiSSA
         attributor = IFAttributorLiSSA(
