@@ -1,7 +1,5 @@
 """Test for influence function."""
 
-import time
-
 import pytest
 import torch
 from torch import nn
@@ -137,13 +135,8 @@ class TestInfluenceFunction:
             regularization=1e-3,
         )
         attributor.cache(train_loader)
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader)
-        end_time_2 = time.time()
-        print("Time for attribute with Explicit:", end_time_1 - start_time_1)  # noqa: T201
-        print("Time for self_attr with Explicit:", end_time_2 - end_time_1)  # noqa: T201
         assert torch.allclose(tensor1, tensor2)
 
         # CG
@@ -153,13 +146,8 @@ class TestInfluenceFunction:
             regularization=1e-3,
         )
         attributor.cache(train_loader)
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader)
-        end_time_2 = time.time()
-        print("Time for attribute with CG:", end_time_1 - start_time_1)  # noqa: T201
-        print("Time for self_attr with CG:", end_time_2 - end_time_1)  # noqa: T201
         assert torch.allclose(tensor1, tensor2)
 
         # Arnoldi
@@ -169,31 +157,20 @@ class TestInfluenceFunction:
             regularization=1e-3,
         )
         attributor.cache(train_loader)
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader)
-        end_time_2 = time.time()
-        print("Time for attribute with Arnoldi:", end_time_1 - start_time_1)  # noqa: T201
-        print("Time for self_attr with Arnoldi:", end_time_2 - end_time_1)  # noqa: T201
 
         # LiSSA
         attributor = IFAttributorLiSSA(
             task=task,
             device=torch.device("cpu"),
             recursion_depth=5,
-            batch_size=2,
+            batch_size=20,
         )
         attributor.cache(train_loader)
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader)
-        end_time_2 = time.time()
-        print(tensor1)  # noqa: T201
-        print(tensor2)  # noqa: T201
-        print("Time for attribute with LiSSA:", end_time_1 - start_time_1)  # noqa: T201
-        print("Time for self_attr with LiSSA:", end_time_2 - end_time_1)  # noqa: T201
+        assert torch.allclose(tensor1, tensor2)
 
         # DataInf
         attributor = IFAttributorDataInf(
@@ -202,13 +179,8 @@ class TestInfluenceFunction:
             regularization=1e-3,
         )
         attributor.cache(train_loader)
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader)
-        end_time_2 = time.time()
-        print("Time for attribute with DataInf:", end_time_1 - start_time_1)  # noqa: T201
-        print("Time for self_attr with DataInf:", end_time_2 - end_time_1)  # noqa: T201
         assert torch.allclose(tensor1, tensor2)
 
         # EK-FAC
@@ -218,13 +190,8 @@ class TestInfluenceFunction:
             damping=0.1,
         )
         attributor.cache(train_loader)
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader)
-        end_time_2 = time.time()
-        print("Time for attribute with EK-FAC:", end_time_1 - start_time_1)  # noqa: T201
-        print("Time for self_attr with EK-FAC:", end_time_2 - end_time_1)  # noqa: T201
         assert torch.allclose(tensor1, tensor2)
 
     def test_influence_function_partial_param(self):

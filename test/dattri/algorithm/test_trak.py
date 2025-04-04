@@ -1,7 +1,6 @@
 """Test for TRAK."""
 
 import shutil
-import time
 from pathlib import Path
 
 import torch
@@ -102,8 +101,6 @@ class TestTRAK:
 
         shutil.rmtree(path)
 
-    # pylint: disable=too-many-statements,PLR0915
-    # flake8: noqa: PLR0915
     # pylint: disable=too-many-locals,PLR0914
     # flake8: noqa: PLR0914
     def test_trak_self_attribute(self):
@@ -163,13 +160,8 @@ class TestTRAK:
             projector_kwargs=projector_kwargs,
         )
 
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader).squeeze()
-        end_time_2 = time.time()
-        print("Time taken for attribute function: ", end_time_1 - start_time_1)  # noqa: T201
-        print("Time taken for self_attribute function: ", end_time_2 - end_time_1)  # noqa: T201
         assert torch.allclose(tensor1, tensor2, rtol=1e-4, atol=1e-3)
 
         # trak w/ cache
@@ -179,14 +171,9 @@ class TestTRAK:
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
-        start_time_1 = time.time()
         test_loader = train_loader
         tensor1 = attributor.attribute(test_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader).squeeze()
-        end_time_2 = time.time()
-        print("Time taken for attribute function: ", end_time_1 - start_time_1)  # noqa: T201
-        print("Time taken for self_attribute function: ", end_time_2 - end_time_1)  # noqa: T201
         assert torch.allclose(tensor1, tensor2, rtol=1e-4, atol=1e-3)
 
         # trak w/ multiple model params
@@ -196,13 +183,8 @@ class TestTRAK:
             device=torch.device("cpu"),
             projector_kwargs=projector_kwargs,
         )
-        start_time_1 = time.time()
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
-        end_time_1 = time.time()
         tensor2 = attributor.self_attribute(train_loader).squeeze()
-        end_time_2 = time.time()
-        print("Time taken for attribute function: ", end_time_1 - start_time_1)  # noqa: T201
-        print("Time taken for self_attribute function: ", end_time_2 - end_time_1)  # noqa: T201
         assert torch.allclose(tensor1, tensor2, rtol=1e-4, atol=1e-3)
 
         shutil.rmtree(path)
