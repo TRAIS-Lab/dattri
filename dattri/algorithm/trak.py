@@ -176,7 +176,7 @@ class TRAKAttributor(BaseAttributor):
             Q = torch.cat(Q, dim=0)
             kernel_matrix = full_train_projected_grad.T @ full_train_projected_grad
             kernel_matrix.diagonal().add_(self.regularization)
-            inv_XTX_XT = (torch.linalg.inv(kernel_matrix) @ full_train_projected_grad.T)
+            inv_XTX_XT = torch.linalg.inv(kernel_matrix) @ full_train_projected_grad.T
             inv_XTX_XT_list.append(inv_XTX_XT)
             running_Q = running_Q * running_count + Q
             running_count += 1  # noqa: SIM113
@@ -331,8 +331,7 @@ class TRAKAttributor(BaseAttributor):
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
                     + test_projected_grad
-                    @ (torch.linalg.inv(kernel_matrix)
-                    @ train_projected_grad.T)
+                    @ (torch.linalg.inv(kernel_matrix) @ train_projected_grad.T)
                 )
             else:
                 running_xinv_XTX_XT = (
@@ -350,7 +349,7 @@ class TRAKAttributor(BaseAttributor):
             return (running_xinv_XTX_XT * running_Q.to(self.device).unsqueeze(0)).T
         return (running_xinv_XTX_XT * self.Q.to(self.device).unsqueeze(0)).T
 
-    def self_attribute(  # noqa: PLR0912, PLR0914
+    def self_attribute(  # noqa: PLR0912
         self,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
     ) -> torch.Tensor:
@@ -466,14 +465,21 @@ class TRAKAttributor(BaseAttributor):
                 kernel_matrix = train_projected_grad.T @ train_projected_grad
                 kernel_matrix.diagonal().add_(self.regularization)
                 running_xinv_XTX_XT = (
-                     running_xinv_XTX_XT * running_count
-                    + torch.einsum('ij,ij->i', train_projected_grad, (torch.linalg.inv(kernel_matrix)
-                    @ train_projected_grad.T).T)
+                    running_xinv_XTX_XT * running_count
+                    + torch.einsum(
+                        "ij,ij->i",
+                        train_projected_grad,
+                        (torch.linalg.inv(kernel_matrix) @ train_projected_grad.T).T,
+                    )
                 )
             else:
                 running_xinv_XTX_XT = (
                     running_xinv_XTX_XT * running_count
-                    +  torch.einsum('ij,ij->i',train_projected_grad, self.inv_XTX_XT_list[ckpt_idx].T)
+                    + torch.einsum(
+                        "ij,ij->i",
+                        train_projected_grad,
+                        self.inv_XTX_XT_list[ckpt_idx].T,
+                    )
                 )
 
             if train_dataloader is not None:
