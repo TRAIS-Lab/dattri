@@ -456,6 +456,39 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorArnoldi.transform_test_rep">
 <span class="sig-name descname"><span class="pre">transform_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.transform_test_rep" title="Link to this definition">¶</a></dt>
 <dd><p>Transform the test representations via Arnoldi projection.</p>
@@ -676,6 +709,39 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorCG.transform_test_rep">
 <span class="sig-name descname"><span class="pre">transform_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorCG.transform_test_rep" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the transformation on the test rep through ihvp_cg.</p>
@@ -872,6 +938,39 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dd class="field-even"><p><dl class="simple">
 <dt>The initial representations of the train data. Typically,</dt><dd><p>it is a 2-d dimensional tensor with the shape of
 (batch_size, num_parameters).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorDataInf.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorDataInf.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
 </dd>
 </dl>
 </p>
@@ -1116,6 +1215,39 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorEKFAC.transform_test_rep">
 <span class="sig-name descname"><span class="pre">transform_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.transform_test_rep" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the transformation on the test representations.</p>
@@ -1319,6 +1451,39 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 <dd class="field-even"><p><dl class="simple">
 <dt>The initial representations of the train data. Typically,</dt><dd><p>it is a 2-d dimensional tensor with the shape of
 (batch_size, num_parameters).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorExplicit.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorExplicit.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
 </dd>
 </dl>
 </p>
@@ -1565,6 +1730,39 @@ target function. The tensors’ shape follows (1, batch_size, …).</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">relatif_method</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>train_dataloader</strong> (<em>DataLoader</em>) – Dataloader for training samples to
+calculate the influence. It can be a subset of the full training
+set if <cite>cache</cite> is called before. A subset means that only a part
+of the training set’s influence is calculated. The dataloader should
+not be shuffled.</p></li>
+<li><p><strong>relatif_method</strong> (<em>Optional</em><em>[</em><em>str</em><em>]</em>) – Method for normalizing the
+influence values.
+Supported options:
+- <cite>“l”</cite>: Normalizes by <cite>sqrt(g_i^T (H^-1 g_i))</cite>.
+- <cite>“theta”</cite>: Normalizes by <cite>||H^-1 g_i||</cite>.
+- <cite>None</cite>: No normalization applied.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.influence_function.IFAttributorLiSSA.transform_test_rep">
 <span class="sig-name descname"><span class="pre">transform_test_rep</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">ckpt_idx</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">test_rep</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.transform_test_rep" title="Link to this definition">¶</a></dt>
 <dd><p>Calculate the transformation on the test rep through ihvp_lissa.</p>
@@ -1694,6 +1892,34 @@ be shuffled.</p></li>
 <dd><p>Precompute and cache some values for efficiency.</p>
 </dd></dl>
 
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.tracin.TracInAttributor.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.tracin.TracInAttributor.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+training samples to calculate the influence. It can be a subset
+of the full training set if <cite>cache</cite> is called before. A subset
+means that only a part of the training set’s influence is calculated.
+The dataloader should not be shuffled.</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – The length of params_list and weight_list don’t match.</p>
+</dd>
+<dt class="field-odd">Returns<span class="colon">:</span></dt>
+<dd class="field-odd"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-even">Return type<span class="colon">:</span></dt>
+<dd class="field-even"><p>Tensor</p>
+</dd>
+</dl>
+</dd></dl>
+
 </dd></dl>
 
 <dl class="py class">
@@ -1787,6 +2013,36 @@ be shuffled.</p></li>
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><p><strong>full_train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader
 with full training samples for gradient calculation.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.trak.TRAKAttributor.self_attribute">
+<span class="sig-name descname"><span class="pre">self_attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">train_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">torch.utils.data.DataLoader</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.trak.TRAKAttributor.self_attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculate the influence of the training set on itself.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>train_dataloader</strong> (<em>torch.utils.data.DataLoader</em>) – The dataloader for
+training samples to calculate the influence. If <cite>cache</cite> is called before
+<cite>attribute</cite>, this dataloader can consists of a subset of the full
+training dataset cached in <cite>cache</cite>. In this case, only a part of the
+training set’s influence will be calculated. The dataloader should not
+be shuffled.</p>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p><dl class="simple">
+<dt>The influence of the training set on itself, with</dt><dd><p>the shape of (num_train_samples,).</p>
+</dd>
+</dl>
+</p>
+</dd>
+<dt class="field-odd">Return type<span class="colon">:</span></dt>
+<dd class="field-odd"><p>torch.Tensor</p>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If the train_dataloader is not None and the full training
+    dataloader is cached or no train_loader is provided in both cases.</p>
 </dd>
 </dl>
 </dd></dl>
@@ -2030,6 +2286,7 @@ will be used as label.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.generate_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.generate_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.generate_train_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.self_attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.self_attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.transform_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorArnoldi.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorArnoldi.transform_train_rep()</span></code></a></li>
 </ul>
@@ -2040,6 +2297,7 @@ will be used as label.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.generate_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.generate_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.generate_train_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.self_attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.self_attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.transform_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorCG.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorCG.transform_train_rep()</span></code></a></li>
 </ul>
@@ -2050,6 +2308,7 @@ will be used as label.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.generate_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.generate_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.generate_train_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.self_attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.self_attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.transform_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorDataInf.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorDataInf.transform_train_rep()</span></code></a></li>
 </ul>
@@ -2060,6 +2319,7 @@ will be used as label.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.generate_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.generate_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.generate_train_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.self_attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.self_attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.transform_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorEKFAC.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorEKFAC.transform_train_rep()</span></code></a></li>
 </ul>
@@ -2070,6 +2330,7 @@ will be used as label.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.cache"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.generate_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.generate_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.generate_train_rep()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.self_attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.self_attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.transform_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorExplicit.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorExplicit.transform_train_rep()</span></code></a></li>
 </ul>
@@ -2081,6 +2342,7 @@ will be used as label.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.generate_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.generate_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.generate_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.generate_train_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.lissa_collate_fn"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.lissa_collate_fn()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.self_attribute"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.self_attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.transform_test_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.transform_test_rep()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.influence_function.IFAttributorLiSSA.transform_train_rep"><code class="docutils literal notranslate"><span class="pre">IFAttributorLiSSA.transform_train_rep()</span></code></a></li>
 </ul>
@@ -2089,12 +2351,14 @@ will be used as label.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">TracInAttributor.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">TracInAttributor.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor.cache"><code class="docutils literal notranslate"><span class="pre">TracInAttributor.cache()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.tracin.TracInAttributor.self_attribute"><code class="docutils literal notranslate"><span class="pre">TracInAttributor.self_attribute()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor</span></code></a><ul>
 <li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor.__init__()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor.cache"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor.cache()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.trak.TRAKAttributor.self_attribute"><code class="docutils literal notranslate"><span class="pre">TRAKAttributor.self_attribute()</span></code></a></li>
 </ul>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.rps.RPSAttributor"><code class="docutils literal notranslate"><span class="pre">RPSAttributor</span></code></a><ul>
