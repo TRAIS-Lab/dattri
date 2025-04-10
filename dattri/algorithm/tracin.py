@@ -75,7 +75,7 @@ class TracInAttributor(BaseAttributor):
     def cache(self) -> None:
         """Precompute and cache some values for efficiency."""
 
-    def attribute(  # noqa: PLR0912, PLR0914
+    def attribute(  # noqa: PLR0912
         self,
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
@@ -142,15 +142,12 @@ class TracInAttributor(BaseAttributor):
                 ),
             ):
                 # move to device
-                if isinstance(train_batch_data_, dict):
-                    input_ids = train_batch_data_["input_ids"].to(self.device)
-                    attention_mask = train_batch_data_["attention_mask"].to(self.device)
-                    labels = train_batch_data_["labels"].to(self.device)
-                    train_batch_data = (input_ids, attention_mask, labels)
-                else:
+                if isinstance(train_batch_data_, (tuple, list)):
                     train_batch_data = tuple(
                         x.to(self.device) for x in train_batch_data_
                     )
+                else:
+                    train_batch_data = train_batch_data_
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
@@ -177,17 +174,12 @@ class TracInAttributor(BaseAttributor):
                     ),
                 ):
                     # move to device
-                    if isinstance(test_batch_data_, dict):
-                        input_ids = test_batch_data_["input_ids"].to(self.device)
-                        attention_mask = test_batch_data_["attention_mask"].to(
-                            self.device,
-                        )
-                        labels = test_batch_data_["labels"].to(self.device)
-                        test_batch_data = (input_ids, attention_mask, labels)
-                    else:
+                    if isinstance(test_batch_data_, (tuple, list)):
                         test_batch_data = tuple(
                             x.to(self.device) for x in test_batch_data_
                         )
+                    else:
+                        test_batch_data = test_batch_data_
                     # get gradient of test
                     grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.projector_kwargs is not None:
