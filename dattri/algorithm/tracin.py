@@ -115,6 +115,7 @@ class TracInAttributor(BaseAttributor):
                 ckpt_idx=ckpt_idx,
                 layer_name=self.layer_name,
             )
+
             if self.layer_name is not None:
                 self.grad_target_func = self.task.get_grad_target_func(
                     in_dims=(None, 0),
@@ -213,5 +214,110 @@ class TracInAttributor(BaseAttributor):
                             .detach()
                             .cpu()
                         )
+
+        return tda_output
+
+    def self_attribute(
+        self,
+        train_dataloader: torch.utils.data.DataLoader,
+    ) -> Tensor:
+        """Calculate the influence of the training set on itself.
+
+        Args:
+            train_dataloader (torch.utils.data.DataLoader): The dataloader for
+                training samples to calculate the influence. It can be a subset
+                of the full training set if `cache` is called before. A subset
+                means that only a part of the training set's influence is calculated.
+                The dataloader should not be shuffled.
+
+        Raises:
+            ValueError: The length of params_list and weight_list don't match.
+
+        Returns:
+            Tensor: The influence of the training set on itself, with
+                the shape of (num_train_samples,).
+        """
+        test_dataloader = train_dataloader
+        _check_shuffle(test_dataloader)
+        _check_shuffle(train_dataloader)
+
+        # check the length match between checkpoint list and weight list
+        if len(self.task.get_checkpoints()) != len(self.weight_list):
+            msg = "the length of checkpoints and weights lists don't match."
+            raise ValueError(msg)
+
+        # placeholder for the TDA result
+        # should work for torch dataset without sampler
+        tda_output = torch.zeros(
+            size=(len(train_dataloader.sampler),),
+        )
+
+        # iterate over each checkpoint (each ensemble)
+        for ckpt_idx, ckpt_weight in zip(
+            range(len(self.task.get_checkpoints())),
+            self.weight_list,
+        ):
+            parameters, _ = self.task.get_param(
+                ckpt_idx=ckpt_idx,
+                layer_name=self.layer_name,
+            )
+            if self.layer_name is not None:
+                self.grad_target_func = self.task.get_grad_target_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    ckpt_idx=ckpt_idx,
+                )
+                self.grad_loss_func = self.task.get_grad_loss_func(
+                    in_dims=(None, 0),
+                    layer_name=self.layer_name,
+                    ckpt_idx=ckpt_idx,
+                )
+
+            for train_batch_idx, train_batch_data_ in enumerate(
+                tqdm(
+                    train_dataloader,
+                    desc="calculating gradient of training set...",
+                    leave=False,
+                ),
+            ):
+                # move to device
+                train_batch_data = tuple(
+                    data.to(self.device) for data in train_batch_data_
+                )
+                # get gradient of train
+                grad_t = self.grad_loss_func(parameters, train_batch_data)
+                if self.projector_kwargs is not None:
+                    # define the projector for this batch of data
+                    self.train_random_project = random_project(
+                        grad_t,
+                        # get the batch size, prevent edge case
+                        train_batch_data[0].shape[0],
+                        **self.projector_kwargs,
+                    )
+                    # param index as ensemble id
+                    train_batch_grad = self.train_random_project(
+                        torch.nan_to_num(grad_t),
+                        ensemble_id=ckpt_idx,
+                    )
+                else:
+                    train_batch_grad = torch.nan_to_num(grad_t)
+                row_st = train_batch_idx * train_dataloader.batch_size
+                row_ed = min(
+                    (train_batch_idx + 1) * train_dataloader.batch_size,
+                    len(train_dataloader.sampler),
+                )
+                if self.normalized_grad:
+                    tda_output[row_st:row_ed] += (
+                        (torch.ones(row_ed - row_st) * ckpt_weight).detach().cpu()
+                    )
+                else:
+                    tda_output[row_st:row_ed] += (
+                        (
+                            torch.einsum("ij,ij->i", train_batch_grad, train_batch_grad)
+                            * ckpt_weight
+                        )
+                        .detach()
+                        .cpu()
+                    )
 
         return tda_output

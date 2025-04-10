@@ -103,6 +103,97 @@ class TestInfluenceFunction:
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
 
+    # pylint: disable=too-many-statements,PLR0915
+    # flake8: noqa: PLR0915
+    def test_influence_function_self_attribute(self):
+        """Test for self_attribute function in influence function."""
+        # Test the self attribute
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+        train_loader = DataLoader(train_dataset, batch_size=20)
+
+        model = train_mnist_lr(train_loader)
+
+        def f(params, data_target_pair):
+            image, label = data_target_pair
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image)
+            return loss(yhat, label.long())
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=model.state_dict(),
+        )
+
+        # Explicit
+        attributor = IFAttributorExplicit(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        tensor2 = attributor.self_attribute(train_loader)
+        assert torch.allclose(tensor1, tensor2)
+
+        # CG
+        attributor = IFAttributorCG(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        tensor2 = attributor.self_attribute(train_loader)
+        assert torch.allclose(tensor1, tensor2)
+
+        # Arnoldi
+        attributor = IFAttributorArnoldi(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        tensor2 = attributor.self_attribute(train_loader)
+
+        # LiSSA
+        attributor = IFAttributorLiSSA(
+            task=task,
+            device=torch.device("cpu"),
+            recursion_depth=5,
+            batch_size=20,
+        )
+        attributor.cache(train_loader)
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        tensor2 = attributor.self_attribute(train_loader)
+        assert torch.allclose(tensor1, tensor2)
+
+        # DataInf
+        attributor = IFAttributorDataInf(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        tensor2 = attributor.self_attribute(train_loader)
+        assert torch.allclose(tensor1, tensor2)
+
+        # EK-FAC
+        attributor = IFAttributorEKFAC(
+            task=task,
+            device=torch.device("cpu"),
+            damping=0.1,
+        )
+        attributor.cache(train_loader)
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        tensor2 = attributor.self_attribute(train_loader)
+        assert torch.allclose(tensor1, tensor2)
+
     def test_influence_function_partial_param(self):
         """Test for influence function."""
         train_dataset = TensorDataset(
@@ -370,5 +461,6 @@ class TestInfluenceFunction:
         gt_test_rep = attributor_gt.transform_test_rep(0, test_rep)
 
         # Check pair-wise correlation
+        threshold = 0.98
         corr = average_pairwise_correlation(gt_test_rep, transformed_test_rep)
-        assert corr > 0.98  # noqa: PLR2004
+        assert corr > threshold
