@@ -241,16 +241,31 @@ class TestTracInAttributor:
                     "label": self.labels[idx],
                 }
 
+        def dict_to_tuple_collate_fn(batch):
+            inputs = []
+            labels = []
+            for item in batch:
+                inputs.append(item["input"])
+                labels.append(item["label"])
+            return torch.stack(inputs, dim=0), torch.stack(labels, dim=0)
+
         train_dataset = InlineDictDataset(size=20)
         test_dataset = InlineDictDataset(size=10)
-        train_loader = DataLoader(train_dataset, batch_size=4)
-        test_loader = DataLoader(test_dataset, batch_size=2)
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=4,
+            collate_fn=dict_to_tuple_collate_fn,
+        )
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=2,
+            collate_fn=dict_to_tuple_collate_fn,
+        )
 
         model = train_mnist_lr(train_loader)
 
         def f(params, dict_batch):
-            image = dict_batch["input"]
-            label = dict_batch["label"]
+            image, label = dict_batch
             image_t = image.unsqueeze(0)
             label_t = label.unsqueeze(0)
             loss = nn.CrossEntropyLoss()
