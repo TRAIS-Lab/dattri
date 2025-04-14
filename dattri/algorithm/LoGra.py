@@ -393,14 +393,11 @@ def setup_model_projectors(
 
     # Extract configuration parameters
     proj_seed = projector_kwargs.get('proj_seed', 0)
-    proj_factorize = projector_kwargs.get("proj_factorize", True)
 
     # Remove parameters that are handled separately
     kwargs_copy = projector_kwargs.copy()
     if 'proj_seed' in kwargs_copy:
         kwargs_copy.pop("proj_seed")
-    if 'proj_factorize' in kwargs_copy:
-        kwargs_copy.pop("proj_factorize")
 
     # Initialize projector containers list
     projectors = [None] * len(layer_names)
@@ -460,7 +457,6 @@ def setup_model_projectors(
                     layer_outputs.get(module_name),
                     base_seed,
                     proj_kwargs,
-                    proj_factorize
                 )
             elif isinstance(module, nn.LayerNorm):
                 _setup_layernorm_projector(
@@ -470,7 +466,6 @@ def setup_model_projectors(
                     layer_outputs.get(module_name),
                     base_seed,
                     proj_kwargs,
-                    proj_factorize
                 )
             else:
                 raise ValueError(f"Unsupported layer type: {type(module)}")
@@ -488,7 +483,6 @@ def _setup_linear_projector(
     pre_activation: Tensor,
     base_seed: int,
     projector_kwargs: Dict[str, Any],
-    proj_factorize: bool = True
 ) -> None:
     """
     Set up projectors for a Linear layer
@@ -500,7 +494,6 @@ def _setup_linear_projector(
         pre_activation: Output tensor from the layer
         base_seed: Base seed for random projection
         projector_kwargs: Keyword arguments for the projection
-        proj_factorize: Whether to factorize the projection
     """
     if pre_activation is None or layer_input is None:
         return
@@ -524,45 +517,27 @@ def _setup_linear_projector(
         if is_3d:
             input_features = input_features.reshape(batch_size, seq_length, -1)
 
-    if proj_factorize:
-        dumb_grad_comp_1 = torch.zeros_like(pre_activation.view(-1, pre_activation.shape[-1]))
+    dumb_grad_comp_1 = torch.zeros_like(pre_activation.view(-1, pre_activation.shape[-1]))
 
-        projector_grad_comp_1 = random_project(
-            dumb_grad_comp_1,
-            dumb_grad_comp_1.shape[0],
-            proj_seed=base_seed,
-            pre_compute=proj_factorize,
-            **projector_kwargs
-        )
+    projector_grad_comp_1 = random_project(
+        dumb_grad_comp_1,
+        dumb_grad_comp_1.shape[0],
+        proj_seed=base_seed,
+        **projector_kwargs
+    )
 
-        dumb_grad_comp_2 = torch.zeros_like(input_features.view(-1, input_features.shape[-1]))
-        projector_grad_comp_2 = random_project(
-            dumb_grad_comp_2,
-            dumb_grad_comp_2.shape[0],
-            proj_seed=base_seed + 1,
-            pre_compute=proj_factorize,
-            **projector_kwargs
-        )
+    dumb_grad_comp_2 = torch.zeros_like(input_features.view(-1, input_features.shape[-1]))
+    projector_grad_comp_2 = random_project(
+        dumb_grad_comp_2,
+        dumb_grad_comp_2.shape[0],
+        proj_seed=base_seed + 1,
+        **projector_kwargs
+    )
 
-        projector.projector_grad_comp = (
-            torch.compile(projector_grad_comp_1),
-            torch.compile(projector_grad_comp_2)
-        )
-    else:
-        if is_3d:
-            dumb_grad = torch.einsum('ijk,ijl->ikl', pre_activation, input_features).reshape(batch_size, -1)
-        else:
-            dumb_grad = torch.einsum('bi,bj->bij', pre_activation, input_features).reshape(batch_size, -1)
-
-        projector_grad = random_project(
-            dumb_grad,
-            dumb_grad.shape[0],
-            proj_seed=base_seed,
-            pre_compute=proj_factorize,
-            **projector_kwargs
-        )
-
-        projector.projector_grad = torch.compile(projector_grad)
+    projector.projector_grad_comp = (
+        torch.compile(projector_grad_comp_1),
+        torch.compile(projector_grad_comp_2)
+    )
 
 
 def _setup_layernorm_projector(
@@ -572,7 +547,6 @@ def _setup_layernorm_projector(
     pre_activation: Tensor,
     base_seed: int,
     projector_kwargs: Dict[str, Any],
-    proj_factorize: bool = True
 ) -> None:
     """
     Set up projectors for a LayerNorm layer
@@ -584,7 +558,6 @@ def _setup_layernorm_projector(
         pre_activation: Output tensor from the layer
         base_seed: Base seed for random projection
         projector_kwargs: Keyword arguments for the projection
-        proj_factorize: Whether to factorize the projection
     """
     if not layer.elementwise_affine:
         return
@@ -592,40 +565,26 @@ def _setup_layernorm_projector(
     if pre_activation is None:
         return
 
-    if proj_factorize:
-        dumb_grad_comp_1 = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1]))
-        projector_grad_comp_1 = random_project(
-            dumb_grad_comp_1,
-            dumb_grad_comp_1.shape[0],
-            proj_seed=base_seed,
-            pre_compute=proj_factorize,
-            **projector_kwargs
-        )
+    dumb_grad_comp_1 = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1]))
+    projector_grad_comp_1 = random_project(
+        dumb_grad_comp_1,
+        dumb_grad_comp_1.shape[0],
+        proj_seed=base_seed,
+        **projector_kwargs
+    )
 
-        dumb_grad_comp_2 = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1]))
-        projector_grad_comp_2 = random_project(
-            dumb_grad_comp_2,
-            dumb_grad_comp_2.shape[0],
-            proj_seed=base_seed + 1,
-            pre_compute=proj_factorize,
-            **projector_kwargs
-        )
+    dumb_grad_comp_2 = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1]))
+    projector_grad_comp_2 = random_project(
+        dumb_grad_comp_2,
+        dumb_grad_comp_2.shape[0],
+        proj_seed=base_seed + 1,
+        **projector_kwargs
+    )
 
-        projector.projector_grad_comp = (
-            torch.compile(projector_grad_comp_1),
-            torch.compile(projector_grad_comp_2)
-        )
-    else:
-        dumb_grad_comp = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1] * 2))
-        projector_grad = random_project(
-            dumb_grad_comp,
-            dumb_grad_comp.shape[0],
-            proj_seed=base_seed,
-            pre_compute=proj_factorize,
-            **projector_kwargs
-        )
-
-        projector.projector_grad = torch.compile(projector_grad)
+    projector.projector_grad_comp = (
+        torch.compile(projector_grad_comp_1),
+        torch.compile(projector_grad_comp_2)
+    )
 
 class LoGraAttributor:
     """
