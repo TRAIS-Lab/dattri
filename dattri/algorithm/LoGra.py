@@ -663,7 +663,6 @@ class LoGraAttributor:
         layer_names: Union[str, List[str]],
         hessian: str = "raw",
         damping: float = None,
-        profile: bool = False,
         device: str = 'cpu',
         cpu_offload: bool = False,
         projector_kwargs: Dict = None,
@@ -677,7 +676,6 @@ class LoGraAttributor:
             layer_names (List[str]): Names of layers to attribute.
             hessian (str): Type of Hessian approximation ("none", "raw", "kfac", "ekfac"). Defaults to "raw".
             damping (float): Damping used when calculating the Hessian inverse. Defaults to None.
-            profile (bool): Record time used in various parts of the algorithm run. Defaults to False.
             device (str): Device to run the model on. Defaults to 'cpu'.
             cpu_offload (bool): Whether to offload the model to CPU. Defaults to False.
             projector_kwargs (Dict): Keyword arguments for projector. Defaults to None.
@@ -695,7 +693,6 @@ class LoGraAttributor:
 
         self.hessian = hessian
         self.damping = damping
-        self.profile = profile
         self.device = device
         self.cpu_offload = cpu_offload
         self.projector_kwargs = projector_kwargs or {}
@@ -704,15 +701,6 @@ class LoGraAttributor:
         self.hook_manager = None
         self.cached_ifvp_train = None
         self.projectors = None
-
-        # Initialize profiling stats
-        if self.profile:
-            self.profiling_stats = {
-                'projection': 0.0,
-                'forward': 0.0,
-                'backward': 0.0,
-                'precondition': 0.0,
-            }
 
     def _setup_projectors(self, train_dataloader: torch.utils.data.DataLoader) -> None:
         """
@@ -779,30 +767,14 @@ class LoGraAttributor:
                 inputs = train_batch[0].to(self.device)
 
             # Forward pass
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                start_time = time.time()
-
             outputs = self.model(**inputs) if isinstance(inputs, dict) else self.model(inputs)
-
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                self.profiling_stats['forward'] += time.time() - start_time
 
             # Compute custom loss
             logp = -outputs.loss
             train_loss = logp - torch.log(1 - torch.exp(logp))
 
             # Backward pass
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                start_time = time.time()
-
             train_loss.backward()
-
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                self.profiling_stats['backward'] += time.time() - start_time
 
             # Get projected gradients from hook manager
             with torch.no_grad():
@@ -820,11 +792,6 @@ class LoGraAttributor:
         # Process all collected gradients after the loop
         hessians = []
         train_grads = []
-
-        # Time for precondition calculations
-        if self.profile:
-            torch.cuda.synchronize(self.device)
-            start_time = time.time()
 
         # Calculate Hessian and prepare gradients for each layer
         for layer_idx in range(len(self.layer_names)):
@@ -847,10 +814,6 @@ class LoGraAttributor:
                 train_grads.append(None)
                 hessians.append(None)
 
-        if self.profile:
-            torch.cuda.synchronize(self.device)
-            self.profiling_stats['precondition'] += time.time() - start_time
-
         print(f"Computed gradient covariance for {len(self.layer_names)} modules")
 
         # Check if we have any valid gradients
@@ -861,10 +824,6 @@ class LoGraAttributor:
             return [torch.zeros(1) for _ in range(len(self.layer_names))]
 
         # Calculate inverse Hessian vector products
-        if self.profile:
-            torch.cuda.synchronize(self.device)
-            start_time = time.time()
-
         if self.hessian == "none":
             return train_grads
         elif self.hessian == "raw":
@@ -909,10 +868,6 @@ class LoGraAttributor:
 
             print(f"Computed gradient covariance inverse for {len(self.layer_names)} modules")
 
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                self.profiling_stats['precondition'] += time.time() - start_time
-
             return ifvp_train
         else:
             raise ValueError(f"Unsupported Hessian approximation: {self.hessian}")
@@ -935,7 +890,7 @@ class LoGraAttributor:
         self,
         test_dataloader: torch.utils.data.DataLoader,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
-    ) -> Union[torch.Tensor, Tuple[torch.Tensor, Dict]]:
+    ) -> torch.Tensor:
         """
         Attribute influence of training examples on test examples.
 
@@ -944,7 +899,7 @@ class LoGraAttributor:
             train_dataloader: Optional DataLoader for training data if not cached
 
         Returns:
-            Tensor of influence scores (and profiling stats if profile=True)
+            Tensor of influence scores
         """
         if self.full_train_dataloader is not None and train_dataloader is not None:
             raise ValueError(
@@ -1002,30 +957,14 @@ class LoGraAttributor:
                 inputs = test_batch[0].to(self.device)
 
             # Forward pass
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                start_time = time.time()
-
             outputs = self.model(**inputs) if isinstance(inputs, dict) else self.model(inputs)
-
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                self.profiling_stats['forward'] += time.time() - start_time
 
             # Compute loss
             logp = -outputs.loss
             test_loss = logp - torch.log(1 - torch.exp(logp))
 
             # Backward pass
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                start_time = time.time()
-
             test_loss.backward()
-
-            if self.profile:
-                torch.cuda.synchronize(self.device)
-                self.profiling_stats['backward'] += time.time() - start_time
 
             # Get projected gradients from hook manager
             with torch.no_grad():
@@ -1091,7 +1030,4 @@ class LoGraAttributor:
                         IF_score[:, col_st:col_ed] += result
 
         # Return result
-        if self.profile:
-            return (IF_score, self.profiling_stats)
-        else:
-            return IF_score
+        return IF_score
