@@ -8,6 +8,7 @@ if TYPE_CHECKING:
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch import Tensor
 import functools
 
 from tqdm import tqdm
@@ -372,7 +373,6 @@ def setup_model_projectors(
     layer_names: List[str],
     projector_kwargs: Dict[str, Any],
     train_dataloader: torch.utils.data.DataLoader,
-    setting: str = None,
     device: str = 'cuda' if torch.cuda.is_available() else 'cpu'
 ) -> List[ProjectorContainer]:
     """
@@ -449,24 +449,7 @@ def setup_model_projectors(
             projector = ProjectorContainer(module_name, idx)
             base_seed = proj_seed + int(1e4) * module_id
 
-            # Handle special case for localized projectors
-            if kwargs_copy.get("method") == "Localize":
-                active_indices = None
-                try:
-                    dim = kwargs_copy["proj_dim"]
-                    if proj_factorize:
-                        mask_path = f"../{setting}/Localize/mask_{dim}*{dim}/{module_name}.pt"
-                    else:
-                        mask_path = f"../{setting}/Localize/mask_{dim}/{module_name}.pt"
-                    active_indices = torch.load(mask_path, weights_only=False)
-                except FileNotFoundError:
-                    print(f"Mask file not found for {module_name}. Using default active indices.")
-
-                proj_kwargs = kwargs_copy.copy()
-                proj_kwargs["active_indices"] = active_indices
-            else:
-                proj_kwargs = kwargs_copy.copy()
-                proj_kwargs["active_indices"] = None
+            proj_kwargs = kwargs_copy.copy()
 
             # Create appropriate projectors based on layer type
             if isinstance(module, nn.Linear):
@@ -543,18 +526,13 @@ def _setup_linear_projector(
 
     if proj_factorize:
         dumb_grad_comp_1 = torch.zeros_like(pre_activation.view(-1, pre_activation.shape[-1]))
-        active_indices = projector_kwargs.get("active_indices", None)
-
-        if active_indices is None:
-            active_indices = {"pre_activation": None, "input_features": None}
 
         projector_grad_comp_1 = random_project(
             dumb_grad_comp_1,
             dumb_grad_comp_1.shape[0],
             proj_seed=base_seed,
             pre_compute=proj_factorize,
-            active_indices=active_indices.get("pre_activation"),
-            **{k: v for k, v in projector_kwargs.items() if k != 'active_indices'}
+            **projector_kwargs
         )
 
         dumb_grad_comp_2 = torch.zeros_like(input_features.view(-1, input_features.shape[-1]))
@@ -563,8 +541,7 @@ def _setup_linear_projector(
             dumb_grad_comp_2.shape[0],
             proj_seed=base_seed + 1,
             pre_compute=proj_factorize,
-            active_indices=active_indices.get("input_features"),
-            **{k: v for k, v in projector_kwargs.items() if k != 'active_indices'}
+            **projector_kwargs
         )
 
         projector.projector_grad_comp = (
@@ -658,7 +635,6 @@ class LoGraAttributor:
 
     def __init__(
         self,
-        setting: str,
         model: nn.Module,
         layer_names: Union[str, List[str]],
         hessian: str = "raw",
@@ -671,7 +647,6 @@ class LoGraAttributor:
         Optimized Influence Function Attributor.
 
         Args:
-            setting (str): The setting of the experiment
             model (nn.Module): PyTorch model.
             layer_names (List[str]): Names of layers to attribute.
             hessian (str): Type of Hessian approximation ("none", "raw", "kfac", "ekfac"). Defaults to "raw".
@@ -680,7 +655,6 @@ class LoGraAttributor:
             cpu_offload (bool): Whether to offload the model to CPU. Defaults to False.
             projector_kwargs (Dict): Keyword arguments for projector. Defaults to None.
         """
-        self.setting = setting
         self.model = model
         self.model.to(device)
         self.model.eval()
@@ -718,7 +692,6 @@ class LoGraAttributor:
             self.layer_names,
             self.projector_kwargs,
             train_dataloader,
-            self.setting,
             self.device
         )
 
