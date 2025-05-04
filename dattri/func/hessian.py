@@ -264,8 +264,7 @@ def ihvp_explicit(
         """
         hessian_tensor = hessian_func(*x)
         return torch.linalg.solve(
-            hessian_tensor
-            + torch.eye(hessian_tensor.shape[0]).to(v.device) * regularization,
+            hessian_tensor.diagonal().add_(regularization),
             v.T,
         ).T
 
