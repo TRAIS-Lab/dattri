@@ -255,6 +255,38 @@ class BaseInnerProductAttributor(BaseAttributor):
         """
         self._set_full_train_data(full_train_dataloader)
 
+    def _compute_denom(
+        self,
+        ckpt_idx: int,  # noqa: ARG002
+        train_batch_rep: torch.Tensor,
+        test_batch_rep: Optional[torch.Tensor] = None,
+        relatif_method: Optional[str] = None,  # noqa: ARG002
+    ) -> torch.Tensor:
+        """Compute the denominator for the influence calculation.
+
+        Args:
+            ckpt_idx (int): The index of the checkpoint being used for influence
+                calculation.
+            train_batch_rep (torch.Tensor): The representation of the training batch
+                at the given checkpoint.
+            test_batch_rep (Optional[torch.Tensor]): The representation of the
+                training batch, generated using `generate_test_rep` at the given
+                checkpoint.
+            relatif_method (Optional[str]): Normalization method.
+                - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Computes `||H^-1 g_i||`.
+                - `None`: Raises an error.
+
+        Returns:
+            torch.Tensor: The computed denominator for normalization. It is a
+            1-d dimensional tensor with the shape of (batch_size).
+        """
+        _ = self
+        _ = test_batch_rep
+
+        batch_size = train_batch_rep.size(0)
+        return train_batch_rep.new_ones(batch_size)
+
     def attribute(
         self,
         train_dataloader: DataLoader,
@@ -389,34 +421,124 @@ class BaseInnerProductAttributor(BaseAttributor):
 
         return tda_output
 
-    def _compute_denom(
+    def self_attribute(
         self,
-        ckpt_idx: int,  # noqa: ARG002
-        train_batch_rep: torch.Tensor,
-        test_batch_rep: Optional[torch.Tensor] = None,
-        relatif_method: Optional[str] = None,  # noqa: ARG002
+        train_dataloader: DataLoader,
+        relatif_method: Optional[str] = None,
     ) -> torch.Tensor:
-        """Compute the denominator for the influence calculation.
+        """Calculate the influence of the training set on itself.
 
         Args:
-            ckpt_idx (int): The index of the checkpoint being used for influence
-                calculation.
-            train_batch_rep (torch.Tensor): The representation of the training batch
-                at the given checkpoint.
-            test_batch_rep (Optional[torch.Tensor]): The representation of the
-                training batch, generated using `generate_test_rep` at the given
-                checkpoint.
-            relatif_method (Optional[str]): Normalization method.
-                - `"l"`: Computes `sqrt(g_i^T (H^-1 g_i))`.
-                - `"theta"`: Computes `||H^-1 g_i||`.
-                - `None`: Raises an error.
+            train_dataloader (DataLoader): Dataloader for training samples to
+                calculate the influence. It can be a subset of the full training
+                set if `cache` is called before. A subset means that only a part
+                of the training set's influence is calculated. The dataloader should
+                not be shuffled.
+            relatif_method (Optional[str]): Method for normalizing the
+                influence values.
+                Supported options:
+                - `"l"`: Normalizes by `sqrt(g_i^T (H^-1 g_i))`.
+                - `"theta"`: Normalizes by `||H^-1 g_i||`.
+                - `None`: No normalization applied.
 
         Returns:
-            torch.Tensor: The computed denominator for normalization. It is a
-            1-d dimensional tensor with the shape of (batch_size).
-        """
-        _ = self
-        _ = test_batch_rep
+            torch.Tensor: The influence of the training set on itself, with
+                the shape of (num_train_samples,).
 
-        batch_size = train_batch_rep.size(0)
-        return train_batch_rep.new_ones(batch_size)
+        """
+        test_dataloader = train_dataloader
+        super().attribute(train_dataloader, test_dataloader)
+        if self.full_train_dataloader is None:
+            self.full_train_dataloader = train_dataloader
+            warnings.warn(
+                "The full training data loader was NOT cached. \
+                           Treating the train_dataloader as the full training \
+                           data loader.",
+                stacklevel=1,
+            )
+
+        _check_shuffle(train_dataloader)
+        _check_shuffle(test_dataloader)
+
+        tda_output = torch.zeros(
+            size=(len(train_dataloader.sampler),),
+            device=self.device,
+        )
+        for checkpoint_idx in range(len(self.task.get_checkpoints())):
+            # Multiply by current index to prepare for running average
+            tda_output *= checkpoint_idx
+            for _, train_batch_data_ in enumerate(
+                tqdm(
+                    train_dataloader,
+                    desc="calculating gradient of training set...",
+                    leave=False,
+                ),
+            ):
+                # move to device
+                train_batch_data = tuple(
+                    data.to(self.device).unsqueeze(0) for data in train_batch_data_
+                )
+
+                # get initial representations of train data
+                train_batch_rep = self.generate_train_rep(
+                    ckpt_idx=checkpoint_idx,
+                    data=train_batch_data,
+                )
+
+                denom = None
+                if relatif_method is not None:
+                    if relatif_method == "l":
+                        test_batch_rep = self.generate_test_rep(
+                            ckpt_idx=checkpoint_idx,
+                            data=train_batch_data,
+                        )
+                    else:
+                        test_batch_rep = None
+                    denom = self._compute_denom(
+                        checkpoint_idx,
+                        train_batch_rep,
+                        test_batch_rep,
+                        relatif_method=relatif_method,
+                    )
+
+                # transform the train representations
+                train_batch_rep = self.transform_train_rep(
+                    ckpt_idx=checkpoint_idx,
+                    train_rep=train_batch_rep,
+                )
+
+                for _, _ in enumerate(
+                    tqdm(
+                        test_dataloader,
+                        desc="calculating gradient of test set...",
+                        leave=False,
+                    ),
+                ):
+                    # move to device
+                    test_batch_data = train_batch_data
+                    # get initial representations of test data
+                    test_batch_rep = self.generate_test_rep(
+                        ckpt_idx=checkpoint_idx,
+                        data=test_batch_data,
+                    )
+                    # transform the test representations
+                    test_batch_rep = self.transform_test_rep(
+                        ckpt_idx=checkpoint_idx,
+                        test_rep=test_batch_rep,
+                    )
+                influence_values = (
+                    torch.einsum("ij,ij->i", train_batch_rep, test_batch_rep)
+                    / denom.unsqueeze(-1)
+                    if denom is not None
+                    else torch.einsum("ij,ij->i", train_batch_rep, test_batch_rep)
+                )
+
+                tda_output += (
+                    # Accumulate influence values across checkpoints
+                    influence_values
+                )
+            tda_output /= (
+                checkpoint_idx + 1
+            )  # Calculate running average by dividing by number of checkpoints
+
+        return tda_output
