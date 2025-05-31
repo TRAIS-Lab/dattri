@@ -527,10 +527,9 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         data_target_pair_list = []
         iterator = iter(full_train_dataloader)
         for _ in range(iter_number):
-            try:
-                data_target_pair_list.append(next(iterator))
-            except StopIteration:
+            if (batch := next(iterator, None)) is None:
                 break
+            data_target_pair_list.append(batch)
 
         # concatenate all data
         data_target_pair = data_target_pair_list[0]
@@ -826,10 +825,9 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             sampled_data_list = []
             iterator = iter(full_train_dataloader)
             for _ in range(iter_number):
-                try:
-                    sampled_data_list.append(next(iterator))
-                except StopIteration:
+                if (batch := next(iterator, None)) is None:
                     break
+                sampled_data_list.append(batch)
             for sampled_data_ in sampled_data_list:
                 sampled_data = tuple(
                     data.to(self.device).unsqueeze(0) for data in sampled_data_
