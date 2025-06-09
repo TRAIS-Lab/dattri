@@ -19,6 +19,14 @@ from dattri.func.projection import random_project
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
+DEFAULT_PROJECTOR_KWARGS = {
+    "proj_dim": 512,
+    "proj_max_batch_size": 32,
+    "proj_seed": 0,
+    "device": "cpu",
+    "use_half_precision": False,
+}
+
 
 class TracInAttributor(BaseAttributor):
     """TracIn attributor."""
@@ -53,10 +61,9 @@ class TracInAttributor(BaseAttributor):
         self.task = task
         self.weight_list = weight_list
         # these are projector kwargs shared by train/test projector
-        self.projector_kwargs = projector_kwargs
-        # set proj seed
+        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         if projector_kwargs is not None:
-            self.proj_seed = self.projector_kwargs.get("proj_seed", 0)
+            self.projector_kwargs.update(projector_kwargs)
         self.normalized_grad = normalized_grad
         self.layer_name = layer_name
         self.device = device
@@ -68,7 +75,7 @@ class TracInAttributor(BaseAttributor):
     def cache(self) -> None:
         """Precompute and cache some values for efficiency."""
 
-    def attribute(
+    def attribute(  # noqa: PLR0912
         self,
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
@@ -136,9 +143,12 @@ class TracInAttributor(BaseAttributor):
                 ),
             ):
                 # move to device
-                train_batch_data = tuple(
-                    data.to(self.device) for data in train_batch_data_
-                )
+                if isinstance(train_batch_data_, (tuple, list)):
+                    train_batch_data = tuple(
+                        x.to(self.device) for x in train_batch_data_
+                    )
+                else:
+                    train_batch_data = train_batch_data_
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
@@ -165,9 +175,12 @@ class TracInAttributor(BaseAttributor):
                     ),
                 ):
                     # move to device
-                    test_batch_data = tuple(
-                        data.to(self.device) for data in test_batch_data_
-                    )
+                    if isinstance(test_batch_data_, (tuple, list)):
+                        test_batch_data = tuple(
+                            x.to(self.device) for x in test_batch_data_
+                        )
+                    else:
+                        test_batch_data = test_batch_data_
                     # get gradient of test
                     grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.projector_kwargs is not None:
