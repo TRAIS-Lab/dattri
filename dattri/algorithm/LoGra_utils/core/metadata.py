@@ -79,7 +79,7 @@ class MetadataManager:
 
         # Compute complete batch structure
         if hasattr(train_dataloader.dataset, '__len__'):
-            dataset_size = len(train_dataloader.dataset)
+            dataset_size = len(train_dataloader.sampler)
             current_sample_idx = 0
 
             for batch_idx in range(total_batches):

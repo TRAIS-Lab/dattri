@@ -520,12 +520,36 @@ def main():
 
     from dattri.algorithm.LoGra import LoGraAttributor
     import torch.nn as nn
+    # from transformers.modeling_utils import Conv1D
+    from transformers.pytorch_utils import Conv1D
+    from dattri.task import AttributionTask
 
-    model_id = 0
+    model_id = -1
     checkpoint = f"{args.output_dir}/{model_id}"
-    model = AutoModelForCausalLM.from_pretrained(checkpoint)
+    
+    def checkpoints_load_func(model, checkpoint):
+        model = AutoModelForCausalLM.from_pretrained(checkpoint).cuda()
+        model.eval()
+        return replace_conv1d_modules(model)
+
+    def f(model, batch, device):
+        inputs = {k: v.to(device) for k, v in batch.items()}
+        outputs = model(**inputs)
+        return outputs.loss
 
     def find_layers(model, layer_type="Linear", return_type="instance"):
+        '''
+        Find all layers of a certain type in a model.
+        Args:
+            model: The model to find layers in.
+            layer_type: The type of layer to find.
+            return_type: The type of return value.
+        Returns:
+            layers: A list of layers of the specified type.
+            If return_type is "instance", the layers are instances of the specified type.
+            If return_type is "name", the layers are named tuples of the specified type.
+            If return_type is "name_instance", the layers are named tuples of the specified type and their instances.
+        '''
         layers = []
         return_module_name = not (return_type == "instance")
 
@@ -567,6 +591,13 @@ def main():
             raise ValueError("Invalid return_type. Choose from 'instance', 'name', and 'name_instance'.")
 
     def replace_conv1d_modules(model):
+        '''
+        Replace all Conv1D modules in a model with Linear modules.
+        Args:
+            model: The model to replace Conv1D modules in.
+        Returns:
+            model: The model with all Conv1D modules replaced with Linear modules.
+        '''
         # GPT-2 is defined in terms of Conv1D. However, this does not work for EK-FAC.
         # Here, we convert these Conv1D modules to linear modules recursively.
         for name, module in model.named_children():
@@ -588,22 +619,29 @@ def main():
 
     projector_kwargs = {
         "device": "cuda",
-        "proj_dim": 64,
+        "proj_dim": 512,
         "use_half_precision": False,
+        "proj_max_batch_size": 32,
     }
 
-    attributor = LoGraAttributor(
+    task = AttributionTask(
         model=model,
+        loss_func=f,
+        checkpoints=checkpoint,
+        checkpoints_load_func=checkpoints_load_func
+    )
+
+    attributor = LoGraAttributor(
+        task=task,
         layer_names=layer_names,
-        hessian="raw",
         device="cuda",
-        projector_kwargs=projector_kwargs,
+        damping=1e-2,
         offload="cpu",
+        projector_kwargs=projector_kwargs,
     )
 
     attributor.cache(train_dataloader)
-    with torch.no_grad():
-        score = attributor.attribute(eval_dataloader)
+    score = attributor.attribute(train_dataloader, eval_dataloader)
 
     torch.save(score, "score.pt")
 
