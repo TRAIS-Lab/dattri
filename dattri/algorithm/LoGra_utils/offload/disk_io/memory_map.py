@@ -1,23 +1,19 @@
-"""
-Memory-mapped file operations with non-blocking writes.
-"""
+"""Memory-mapped file operations with non-blocking writes."""
 
 import json
+import logging
 import os
 from contextlib import contextmanager
-from typing import Dict, List, Tuple, Any, Optional
-import mmap as mmap_module
+from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 import torch
 
-import logging
 logger = logging.getLogger(__name__)
 
+
 class ChunkedMemoryMapHandler:
-    """
-    Optimized handler for memory-mapped file operations with non-blocking writes.
-    """
+    """Optimized handler for memory-mapped file operations with non-blocking writes."""
 
     @staticmethod
     def write_chunk(
@@ -26,11 +22,10 @@ class ChunkedMemoryMapHandler:
         tensor: torch.Tensor,
         batch_info: List[Dict[str, Any]],
         layer_dims: List[int],
-        dtype: str = 'float32',
-        flush_mode: str = 'async'  # 'async', 'sync', or 'none'
+        dtype: str = "float32",
+        flush_mode: str = "async",  # 'async', 'sync', or 'none'
     ) -> str:
-        """
-        Write a tensor chunk to memory-mapped file with configurable flush behavior.
+        """Write a tensor chunk to memory-mapped file with configurable flush behavior.
 
         Args:
             save_path: Directory to save files
@@ -58,15 +53,15 @@ class ChunkedMemoryMapHandler:
         # Create memory-mapped file
         try:
             # Determine storage dtype
-            storage_dtype = 'uint16' if tensor.dtype == torch.bfloat16 else dtype
+            storage_dtype = "uint16" if tensor.dtype == torch.bfloat16 else dtype
 
             # Ensure tensor is on CPU and contiguous
-            if tensor.device.type != 'cpu':
+            if tensor.device.type != "cpu":
                 tensor = tensor.cpu()
             tensor = tensor.contiguous()
 
             # Option 1: Direct file write without mmap for better async behavior
-            if flush_mode == 'async':
+            if flush_mode == "async":
                 # Convert to numpy array
                 if tensor.dtype == torch.bfloat16:
                     np_array = tensor.view(torch.uint16).numpy()
@@ -77,8 +72,8 @@ class ChunkedMemoryMapHandler:
                 np_memmap = np.memmap(
                     mmap_path,
                     dtype=np.dtype(storage_dtype),
-                    mode='w+',
-                    shape=tensor.shape
+                    mode="w+",
+                    shape=tensor.shape,
                 )
                 np_memmap[:] = np_array
 
@@ -88,8 +83,12 @@ class ChunkedMemoryMapHandler:
 
             else:
                 # Original behavior for compatibility
-                mmap = np.memmap(mmap_path, dtype=np.dtype(storage_dtype), mode="w+",
-                                shape=tensor.shape)
+                mmap = np.memmap(
+                    mmap_path,
+                    dtype=np.dtype(storage_dtype),
+                    mode="w+",
+                    shape=tensor.shape,
+                )
 
                 # Write tensor data directly
                 if tensor.dtype == torch.bfloat16:
@@ -99,9 +98,9 @@ class ChunkedMemoryMapHandler:
                     mmap[:] = tensor.numpy()
 
                 # Handle flush based on mode
-                if flush_mode == 'sync':
+                if flush_mode == "sync":
                     mmap.flush()  # Blocking flush
-                elif flush_mode == 'none':
+                elif flush_mode == "none":
                     pass  # No flush, let OS handle it
 
                 del mmap  # Cleanup
@@ -116,25 +115,26 @@ class ChunkedMemoryMapHandler:
                 "shape": list(tensor.shape),
                 "layer_dims": layer_dims,
                 "batches": batch_info,
-                "flush_mode": flush_mode  # Track how it was written
+                "flush_mode": flush_mode,  # Track how it was written
             }
 
             with open(metadata_path, "w") as f:
-                json.dump(metadata, f, separators=(',', ':'))
+                json.dump(metadata, f, separators=(",", ":"))
 
-            logger.debug(f"Wrote tensor chunk {chunk_filename}: shape={tensor.shape}, flush_mode={flush_mode}")
+            logger.debug(
+                f"Wrote tensor chunk {chunk_filename}: shape={tensor.shape}, flush_mode={flush_mode}"
+            )
 
             return chunk_filename
 
         except Exception as e:
-            logger.error(f"Error writing chunked memory-mapped file {mmap_path}: {str(e)}")
+            logger.error(f"Error writing chunked memory-mapped file {mmap_path}: {e!s}")
             raise
 
     @staticmethod
     @contextmanager
     def read_chunk(path: str, chunk_filename: str, force_load: bool = False):
-        """
-        Context manager to read a chunked memory-mapped file as tensor.
+        """Context manager to read a chunked memory-mapped file as tensor.
 
         Args:
             path: Directory containing the memory-mapped file
@@ -163,7 +163,9 @@ class ChunkedMemoryMapHandler:
                 data = data.reshape(shape)
 
                 if storage_dtype == "uint16":
-                    tensor = torch.from_numpy(data.astype(np.int16)).view(torch.bfloat16)
+                    tensor = torch.from_numpy(data.astype(np.int16)).view(
+                        torch.bfloat16
+                    )
                 else:
                     tensor = torch.from_numpy(data)
 
@@ -171,11 +173,15 @@ class ChunkedMemoryMapHandler:
             else:
                 # Use memory mapping for random access
                 # Open with copy-on-write to avoid modifying the file
-                mmap = np.memmap(mmap_path, dtype=np.dtype(storage_dtype), mode="c", shape=shape)
+                mmap = np.memmap(
+                    mmap_path, dtype=np.dtype(storage_dtype), mode="c", shape=shape
+                )
 
                 if storage_dtype == "uint16":
                     # For bfloat16, we need special handling
-                    tensor = torch.as_tensor(mmap, dtype=torch.int16).view(torch.bfloat16)
+                    tensor = torch.as_tensor(mmap, dtype=torch.int16).view(
+                        torch.bfloat16
+                    )
                 else:
                     # Directly create tensor view of mmap - no copy!
                     tensor = torch.as_tensor(mmap)
@@ -194,9 +200,10 @@ class ChunkedMemoryMapHandler:
             return json.load(f)
 
     @staticmethod
-    def load_chunk_tensor(path: str, chunk_filename: str) -> Tuple[torch.Tensor, Dict[str, Any]]:
-        """
-        Load entire chunk as tensor with metadata.
+    def load_chunk_tensor(
+        path: str, chunk_filename: str
+    ) -> Tuple[torch.Tensor, Dict[str, Any]]:
+        """Load entire chunk as tensor with metadata.
         Uses force_load for better performance when loading entire chunks.
 
         Args:
@@ -206,14 +213,17 @@ class ChunkedMemoryMapHandler:
         Returns:
             Tuple of (tensor, metadata)
         """
-        with ChunkedMemoryMapHandler.read_chunk(path, chunk_filename, force_load=True) as (tensor, metadata):
+        with ChunkedMemoryMapHandler.read_chunk(
+            path, chunk_filename, force_load=True
+        ) as (tensor, metadata):
             # Return the tensor directly since force_load already made a copy
             return tensor, metadata
 
     @staticmethod
-    def load_batch_slice(path: str, chunk_filename: str, batch_idx: int) -> Optional[torch.Tensor]:
-        """
-        Load a specific batch slice from a chunk.
+    def load_batch_slice(
+        path: str, chunk_filename: str, batch_idx: int
+    ) -> Optional[torch.Tensor]:
+        """Load a specific batch slice from a chunk.
 
         Args:
             path: Directory containing the files
@@ -223,7 +233,10 @@ class ChunkedMemoryMapHandler:
         Returns:
             Tensor slice for the batch or None if not found
         """
-        with ChunkedMemoryMapHandler.read_chunk(path, chunk_filename) as (tensor, metadata):
+        with ChunkedMemoryMapHandler.read_chunk(path, chunk_filename) as (
+            tensor,
+            metadata,
+        ):
             # Find the batch in metadata
             for batch_info in metadata["batches"]:
                 if batch_info["batch_idx"] == batch_idx:
@@ -235,12 +248,11 @@ class ChunkedMemoryMapHandler:
 
     @staticmethod
     def load_chunk_batch_range(
-            path: str,
-            chunk_filename: str,
-            batch_range: Optional[Tuple[int, int]] = None
-        ) -> Tuple[torch.Tensor, Dict[int, Tuple[int, int]]]:
-        """
-        Load chunk with optional batch filtering.
+        path: str,
+        chunk_filename: str,
+        batch_range: Optional[Tuple[int, int]] = None,
+    ) -> Tuple[torch.Tensor, Dict[int, Tuple[int, int]]]:
+        """Load chunk with optional batch filtering.
         Uses force_load=True for better performance.
 
         Args:
@@ -253,7 +265,9 @@ class ChunkedMemoryMapHandler:
                 - Tensor of shape (filtered_samples, total_proj_dim)
                 - Mapping from batch_idx to (start_row, end_row) in the returned tensor
         """
-        with ChunkedMemoryMapHandler.read_chunk(path, chunk_filename, force_load=True) as (tensor, metadata):
+        with ChunkedMemoryMapHandler.read_chunk(
+            path, chunk_filename, force_load=True
+        ) as (tensor, metadata):
             if batch_range is None:
                 batch_mapping = {
                     info["batch_idx"]: (info["start_row"], info["end_row"])
@@ -282,8 +296,7 @@ class ChunkedMemoryMapHandler:
                 # Since we used force_load, tensor is already in memory
                 filtered_tensor = tensor[valid_rows]
                 return filtered_tensor, new_mapping
-            else:
-                return torch.empty(0, tensor.shape[1]), {}
+            return torch.empty(0, tensor.shape[1]), {}
 
     @staticmethod
     def find_chunk_files(path: str, data_type: str) -> List[str]:
@@ -293,14 +306,17 @@ class ChunkedMemoryMapHandler:
 
         chunk_files = []
         for filename in os.listdir(path):
-            if filename.endswith("_metadata.json") and f"chunk_{data_type}_" in filename:
+            if (
+                filename.endswith("_metadata.json")
+                and f"chunk_{data_type}_" in filename
+            ):
                 chunk_name = filename.replace("_metadata.json", "")
                 chunk_files.append(chunk_name)
 
         # Sort by batch start index
         def extract_batch_start(chunk_name):
             try:
-                parts = chunk_name.split('_')
+                parts = chunk_name.split("_")
                 if len(parts) >= 4:
                     return int(parts[2])
                 return 0
@@ -310,9 +326,10 @@ class ChunkedMemoryMapHandler:
         return sorted(chunk_files, key=extract_batch_start)
 
     @staticmethod
-    def ensure_chunk_written(path: str, chunk_filename: str, timeout: float = 60.0) -> bool:
-        """
-        Ensure a chunk has been fully written to disk.
+    def ensure_chunk_written(
+        path: str, chunk_filename: str, timeout: float = 60.0
+    ) -> bool:
+        """Ensure a chunk has been fully written to disk.
         This can be used when you need to guarantee data persistence.
 
         Args:
@@ -340,8 +357,8 @@ class ChunkedMemoryMapHandler:
 
                     # Check if the file size matches expected size
                     expected_size = (
-                        np.prod(metadata["shape"]) *
-                        np.dtype(metadata["storage_dtype"]).itemsize
+                        np.prod(metadata["shape"])
+                        * np.dtype(metadata["storage_dtype"]).itemsize
                     )
                     actual_size = os.path.getsize(mmap_path)
 

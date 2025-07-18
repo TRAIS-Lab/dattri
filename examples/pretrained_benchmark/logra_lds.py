@@ -26,7 +26,7 @@ if __name__ == "__main__":
         targets = targets.to(device)
         outputs = model(inputs)
         return nn.functional.cross_entropy(outputs, targets)
-    
+
     projector_kwargs = {
         "device": args.device,
         "proj_dim": 512,

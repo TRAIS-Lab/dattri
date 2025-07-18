@@ -1,43 +1,40 @@
-"""
-Projector container classes for gradient compression.
+"""Projector container classes for gradient compression.
 Simplified version with sparsification removed.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Dict, Any, Optional, List, Tuple
-if TYPE_CHECKING:
-    from typing import Union
+import logging
+from typing import Any, Dict, List
 
 import torch
-import torch.nn as nn
-import logging
+from torch import Tensor, nn
 
-from torch import Tensor
 from dattri.func.projection import random_project
 
 # Configure logger
 logger = logging.getLogger(__name__)
 
+
 class ProjectorContainer:
-    """
-    Container for projector functions associated with a layer.
+    """Container for projector functions associated with a layer.
     Used to store projectors without modifying the original layer.
     """
+
     def __init__(self, name: str, index: int):
         self.name = name
         self.index = index
         self.projector_grad = None
+
 
 def setup_model_projectors(
     model: nn.Module,
     layer_names: List[str],
     projector_kwargs: Dict[str, Any],
     train_dataloader: torch.utils.data.DataLoader,
-    device: str = 'cpu'
+    device: str = "cpu",
 ) -> List[ProjectorContainer]:
-    """
-    Sets up projectors for each layer in the model.
+    """Sets up projectors for each layer in the model.
     Simplified version with sparsification removed.
 
     Args:
@@ -54,11 +51,11 @@ def setup_model_projectors(
         return []
 
     # Extract configuration parameters
-    proj_seed = projector_kwargs.get('proj_seed', 0)
+    proj_seed = projector_kwargs.get("proj_seed", 0)
 
     # Remove parameters that are handled separately
     kwargs_copy = projector_kwargs.copy()
-    if 'proj_seed' in kwargs_copy:
+    if "proj_seed" in kwargs_copy:
         kwargs_copy.pop("proj_seed")
 
     # Initialize containers list
@@ -89,7 +86,9 @@ def setup_model_projectors(
     # Register temporary hooks to capture layer I/O
     for name, module in model.named_modules():
         if name in layer_names:
-            hook = module.register_forward_hook(lambda mod, inp, out, n=name: capture_hook(n, mod, inp, out))
+            hook = module.register_forward_hook(
+                lambda mod, inp, out, n=name: capture_hook(n, mod, inp, out)
+            )
             hooks.append(hook)
 
     # Run another forward pass to capture inputs/outputs
@@ -138,6 +137,7 @@ def setup_model_projectors(
     logger.info(f"Set up projectors for {len(layer_names)} layers")
     return projectors
 
+
 def _setup_linear_projector(
     projector: ProjectorContainer,
     layer: nn.Linear,
@@ -146,8 +146,7 @@ def _setup_linear_projector(
     base_seed: int,
     projector_kwargs: Dict[str, Any],
 ) -> None:
-    """
-    Set up projector for a Linear layer
+    """Set up projector for a Linear layer
 
     Args:
         projector: ProjectorContainer to store the projector
@@ -171,9 +170,12 @@ def _setup_linear_projector(
         else:
             batch_size = input_features.shape[0]
 
-        ones = torch.ones(input_features.size(0), 1,
-                         device=input_features.device,
-                         dtype=input_features.dtype)
+        ones = torch.ones(
+            input_features.size(0),
+            1,
+            device=input_features.device,
+            dtype=input_features.dtype,
+        )
         input_features = torch.cat([input_features, ones], dim=1)
 
         if is_3d:
@@ -181,19 +183,24 @@ def _setup_linear_projector(
 
     # Compute the outer product to get the gradient shape
     if is_3d:
-        dumb_grad = torch.einsum('ijk,ijl->ikl', pre_activation, input_features).reshape(batch_size, -1)
+        dumb_grad = torch.einsum(
+            "ijk,ijl->ikl", pre_activation, input_features
+        ).reshape(batch_size, -1)
     else:
-        dumb_grad = torch.einsum('bi,bj->bij', pre_activation, input_features).reshape(batch_size, -1)
+        dumb_grad = torch.einsum("bi,bj->bij", pre_activation, input_features).reshape(
+            batch_size, -1
+        )
 
     # Create projector using original random_project function
     projector_grad = random_project(
         dumb_grad,
         dumb_grad.shape[0],
         proj_seed=base_seed,
-        **projector_kwargs
+        **projector_kwargs,
     )
 
     projector.projector_grad = projector_grad
+
 
 def _setup_layernorm_projector(
     projector: ProjectorContainer,
@@ -203,8 +210,7 @@ def _setup_layernorm_projector(
     base_seed: int,
     projector_kwargs: Dict[str, Any],
 ) -> None:
-    """
-    Set up projector for a LayerNorm layer
+    """Set up projector for a LayerNorm layer
 
     Args:
         projector: ProjectorContainer to store the projector
@@ -222,13 +228,15 @@ def _setup_layernorm_projector(
 
     # For LayerNorm, gradient has shape (batch_size, 2 * normalized_shape)
     # because it includes both weight and bias gradients
-    dumb_grad_comp = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1] * 2))
+    dumb_grad_comp = torch.zeros(
+        (pre_activation.shape[0], pre_activation.shape[-1] * 2)
+    )
 
     projector_grad = random_project(
         dumb_grad_comp,
         dumb_grad_comp.shape[0],
         proj_seed=base_seed,
-        **projector_kwargs
+        **projector_kwargs,
     )
 
     projector.projector_grad = projector_grad

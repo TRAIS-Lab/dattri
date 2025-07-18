@@ -526,7 +526,7 @@ def main():
 
     model_id = -1
     checkpoint = f"{args.output_dir}/{model_id}"
-    
+
     def checkpoints_load_func(model, checkpoint):
         model = AutoModelForCausalLM.from_pretrained(checkpoint).cuda()
         model.eval()

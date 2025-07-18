@@ -1,38 +1,38 @@
-"""
-LoGra Attributor - Influence Function with gradient projection.
+"""LoGra Attributor - Influence Function with gradient projection.
 Integrated with dattri task-based API.
 """
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Optional, Union, Tuple, List, Dict, Any, Literal
 import warnings
+from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union
 
 if TYPE_CHECKING:
     from torch.utils.data import DataLoader
+
     from dattri.task import AttributionTask
 
+import logging
+
 import torch
-import torch.nn as nn
+from torch import nn
 from tqdm import tqdm
 
 from dattri.algorithm.base import BaseAttributor
-from dattri.algorithm.utils import _check_shuffle
 
 # Import LoGra utilities
 from dattri.algorithm.LoGra_utils.core.hook import HookManager
-from dattri.algorithm.LoGra_utils.utils.projector import setup_model_projectors
-from dattri.algorithm.LoGra_utils.offload import create_offload_manager
 from dattri.algorithm.LoGra_utils.core.metadata import MetadataManager
+from dattri.algorithm.LoGra_utils.offload import create_offload_manager
 from dattri.algorithm.LoGra_utils.utils.common import stable_inverse
+from dattri.algorithm.LoGra_utils.utils.projector import setup_model_projectors
+from dattri.algorithm.utils import _check_shuffle
 
-import logging
 logger = logging.getLogger(__name__)
 
 
 class LoGraAttributor(BaseAttributor):
-    """
-    LoGra Attributor.
+    """LoGra Attributor.
 
     Computes influence scores using projected gradients for efficiency.
     Uses hooks to capture per-sample gradients and applies random projections.
@@ -40,25 +40,26 @@ class LoGraAttributor(BaseAttributor):
 
     def __init__(
         self,
-        task: 'AttributionTask',
-        layer_names: Optional[Union[str, List[str]]] = None,  # Maybe support layer class as input?
+        task: "AttributionTask",
+        layer_names: Optional[
+            Union[str, List[str]]
+        ] = None,  # Maybe support layer class as input?
         hessian: Literal["none", "raw"] = "raw",
         damping: Optional[float] = None,
-        device: str = 'cpu',
+        device: str = "cpu",
         projector_kwargs: Optional[Dict[str, Any]] = None,
         offload: Literal["none", "cpu", "disk"] = "cpu",
         cache_dir: Optional[str] = None,
         chunk_size: int = 16,
         profile: bool = False,
     ) -> None:
-        """
-        Initialize LoGra attributor.
+        """Initialize LoGra attributor.
 
         Args:
             task: Attribution task containing model, loss function, and checkpoints
             layer_names: Names of layers to attribute. If None, uses all Linear layers
-            hessian: Type of Hessian approximation ("none" or "raw"). For "none", 
-                the hessian will be taken as the identity matrix. For "raw", 
+            hessian: Type of Hessian approximation ("none" or "raw"). For "none",
+                the hessian will be taken as the identity matrix. For "raw",
                 the hessian will be computed as the fisher information matrix.
             damping: Damping factor for Hessian inverse (when hessian="raw")
             device: Device to run computations on
@@ -66,7 +67,7 @@ class LoGraAttributor(BaseAttributor):
             offload: Memory management strategy ("none", "cpu", "disk"), stating
                 the place to offload the gradients.
             cache_dir: Directory for caching (required when offload="disk").
-            chunk_size: Chunk size for processing in disk offload. 
+            chunk_size: Chunk size for processing in disk offload.
             profile: Whether to profile execution time.
         """
         self.task = task
@@ -89,7 +90,8 @@ class LoGraAttributor(BaseAttributor):
         if layer_names is None:
             # Default to all Linear layers
             self.layer_names = [
-                name for name, module in self.model.named_modules()
+                name
+                for name, module in self.model.named_modules()
                 if isinstance(module, nn.Linear)
             ]
         elif isinstance(layer_names, str):
@@ -97,7 +99,9 @@ class LoGraAttributor(BaseAttributor):
         else:
             self.layer_names = layer_names
 
-        logger.info(f"LoGra initialized with {len(self.layer_names)} layers: {self.layer_names}")
+        logger.info(
+            f"LoGra initialized with {len(self.layer_names)} layers: {self.layer_names}"
+        )
 
         # Create offload manager
         self.offload_manager = create_offload_manager(
@@ -105,14 +109,14 @@ class LoGraAttributor(BaseAttributor):
             device=device,
             layer_names=self.layer_names,
             cache_dir=cache_dir,
-            chunk_size=chunk_size
+            chunk_size=chunk_size,
         )
 
         # Initialize metadata manager
         self.metadata = MetadataManager(cache_dir or ".", self.layer_names)
 
         # Initialize other components
-        self.full_train_dataloader: Optional['DataLoader'] = None
+        self.full_train_dataloader: Optional["DataLoader"] = None
         self.hook_manager: Optional[HookManager] = None
         self.projectors: Optional[List[Any]] = None
         self.layer_dims: Optional[List[int]] = None
@@ -122,7 +126,7 @@ class LoGraAttributor(BaseAttributor):
         if offload == "disk" and cache_dir is None:
             raise ValueError("cache_dir must be provided when offload='disk'")
 
-    def _setup_projectors(self, train_dataloader: 'DataLoader') -> None:
+    def _setup_projectors(self, train_dataloader: "DataLoader") -> None:
         """Set up projectors for the model layers."""
         if not self.projector_kwargs:
             self.projectors = []
@@ -134,7 +138,7 @@ class LoGraAttributor(BaseAttributor):
             self.layer_names,
             self.projector_kwargs,
             train_dataloader,
-            device=self.device
+            device=self.device,
         )
 
     def _sync_layer_dims(self):
@@ -143,21 +147,23 @@ class LoGraAttributor(BaseAttributor):
             if self.metadata.layer_dims is not None:
                 self.layer_dims = self.metadata.layer_dims
                 self.total_proj_dim = self.metadata.total_proj_dim
-            elif hasattr(self.offload_manager, 'layer_dims') and self.offload_manager.layer_dims is not None:
+            elif (
+                hasattr(self.offload_manager, "layer_dims")
+                and self.offload_manager.layer_dims is not None
+            ):
                 self.layer_dims = self.offload_manager.layer_dims
                 self.total_proj_dim = self.offload_manager.total_proj_dim
 
         # Sync to all components
         if self.layer_dims is not None:
-            if hasattr(self.offload_manager, 'layer_dims'):
+            if hasattr(self.offload_manager, "layer_dims"):
                 self.offload_manager.layer_dims = self.layer_dims
                 self.offload_manager.total_proj_dim = self.total_proj_dim
             if self.metadata.layer_dims is None:
                 self.metadata.set_layer_dims(self.layer_dims)
 
-    def cache(self, full_train_dataloader: 'DataLoader') -> None:
-        """
-        Cache gradients and IFVP for the full training dataset.
+    def cache(self, full_train_dataloader: "DataLoader") -> None:
+        """Cache gradients and IFVP for the full training dataset.
 
         Args:
             full_train_dataloader: DataLoader for full training data
@@ -171,7 +177,9 @@ class LoGraAttributor(BaseAttributor):
             self._setup_projectors(full_train_dataloader)
 
         # Initialize metadata for complete dataset
-        self.metadata.initialize_complete_dataset(full_train_dataloader, is_master_worker=True)
+        self.metadata.initialize_complete_dataset(
+            full_train_dataloader, is_master_worker=True
+        )
 
         # Create hook manager
         if self.hook_manager is None:
@@ -179,14 +187,16 @@ class LoGraAttributor(BaseAttributor):
                 self.model,
                 self.layer_names,
                 profile=self.profile,
-                device=self.device
+                device=self.device,
             )
             if self.projectors:
                 self.hook_manager.set_projectors(self.projectors)
 
         # Collect gradients using hooks
         logger.info("Computing gradients using hooks...")
-        for batch_idx, batch in enumerate(tqdm(full_train_dataloader, desc="Computing gradients")):
+        for batch_idx, batch in enumerate(
+            tqdm(full_train_dataloader, desc="Computing gradients")
+        ):
             self.model.zero_grad()
 
             # Prepare inputs and compute loss
@@ -208,23 +218,29 @@ class LoGraAttributor(BaseAttributor):
                     self.layer_dims = []
                     for grad in compressed_grads:
                         if grad is not None and grad.numel() > 0:
-                            self.layer_dims.append(grad.shape[1] if grad.dim() > 1 else grad.numel())
+                            self.layer_dims.append(
+                                grad.shape[1] if grad.dim() > 1 else grad.numel()
+                            )
                         else:
                             self.layer_dims.append(0)
 
                     self.total_proj_dim = sum(self.layer_dims)
-                    logger.info(f"Detected layer dimensions: {len(self.layer_dims)} layers, total dimension={self.total_proj_dim}")
+                    logger.info(
+                        f"Detected layer dimensions: {len(self.layer_dims)} layers, total dimension={self.total_proj_dim}"
+                    )
 
                     # Save to metadata manager
                     self.metadata.set_layer_dims(self.layer_dims)
 
                     # Pass to offload manager if needed
-                    if hasattr(self.offload_manager, 'layer_dims'):
+                    if hasattr(self.offload_manager, "layer_dims"):
                         self.offload_manager.layer_dims = self.layer_dims
                         self.offload_manager.total_proj_dim = self.total_proj_dim
 
                 # Store gradients using offload manager
-                self.offload_manager.store_gradients(batch_idx, compressed_grads, is_test=False)
+                self.offload_manager.store_gradients(
+                    batch_idx, compressed_grads, is_test=False
+                )
 
             # Memory management
             if batch_idx % 10 == 0:
@@ -247,8 +263,7 @@ class LoGraAttributor(BaseAttributor):
         logger.info("Caching completed")
 
     def compute_preconditioners(self, damping: Optional[float] = None) -> None:
-        """
-        Compute preconditioners (inverse Hessian) from gradients.
+        """Compute preconditioners (inverse Hessian) from gradients.
 
         Args:
             damping: Damping factor for numerical stability
@@ -266,7 +281,9 @@ class LoGraAttributor(BaseAttributor):
         self._sync_layer_dims()
 
         if self.layer_dims is None:
-            raise ValueError("Layer dimensions not found. Ensure gradients have been computed and stored.")
+            raise ValueError(
+                "Layer dimensions not found. Ensure gradients have been computed and stored."
+            )
 
         # If hessian type is "none", no preconditioners needed
         if self.hessian == "none":
@@ -286,7 +303,9 @@ class LoGraAttributor(BaseAttributor):
             layer_dim = self.layer_dims[layer_idx]
             if layer_dim > 0:
                 hessian_accumulators.append(
-                    torch.zeros(layer_dim, layer_dim, device=self.device, dtype=torch.float32)
+                    torch.zeros(
+                        layer_dim, layer_dim, device=self.device, dtype=torch.float32
+                    ),
                 )
             else:
                 hessian_accumulators.append(None)
@@ -295,10 +314,12 @@ class LoGraAttributor(BaseAttributor):
         dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="gradients",
             batch_size=4,
-            pin_memory=True
+            pin_memory=True,
         )
 
-        for chunk_tensor, batch_mapping in tqdm(dataloader, desc="Computing preconditioners"):
+        for chunk_tensor, batch_mapping in tqdm(
+            dataloader, desc="Computing preconditioners"
+        ):
             # Move chunk to device
             chunk_tensor = self.offload_manager.move_to_device(chunk_tensor)
 
@@ -341,8 +362,7 @@ class LoGraAttributor(BaseAttributor):
         logger.info(f"Computed {computed_count} preconditioners")
 
     def compute_ifvp(self, worker: str = "0/1") -> None:
-        """
-        Compute inverse-Hessian-vector products (IFVP).
+        """Compute inverse-Hessian-vector products (IFVP).
 
         Args:
             worker: Worker specification (for compatibility)
@@ -380,7 +400,7 @@ class LoGraAttributor(BaseAttributor):
         dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="gradients",
             batch_size=4,
-            pin_memory=True
+            pin_memory=True,
         )
 
         for chunk_tensor, batch_mapping in tqdm(dataloader, desc="Computing IFVP"):
@@ -398,7 +418,11 @@ class LoGraAttributor(BaseAttributor):
                 # Process each layer
                 for layer_idx in range(len(self.layer_names)):
                     if preconditioners[layer_idx] is None:
-                        batch_ifvp.append(torch.zeros(batch_tensor.shape[0], self.layer_dims[layer_idx]))
+                        batch_ifvp.append(
+                            torch.zeros(
+                                batch_tensor.shape[0], self.layer_dims[layer_idx]
+                            )
+                        )
                         continue
 
                     # Extract layer data
@@ -407,11 +431,17 @@ class LoGraAttributor(BaseAttributor):
                     layer_grad = batch_tensor[:, start_col:end_col]
 
                     if layer_grad.numel() == 0:
-                        batch_ifvp.append(torch.zeros(batch_tensor.shape[0], self.layer_dims[layer_idx]))
+                        batch_ifvp.append(
+                            torch.zeros(
+                                batch_tensor.shape[0], self.layer_dims[layer_idx]
+                            )
+                        )
                         continue
 
                     # Get preconditioner
-                    device_precond = self.offload_manager.move_to_device(preconditioners[layer_idx])
+                    device_precond = self.offload_manager.move_to_device(
+                        preconditioners[layer_idx]
+                    )
                     device_precond = device_precond.to(dtype=layer_grad.dtype)
 
                     # Compute IFVP: H^{-1} @ g
@@ -426,7 +456,9 @@ class LoGraAttributor(BaseAttributor):
             torch.cuda.empty_cache()
 
         self.offload_manager.wait_for_async_operations()
-        logger.info(f"Computed IFVP for {processed_batches} batches, {processed_samples} samples")
+        logger.info(
+            f"Computed IFVP for {processed_batches} batches, {processed_samples} samples"
+        )
 
     def _copy_gradients_as_ifvp(self) -> None:
         """Copy gradients as IFVP when hessian type is 'none'."""
@@ -442,10 +474,12 @@ class LoGraAttributor(BaseAttributor):
         dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="gradients",
             batch_size=1,
-            pin_memory=True
+            pin_memory=True,
         )
 
-        for chunk_tensor, batch_mapping in tqdm(dataloader, desc="Copying gradients as IFVP"):
+        for chunk_tensor, batch_mapping in tqdm(
+            dataloader, desc="Copying gradients as IFVP"
+        ):
             for batch_idx, (start_row, end_row) in batch_mapping.items():
                 if batch_idx not in batch_to_sample_mapping:
                     continue
@@ -468,8 +502,7 @@ class LoGraAttributor(BaseAttributor):
         logger.info(f"Copied {processed_batches} batches as IFVP")
 
     def compute_self_attribution(self, worker: str = "0/1") -> torch.Tensor:
-        """
-        Compute self-influence scores.
+        """Compute self-influence scores.
 
         Args:
             worker: Worker specification (for compatibility)
@@ -499,13 +532,13 @@ class LoGraAttributor(BaseAttributor):
         grad_dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="gradients",
             batch_size=4,
-            pin_memory=True
+            pin_memory=True,
         )
 
         ifvp_dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="ifvp",
             batch_size=4,
-            pin_memory=True
+            pin_memory=True,
         )
 
         if grad_dataloader and ifvp_dataloader:
@@ -513,7 +546,7 @@ class LoGraAttributor(BaseAttributor):
             for (grad_tensor, grad_mapping), (ifvp_tensor, ifvp_mapping) in tqdm(
                 zip(grad_dataloader, ifvp_dataloader),
                 desc="Computing self-influence",
-                total=len(grad_dataloader)
+                total=len(grad_dataloader),
             ):
                 # Move to device
                 grad_tensor = self.offload_manager.move_to_device(grad_tensor)
@@ -521,7 +554,10 @@ class LoGraAttributor(BaseAttributor):
 
                 # Process each batch
                 for batch_idx in grad_mapping:
-                    if batch_idx not in batch_to_sample_mapping or batch_idx not in ifvp_mapping:
+                    if (
+                        batch_idx not in batch_to_sample_mapping
+                        or batch_idx not in ifvp_mapping
+                    ):
                         continue
 
                     sample_start, sample_end = batch_to_sample_mapping[batch_idx]
@@ -543,11 +579,10 @@ class LoGraAttributor(BaseAttributor):
 
     def attribute(
         self,
-        train_dataloader: 'DataLoader',
-        test_dataloader: 'DataLoader',
+        train_dataloader: "DataLoader",
+        test_dataloader: "DataLoader",
     ) -> torch.Tensor:
-        """
-        Compute influence scores between training and test samples.
+        """Compute influence scores between training and test samples.
 
         Args:
             train_dataloader: Training data (can be subset if cache was called)
@@ -566,7 +601,7 @@ class LoGraAttributor(BaseAttributor):
         if self.full_train_dataloader is None:
             warnings.warn(
                 "The full training data loader was NOT cached. "
-                "Treating the train_dataloader as the full training data loader."
+                "Treating the train_dataloader as the full training data loader.",
             )
             self.cache(train_dataloader)
 
@@ -591,12 +626,22 @@ class LoGraAttributor(BaseAttributor):
 
         # Compute test gradients
         logger.info("Computing test gradients")
-        test_grads_tensor, test_batch_mapping = self._compute_test_gradients(test_dataloader)
+        test_grads_tensor, test_batch_mapping = self._compute_test_gradients(
+            test_dataloader
+        )
 
         if test_grads_tensor is None or test_grads_tensor.numel() == 0:
             logger.warning("No test gradients computed")
-            num_train = len(train_dataloader.sampler) if hasattr(train_dataloader, 'sampler') else len(train_dataloader.dataset)
-            num_test = len(test_dataloader.sampler) if hasattr(test_dataloader, 'sampler') else len(test_dataloader.dataset)
+            num_train = (
+                len(train_dataloader.sampler)
+                if hasattr(train_dataloader, "sampler")
+                else len(train_dataloader.dataset)
+            )
+            num_test = (
+                len(test_dataloader.sampler)
+                if hasattr(test_dataloader, "sampler")
+                else len(test_dataloader.dataset)
+            )
             return torch.zeros(num_train, num_test)
 
         # Get batch mappings
@@ -605,13 +650,15 @@ class LoGraAttributor(BaseAttributor):
         test_sample_count = test_grads_tensor.shape[0]
 
         # Initialize result
-        IF_score = torch.zeros(total_train_samples, test_sample_count, device=self.device)
+        IF_score = torch.zeros(
+            total_train_samples, test_sample_count, device=self.device
+        )
 
         # Create dataloader for IFVP
         train_ifvp_dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="ifvp",
             batch_size=2,
-            pin_memory=True
+            pin_memory=True,
         )
 
         logger.info("Starting influence computation")
@@ -620,9 +667,13 @@ class LoGraAttributor(BaseAttributor):
         test_batch_size = min(32, test_sample_count)
 
         # Single pass through training IFVP data with nested test batching
-        for chunk_tensor, batch_mapping in tqdm(train_ifvp_dataloader, desc="Computing attribution"):
+        for chunk_tensor, batch_mapping in tqdm(
+            train_ifvp_dataloader, desc="Computing attribution"
+        ):
             # Move train chunk to device
-            chunk_tensor_device = self.offload_manager.move_to_device(chunk_tensor).to(dtype=test_grads_tensor.dtype)
+            chunk_tensor_device = self.offload_manager.move_to_device(chunk_tensor).to(
+                dtype=test_grads_tensor.dtype
+            )
 
             # Process test gradients in batches to save memory
             for test_start in range(0, test_sample_count, test_batch_size):
@@ -642,16 +693,22 @@ class LoGraAttributor(BaseAttributor):
 
                     train_start, train_end = batch_to_sample_mapping[batch_idx]
                     batch_scores = chunk_scores[start_row:end_row]
-                    IF_score[train_start:train_end, test_start:test_end] = batch_scores.to(IF_score.device)
+                    IF_score[train_start:train_end, test_start:test_end] = (
+                        batch_scores.to(IF_score.device)
+                    )
 
                 torch.cuda.empty_cache()
 
             torch.cuda.empty_cache()
 
-        logger.info(f"Attribution computation completed. Result shape: {IF_score.shape}")
+        logger.info(
+            f"Attribution computation completed. Result shape: {IF_score.shape}"
+        )
         return IF_score
 
-    def _compute_test_gradients(self, test_dataloader: 'DataLoader') -> Tuple[torch.Tensor, Dict]:
+    def _compute_test_gradients(
+        self, test_dataloader: "DataLoader"
+    ) -> Tuple[torch.Tensor, Dict]:
         """Compute gradients for test data using hooks."""
         # Create hook manager if needed
         if self.hook_manager is None:
@@ -659,7 +716,7 @@ class LoGraAttributor(BaseAttributor):
                 self.model,
                 self.layer_names,
                 profile=self.profile,
-                device=self.device
+                device=self.device,
             )
             if self.projectors:
                 self.hook_manager.set_projectors(self.projectors)
@@ -668,7 +725,9 @@ class LoGraAttributor(BaseAttributor):
         test_batch_mapping = {}
         current_row = 0
 
-        for batch_idx, batch in enumerate(tqdm(test_dataloader, desc="Computing test gradients")):
+        for batch_idx, batch in enumerate(
+            tqdm(test_dataloader, desc="Computing test gradients")
+        ):
             self.model.zero_grad()
 
             # Prepare inputs and compute loss
@@ -676,7 +735,7 @@ class LoGraAttributor(BaseAttributor):
                 inputs = {k: v.to(self.device) for k, v in batch.items()}
                 batch_size = next(iter(batch.values())).shape[0]
                 outputs = self.model(**inputs)
-                if hasattr(outputs, 'loss'):
+                if hasattr(outputs, "loss"):
                     loss = outputs.loss
                 else:
                     raise ValueError("Model must return loss for dict-style inputs")
@@ -686,7 +745,7 @@ class LoGraAttributor(BaseAttributor):
                 targets = targets.to(self.device)
                 batch_size = inputs.shape[0]
                 outputs = self.model(inputs)
-                if hasattr(outputs, 'loss'):
+                if hasattr(outputs, "loss"):
                     loss = outputs.loss
                 else:
                     loss = nn.functional.cross_entropy(outputs, targets)
@@ -702,15 +761,18 @@ class LoGraAttributor(BaseAttributor):
                 for grad_idx, grad in enumerate(compressed_grads):
                     if grad is not None and grad.numel() > 0:
                         batch_features.append(grad.cpu())
-                    else:
-                        # Zero padding for missing layers
-                        if self.layer_dims and grad_idx < len(self.layer_dims):
-                            batch_features.append(torch.zeros(batch_size, self.layer_dims[grad_idx]))
+                    elif self.layer_dims and grad_idx < len(self.layer_dims):
+                        batch_features.append(
+                            torch.zeros(batch_size, self.layer_dims[grad_idx])
+                        )
 
                 if batch_features:
                     batch_tensor = torch.cat(batch_features, dim=1)
                     all_test_grads.append(batch_tensor)
-                    test_batch_mapping[batch_idx] = (current_row, current_row + batch_size)
+                    test_batch_mapping[batch_idx] = (
+                        current_row,
+                        current_row + batch_size,
+                    )
                     current_row += batch_size
 
             torch.cuda.empty_cache()
@@ -722,5 +784,4 @@ class LoGraAttributor(BaseAttributor):
         # Combine all test gradients
         if all_test_grads:
             return torch.cat(all_test_grads, dim=0), test_batch_mapping
-        else:
-            return torch.empty(0, self.total_proj_dim or 0), {}
+        return torch.empty(0, self.total_proj_dim or 0), {}
