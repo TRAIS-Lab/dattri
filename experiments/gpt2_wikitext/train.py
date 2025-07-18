@@ -505,6 +505,8 @@ def main():
     if args.subset_ratio < 1:
         train_index = random.sample(range(len(train_dataset)), int(args.subset_ratio * len(train_dataset)))
         train_sampler = SubsetSampler(train_index)
+    else:
+        train_sampler = None
 
     # Log a few random samples from the training set:
     # for index in random.sample(range(len(train_dataset)), 3):
@@ -559,8 +561,8 @@ def main():
     )
 
     # On TPU, the tie weights in our model have been disconnected, so we need to restore the ties.
-    # if accelerator.distributed_type == DistributedType.XLA:
-        # model.tie_weights()
+    # if accelerator.distributed_type == DistributedType.TPU:
+    #     model.tie_weights()
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(len(train_dataloader) / args.gradient_accumulation_steps)

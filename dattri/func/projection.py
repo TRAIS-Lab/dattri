@@ -854,11 +854,11 @@ def make_random_projector(
             )
             projector = CudaProjector
             using_cuda_projector = True
+            proj_type = ProjectionType.rademacher
 
-        except (ImportError, RuntimeError, AttributeError):
+        except (ImportError, RuntimeError, AttributeError, ModuleNotFoundError):
             projector = BasicProjector
-            raise
-        proj_type = ProjectionType.rademacher
+            proj_type = ProjectionType.normal
 
     if using_cuda_projector:
         # TODO: make this support dict input

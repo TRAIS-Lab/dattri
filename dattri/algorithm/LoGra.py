@@ -20,11 +20,11 @@ from dattri.algorithm.base import BaseAttributor
 from dattri.algorithm.utils import _check_shuffle
 
 # Import LoGra utilities
-from ..LoGra_utils.core.hook import HookManager
-from ..LoGra_utils.utils.projector import setup_model_projectors
-from ..LoGra_utils.offload import create_offload_manager
-from ..LoGra_utils.core.metadata import MetadataManager
-from ..LoGra_utils.utils.common import stable_inverse
+from dattri.algorithm.LoGra_utils.core.hook import HookManager
+from dattri.algorithm.LoGra_utils.utils.projector import setup_model_projectors
+from dattri.algorithm.LoGra_utils.offload import create_offload_manager
+from dattri.algorithm.LoGra_utils.core.metadata import MetadataManager
+from dattri.algorithm.LoGra_utils.utils.common import stable_inverse
 
 import logging
 logger = logging.getLogger(__name__)
@@ -41,7 +41,7 @@ class LoGraAttributor(BaseAttributor):
     def __init__(
         self,
         task: 'AttributionTask',
-        layer_names: Optional[Union[str, List[str]]] = None,
+        layer_names: Optional[Union[str, List[str]]] = None,  # Maybe support layer class as input?
         hessian: Literal["none", "raw"] = "raw",
         damping: Optional[float] = None,
         device: str = 'cpu',
@@ -57,14 +57,17 @@ class LoGraAttributor(BaseAttributor):
         Args:
             task: Attribution task containing model, loss function, and checkpoints
             layer_names: Names of layers to attribute. If None, uses all Linear layers
-            hessian: Type of Hessian approximation ("none" or "raw")
+            hessian: Type of Hessian approximation ("none" or "raw"). For "none", 
+                the hessian will be taken as the identity matrix. For "raw", 
+                the hessian will be computed as the fisher information matrix.
             damping: Damping factor for Hessian inverse (when hessian="raw")
             device: Device to run computations on
             projector_kwargs: Arguments for random projection (proj_dim, method, etc.)
-            offload: Memory management strategy ("none", "cpu", "disk")
-            cache_dir: Directory for caching (required when offload="disk")
-            chunk_size: Chunk size for processing
-            profile: Whether to profile execution time
+            offload: Memory management strategy ("none", "cpu", "disk"), stating
+                the place to offload the gradients.
+            cache_dir: Directory for caching (required when offload="disk").
+            chunk_size: Chunk size for processing in disk offload. 
+            profile: Whether to profile execution time.
         """
         self.task = task
         self.device = device
@@ -77,6 +80,7 @@ class LoGraAttributor(BaseAttributor):
         self.chunk_size = chunk_size
 
         # Get model from task and setup
+        task._load_checkpoints(0)
         self.model = task.get_model()
         self.model.to(device)
         self.model.eval()
@@ -186,24 +190,8 @@ class LoGraAttributor(BaseAttributor):
             self.model.zero_grad()
 
             # Prepare inputs and compute loss
-            if isinstance(batch, dict):
-                inputs = {k: v.to(self.device) for k, v in batch.items()}
-                batch_size = next(iter(batch.values())).shape[0]
-                outputs = self.model(**inputs)
-                if hasattr(outputs, 'loss'):
-                    loss = outputs.loss
-                else:
-                    raise ValueError("Model must return loss for dict-style inputs")
-            else:
-                inputs, targets = batch
-                inputs = inputs.to(self.device)
-                targets = targets.to(self.device)
-                batch_size = inputs.shape[0]
-                outputs = self.model(inputs)
-                if hasattr(outputs, 'loss'):
-                    loss = outputs.loss
-                else:
-                    loss = nn.functional.cross_entropy(outputs, targets)
+            loss = self.task.original_loss_func(self.model, batch, self.device)
+            batch_size = full_train_dataloader.batch_size
 
             # Update metadata
             self.metadata.add_batch_info(batch_idx, batch_size)
