@@ -1,25 +1,23 @@
-"""
-Strategies for different memory management approaches.
-"""
+"""Strategies for different memory management approaches."""
 
-from typing import List, Optional, Literal
+from typing import List, Literal, Optional
 
-from .memory import MemoryOffloadManager
 from .cpu import CPUOffloadManager
 from .disk import DiskOffloadManager
+from .memory import MemoryOffloadManager
 
 # Type definitions
 OffloadOptions = Literal["none", "cpu", "disk"]
+
 
 def create_offload_manager(
     offload_type: OffloadOptions,
     device: str,
     layer_names: List[str],
     cache_dir: Optional[str] = None,
-    chunk_size: int = 32
+    chunk_size: int = 32,
 ):
-    """
-    Factory function to create appropriate offload strategy.
+    """Factory function to create appropriate offload strategy.
 
     Args:
         offload_type: Type of offload strategy
@@ -33,17 +31,17 @@ def create_offload_manager(
     """
     if offload_type == "none":
         return MemoryOffloadManager(device, layer_names, cache_dir)
-    elif offload_type == "cpu":
+    if offload_type == "cpu":
         return CPUOffloadManager(device, layer_names, cache_dir)
-    elif offload_type == "disk":
+    if offload_type == "disk":
         return DiskOffloadManager(device, layer_names, cache_dir, chunk_size)
-    else:
-        raise ValueError(f"Unknown offload type: {offload_type}")
+    raise ValueError(f"Unknown offload type: {offload_type}")
+
 
 __all__ = [
+    "CPUOffloadManager",
+    "DiskOffloadManager",
+    "MemoryOffloadManager",
     "OffloadOptions",
     "create_offload_manager",
-    "MemoryOffloadManager",
-    "CPUOffloadManager",
-    "DiskOffloadManager"
 ]

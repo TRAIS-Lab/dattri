@@ -1,30 +1,27 @@
-"""
-Enhanced disk offload strategy with async pipeline.
-"""
+"""Enhanced disk offload strategy with async pipeline."""
 
+import logging
 import os
 from typing import List, Optional, Tuple
 
 import torch
 from torch.utils.data import DataLoader
 
-from .offload import Offload
 from .disk_io.manager import ChunkedDiskIOManager
+from .offload import Offload
 
-import logging
 logger = logging.getLogger(__name__)
 
+
 class DiskOffloadManager(Offload):
-    """
-    Enhanced strategy that stores data on disk using async pipeline with buffer pooling.
-    """
+    """Enhanced strategy that stores data on disk using async pipeline with buffer pooling."""
 
     def __init__(
         self,
         device: str,
         layer_names: List[str],
         cache_dir: Optional[str] = None,
-        chunk_size: int = 32
+        chunk_size: int = 32,
     ):
         if cache_dir is None:
             raise ValueError("Cache directory must be provided for disk offload")
@@ -40,7 +37,7 @@ class DiskOffloadManager(Offload):
             hessian="raw",
             chunk_size=chunk_size,
             buffer_pool_size=4,
-            write_queue_size=8
+            write_queue_size=8,
         )
 
         # Track current batch range being processed
@@ -57,11 +54,15 @@ class DiskOffloadManager(Offload):
             self.disk_io.finalize_batch_range()
             self.current_batch_range = None
 
-    def store_gradients(self, batch_idx: int, gradients: List[torch.Tensor], is_test: bool = False) -> None:
+    def store_gradients(
+        self, batch_idx: int, gradients: List[torch.Tensor], is_test: bool = False
+    ) -> None:
         """Store gradients for a batch on disk using async pipeline."""
         self.disk_io.store_gradients(batch_idx, gradients, is_test)
 
-    def retrieve_gradients(self, batch_idx: int, is_test: bool = False) -> List[torch.Tensor]:
+    def retrieve_gradients(
+        self, batch_idx: int, is_test: bool = False
+    ) -> List[torch.Tensor]:
         """Retrieve gradients for a batch from disk and move to device."""
         gradients = self.disk_io.retrieve_gradients(batch_idx, is_test)
         result = []
@@ -72,7 +73,9 @@ class DiskOffloadManager(Offload):
                 result.append(torch.tensor([], device=self.device))
         return result
 
-    def store_preconditioner(self, layer_idx: int, preconditioner: torch.Tensor) -> None:
+    def store_preconditioner(
+        self, layer_idx: int, preconditioner: torch.Tensor
+    ) -> None:
         """Store a preconditioner for a layer on disk."""
         self.disk_io.store_preconditioner(layer_idx, preconditioner)
 
@@ -99,15 +102,14 @@ class DiskOffloadManager(Offload):
         return result
 
     def create_gradient_dataloader(
-            self,
-            data_type: str,
-            batch_size: int = 1,
-            pin_memory: bool = True,
-            batch_range: Optional[Tuple[int, int]] = None,
-            is_test: bool = False,
-        ) -> DataLoader:
-        """
-        Create an optimized DataLoader with async prefetching.
+        self,
+        data_type: str,
+        batch_size: int = 1,
+        pin_memory: bool = True,
+        batch_range: Optional[Tuple[int, int]] = None,
+        is_test: bool = False,
+    ) -> DataLoader:
+        """Create an optimized DataLoader with async prefetching.
 
         Args:
             data_type: Type of data to load
@@ -138,7 +140,7 @@ class DiskOffloadManager(Offload):
         """Clear all cached data from disk."""
         self.disk_io.wait_for_async_operations()
 
-        for subdir in ['grad', 'ifvp', 'precond']:
+        for subdir in ["grad", "ifvp", "precond"]:
             subdir_path = os.path.join(self.cache_dir, subdir)
             if os.path.exists(subdir_path):
                 for filename in os.listdir(subdir_path):
@@ -158,4 +160,4 @@ class DiskOffloadManager(Offload):
 
     def move_from_device(self, tensor: torch.Tensor) -> torch.Tensor:
         """Move a tensor from the compute device to CPU for disk storage."""
-        return tensor.cpu() if tensor.device.type != 'cpu' else tensor
+        return tensor.cpu() if tensor.device.type != "cpu" else tensor

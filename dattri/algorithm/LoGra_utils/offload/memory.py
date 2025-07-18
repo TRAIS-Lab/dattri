@@ -1,7 +1,6 @@
-"""
-Memory offload strategy.
-"""
+"""Memory offload strategy."""
 
+import logging
 from typing import List, Optional, Tuple
 
 import torch
@@ -9,17 +8,16 @@ from torch.utils.data import DataLoader
 
 from .offload import Offload
 
-import logging
 logger = logging.getLogger(__name__)
 
-class MemoryOffloadManager(Offload):
-    """
-    Strategy that keeps all data in memory on the specified device.
-    """
 
-    def __init__(self, device: str, layer_names: List[str], cache_dir: Optional[str] = None):
-        """
-        Initialize the memory offload strategy.
+class MemoryOffloadManager(Offload):
+    """Strategy that keeps all data in memory on the specified device."""
+
+    def __init__(
+        self, device: str, layer_names: List[str], cache_dir: Optional[str] = None
+    ):
+        """Initialize the memory offload strategy.
 
         Args:
             device: The primary compute device
@@ -43,7 +41,9 @@ class MemoryOffloadManager(Offload):
         if self.layer_dims is None:
             self.layer_dims = [g.shape[1] if g.numel() > 0 else 0 for g in gradients]
             self.total_proj_dim = sum(self.layer_dims)
-            logger.debug(f"Detected layer dimensions: {len(self.layer_dims)} layers, total={self.total_proj_dim}")
+            logger.debug(
+                f"Detected layer dimensions: {len(self.layer_dims)} layers, total={self.total_proj_dim}"
+            )
 
     def _concatenate_gradients(self, gradients: List[torch.Tensor]) -> torch.Tensor:
         """Concatenate list of gradient tensors into single tensor."""
@@ -80,9 +80,10 @@ class MemoryOffloadManager(Offload):
 
         return result
 
-    def store_gradients(self, batch_idx: int, gradients: List[torch.Tensor], is_test: bool = False) -> None:
-        """
-        Store gradients for a batch in memory as concatenated tensor.
+    def store_gradients(
+        self, batch_idx: int, gradients: List[torch.Tensor], is_test: bool = False
+    ) -> None:
+        """Store gradients for a batch in memory as concatenated tensor.
 
         Args:
             batch_idx: Batch index
@@ -96,9 +97,10 @@ class MemoryOffloadManager(Offload):
         else:
             self.cached_gradients[batch_idx] = concatenated
 
-    def retrieve_gradients(self, batch_idx: int, is_test: bool = False) -> List[torch.Tensor]:
-        """
-        Retrieve gradients for a batch from memory.
+    def retrieve_gradients(
+        self, batch_idx: int, is_test: bool = False
+    ) -> List[torch.Tensor]:
+        """Retrieve gradients for a batch from memory.
 
         Args:
             batch_idx: Batch index
@@ -110,21 +112,23 @@ class MemoryOffloadManager(Offload):
         if is_test:
             if batch_idx not in self.cached_test_gradients:
                 if self.layer_dims is None:
-                    return [torch.tensor([], device=self.device) for _ in self.layer_names]
-                else:
-                    return [torch.zeros(0, dim, device=self.device) for dim in self.layer_dims]
+                    return [
+                        torch.tensor([], device=self.device) for _ in self.layer_names
+                    ]
+                return [
+                    torch.zeros(0, dim, device=self.device) for dim in self.layer_dims
+                ]
             return self._split_tensor(self.cached_test_gradients[batch_idx])
-        else:
-            if batch_idx not in self.cached_gradients:
-                if self.layer_dims is None:
-                    return [torch.tensor([], device=self.device) for _ in self.layer_names]
-                else:
-                    return [torch.zeros(0, dim, device=self.device) for dim in self.layer_dims]
-            return self._split_tensor(self.cached_gradients[batch_idx])
+        if batch_idx not in self.cached_gradients:
+            if self.layer_dims is None:
+                return [torch.tensor([], device=self.device) for _ in self.layer_names]
+            return [torch.zeros(0, dim, device=self.device) for dim in self.layer_dims]
+        return self._split_tensor(self.cached_gradients[batch_idx])
 
-    def store_preconditioner(self, layer_idx: int, preconditioner: Optional[torch.Tensor]) -> None:
-        """
-        Store a preconditioner for a layer in memory.
+    def store_preconditioner(
+        self, layer_idx: int, preconditioner: Optional[torch.Tensor]
+    ) -> None:
+        """Store a preconditioner for a layer in memory.
 
         Args:
             layer_idx: Layer index
@@ -134,8 +138,7 @@ class MemoryOffloadManager(Offload):
             self.preconditioners[layer_idx] = preconditioner
 
     def retrieve_preconditioner(self, layer_idx: int) -> Optional[torch.Tensor]:
-        """
-        Retrieve a preconditioner for a layer from memory.
+        """Retrieve a preconditioner for a layer from memory.
 
         Args:
             layer_idx: Layer index
@@ -148,8 +151,7 @@ class MemoryOffloadManager(Offload):
         return self.preconditioners[layer_idx]
 
     def store_ifvp(self, batch_idx: int, ifvp: List[torch.Tensor]) -> None:
-        """
-        Store IFVP for a batch in memory as concatenated tensor.
+        """Store IFVP for a batch in memory as concatenated tensor.
 
         Args:
             batch_idx: Batch index
@@ -159,8 +161,7 @@ class MemoryOffloadManager(Offload):
         self.cached_ifvp[batch_idx] = concatenated
 
     def retrieve_ifvp(self, batch_idx: int) -> List[torch.Tensor]:
-        """
-        Retrieve IFVP for a batch from memory.
+        """Retrieve IFVP for a batch from memory.
 
         Args:
             batch_idx: Batch index
@@ -171,20 +172,18 @@ class MemoryOffloadManager(Offload):
         if batch_idx not in self.cached_ifvp:
             if self.layer_dims is None:
                 return [torch.tensor([], device=self.device) for _ in self.layer_names]
-            else:
-                return [torch.zeros(0, dim, device=self.device) for dim in self.layer_dims]
+            return [torch.zeros(0, dim, device=self.device) for dim in self.layer_dims]
         return self._split_tensor(self.cached_ifvp[batch_idx])
 
     def create_gradient_dataloader(
-            self,
-            data_type: str,
-            batch_size: int = 1,
-            pin_memory: bool = True,
-            batch_range: Optional[Tuple[int, int]] = None,
-            is_test: bool = False
-        ) -> Optional[DataLoader]:
-        """
-        Create a simple DataLoader that returns tensors from memory.
+        self,
+        data_type: str,
+        batch_size: int = 1,
+        pin_memory: bool = True,
+        batch_range: Optional[Tuple[int, int]] = None,
+        is_test: bool = False,
+    ) -> Optional[DataLoader]:
+        """Create a simple DataLoader that returns tensors from memory.
 
         Args:
             data_type: Type of data to load
@@ -208,7 +207,9 @@ class MemoryOffloadManager(Offload):
         batch_indices = sorted(cache.keys())
         if batch_range is not None:
             start_batch, end_batch = batch_range
-            batch_indices = [idx for idx in batch_indices if start_batch <= idx < end_batch]
+            batch_indices = [
+                idx for idx in batch_indices if start_batch <= idx < end_batch
+            ]
 
         # Create simple dataset
         class MemoryTensorDataset(torch.utils.data.Dataset):
@@ -251,12 +252,11 @@ class MemoryOffloadManager(Offload):
             dataset,
             batch_size=batch_size,
             shuffle=False,
-            collate_fn=collate_fn
+            collate_fn=collate_fn,
         )
 
     def has_preconditioners(self) -> bool:
-        """
-        Check if preconditioners are available in memory.
+        """Check if preconditioners are available in memory.
 
         Returns:
             True if any preconditioners are available, False otherwise
@@ -264,8 +264,7 @@ class MemoryOffloadManager(Offload):
         return any(p is not None for p in self.preconditioners)
 
     def has_ifvp(self) -> bool:
-        """
-        Check if IFVP are available in memory.
+        """Check if IFVP are available in memory.
 
         Returns:
             True if any IFVP are available, False otherwise
@@ -273,9 +272,7 @@ class MemoryOffloadManager(Offload):
         return len(self.cached_ifvp) > 0
 
     def clear_cache(self) -> None:
-        """
-        Clear all cached data from memory.
-        """
+        """Clear all cached data from memory."""
         self.cached_gradients = {}
         self.cached_test_gradients = {}
         self.preconditioners = [None] * len(self.layer_names)
@@ -283,14 +280,10 @@ class MemoryOffloadManager(Offload):
         # Don't clear layer_dims as they might be needed later
 
     def wait_for_async_operations(self) -> None:
-        """
-        No asynchronous operations for memory offload.
-        """
-        pass
+        """No asynchronous operations for memory offload."""
 
     def move_to_device(self, tensor: torch.Tensor) -> torch.Tensor:
-        """
-        Ensure tensor is on the compute device.
+        """Ensure tensor is on the compute device.
 
         Args:
             tensor: Input tensor
@@ -301,8 +294,7 @@ class MemoryOffloadManager(Offload):
         return tensor.to(self.device) if tensor.device != self.device else tensor
 
     def move_from_device(self, tensor: torch.Tensor) -> torch.Tensor:
-        """
-        No movement needed as we keep tensors on the device.
+        """No movement needed as we keep tensors on the device.
 
         Args:
             tensor: Input tensor

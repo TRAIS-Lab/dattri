@@ -2,12 +2,15 @@ from __future__ import annotations
 
 from typing import Tuple
 
-from torch.utils.data import Subset, DataLoader
+from torch.utils.data import DataLoader, Subset
 
-def get_worker_batch_range(total_batches: int, chunk_size: int, worker: str) -> Tuple[int, int]:
+
+def get_worker_batch_range(
+    total_batches: int, chunk_size: int, worker: str
+) -> Tuple[int, int]:
     """Get chunk-aligned batch range for a worker."""
     try:
-        worker_id, total_workers = map(int, worker.split('/'))
+        worker_id, total_workers = map(int, worker.split("/"))
 
         if worker_id < 0 or total_workers <= 0 or worker_id >= total_workers:
             raise ValueError("Invalid worker specification")
@@ -24,7 +27,9 @@ def get_worker_batch_range(total_batches: int, chunk_size: int, worker: str) -> 
 
     # Calculate chunk range for this worker
     start_chunk = worker_id * chunks_per_worker + min(worker_id, remaining_chunks)
-    end_chunk = start_chunk + chunks_per_worker + (1 if worker_id < remaining_chunks else 0)
+    end_chunk = (
+        start_chunk + chunks_per_worker + (1 if worker_id < remaining_chunks else 0)
+    )
 
     # Convert to batch range
     start_batch = start_chunk * chunk_size
@@ -32,9 +37,11 @@ def get_worker_batch_range(total_batches: int, chunk_size: int, worker: str) -> 
 
     return start_batch, end_batch
 
-def create_worker_dataloader(dataloader: 'DataLoader', start_batch: int, end_batch: int) -> 'DataLoader':
-    """Create an efficient subset dataloader for this worker's batch range."""
 
+def create_worker_dataloader(
+    dataloader: "DataLoader", start_batch: int, end_batch: int
+) -> "DataLoader":
+    """Create an efficient subset dataloader for this worker's batch range."""
     dataset = dataloader.dataset
     batch_size = dataloader.batch_size
 
