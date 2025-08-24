@@ -156,9 +156,15 @@ class DVEmbAttributor:
                 indices_t = self.data_indices[epoch][t]
 
                 dvemb_t = eta_t * grads_t - eta_t * (m_matrix @ grads_t.T).T
+                if torch.isnan(dvemb_t).any():
+                    msg = f"NaN detected in dvemb_t at epoch {epoch}, iteration {t}"
+                    raise ValueError(msg)
 
                 epoch_embeddings.index_add_(0, indices_t.to(self.device), dvemb_t)
                 m_matrix += dvemb_t.T @ grads_t
+                if torch.isnan(m_matrix).any():
+                    msg = f"NaN detected in m_matrix at epoch {epoch}, iteration {t}"
+                    raise ValueError(msg)
 
             self.embeddings[epoch] = epoch_embeddings
 
