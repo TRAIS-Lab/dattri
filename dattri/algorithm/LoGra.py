@@ -57,7 +57,9 @@ class LoGraAttributor(BaseAttributor):
 
         Args:
             task: Attribution task containing model, loss function, and checkpoints
-            layer_names: Names of layers to attribute. If None, uses all Linear layers
+            layer_names: Names of layers in the model where gradients will be collected for attribution. If None, uses all Linear layers.
+                You can check the names using model.named_modules().
+                HookManager will register hooks to named layers for gradient calculation and projection.
             hessian: Type of Hessian approximation ("none" or "raw"). For "none",
                 the hessian will be taken as the identity matrix. For "raw",
                 the hessian will be computed as the fisher information matrix.
@@ -66,6 +68,8 @@ class LoGraAttributor(BaseAttributor):
             projector_kwargs: Arguments for random projection (proj_dim, method, etc.)
             offload: Memory management strategy ("none", "cpu", "disk"), stating
                 the place to offload the gradients.
+                "cpu": stores gradients on CPU and moves to device when needed.
+                "disk": stores gradients on disk and moves to device when needed.
             cache_dir: Directory for caching (required when offload="disk").
             chunk_size: Chunk size for processing in disk offload.
             profile: Whether to profile execution time.
