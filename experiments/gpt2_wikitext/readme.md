@@ -7,9 +7,10 @@ https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-
 
 Four scripts are included in this example
 - `train.py`, the code is unchanged. Specific parameters are shown in following section.
-- `score.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code. The original code run TRAK-5 (5 independent ensemble on TRAK) and save the score file in `score.pt`
+- `score_TRAK.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code. The original code run TRAK-5 (5 independent ensemble on TRAK) and save the score file in `score.pt`
+- `score_LoGra.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code. The original code run LoGra and save the score file in `score.pt` 
 - `groundtruth.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code. The original code calculate the LDS groundtruth for 50 checkpoints saved by `train.py`. The groundtruth is saved in `gt.pt`.
-- `spearman.py`, calculate the lds score.
+- `spearman.py`, calculate the lds score. 
 
 This experiment could only be run on cuda device.
 
@@ -95,7 +96,7 @@ python train.py \
 ## Calculate the attribution score
 
 ```bash
-python score.py \
+python score_LoGra.py \
     --dataset_name wikitext \
     --dataset_config_name wikitext-2-raw-v1 \
     --model_name_or_path openai-community/gpt2 \
@@ -104,6 +105,18 @@ python score.py \
     --method TRAK-5 \
     --seed 0
 ```
+
+```shell
+python score_TRAK.py \
+    --dataset_name wikitext \
+    --dataset_config_name wikitext-2-raw-v1 \
+    --model_name_or_path openai-community/gpt2 \
+    --output_dir ./checkpoints \
+    --block_size 512 \
+    --seed 0
+```
+
+
 
 ## Calculate the ground truth for LDS evaluation
 
