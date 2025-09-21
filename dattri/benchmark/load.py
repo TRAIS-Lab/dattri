@@ -7,7 +7,6 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from typing import Any, Dict, Tuple
 
-import os
 import pathlib
 import warnings
 import zipfile
@@ -110,8 +109,8 @@ def _count_folders(directory_path: str) -> int:
     Returns:
         int: The number of folders in the directory.
     """
-    items = os.listdir(directory_path)
-    folders = [item for item in items if (directory_path / item).is_dir()]
+    path = pathlib.Path(directory_path)
+    folders = [item for item in path.iterdir() if item.is_dir()]
     return len(folders)
 
 

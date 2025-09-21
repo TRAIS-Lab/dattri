@@ -1077,7 +1077,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             if module.bias is not None:
                 # Attach ones to the end of inputs
                 ones = torch.ones(
-                    inputs.shape[:-1] + (1,),
+                    (*inputs.shape[:-1], 1),
                     dtype=inputs.dtype,
                     device=inputs.device,
                 )

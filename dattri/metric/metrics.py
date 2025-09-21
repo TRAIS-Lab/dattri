@@ -1,6 +1,6 @@
 """This module evaluates the performance of the data attribution."""
 
-# ruff: noqa: ARG001, TCH002
+# ruff: noqa: ARG001, TC002
 # TODO: Remove the above line after finishing the implementation of the functions.
 
 from __future__ import annotations

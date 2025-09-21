@@ -14,6 +14,14 @@ from dattri.func.projection import (
     random_project,
 )
 
+# Check if fast_jl is available
+# TODO: Remove this check once we remove fast_jl dependency
+try:
+    import fast_jl  # noqa: F401
+    FAST_JL_AVAILABLE = True
+except ImportError:
+    FAST_JL_AVAILABLE = False
+
 
 class TestBasicProjector(unittest.TestCase):
     """Test basic projector functions."""
@@ -42,7 +50,11 @@ class TestBasicProjector(unittest.TestCase):
         assert projected_grads.shape == (10, self.proj_dim)
 
 
-@unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+# TODO: Remove FAST_JL_AVAILABLE check once we remove fast_jl dependency
+@unittest.skipUnless(
+    torch.cuda.is_available() and FAST_JL_AVAILABLE,
+    "CUDA is not available or fast_jl is not installed",
+)
 class TestCudaProjector(unittest.TestCase):
     """Test cuda projector function."""
 
@@ -74,7 +86,11 @@ class TestCudaProjector(unittest.TestCase):
         assert projected_grads.shape == (64, self.proj_dim)
 
 
-@unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+# TODO: Remove FAST_JL_AVAILABLE check once we remove fast_jl dependency
+@unittest.skipUnless(
+    torch.cuda.is_available() and FAST_JL_AVAILABLE,
+    "CUDA is not available or fast_jl is not installed",
+)
 class TestChunkedCudaProjector(unittest.TestCase):
     """Test chunked cuda projector function."""
 
@@ -399,7 +415,11 @@ class TestGetProjection(unittest.TestCase):
         result_1 = project(small_gradient)
         assert result_1.shape == (test_batch_size, self.proj_dim)
 
-    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+    # TODO: Remove FAST_JL_AVAILABLE check once we remove fast_jl dependency
+    @unittest.skipUnless(
+        torch.cuda.is_available() and FAST_JL_AVAILABLE,
+        "CUDA is not available or fast_jl is not installed",
+    )
     def test_cudaprojector(self):
         """Test funcionality of CudaProjetor."""
         test_batch_size = 32
@@ -422,7 +442,11 @@ class TestGetProjection(unittest.TestCase):
         result_2 = project(small_gradient)
         assert result_2.shape == (test_batch_size, self.proj_dim)
 
-    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+    # TODO: Remove FAST_JL_AVAILABLE check once we remove fast_jl dependency
+    @unittest.skipUnless(
+        torch.cuda.is_available() and FAST_JL_AVAILABLE,
+        "CUDA is not available or fast_jl is not installed",
+    )
     def test_chunkedcudaprojector(self):
         """Test funcionality of ChunkedCudaProjector."""
         test_batch_size = 64
@@ -481,7 +505,11 @@ class TestGetProjection(unittest.TestCase):
         result = project(test_tensor)
         assert result.shape == (test_batch_size, self.proj_dim)
 
-    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+    # TODO: Remove FAST_JL_AVAILABLE check once we remove fast_jl dependency
+    @unittest.skipUnless(
+        torch.cuda.is_available() and FAST_JL_AVAILABLE,
+        "CUDA is not available or fast_jl is not installed",
+    )
     def test_tensor_input_cuda(self):
         """Test the usage of tensor input."""
         test_batch_size = 64
@@ -501,7 +529,11 @@ class TestGetProjection(unittest.TestCase):
         result = project(test_tensor)
         assert result.shape == (test_batch_size, self.proj_dim)
 
-    @unittest.skipUnless(torch.cuda.is_available(), "CUDA is not available")
+    # TODO: Remove FAST_JL_AVAILABLE check once we remove fast_jl dependency
+    @unittest.skipUnless(
+        torch.cuda.is_available() and FAST_JL_AVAILABLE,
+        "CUDA is not available or fast_jl is not installed",
+    )
     def test_tensor_input_chunked_cuda(self):
         """Test the usage of tensor input."""
         feature_batch_size = 4

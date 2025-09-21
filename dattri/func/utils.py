@@ -267,7 +267,7 @@ def flatten_func(model: torch.nn.Module, param_num: int = 0) -> Callable:
         Args:
             function (Callable): The function to be wrapped.
 
-        returns:
+        Returns:
             Callable: A wrapped function that flattens the parameters at the
             specified index.
         """
@@ -316,7 +316,7 @@ def partial_param(
         Args:
             function: The function to be wrapped.
 
-        returns:
+        Returns:
             (Callable): A wrapped function that changes the parameters at the
                 specified index to require only some specific layers' parameters
         """

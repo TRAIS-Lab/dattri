@@ -10,7 +10,7 @@ import tempfile
 from pathlib import Path
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def retrain(  # noqa:PLR0912
@@ -48,7 +48,7 @@ def retrain(  # noqa:PLR0912
 
     if only_download:
         info_msg = f"Dataset is downloaded to {dataset_path}. Exiting."
-        logging.info(info_msg)
+        logger.info(info_msg)
         return
 
     import dattri

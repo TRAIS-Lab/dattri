@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torchvision.models import resnet18
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def train_imagenet_resnet18(
@@ -64,10 +64,10 @@ def train_imagenet_resnet18(
             message = (
                 f"Epoch {epoch + 1}/{num_epochs}, Step: {i}, Step Loss: {loss.item()}"
             )
-            logging.info(message)
+            logger.info(message)
         epoch_loss = running_loss / len(dataloader.dataset)
         message = f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss}"
-        logging.info(message)
+        logger.info(message)
 
     return model
 
