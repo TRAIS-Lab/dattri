@@ -11,7 +11,7 @@ from torch.utils.data import DataLoader
 
 from dattri.benchmark.models.resnet9.resnet9 import ResNet9
 
-logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 
 def train_cifar_resnet9(
@@ -56,10 +56,10 @@ def train_cifar_resnet9(
             message = (
                 f"Epoch {epoch + 1}/{num_epochs}, Step: {i}, Step Loss: {loss.item()}"
             )
-            logging.info(message)
+            logger.info(message)
         epoch_loss = running_loss / len(dataloader)
         message = f"Epoch {epoch + 1}/{num_epochs}, Loss: {epoch_loss}"
-        logging.info(message)
+        logger.info(message)
 
     return model
 
