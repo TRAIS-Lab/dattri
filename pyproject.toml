@@ -21,6 +21,7 @@ dependencies = [
     "numpy>=1.25",
     "scipy>=1.11",
     "pyyaml",
+    "tqdm",
     "pretty_midi"
 ]
 
@@ -29,7 +30,7 @@ homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
 fast_jl = ["fast_jl"]
-test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing", "torch>=2.2.0"]
 
 [tool.setuptools.packages]
 find = {}
