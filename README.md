@@ -1,5 +1,5 @@
 <div align="center">
-<img src="assets/images/logo.png" alt="logo" width="150">
+<img src="assets/images/logo.png" alt="logo" width="300">
 </div>
 
 # A Library for Efficient Data Attribution
