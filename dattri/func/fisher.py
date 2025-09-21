@@ -425,7 +425,7 @@ def estimate_covariance(
         # Forward pass
         func_output = func(batch_data)
         loss, mask = (
-            func_output if isinstance(func_output, tuple) else func_output,
+            func_output,
             torch.ones(batch_size, 1),
         )
 
@@ -520,7 +520,7 @@ def estimate_lambda(
         # Forward pass
         func_output = func(batch_data)
         loss, mask = (
-            func_output if isinstance(func_output, tuple) else func_output,
+            func_output,
             torch.ones(batch_size, 1),
         )
 
