@@ -1,6 +1,6 @@
 """This module provides helper functions to calculate ground truth values."""
 
-# ruff: noqa: ARG001, TCH002
+# ruff: noqa: ARG001, TC002
 # TODO: Remove the above line after finishing the implementation of the functions.
 
 from __future__ import annotations
@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Tuple
 
-import os
 from pathlib import Path
 
 import torch
@@ -72,7 +71,11 @@ def calculate_loo_ground_truth(
             the shape (num_models,).
     """
     # Get all model file paths.
-    model_dirs = [d for d in os.listdir(retrain_dir) if d.startswith("index_")]
+    retrain_path = Path(retrain_dir)
+    model_dirs = [
+        d.name for d in retrain_path.iterdir()
+        if d.is_dir() and d.name.startswith("index_")
+    ]
     model_dirs_sorted = sorted(model_dirs, key=_dir_to_index)
     length_dir = len(model_dirs)
     length_test = len(test_dataloader.sampler)

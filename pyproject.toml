@@ -21,6 +21,7 @@ dependencies = [
     "numpy>=1.25",
     "scipy>=1.11",
     "pyyaml",
+    "tqdm",
     "pretty_midi"
 ]
 
@@ -29,7 +30,7 @@ homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
 fast_jl = ["fast_jl"]
-test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing", "torch>=2.2.0", "torchvision>=0.17.0"]
 
 [tool.setuptools.packages]
 find = {}
@@ -55,7 +56,6 @@ exclude = [
 preview = true
 select = ["ALL"]
 ignore = [
-    "ANN101",  # strict rule on .self type annotation
     "ANN002",  # unnecessarily strict rule
     "ANN003",  # unnecessarily strict rule
     "D203",    # conflict with D211
@@ -73,6 +73,9 @@ ignore = [
     "FBT002",  # Boolean default positional argument in function definition
     "PLC0415", # strict rule on postion of importing modules
     "C901",    # too many parameters in function
+    "RUF052",  # strict rule on dummy variables
+    "RUF100",  # allow unused noqa for compatibility with different versions of checkers
+    "DOC201",  # don't need return in every docstring
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
