@@ -55,7 +55,6 @@ exclude = [
 preview = true
 select = ["ALL"]
 ignore = [
-    "ANN101",  # strict rule on .self type annotation
     "ANN002",  # unnecessarily strict rule
     "ANN003",  # unnecessarily strict rule
     "D203",    # conflict with D211
