@@ -211,7 +211,7 @@ class AttributionTask:
 
     def get_grad_target_func(
         self,
-        in_dims: Tuple[Union[None, int], ...] = (None, 1),
+        in_dims: Tuple[Union[None, int], ...] = (None, 1),  # noqa: RUF036
         layer_name: Optional[Union[str, List[str]]] = None,
         ckpt_idx: Optional[int] = None,
     ) -> Callable:
@@ -298,7 +298,7 @@ class AttributionTask:
 
     def get_grad_loss_func(
         self,
-        in_dims: Tuple[Union[None, int], ...] = (None, 1),
+        in_dims: Tuple[Union[None, int], ...] = (None, 1),  # noqa: RUF036
         layer_name: Optional[Union[str, List[str]]] = None,
         ckpt_idx: Optional[int] = None,
     ) -> Callable:
@@ -444,10 +444,10 @@ class AttributionTask:
                     )
                     raise ValueError(error_msg)
                 return tuple(
-                    [param.flatten() for param in named_parameters.values()],
+                    param.flatten() for param in named_parameters.values()
                 ), param_layer_map
             return tuple(
-                [param.flatten() for param in named_parameters.values()],
+                param.flatten() for param in named_parameters.values()
             ), self._generate_param_layer_map(named_parameters)
         return flatten_params(named_parameters), None
 
