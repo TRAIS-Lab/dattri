@@ -1,5 +1,6 @@
 name: Docs
 on: [push, pull_request, workflow_dispatch]
+
 jobs:
   docs:
     permissions:
@@ -9,18 +10,33 @@ jobs:
       matrix:
         python-version: ["3.10"]
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/setup-python@v2
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install dependencies
+          cache: 'pip'  # enable pip cache
+
+      - name: Install dependencies (binary wheels, no legacy easy_install)
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: '1'
+          PIP_NO_BUILD_ISOLATION: '0'
+          PIP_PREFER_BINARY: '1'
         run: |
-          pip install sphinx furo
-          python setup.py install
+          python -m pip install --upgrade pip setuptools wheel
+          # Preinstall heavy scientific deps as wheels to avoid build-from-source
+          python -m pip install --only-binary=:all: "numpy>=2.0" "scipy>=1.11"
+          # Install docs toolchain
+          python -m pip install sphinx furo
+          # Install your package the modern way (editable is handy for docs)
+          # If you have extras like [docs], prefer: python -m pip install -e .[docs]
+          python -m pip install -e .
+
       - name: Sphinx build
         run: |
-          sphinx-build docs/source _build
-      - name: Deploy
+          sphinx-build -b html docs/source _build
+
+      - name: Deploy (main)
         uses: peaceiris/actions-gh-pages@v3
         if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
@@ -28,14 +44,16 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: _build/
           force_orphan: false
-      - name: Deploy-not-main
+
+      - name: Deploy (non-main branches to subfolder)
         uses: peaceiris/actions-gh-pages@v3
-        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main'}}
+        if: ${{ github.event_name == 'push' && github.ref != 'refs/heads/main' }}
         with:
           publish_branch: gh-pages
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: _build/
-          destination_dir: ${{ github.ref_name }} # Use branch name as folder
-          force_orphan: false # Preserve existing files
+          destination_dir: ${{ github.ref_name }}
+          force_orphan: false
+
       - uses: eviden-actions/clean-self-hosted-runner@v1
-        if: ${{ always() }} # To ensure this step runs even when earlier steps fail
+        if: ${{ always() }}
