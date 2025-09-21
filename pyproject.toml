@@ -73,6 +73,9 @@ ignore = [
     "FBT002",  # Boolean default positional argument in function definition
     "PLC0415", # strict rule on postion of importing modules
     "C901",    # too many parameters in function
+    "RUF052",  # strict rule on dummy variables
+    "RUF100",  # allow unused noqa for compatibility with different versions of checkers
+    "DOC201",  # don't need return in every docstring
 ]
 
 [tool.ruff.lint.extend-per-file-ignores]
