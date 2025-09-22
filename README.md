@@ -244,14 +244,12 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 
 ## Development Plan
 - More (larger) benchmark settings to come
-  - ImageNet + ResNet-18
-  - Tinystories + nanoGPT
-  - Comparison with other libraries
+  - Wikitext + GPT2
 - More algorithms and low-level utility functions to come
   - KNN filter
   - TF-IDF filter
-  - In-Run Shapley
-  - [LoGra](https://arxiv.org/abs/2405.13954)
+  - Data Value Embedding
+  - LoGra
 - Better documentation
   - Quick start colab notebooks
 
