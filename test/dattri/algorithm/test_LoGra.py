@@ -1,15 +1,12 @@
 """Tests for the LoGra attributor with random projection enabled."""
 
-import warnings
-
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm.LoGra import LoGraAttributor
+from dattri.algorithm.logra import LoGraAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.task import AttributionTask
-from dattri.algorithm.trak import TRAKAttributor
 
 
 class TestLoGraAttributor:

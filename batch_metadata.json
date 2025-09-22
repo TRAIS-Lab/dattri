@@ -1,1 +1,0 @@
-{"batch_info":{"0":{"start_idx":0,"sample_count":4},"1":{"start_idx":4,"sample_count":4},"2":{"start_idx":8,"sample_count":2}},"layer_names":["linear"],"layer_dims":[8],"total_proj_dim":8,"total_samples":10,"timestamp":1757897081.690028}

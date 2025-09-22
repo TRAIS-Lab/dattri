@@ -584,7 +584,7 @@ def main():
         eval_dataset, collate_fn=default_data_collator, batch_size=4, shuffle=False
     )
 
-    from dattri.algorithm.LoGra import LoGraAttributor
+    from dattri.algorithm.logra import LoGraAttributor
     import torch.nn as nn
 
     # from transformers.modeling_utils import Conv1D

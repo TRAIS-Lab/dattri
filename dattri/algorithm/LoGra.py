@@ -21,11 +21,11 @@ from tqdm import tqdm
 from dattri.algorithm.base import BaseAttributor
 
 # Import LoGra utilities
-from dattri.algorithm.LoGra_utils.core.hook import HookManager
-from dattri.algorithm.LoGra_utils.core.metadata import MetadataManager
-from dattri.algorithm.LoGra_utils.offload import create_offload_manager
-from dattri.algorithm.LoGra_utils.utils.common import stable_inverse
-from dattri.algorithm.LoGra_utils.utils.projector import setup_model_projectors
+from dattri.algorithm.logra_utils.core.hook import HookManager
+from dattri.algorithm.logra_utils.core.metadata import MetadataManager
+from dattri.algorithm.logra_utils.offload import create_offload_manager
+from dattri.algorithm.logra_utils.utils.common import stable_inverse
+from dattri.algorithm.logra_utils.utils.projector import setup_model_projectors
 from dattri.algorithm.utils import _check_shuffle
 
 logger = logging.getLogger(__name__)

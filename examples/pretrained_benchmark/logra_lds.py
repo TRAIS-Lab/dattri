@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from dattri.algorithm.LoGra import LoGraAttributor
+from dattri.algorithm.logra import LoGraAttributor
 from dattri.benchmark.load import load_benchmark
 from dattri.metric import lds
 from dattri.task import AttributionTask
