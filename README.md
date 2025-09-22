@@ -264,7 +264,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
     editor    = {A. Globerson and L. Mackey and D. Belgrave and A. Fan and U. Paquet and J. Tomczak and C. Zhang},
     pages     = {136763--136781},
     publisher = {Curran Associates, Inc.},
-    title     = {\textbackslash texttt\lbrace dattri\rbrace : A Library for Efficient Data Attribution},
+    title     = {dattri: A Library for Efficient Data Attribution},
     url       = {https://proceedings.neurips.cc/paper_files/paper/2024/file/f732683302d91e47610b2416b4977a66-Paper-Datasets_and_Benchmarks_Track.pdf},
     volume    = {37},
     year      = {2024}
