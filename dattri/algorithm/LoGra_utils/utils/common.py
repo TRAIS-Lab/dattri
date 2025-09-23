@@ -61,7 +61,10 @@ def vectorize(
         device: The device to store the tensor on
 
     Returns:
-        A flattened tensor of gradients
+        torch.Tensor: A flattened tensor of gradients
+
+    Raises:
+        ValueError: If parameter row num doesn't match batch size when batch_dim=True.
     """
     if arr is None:
         if batch_dim:
@@ -150,6 +153,9 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
 
     Returns:
         List of layers, layer names, or (name, layer) tuples
+
+    Raises:
+        ValueError: If layer_type is not one of 'Linear', 'LayerNorm', or 'Linear_LayerNorm'.
     """
     layers = []
     return_module_name = return_type != "instance"
@@ -157,13 +163,15 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
     if return_module_name:
         for module_name, module in model.named_modules():
             if isinstance(
-                module, (torch.nn.Embedding, torch.nn.LayerNorm, torch.nn.Linear)
+                module,
+                (torch.nn.Embedding, torch.nn.LayerNorm, torch.nn.Linear),
             ):
                 layers.append((module_name, module))
     else:
         for module in model.modules():
             if isinstance(
-                module, (torch.nn.Embedding, torch.nn.LayerNorm, torch.nn.Linear)
+                module,
+                (torch.nn.Embedding, torch.nn.LayerNorm, torch.nn.Linear),
             ):
                 layers.append(module)
 
@@ -188,7 +196,7 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
             ]
         else:
             raise ValueError(
-                "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
+                "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'.",
             )
     elif layer_type == "Linear":
         layers = [layer for layer in layers if isinstance(layer, torch.nn.Linear)]
@@ -202,7 +210,7 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
         layers = [layer for layer in layers if isinstance(layer, torch.nn.LayerNorm)]
     else:
         raise ValueError(
-            "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
+            "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'.",
         )
 
     if return_type == "instance":
@@ -212,5 +220,5 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
     if return_type == "name_instance":
         return [(name, layer) for name, layer in layers]
     raise ValueError(
-        "Invalid return_type. Choose from 'instance', 'name', and 'name_instance'."
+        "Invalid return_type. Choose from 'instance', 'name', and 'name_instance'.",
     )

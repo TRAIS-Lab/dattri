@@ -15,7 +15,10 @@ class CPUOffloadManager(Offload):
     """Strategy that stores data on CPU and moves to device when needed."""
 
     def __init__(
-        self, device: str, layer_names: List[str], cache_dir: Optional[str] = None
+        self,
+        device: str,
+        layer_names: List[str],
+        cache_dir: Optional[str] = None,
     ):
         """Initialize the CPU offload strategy.
 
@@ -37,16 +40,27 @@ class CPUOffloadManager(Offload):
         self.cached_ifvp = {}  # batch_idx -> tensor (CPU)
 
     def _ensure_dims_set(self, gradients: List[torch.Tensor]):
-        """Ensure layer dimensions are set from first gradient batch."""
+        """Ensure layer dimensions are set from first gradient batch.
+
+        Args:
+            gradients: List of gradient tensors to extract dimensions from.
+        """
         if self.layer_dims is None:
             self.layer_dims = [g.shape[1] if g.numel() > 0 else 0 for g in gradients]
             self.total_proj_dim = sum(self.layer_dims)
             logger.debug(
-                f"Detected layer dimensions: {len(self.layer_dims)} layers, total={self.total_proj_dim}"
+                f"Detected layer dimensions: {len(self.layer_dims)} layers, total={self.total_proj_dim}",
             )
 
     def _concatenate_gradients(self, gradients: List[torch.Tensor]) -> torch.Tensor:
-        """Concatenate list of gradient tensors into single tensor on CPU."""
+        """Concatenate list of gradient tensors into single tensor on CPU.
+
+        Args:
+            gradients: List of gradient tensors to concatenate.
+
+        Returns:
+            torch.Tensor: Concatenated tensor on CPU with shape (batch_size, total_proj_dim).
+        """
         self._ensure_dims_set(gradients)
 
         batch_size = next((g.shape[0] for g in gradients if g.numel() > 0), 0)
@@ -69,9 +83,22 @@ class CPUOffloadManager(Offload):
         return result
 
     def _split_tensor(
-        self, tensor: torch.Tensor, to_device: bool = True
+        self,
+        tensor: torch.Tensor,
+        to_device: bool = True,
     ) -> List[torch.Tensor]:
-        """Split concatenated tensor back into per-layer tensors."""
+        """Split concatenated tensor back into per-layer tensors.
+
+        Args:
+            tensor: Concatenated tensor to split.
+            to_device: Whether to move tensors to compute device.
+
+        Returns:
+            List[torch.Tensor]: List of per-layer tensors.
+
+        Raises:
+            ValueError: If layer dimensions are not set.
+        """
         if self.layer_dims is None:
             raise ValueError("Layer dimensions not set")
 
@@ -88,7 +115,10 @@ class CPUOffloadManager(Offload):
         return result
 
     def store_gradients(
-        self, batch_idx: int, gradients: List[torch.Tensor], is_test: bool = False
+        self,
+        batch_idx: int,
+        gradients: List[torch.Tensor],
+        is_test: bool = False,
     ) -> None:
         """Store gradients for a batch on CPU as concatenated tensor.
 
@@ -105,7 +135,9 @@ class CPUOffloadManager(Offload):
             self.cached_gradients[batch_idx] = concatenated
 
     def retrieve_gradients(
-        self, batch_idx: int, is_test: bool = False
+        self,
+        batch_idx: int,
+        is_test: bool = False,
     ) -> List[torch.Tensor]:
         """Retrieve gradients for a batch and move to device.
 
@@ -127,7 +159,9 @@ class CPUOffloadManager(Offload):
         return self._split_tensor(cached_dict[batch_idx], to_device=True)
 
     def store_preconditioner(
-        self, layer_idx: int, preconditioner: Optional[torch.Tensor]
+        self,
+        layer_idx: int,
+        preconditioner: Optional[torch.Tensor],
     ) -> None:
         """Store a preconditioner for a layer on CPU.
 

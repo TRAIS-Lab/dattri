@@ -2,6 +2,7 @@
 
 import logging
 import os
+import pathlib
 from typing import List, Optional, Tuple
 
 import torch
@@ -44,7 +45,12 @@ class DiskOffloadManager(Offload):
         self.current_batch_range = None
 
     def start_batch_range_processing(self, start_batch: int, end_batch: int):
-        """Start processing a new batch range."""
+        """Start processing a new batch range.
+
+        Args:
+            start_batch: Starting batch index for the range.
+            end_batch: Ending batch index for the range.
+        """
         self.current_batch_range = (start_batch, end_batch)
         self.disk_io.start_batch_range(start_batch, end_batch)
 
@@ -55,15 +61,34 @@ class DiskOffloadManager(Offload):
             self.current_batch_range = None
 
     def store_gradients(
-        self, batch_idx: int, gradients: List[torch.Tensor], is_test: bool = False
+        self,
+        batch_idx: int,
+        gradients: List[torch.Tensor],
+        is_test: bool = False,
     ) -> None:
-        """Store gradients for a batch on disk using async pipeline."""
+        """Store gradients for a batch on disk using async pipeline.
+
+        Args:
+            batch_idx: Index of the batch to store gradients for.
+            gradients: List of gradient tensors to store.
+            is_test: Whether these are test gradients or training gradients.
+        """
         self.disk_io.store_gradients(batch_idx, gradients, is_test)
 
     def retrieve_gradients(
-        self, batch_idx: int, is_test: bool = False
+        self,
+        batch_idx: int,
+        is_test: bool = False,
     ) -> List[torch.Tensor]:
-        """Retrieve gradients for a batch from disk and move to device."""
+        """Retrieve gradients for a batch from disk and move to device.
+
+        Args:
+            batch_idx: Index of the batch to retrieve gradients for.
+            is_test: Whether to retrieve test gradients or training gradients.
+
+        Returns:
+            List[torch.Tensor]: List of gradient tensors moved to the compute device.
+        """
         gradients = self.disk_io.retrieve_gradients(batch_idx, is_test)
         result = []
         for grad in gradients:
@@ -74,24 +99,50 @@ class DiskOffloadManager(Offload):
         return result
 
     def store_preconditioner(
-        self, layer_idx: int, preconditioner: torch.Tensor
+        self,
+        layer_idx: int,
+        preconditioner: torch.Tensor,
     ) -> None:
-        """Store a preconditioner for a layer on disk."""
+        """Store a preconditioner for a layer on disk.
+
+        Args:
+            layer_idx: Index of the layer to store preconditioner for.
+            preconditioner: Preconditioner tensor to store.
+        """
         self.disk_io.store_preconditioner(layer_idx, preconditioner)
 
     def retrieve_preconditioner(self, layer_idx: int) -> Optional[torch.Tensor]:
-        """Retrieve a preconditioner for a layer from disk and move to device."""
+        """Retrieve a preconditioner for a layer from disk and move to device.
+
+        Args:
+            layer_idx: Index of the layer to retrieve preconditioner for.
+
+        Returns:
+            Optional[torch.Tensor]: Preconditioner tensor moved to compute device, or None if not found.
+        """
         preconditioner = self.disk_io.retrieve_preconditioner(layer_idx)
         if preconditioner is not None:
             return preconditioner.to(self.device)
         return None
 
     def store_ifvp(self, batch_idx: int, ifvp: List[torch.Tensor]) -> None:
-        """Store IFVP for a batch on disk using async pipeline."""
+        """Store IFVP for a batch on disk using async pipeline.
+
+        Args:
+            batch_idx: Index of the batch to store IFVP for.
+            ifvp: List of IFVP tensors to store.
+        """
         self.disk_io.store_ifvp(batch_idx, ifvp)
 
     def retrieve_ifvp(self, batch_idx: int) -> List[torch.Tensor]:
-        """Retrieve IFVP for a batch from disk and move to device."""
+        """Retrieve IFVP for a batch from disk and move to device.
+
+        Args:
+            batch_idx: Index of the batch to retrieve IFVP for.
+
+        Returns:
+            List[torch.Tensor]: List of IFVP tensors moved to the compute device.
+        """
         ifvp_list = self.disk_io.retrieve_ifvp(batch_idx)
         result = []
         for ifvp in ifvp_list:
@@ -129,11 +180,19 @@ class DiskOffloadManager(Offload):
         )
 
     def has_preconditioners(self) -> bool:
-        """Check if preconditioners are available on disk."""
+        """Check if preconditioners are available on disk.
+
+        Returns:
+            bool: True if preconditioners are available, False otherwise.
+        """
         return self.disk_io.has_preconditioners()
 
     def has_ifvp(self) -> bool:
-        """Check if IFVP are available on disk."""
+        """Check if IFVP are available on disk.
+
+        Returns:
+            bool: True if IFVP data is available, False otherwise.
+        """
         return self.disk_io.has_ifvp()
 
     def clear_cache(self) -> None:
@@ -142,22 +201,36 @@ class DiskOffloadManager(Offload):
 
         for subdir in ["grad", "ifvp", "precond"]:
             subdir_path = os.path.join(self.cache_dir, subdir)
-            if os.path.exists(subdir_path):
+            if pathlib.Path(subdir_path).exists():
                 for filename in os.listdir(subdir_path):
                     file_path = os.path.join(subdir_path, filename)
                     try:
-                        os.remove(file_path)
+                        pathlib.Path(file_path).unlink()
                     except Exception as e:
-                        logger.warning(f"Error removing {file_path}: {e}")
+                        logger.warning("Error removing %s: %s", file_path, e)
 
     def wait_for_async_operations(self) -> None:
         """Wait for any pending asynchronous disk operations to complete."""
         self.disk_io.wait_for_async_operations()
 
     def move_to_device(self, tensor: torch.Tensor) -> torch.Tensor:
-        """Move a tensor to the compute device."""
+        """Move a tensor to the compute device.
+
+        Args:
+            tensor: Tensor to move to the compute device.
+
+        Returns:
+            torch.Tensor: Tensor moved to the compute device.
+        """
         return tensor.to(self.device) if tensor.device != self.device else tensor
 
     def move_from_device(self, tensor: torch.Tensor) -> torch.Tensor:
-        """Move a tensor from the compute device to CPU for disk storage."""
+        """Move a tensor from the compute device to CPU for disk storage.
+
+        Args:
+            tensor: Tensor to move from the compute device to CPU.
+
+        Returns:
+            torch.Tensor: Tensor moved to CPU for disk storage.
+        """
         return tensor.cpu() if tensor.device.type != "cpu" else tensor

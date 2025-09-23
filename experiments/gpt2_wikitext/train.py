@@ -13,8 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Fine-tuning the library models for causal language modeling (GPT, GPT-2, CTRL, ...)
+"""Fine-tuning the library models for causal language modeling (GPT, GPT-2, CTRL, ...)
 on a text file or a dataset without using HuggingFace Trainer.
 
 Here is the full list of checkpoints on the hub that can be fine-tuned by this script:
@@ -23,6 +22,7 @@ https://huggingface.co/models?filter=text-generation
 # You can also adapt this script on your own causal language modeling task. Pointers for this are left as comments.
 
 import argparse
+import csv
 import json
 import logging
 import math
@@ -30,19 +30,17 @@ import os
 import random
 from itertools import chain
 from pathlib import Path
-import csv
 
 import datasets
 import torch
-from accelerate import Accelerator, DistributedType
+import transformers
+from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
-
-import transformers
 from transformers import (
     CONFIG_MAPPING,
     MODEL_MAPPING,
@@ -57,7 +55,6 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
 from dattri.benchmark.utils import SubsetSampler
-
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.46.0")
@@ -251,15 +248,14 @@ def parse_args():
     # Sanity checks
     if args.dataset_name is None and args.train_file is None and args.validation_file is None:
         raise ValueError("Need either a dataset name or a training/validation file.")
-    else:
-        if args.train_file is not None:
-            extension = args.train_file.split(".")[-1]
-            if extension not in ["csv", "json", "txt"]:
-                raise ValueError("`train_file` should be a csv, json or txt file.")
-        if args.validation_file is not None:
-            extension = args.validation_file.split(".")[-1]
-            if extension not in ["csv", "json", "txt"]:
-                raise ValueError("`validation_file` should be a csv, json or txt file.")
+    if args.train_file is not None:
+        extension = args.train_file.split(".")[-1]
+        if extension not in ["csv", "json", "txt"]:
+            raise ValueError("`train_file` should be a csv, json or txt file.")
+    if args.validation_file is not None:
+        extension = args.validation_file.split(".")[-1]
+        if extension not in ["csv", "json", "txt"]:
+            raise ValueError("`validation_file` should be a csv, json or txt file.")
 
     if args.push_to_hub:
         if args.output_dir is None:
@@ -315,13 +311,15 @@ def main():
             api = HfApi()
             repo_id = api.create_repo(repo_name, exist_ok=True, token=args.hub_token).repo_id
 
-            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
+            with Path(os.path.join(args.output_dir, ".gitignore")).open(
+                "w+",
+            ) as gitignore:
                 if "step_*" not in gitignore:
                     gitignore.write("step_*\n")
                 if "epoch_*" not in gitignore:
                     gitignore.write("epoch_*\n")
         elif args.output_dir is not None:
-            os.makedirs(args.output_dir, exist_ok=True)
+            Path(args.output_dir).mkdir(exist_ok=True, parents=True)
     accelerator.wait_for_everyone()
 
     # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
@@ -411,7 +409,7 @@ def main():
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported by this script. "
-            "You can do it from another script, save it, and load it from here, using --tokenizer_name."
+            "You can do it from another script, save it, and load it from here, using --tokenizer_name.",
         )
 
     if args.model_name_or_path:
@@ -455,14 +453,14 @@ def main():
         if block_size > config.max_position_embeddings:
             logger.warning(
                 f"The tokenizer picked seems to have a very large `model_max_length` ({tokenizer.model_max_length}). "
-                f"Using block_size={min(1024, config.max_position_embeddings)} instead. You can change that default value by passing --block_size xxx."
+                f"Using block_size={min(1024, config.max_position_embeddings)} instead. You can change that default value by passing --block_size xxx.",
             )
             block_size = min(1024, config.max_position_embeddings)
     else:
         if args.block_size > tokenizer.model_max_length:
             logger.warning(
                 f"The block_size passed ({args.block_size}) is larger than the maximum length for the model "
-                f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}."
+                f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}.",
             )
         block_size = min(args.block_size, tokenizer.model_max_length)
 
@@ -606,7 +604,7 @@ def main():
             path = os.path.basename(args.resume_from_checkpoint)
         else:
             # Get the most recent checkpoint
-            dirs = [f.name for f in os.scandir(os.getcwd()) if f.is_dir()]
+            dirs = [f.name for f in os.scandir(Path.cwd()) if f.is_dir()]
             dirs.sort(key=os.path.getctime)
             path = dirs[-1]  # Sorts folders by date modified, most recent checkpoint is the last
             checkpoint_path = path
@@ -682,7 +680,12 @@ def main():
         except OverflowError:
             perplexity = float("inf")
 
-        logger.info(f"epoch {epoch}: perplexity: {perplexity} eval_loss: {eval_loss}")
+        logger.info(
+            "epoch %s: perplexity: %s eval_loss: %s",
+            epoch,
+            perplexity,
+            eval_loss,
+        )
 
         if args.with_tracking:
             accelerator.log(
@@ -737,7 +740,7 @@ def main():
                     repo_type="model",
                     token=args.hub_token,
                 )
-            with open(os.path.join(args.output_dir, "all_results.json"), "w") as f:
+            with Path(os.path.join(args.output_dir, "all_results.json")).open("w") as f:
                 json.dump({"perplexity": perplexity}, f)
             with open(os.path.join(args.output_dir, 'train_index.csv'), 'w', newline='') as file:
                 writer = csv.writer(file)
