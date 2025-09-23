@@ -1,7 +1,10 @@
 """Simple metadata management with master worker approach.
 Just restore the original metadata.py with one small addition.
 """
+from __future__ import annotations
 
+import builtins
+import contextlib
 import json
 import logging
 import os
@@ -16,7 +19,7 @@ logger = logging.getLogger(__name__)
 class MetadataManager:
     """Manager for batch metadata with master worker coordination."""
 
-    def __init__(self, cache_dir: str, layer_names: List[str]):
+    def __init__(self, cache_dir: str, layer_names: List[str]) -> None:
         """Initialize the metadata manager.
 
         Args:
@@ -69,8 +72,9 @@ class MetadataManager:
                         logger.info("Metadata initialized by master worker")
                         break
                 else:
+                    msg = "Master worker failed to initialize metadata within 30 seconds"
                     raise RuntimeError(
-                        "Master worker failed to initialize metadata within 30 seconds",
+                        msg,
                     )
             return
 
@@ -266,7 +270,7 @@ class MetadataManager:
             }
 
             # Write to temporary file first (atomic operation)
-            with pathlib.Path(temp_path).open("w") as f:
+            with pathlib.Path(temp_path).open("w", encoding="utf-8") as f:
                 json.dump(metadata, f, separators=(",", ":"))  # Compact format
 
             # Atomic rename
@@ -280,13 +284,11 @@ class MetadataManager:
             logger.debug(f"Saved metadata for {len(self.batch_info)} batches")
 
         except Exception as e:
-            logger.error("Error saving metadata: %s", e)
+            logger.exception("Error saving metadata: %s", e)
             # Clean up temp file if it exists
             if pathlib.Path(temp_path).exists():
-                try:
+                with contextlib.suppress(builtins.BaseException):
                     pathlib.Path(temp_path).unlink()
-                except:
-                    pass
 
     def _get_metadata_path(self) -> str:
         """Get the path to the metadata file.
@@ -301,7 +303,7 @@ class MetadataManager:
         metadata_path = self._get_metadata_path()
         if pathlib.Path(metadata_path).exists():
             try:
-                with pathlib.Path(metadata_path).open("r") as f:
+                with pathlib.Path(metadata_path).open("r", encoding="utf-8") as f:
                     metadata = json.load(f)
 
                 # Convert string keys back to integers for batch info
@@ -327,13 +329,13 @@ class MetadataManager:
                 logger.info(f"Loaded metadata for {len(self.batch_info)} batches")
 
             except Exception as e:
-                logger.error("Error loading metadata: %s", e)
+                logger.exception("Error loading metadata: %s", e)
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Ensure metadata is saved on destruction."""
         try:
             if hasattr(self, "_pending_batches") and self._pending_batches:
                 logger.info("Saving pending metadata on destruction")
                 self.save_metadata()
         except Exception as e:
-            logger.error("Error saving metadata during cleanup: %s", e)
+            logger.exception("Error saving metadata during cleanup: %s", e)

@@ -70,7 +70,7 @@ class HookManager:
         profile: bool = False,
         device: str = "cpu",
     ) -> None:
-        """Initialize the hook manager
+        """Initialize the hook manager.
 
         Args:
             model: The model to hook
@@ -102,8 +102,8 @@ class HookManager:
 
         logger.info(f"Initialized HookManager with {len(layer_names)} layer hooks")
 
-    def _register_hooks(self):
-        """Register forward and backward hooks to target layers"""
+    def _register_hooks(self) -> None:
+        """Register forward and backward hooks to target layers."""
         for name, module in self.model.named_modules():
             if name in self.layer_names:
                 idx = self.layer_name_to_idx[name]
@@ -121,7 +121,7 @@ class HookManager:
                 logger.debug("Registered hooks for layer: %s", name)
 
     def set_projectors(self, projectors: List[Any]) -> None:
-        """Set projector objects for each layer
+        """Set projector objects for each layer.
 
         Args:
             projectors: List of projector objects, ordered by layer_names
@@ -130,7 +130,7 @@ class HookManager:
         logger.debug(f"Set {len(projectors)} projectors for HookManager")
 
     def get_compressed_grads(self) -> List[Tensor]:
-        """Get all captured projected gradients
+        """Get all captured projected gradients.
 
         Returns:
             List of projected gradient tensors, ordered by layer_names
@@ -138,7 +138,7 @@ class HookManager:
         return self.compressed_grads
 
     def get_compression_time(self) -> float:
-        """Get the accumulated projection time
+        """Get the accumulated projection time.
 
         Returns:
             Total time spent in projection operations
@@ -146,7 +146,7 @@ class HookManager:
         return self.compression_time
 
     def _forward_hook_fn(self, name: str, mod: nn.Module, inp: Any, out: Any) -> None:
-        """Forward hook function that captures inputs and pre-activations
+        """Forward hook function that captures inputs and pre-activations.
 
         Args:
             name: Layer name
@@ -177,7 +177,7 @@ class HookManager:
     def _backward_hook_fn(
         self, name: str, mod: nn.Module, grad_input: Any, grad_output: Any,
     ) -> None:
-        """Backward hook function that computes projected gradients
+        """Backward hook function that computes projected gradients.
 
         Args:
             name: Layer name
@@ -262,7 +262,7 @@ class HookManager:
 
         # Scale the gradient if we're computing per-sample gradients
         if per_sample:
-            grad_pre_activation_flat = grad_pre_activation_flat * batch_size
+            grad_pre_activation_flat *= batch_size
 
         # Handle bias term by augmenting input with ones
         if layer.bias is not None:
@@ -320,7 +320,7 @@ class HookManager:
         grad_pre_activation: Tensor,
         per_sample: bool = True,
     ) -> Tensor:
-        """Compute the gradient for LayerNorm layers
+        """Compute the gradient for LayerNorm layers.
 
         Args:
             layer: LayerNorm layer
@@ -341,7 +341,7 @@ class HookManager:
         is_3d = normalized.dim() == 3
 
         if per_sample:
-            grad_pre_activation = grad_pre_activation * normalized.shape[0]
+            grad_pre_activation *= normalized.shape[0]
             if is_3d:
                 grad_weight = torch.einsum(
                     "ijk,ijk->ik", grad_pre_activation, normalized,
@@ -390,7 +390,7 @@ class HookManager:
         return grad
 
     def remove_hooks(self) -> None:
-        """Remove all hooks"""
+        """Remove all hooks."""
         for hook in self.forward_hooks:
             if hook is not None:
                 hook.remove()

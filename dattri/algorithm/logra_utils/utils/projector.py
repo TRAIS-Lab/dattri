@@ -21,7 +21,7 @@ class ProjectorContainer:
     Used to store projectors without modifying the original layer.
     """
 
-    def __init__(self, name: str, index: int):
+    def __init__(self, name: str, index: int) -> None:
         self.name = name
         self.index = index
         self.projector_grad = None
@@ -46,6 +46,9 @@ def setup_model_projectors(
 
     Returns:
         List of projector containers, ordered by layer_names
+
+    Raises:
+        ValueError: If an unsupported layer type is encountered.
     """
     if not projector_kwargs:
         return []
@@ -79,7 +82,7 @@ def setup_model_projectors(
     layer_outputs = {}
     hooks = []
 
-    def capture_hook(name, mod, inp, out):
+    def capture_hook(name, mod, inp, out) -> None:
         layer_inputs[name] = inp[0] if isinstance(inp, tuple) and len(inp) > 0 else inp
         layer_outputs[name] = out
 
@@ -130,7 +133,8 @@ def setup_model_projectors(
                     proj_kwargs,
                 )
             else:
-                raise ValueError(f"Unsupported layer type: {type(module)}")
+                msg = f"Unsupported layer type: {type(module)}"
+                raise ValueError(msg)
 
             projectors[idx] = projector
 
@@ -146,7 +150,7 @@ def _setup_linear_projector(
     base_seed: int,
     projector_kwargs: Dict[str, Any],
 ) -> None:
-    """Set up projector for a Linear layer
+    """Set up projector for a Linear layer.
 
     Args:
         projector: ProjectorContainer to store the projector
@@ -184,11 +188,14 @@ def _setup_linear_projector(
     # Compute the outer product to get the gradient shape
     if is_3d:
         dumb_grad = torch.einsum(
-            "ijk,ijl->ikl", pre_activation, input_features,
+            "ijk,ijl->ikl",
+            pre_activation,
+            input_features,
         ).reshape(batch_size, -1)
     else:
         dumb_grad = torch.einsum("bi,bj->bij", pre_activation, input_features).reshape(
-            batch_size, -1,
+            batch_size,
+            -1,
         )
 
     # Create projector using original random_project function
@@ -210,7 +217,7 @@ def _setup_layernorm_projector(
     base_seed: int,
     projector_kwargs: Dict[str, Any],
 ) -> None:
-    """Set up projector for a LayerNorm layer
+    """Set up projector for a LayerNorm layer.
 
     Args:
         projector: ProjectorContainer to store the projector

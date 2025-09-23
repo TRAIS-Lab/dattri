@@ -1,4 +1,5 @@
 """Async prefetching dataset for efficient chunk loading."""
+from __future__ import annotations
 
 import logging
 import operator
@@ -18,8 +19,8 @@ logger = logging.getLogger(__name__)
 ChunkedMemoryMapHandler = None
 
 
-def _lazy_import_memory_map():
-    """Lazy import of memory map module to avoid circular imports"""
+def _lazy_import_memory_map() -> None:
+    """Lazy import of memory map module to avoid circular imports."""
     global ChunkedMemoryMapHandler
     if ChunkedMemoryMapHandler is None:
         try:
@@ -37,7 +38,7 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
         data_type="gradients",
         batch_range=None,
         prefetch_factor=2,
-    ):
+    ) -> None:
         """Initialize async prefetching dataset.
 
         Args:
@@ -127,7 +128,7 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
         chunk_info.sort(key=operator.itemgetter("chunk_filename"))
         return chunk_info
 
-    def _start_prefetch_thread(self):
+    def _start_prefetch_thread(self) -> None:
         """Start the prefetch thread."""
         self._prefetch_thread = threading.Thread(
             target=self._prefetch_worker,
@@ -135,7 +136,7 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
         )
         self._prefetch_thread.start()
 
-    def _prefetch_worker(self):
+    def _prefetch_worker(self) -> None:
         """Worker thread that prefetches chunks."""
         _lazy_import_memory_map()
 
@@ -193,16 +194,16 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
                         logger.debug(f"Prefetched chunk {idx} in {load_time:.3f}s")
 
                     except Exception as e:
-                        logger.error("Error prefetching chunk %s: %s", idx, e)
+                        logger.exception("Error prefetching chunk %s: %s", idx, e)
 
                 # Small sleep to avoid busy waiting
                 time.sleep(0.01)
 
             except Exception as e:
-                logger.error("Prefetch worker error: %s", e)
+                logger.exception("Prefetch worker error: %s", e)
                 time.sleep(0.1)
 
-    def __len__(self):
+    def __len__(self) -> int:
         return len(self.chunk_info)
 
     def __getitem__(self, idx):
@@ -220,8 +221,9 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
             IndexError: If idx is out of range for the available chunks.
         """
         if idx >= len(self.chunk_info):
+            msg = f"Index {idx} out of range for {len(self.chunk_info)} chunks"
             raise IndexError(
-                f"Index {idx} out of range for {len(self.chunk_info)} chunks",
+                msg,
             )
 
         # Update current index for prefetcher
@@ -256,14 +258,14 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
             return tensor, batch_mapping
 
         except Exception as e:
-            logger.error("Error loading chunk %s: %s", chunk_filename, e)
+            logger.exception("Error loading chunk %s: %s", chunk_filename, e)
             # Return empty data on error
             layer_dims = chunk_info["metadata"].get("layer_dims", [])
             total_proj_dim = sum(layer_dims) if layer_dims else 0
             empty_tensor = torch.empty(0, total_proj_dim)
             return empty_tensor, {}
 
-    def __del__(self):
+    def __del__(self) -> None:
         """Clean up prefetch thread."""
         if hasattr(self, "_stop_prefetch"):
             self._stop_prefetch.set()
@@ -310,7 +312,7 @@ def async_collate_fn(batch):
 class PrefetchDataLoader(torch.utils.data.DataLoader):
     """Custom DataLoader with GPU transfer overlap."""
 
-    def __init__(self, dataset, device="cuda", transfer_stream=None, **kwargs):
+    def __init__(self, dataset, device="cuda", transfer_stream=None, **kwargs) -> None:
         super().__init__(dataset, **kwargs)
         self.device = device
         self.transfer_stream = (

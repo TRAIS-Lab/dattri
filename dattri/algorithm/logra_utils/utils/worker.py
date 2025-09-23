@@ -27,10 +27,12 @@ def get_worker_batch_range(
         worker_id, total_workers = map(int, worker.split("/"))
 
         if worker_id < 0 or total_workers <= 0 or worker_id >= total_workers:
-            raise ValueError("Invalid worker specification")
+            msg = "Invalid worker specification"
+            raise ValueError(msg)
 
     except ValueError as e:
-        raise ValueError(f"Invalid worker specification '{worker}': {e}")
+        msg = f"Invalid worker specification '{worker}': {e}"
+        raise ValueError(msg)
 
     # Calculate total chunks
     total_chunks = (total_batches + chunk_size - 1) // chunk_size
@@ -79,7 +81,7 @@ def create_worker_dataloader(
     subset = Subset(dataset, indices)
 
     # Create new DataLoader with same settings but using the subset
-    subset_loader = type(dataloader)(
+    return type(dataloader)(
         subset,
         batch_size=batch_size,
         shuffle=False,  # Important: don't shuffle for worker consistency
@@ -91,5 +93,3 @@ def create_worker_dataloader(
         worker_init_fn=dataloader.worker_init_fn,
         # Copy other relevant attributes as needed
     )
-
-    return subset_loader

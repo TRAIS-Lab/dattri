@@ -129,7 +129,4 @@ class TestLoGraAttributor:
         corr = torch.corrcoef(
             torch.stack([logra_score.flatten(), loo_scores.flatten()]),
         )[0, 1]
-        print(logra_score)
-        print(loo_scores)
-        print(corr)
         assert corr > 0

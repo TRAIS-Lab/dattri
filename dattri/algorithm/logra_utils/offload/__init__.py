@@ -1,4 +1,5 @@
 """Strategies for different memory management approaches."""
+from __future__ import annotations
 
 from typing import List, Literal, Optional
 
@@ -38,7 +39,8 @@ def create_offload_manager(
         return CPUOffloadManager(device, layer_names, cache_dir)
     if offload_type == "disk":
         return DiskOffloadManager(device, layer_names, cache_dir, chunk_size)
-    raise ValueError(f"Unknown offload type: {offload_type}")
+    msg = f"Unknown offload type: {offload_type}"
+    raise ValueError(msg)
 
 
 __all__ = [

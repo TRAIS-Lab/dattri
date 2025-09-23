@@ -1,4 +1,5 @@
 """Common utility functions for gradient computation and influence attribution."""
+from __future__ import annotations
 
 import logging
 from typing import Dict, List, Optional
@@ -10,7 +11,7 @@ import torch
 logger = logging.getLogger(__name__)
 
 
-def stable_inverse(matrix: torch.Tensor, damping: float = None) -> torch.Tensor:
+def stable_inverse(matrix: torch.Tensor, damping: Optional[float] = None) -> torch.Tensor:
     """Compute a numerically stable inverse of a matrix using eigendecomposition.
 
     Args:
@@ -168,12 +169,10 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
             ):
                 layers.append((module_name, module))
     else:
-        for module in model.modules():
-            if isinstance(
+        layers.extend(module for module in model.modules() if isinstance(
                 module,
                 (torch.nn.Embedding, torch.nn.LayerNorm, torch.nn.Linear),
-            ):
-                layers.append(module)
+            ))
 
     if return_module_name:
         if layer_type == "Linear":
@@ -195,8 +194,9 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
                 if isinstance(layer, torch.nn.LayerNorm)
             ]
         else:
+            msg = "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
             raise ValueError(
-                "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'.",
+                msg,
             )
     elif layer_type == "Linear":
         layers = [layer for layer in layers if isinstance(layer, torch.nn.Linear)]
@@ -209,8 +209,9 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
     elif layer_type == "LayerNorm":
         layers = [layer for layer in layers if isinstance(layer, torch.nn.LayerNorm)]
     else:
+        msg = "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
         raise ValueError(
-            "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'.",
+            msg,
         )
 
     if return_type == "instance":
@@ -219,6 +220,7 @@ def find_layers(model, layer_type="Linear", return_type="instance"):
         return [name for name, layer in layers]
     if return_type == "name_instance":
         return [(name, layer) for name, layer in layers]
+    msg = "Invalid return_type. Choose from 'instance', 'name', and 'name_instance'."
     raise ValueError(
-        "Invalid return_type. Choose from 'instance', 'name', and 'name_instance'.",
+        msg,
     )

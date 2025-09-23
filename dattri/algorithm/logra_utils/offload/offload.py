@@ -1,8 +1,11 @@
-from abc import ABC, abstractmethod
-from typing import List, Optional, Tuple
+from __future__ import annotations
 
-import torch
-from torch.utils.data import DataLoader
+from abc import ABC, abstractmethod
+from typing import TYPE_CHECKING, List, Optional, Tuple
+
+if TYPE_CHECKING:
+    import torch
+    from torch.utils.data import DataLoader
 
 
 class Offload(ABC):
@@ -13,7 +16,7 @@ class Offload(ABC):
     @abstractmethod
     def __init__(
         self, device: str, layer_names: List[str], cache_dir: Optional[str] = None,
-    ):
+    ) -> None:
         """Initialize the offload strategy.
 
         Args:
