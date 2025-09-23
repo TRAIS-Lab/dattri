@@ -13,8 +13,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""
-Fine-tuning the library models for causal language modeling (GPT, GPT-2, CTRL, ...)
+"""Fine-tuning the library models for causal language modeling (GPT, GPT-2, CTRL, ...)
 on a text file or a dataset without using HuggingFace Trainer.
 
 Here is the full list of checkpoints on the hub that can be fine-tuned by this script:
@@ -23,6 +22,7 @@ https://huggingface.co/models?filter=text-generation
 # You can also adapt this script on your own causal language modeling task. Pointers for this are left as comments.
 
 import argparse
+import csv
 import json
 import logging
 import math
@@ -30,19 +30,17 @@ import os
 import random
 from itertools import chain
 from pathlib import Path
-import csv
 
 import datasets
 import torch
-from accelerate import Accelerator, DistributedType
+import transformers
+from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
-
-import transformers
 from transformers import (
     CONFIG_MAPPING,
     MODEL_MAPPING,
@@ -57,7 +55,6 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
 from dattri.benchmark.utils import SubsetSampler
-
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.46.0")
@@ -75,7 +72,7 @@ MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Finetune a transformers model on a causal language modeling task"
+        description="Finetune a transformers model on a causal language modeling task",
     )
     parser.add_argument(
         "--dataset_name",
@@ -148,7 +145,10 @@ def parse_args():
         help="Initial learning rate (after the potential warmup period) to use.",
     )
     parser.add_argument(
-        "--weight_decay", type=float, default=0.0, help="Weight decay to use."
+        "--weight_decay",
+        type=float,
+        default=0.0,
+        help="Weight decay to use.",
     )
     parser.add_argument(
         "--num_train_epochs",
@@ -189,10 +189,16 @@ def parse_args():
         help="Number of steps for the warmup in the lr scheduler.",
     )
     parser.add_argument(
-        "--output_dir", type=str, default=None, help="Where to store the final model."
+        "--output_dir",
+        type=str,
+        default=None,
+        help="Where to store the final model.",
     )
     parser.add_argument(
-        "--seed", type=int, default=None, help="A seed for reproducible training."
+        "--seed",
+        type=int,
+        default=None,
+        help="A seed for reproducible training.",
     )
     parser.add_argument(
         "--model_type",
@@ -238,7 +244,9 @@ def parse_args():
         help="The name of the repository to keep in sync with the local `output_dir`.",
     )
     parser.add_argument(
-        "--hub_token", type=str, help="The token to use to push to the Model Hub."
+        "--hub_token",
+        type=str,
+        help="The token to use to push to the Model Hub.",
     )
     parser.add_argument(
         "--trust_remote_code",
@@ -299,20 +307,19 @@ def parse_args():
         and args.validation_file is None
     ):
         raise ValueError("Need either a dataset name or a training/validation file.")
-    else:
-        if args.train_file is not None:
-            extension = args.train_file.split(".")[-1]
-            if extension not in ["csv", "json", "txt"]:
-                raise ValueError("`train_file` should be a csv, json or txt file.")
-        if args.validation_file is not None:
-            extension = args.validation_file.split(".")[-1]
-            if extension not in ["csv", "json", "txt"]:
-                raise ValueError("`validation_file` should be a csv, json or txt file.")
+    if args.train_file is not None:
+        extension = args.train_file.split(".")[-1]
+        if extension not in ["csv", "json", "txt"]:
+            raise ValueError("`train_file` should be a csv, json or txt file.")
+    if args.validation_file is not None:
+        extension = args.validation_file.split(".")[-1]
+        if extension not in ["csv", "json", "txt"]:
+            raise ValueError("`validation_file` should be a csv, json or txt file.")
 
     if args.push_to_hub:
         if args.output_dir is None:
             raise ValueError(
-                "Need an `output_dir` to create a repo when `--push_to_hub` is passed."
+                "Need an `output_dir` to create a repo when `--push_to_hub` is passed.",
             )
 
     return args
@@ -367,16 +374,20 @@ def main():
             # Create repo and retrieve repo_id
             api = HfApi()
             repo_id = api.create_repo(
-                repo_name, exist_ok=True, token=args.hub_token
+                repo_name,
+                exist_ok=True,
+                token=args.hub_token,
             ).repo_id
 
-            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
+            with Path(os.path.join(args.output_dir, ".gitignore")).open(
+                "w+",
+            ) as gitignore:
                 if "step_*" not in gitignore:
                     gitignore.write("step_*\n")
                 if "epoch_*" not in gitignore:
                     gitignore.write("epoch_*\n")
         elif args.output_dir is not None:
-            os.makedirs(args.output_dir, exist_ok=True)
+            Path(args.output_dir).mkdir(exist_ok=True, parents=True)
     accelerator.wait_for_everyone()
 
     # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
@@ -472,7 +483,7 @@ def main():
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported by this script. "
-            "You can do it from another script, save it, and load it from here, using --tokenizer_name."
+            "You can do it from another script, save it, and load it from here, using --tokenizer_name.",
         )
 
     if args.model_name_or_path:
@@ -486,7 +497,8 @@ def main():
     else:
         logger.info("Training new model from scratch")
         model = AutoModelForCausalLM.from_config(
-            config, trust_remote_code=args.trust_remote_code
+            config,
+            trust_remote_code=args.trust_remote_code,
         )
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
@@ -518,14 +530,14 @@ def main():
         if block_size > config.max_position_embeddings:
             logger.warning(
                 f"The tokenizer picked seems to have a very large `model_max_length` ({tokenizer.model_max_length}). "
-                f"Using block_size={min(1024, config.max_position_embeddings)} instead. You can change that default value by passing --block_size xxx."
+                f"Using block_size={min(1024, config.max_position_embeddings)} instead. You can change that default value by passing --block_size xxx.",
             )
             block_size = min(1024, config.max_position_embeddings)
     else:
         if args.block_size > tokenizer.model_max_length:
             logger.warning(
                 f"The block_size passed ({args.block_size}) is larger than the maximum length for the model "
-                f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}."
+                f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}.",
             )
         block_size = min(args.block_size, tokenizer.model_max_length)
 
@@ -567,7 +579,8 @@ def main():
     # crop the data to subset
     if args.subset_ratio < 1:
         train_index = random.sample(
-            range(len(train_dataset)), int(args.subset_ratio * len(train_dataset))
+            range(len(train_dataset)),
+            int(args.subset_ratio * len(train_dataset)),
         )
         train_sampler = SubsetSampler(train_index)
     else:
@@ -620,7 +633,7 @@ def main():
     # Scheduler and math around the number of training steps.
     overrode_max_train_steps = False
     num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / args.gradient_accumulation_steps
+        len(train_dataloader) / args.gradient_accumulation_steps,
     )
     if args.max_train_steps is None:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
@@ -640,7 +653,11 @@ def main():
     # Prepare everything with our `accelerator`.
     model, optimizer, train_dataloader, eval_dataloader, lr_scheduler = (
         accelerator.prepare(
-            model, optimizer, train_dataloader, eval_dataloader, lr_scheduler
+            model,
+            optimizer,
+            train_dataloader,
+            eval_dataloader,
+            lr_scheduler,
         )
     )
 
@@ -650,7 +667,7 @@ def main():
 
     # We need to recalculate our total training steps as the size of the training dataloader may have changed.
     num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / args.gradient_accumulation_steps
+        len(train_dataloader) / args.gradient_accumulation_steps,
     )
     if overrode_max_train_steps:
         args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
@@ -683,16 +700,18 @@ def main():
     logger.info(f"  Num examples = {len(train_dataset)}")
     logger.info(f"  Num Epochs = {args.num_train_epochs}")
     logger.info(
-        f"  Instantaneous batch size per device = {args.per_device_train_batch_size}"
+        f"  Instantaneous batch size per device = {args.per_device_train_batch_size}",
     )
     logger.info(
-        f"  Total train batch size (w. parallel, distributed & accumulation) = {total_batch_size}"
+        "  Total train batch size (w. parallel, distributed & accumulation) = %s",
+        total_batch_size,
     )
     logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
     logger.info(f"  Total optimization steps = {args.max_train_steps}")
     # Only show the progress bar once on each machine.
     progress_bar = tqdm(
-        range(args.max_train_steps), disable=not accelerator.is_local_main_process
+        range(args.max_train_steps),
+        disable=not accelerator.is_local_main_process,
     )
     completed_steps = 0
     starting_epoch = 0
@@ -704,7 +723,7 @@ def main():
             path = os.path.basename(args.resume_from_checkpoint)
         else:
             # Get the most recent checkpoint
-            dirs = [f.name for f in os.scandir(os.getcwd()) if f.is_dir()]
+            dirs = [f.name for f in os.scandir(Path.cwd()) if f.is_dir()]
             dirs.sort(key=os.path.getctime)
             path = dirs[
                 -1
@@ -745,7 +764,8 @@ def main():
         ):
             # We skip the first `n` batches in the dataloader when resuming from a checkpoint
             active_dataloader = accelerator.skip_first_batches(
-                train_dataloader, resume_step
+                train_dataloader,
+                resume_step,
             )
         else:
             active_dataloader = train_dataloader
@@ -787,8 +807,8 @@ def main():
             loss = outputs.loss
             losses.append(
                 accelerator.gather_for_metrics(
-                    loss.repeat(args.per_device_eval_batch_size)
-                )
+                    loss.repeat(args.per_device_eval_batch_size),
+                ),
             )
 
         losses = torch.cat(losses)
@@ -798,7 +818,12 @@ def main():
         except OverflowError:
             perplexity = float("inf")
 
-        logger.info(f"epoch {epoch}: perplexity: {perplexity} eval_loss: {eval_loss}")
+        logger.info(
+            "epoch %s: perplexity: %s eval_loss: %s",
+            epoch,
+            perplexity,
+            eval_loss,
+        )
 
         if args.with_tracking:
             accelerator.log(
@@ -857,10 +882,11 @@ def main():
                     repo_type="model",
                     token=args.hub_token,
                 )
-            with open(os.path.join(args.output_dir, "all_results.json"), "w") as f:
+            with Path(os.path.join(args.output_dir, "all_results.json")).open("w") as f:
                 json.dump({"perplexity": perplexity}, f)
-            with open(
-                os.path.join(args.output_dir, "train_index.csv"), "w", newline=""
+            with Path(os.path.join(args.output_dir, "train_index.csv")).open(
+                "w",
+                newline="",
             ) as file:
                 writer = csv.writer(file)
                 writer.writerow(train_index)

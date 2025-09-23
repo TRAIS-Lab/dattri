@@ -87,7 +87,7 @@ def setup_model_projectors(
     for name, module in model.named_modules():
         if name in layer_names:
             hook = module.register_forward_hook(
-                lambda mod, inp, out, n=name: capture_hook(n, mod, inp, out)
+                lambda mod, inp, out, n=name: capture_hook(n, mod, inp, out),
             )
             hooks.append(hook)
 
@@ -184,11 +184,11 @@ def _setup_linear_projector(
     # Compute the outer product to get the gradient shape
     if is_3d:
         dumb_grad = torch.einsum(
-            "ijk,ijl->ikl", pre_activation, input_features
+            "ijk,ijl->ikl", pre_activation, input_features,
         ).reshape(batch_size, -1)
     else:
         dumb_grad = torch.einsum("bi,bj->bij", pre_activation, input_features).reshape(
-            batch_size, -1
+            batch_size, -1,
         )
 
     # Create projector using original random_project function
@@ -229,7 +229,7 @@ def _setup_layernorm_projector(
     # For LayerNorm, gradient has shape (batch_size, 2 * normalized_shape)
     # because it includes both weight and bias gradients
     dumb_grad_comp = torch.zeros(
-        (pre_activation.shape[0], pre_activation.shape[-1] * 2)
+        (pre_activation.shape[0], pre_activation.shape[-1] * 2),
     )
 
     projector_grad = random_project(

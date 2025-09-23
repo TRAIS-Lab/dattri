@@ -23,10 +23,16 @@ class TestLoGraAttributor:
             torch.randint(0, 10, (4,)),
         )
         self.train_loader = DataLoader(
-            train_dataset, batch_size=4, shuffle=False, pin_memory=False
+            train_dataset,
+            batch_size=4,
+            shuffle=False,
+            pin_memory=False,
         )
         self.test_loader = DataLoader(
-            test_dataset, batch_size=2, shuffle=False, pin_memory=False
+            test_dataset,
+            batch_size=2,
+            shuffle=False,
+            pin_memory=False,
         )
         model = train_mnist_lr(self.train_loader, epoch_num=1)
 
@@ -62,7 +68,7 @@ class TestLoGraAttributor:
         self.attributor.cache(self.train_loader)
         assert self.attributor.projectors, "Projectors should be initialized"
         assert self.attributor.layer_dims == [self.projector_kwargs["proj_dim"]] * len(
-            self.attributor.layer_names
+            self.attributor.layer_names,
         )
         score = self.attributor.attribute(self.train_loader, self.test_loader)
         assert score.shape == (
@@ -70,7 +76,7 @@ class TestLoGraAttributor:
             len(self.test_loader.dataset),
         )
         assert torch.count_nonzero(score) == len(self.train_loader.dataset) * len(
-            self.test_loader.dataset
+            self.test_loader.dataset,
         )
 
         self_inf = self.attributor.compute_self_attribution()
@@ -104,10 +110,10 @@ class TestLoGraAttributor:
         loo_scores = torch.zeros_like(logra_score)
         for idx in range(len(train_ds)):
             inputs = torch.cat(
-                [train_ds.tensors[0][:idx], train_ds.tensors[0][idx + 1 :]]
+                [train_ds.tensors[0][:idx], train_ds.tensors[0][idx + 1 :]],
             )
             labels = torch.cat(
-                [train_ds.tensors[1][:idx], train_ds.tensors[1][idx + 1 :]]
+                [train_ds.tensors[1][:idx], train_ds.tensors[1][idx + 1 :]],
             )
             loo_loader = DataLoader(
                 TensorDataset(inputs, labels),
@@ -121,7 +127,7 @@ class TestLoGraAttributor:
             loo_scores[idx] = full_losses - loss_i
 
         corr = torch.corrcoef(
-            torch.stack([logra_score.flatten(), loo_scores.flatten()])
+            torch.stack([logra_score.flatten(), loo_scores.flatten()]),
         )[0, 1]
         print(logra_score)
         print(loo_scores)

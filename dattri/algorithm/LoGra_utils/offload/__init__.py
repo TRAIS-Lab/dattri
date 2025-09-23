@@ -28,6 +28,9 @@ def create_offload_manager(
 
     Returns:
         Appropriate offload strategy instance
+
+    Raises:
+        ValueError: If offload_type is not one of "none", "cpu", or "disk".
     """
     if offload_type == "none":
         return MemoryOffloadManager(device, layer_names, cache_dir)

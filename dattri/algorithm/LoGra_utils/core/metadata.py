@@ -5,6 +5,7 @@ Just restore the original metadata.py with one small addition.
 import json
 import logging
 import os
+import pathlib
 import threading
 import time
 from typing import Dict, List, Tuple
@@ -34,26 +35,31 @@ class MetadataManager:
         self._save_interval = 5.0  # Save every 5 seconds max
 
         if cache_dir:
-            os.makedirs(cache_dir, exist_ok=True)
+            pathlib.Path(cache_dir).mkdir(exist_ok=True, parents=True)
             self._load_metadata_if_exists()
 
         logger.debug(f"Initialized MetadataManager with {len(layer_names)} layers")
 
     def initialize_complete_dataset(
-        self, train_dataloader, is_master_worker: bool = False
+        self,
+        train_dataloader,
+        is_master_worker: bool = False,
     ) -> None:
         """Initialize complete dataset metadata. Only master worker (worker 0) does this.
 
         Args:
             train_dataloader: The training dataloader
             is_master_worker: True if this is worker 0, False otherwise
+
+        Raises:
+            RuntimeError: If master worker failed to initialize metadata within 30 seconds.
         """
         if not is_master_worker:
             # Non-master workers just load existing metadata
             self._load_metadata_if_exists()
             if not self.batch_info:
                 logger.info(
-                    "Non-master worker waiting for master to initialize metadata..."
+                    "Non-master worker waiting for master to initialize metadata...",
                 )
                 # Wait for master worker to create metadata
                 for _ in range(30):  # Wait up to 30 seconds
@@ -64,7 +70,7 @@ class MetadataManager:
                         break
                 else:
                     raise RuntimeError(
-                        "Master worker failed to initialize metadata within 30 seconds"
+                        "Master worker failed to initialize metadata within 30 seconds",
                     )
             return
 
@@ -88,7 +94,9 @@ class MetadataManager:
                 start_idx = batch_idx * batch_size
                 # Handle last batch which might be smaller
                 if batch_idx == total_batches - 1 and not getattr(
-                    train_dataloader, "drop_last", False
+                    train_dataloader,
+                    "drop_last",
+                    False,
                 ):
                     actual_batch_size = dataset_size - start_idx
                 else:
@@ -102,7 +110,7 @@ class MetadataManager:
         else:
             # Fallback: assume uniform batch sizes
             logger.warning(
-                "Dataset doesn't support __len__, using uniform batch size assumption"
+                "Dataset doesn't support __len__, using uniform batch size assumption",
             )
             current_sample_idx = 0
             for batch_idx in range(total_batches):
@@ -118,7 +126,9 @@ class MetadataManager:
         self.save_metadata()
 
         logger.info(
-            f"Master worker initialized complete dataset: {total_batches} batches, {current_sample_idx} samples"
+            "Master worker initialized complete dataset: %s batches, %s samples",
+            total_batches,
+            current_sample_idx,
         )
 
     def add_batch_info(self, batch_idx: int, sample_count: int) -> None:
@@ -135,13 +145,16 @@ class MetadataManager:
                 expected_count = self.batch_info[batch_idx]["sample_count"]
                 if sample_count != expected_count:
                     logger.warning(
-                        f"Batch {batch_idx} sample count mismatch. "
-                        f"Expected: {expected_count}, Got: {sample_count}"
+                        "Batch %s sample count mismatch. Expected: %s, Got: %s",
+                        batch_idx,
+                        expected_count,
+                        sample_count,
                     )
             else:
                 # This shouldn't happen if master worker initialized properly
                 logger.warning(
-                    f"Batch {batch_idx} not found in pre-initialized metadata"
+                    "Batch %s not found in pre-initialized metadata",
+                    batch_idx,
                 )
                 self._pending_batches[batch_idx] = {
                     "sample_count": sample_count,
@@ -159,7 +172,7 @@ class MetadataManager:
             self.layer_dims = layer_dims
             self.total_proj_dim = sum(layer_dims) if layer_dims else None
             logger.debug(
-                f"Set layer dimensions: {len(layer_dims)} layers, total={self.total_proj_dim}"
+                f"Set layer dimensions: {len(layer_dims)} layers, total={self.total_proj_dim}",
             )
 
     def _flush_pending_batches(self) -> None:
@@ -253,11 +266,11 @@ class MetadataManager:
             }
 
             # Write to temporary file first (atomic operation)
-            with open(temp_path, "w") as f:
+            with pathlib.Path(temp_path).open("w") as f:
                 json.dump(metadata, f, separators=(",", ":"))  # Compact format
 
             # Atomic rename
-            os.replace(temp_path, metadata_path)
+            pathlib.Path(temp_path).replace(metadata_path)
 
             # Update our internal state to match what we saved
             with self._metadata_lock:
@@ -267,24 +280,28 @@ class MetadataManager:
             logger.debug(f"Saved metadata for {len(self.batch_info)} batches")
 
         except Exception as e:
-            logger.error(f"Error saving metadata: {e}")
+            logger.error("Error saving metadata: %s", e)
             # Clean up temp file if it exists
-            if os.path.exists(temp_path):
+            if pathlib.Path(temp_path).exists():
                 try:
-                    os.remove(temp_path)
+                    pathlib.Path(temp_path).unlink()
                 except:
                     pass
 
     def _get_metadata_path(self) -> str:
-        """Get the path to the metadata file."""
+        """Get the path to the metadata file.
+
+        Returns:
+            str: The path to the batch_metadata.json file.
+        """
         return os.path.join(self.cache_dir, "batch_metadata.json")
 
     def _load_metadata_if_exists(self) -> None:
         """Load metadata from disk if it exists."""
         metadata_path = self._get_metadata_path()
-        if os.path.exists(metadata_path):
+        if pathlib.Path(metadata_path).exists():
             try:
-                with open(metadata_path, "r") as f:
+                with pathlib.Path(metadata_path).open("r") as f:
                     metadata = json.load(f)
 
                 # Convert string keys back to integers for batch info
@@ -310,7 +327,7 @@ class MetadataManager:
                 logger.info(f"Loaded metadata for {len(self.batch_info)} batches")
 
             except Exception as e:
-                logger.error(f"Error loading metadata: {e}")
+                logger.error("Error loading metadata: %s", e)
 
     def __del__(self):
         """Ensure metadata is saved on destruction."""
@@ -319,4 +336,4 @@ class MetadataManager:
                 logger.info("Saving pending metadata on destruction")
                 self.save_metadata()
         except Exception as e:
-            logger.error(f"Error saving metadata during cleanup: {e}")
+            logger.error("Error saving metadata during cleanup: %s", e)

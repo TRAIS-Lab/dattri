@@ -6,9 +6,23 @@ from torch.utils.data import DataLoader, Subset
 
 
 def get_worker_batch_range(
-    total_batches: int, chunk_size: int, worker: str
+    total_batches: int,
+    chunk_size: int,
+    worker: str,
 ) -> Tuple[int, int]:
-    """Get chunk-aligned batch range for a worker."""
+    """Get chunk-aligned batch range for a worker.
+
+    Args:
+        total_batches: Total number of batches in the dataset.
+        chunk_size: Size of each chunk for processing.
+        worker: Worker specification in format "worker_id/total_workers".
+
+    Returns:
+        Tuple[int, int]: A tuple of (start_batch, end_batch) for this worker.
+
+    Raises:
+        ValueError: If worker specification is invalid or worker_id is out of range.
+    """
     try:
         worker_id, total_workers = map(int, worker.split("/"))
 
@@ -39,9 +53,20 @@ def get_worker_batch_range(
 
 
 def create_worker_dataloader(
-    dataloader: "DataLoader", start_batch: int, end_batch: int
+    dataloader: "DataLoader",
+    start_batch: int,
+    end_batch: int,
 ) -> "DataLoader":
-    """Create an efficient subset dataloader for this worker's batch range."""
+    """Create an efficient subset dataloader for this worker's batch range.
+
+    Args:
+        dataloader: Original DataLoader to create a subset from.
+        start_batch: Starting batch index for this worker.
+        end_batch: Ending batch index for this worker.
+
+    Returns:
+        DataLoader: A new DataLoader containing only the subset of data for this worker.
+    """
     dataset = dataloader.dataset
     batch_size = dataloader.batch_size
 

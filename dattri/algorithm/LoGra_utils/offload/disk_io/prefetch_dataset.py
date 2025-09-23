@@ -3,6 +3,7 @@
 import logging
 import operator
 import os
+import pathlib
 import queue
 import threading
 import time
@@ -31,7 +32,11 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
     """Dataset that asynchronously prefetches chunks ahead of time."""
 
     def __init__(
-        self, disk_io, data_type="gradients", batch_range=None, prefetch_factor=2
+        self,
+        disk_io,
+        data_type="gradients",
+        batch_range=None,
+        prefetch_factor=2,
     ):
         """Initialize async prefetching dataset.
 
@@ -64,31 +69,37 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
         self._start_prefetch_thread()
 
         logger.debug(
-            f"AsyncPrefetchDataset: Found {len(self.chunk_info)} chunks for {data_type}"
+            f"AsyncPrefetchDataset: Found {len(self.chunk_info)} chunks for {data_type}",
         )
 
     def _load_chunk_info(self) -> List[Dict[str, Any]]:
-        """Load information about all available chunks."""
+        """Load information about all available chunks.
+
+        Returns:
+            List[Dict[str, Any]]: List of chunk information dictionaries containing metadata about each chunk.
+        """
         chunk_info = []
 
         # Get subdirectory
         subdir = self.disk_io._get_chunk_subdir(self.data_type)
         chunk_path = os.path.join(self.disk_io.cache_dir, subdir)
 
-        if not os.path.exists(chunk_path):
+        if not pathlib.Path(chunk_path).exists():
             return chunk_info
 
         # Find all chunk files
         _lazy_import_memory_map()
         chunk_files = ChunkedMemoryMapHandler.find_chunk_files(
-            chunk_path, self.data_type
+            chunk_path,
+            self.data_type,
         )
 
         for chunk_filename in chunk_files:
             try:
                 # Load chunk metadata
                 metadata = ChunkedMemoryMapHandler.read_chunk_metadata(
-                    chunk_path, chunk_filename
+                    chunk_path,
+                    chunk_filename,
                 )
 
                 # Check if chunk contains batches in our range
@@ -105,11 +116,11 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
                         "chunk_filename": chunk_filename,
                         "chunk_path": chunk_path,
                         "metadata": metadata,
-                    }
+                    },
                 )
 
             except Exception as e:
-                logger.warning(f"Error loading chunk {chunk_filename}: {e}")
+                logger.warning("Error loading chunk %s: %s", chunk_filename, e)
                 continue
 
         # Sort by chunk filename for consistency
@@ -182,13 +193,13 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
                         logger.debug(f"Prefetched chunk {idx} in {load_time:.3f}s")
 
                     except Exception as e:
-                        logger.error(f"Error prefetching chunk {idx}: {e}")
+                        logger.error("Error prefetching chunk %s: %s", idx, e)
 
                 # Small sleep to avoid busy waiting
                 time.sleep(0.01)
 
             except Exception as e:
-                logger.error(f"Prefetch worker error: {e}")
+                logger.error("Prefetch worker error: %s", e)
                 time.sleep(0.1)
 
     def __len__(self):
@@ -197,14 +208,20 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
     def __getitem__(self, idx):
         """Get a chunk, using prefetched data when available.
 
+        Args:
+            idx: Index of the chunk to retrieve.
+
         Returns:
             Tuple of (tensor, batch_mapping) where:
             - tensor has shape (total_samples_in_chunk, total_proj_dim)
             - batch_mapping maps batch_idx to (start_row, end_row) in tensor
+
+        Raises:
+            IndexError: If idx is out of range for the available chunks.
         """
         if idx >= len(self.chunk_info):
             raise IndexError(
-                f"Index {idx} out of range for {len(self.chunk_info)} chunks"
+                f"Index {idx} out of range for {len(self.chunk_info)} chunks",
             )
 
         # Update current index for prefetcher
@@ -217,7 +234,7 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
                 return self._chunk_cache[idx]
 
         # If not in cache, load synchronously
-        logger.debug(f"Cache miss for chunk {idx}, loading synchronously")
+        logger.debug("Cache miss for chunk %s, loading synchronously", idx)
 
         chunk_info = self.chunk_info[idx]
         chunk_filename = chunk_info["chunk_filename"]
@@ -239,7 +256,7 @@ class AsyncPrefetchDataset(torch.utils.data.Dataset):
             return tensor, batch_mapping
 
         except Exception as e:
-            logger.error(f"Error loading chunk {chunk_filename}: {e}")
+            logger.error("Error loading chunk %s: %s", chunk_filename, e)
             # Return empty data on error
             layer_dims = chunk_info["metadata"].get("layer_dims", [])
             total_proj_dim = sum(layer_dims) if layer_dims else 0
@@ -303,7 +320,12 @@ class PrefetchDataLoader(torch.utils.data.DataLoader):
         )
 
     def __iter__(self):
-        """Iterator with overlapped GPU transfers."""
+        """Iterator with overlapped GPU transfers.
+
+        Yields:
+            Tuple of (tensor, batch_mapping) where tensor is moved to the target device
+            and batch_mapping contains the batch index mappings.
+        """
         base_iterator = super().__iter__()
 
         if self.transfer_stream is None or self.device == "cpu":
