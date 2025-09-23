@@ -1,15 +1,18 @@
 """Enhanced disk offload strategy with async pipeline."""
+from __future__ import annotations
 
 import logging
 import os
 import pathlib
-from typing import List, Optional, Tuple
+from typing import TYPE_CHECKING, List, Optional, Tuple
 
 import torch
-from torch.utils.data import DataLoader
 
 from .disk_io.manager import ChunkedDiskIOManager
 from .offload import Offload
+
+if TYPE_CHECKING:
+    from torch.utils.data import DataLoader
 
 logger = logging.getLogger(__name__)
 
@@ -23,9 +26,10 @@ class DiskOffloadManager(Offload):
         layer_names: List[str],
         cache_dir: Optional[str] = None,
         chunk_size: int = 32,
-    ):
+    ) -> None:
         if cache_dir is None:
-            raise ValueError("Cache directory must be provided for disk offload")
+            msg = "Cache directory must be provided for disk offload"
+            raise ValueError(msg)
 
         self.device = device
         self.layer_names = layer_names
@@ -44,7 +48,7 @@ class DiskOffloadManager(Offload):
         # Track current batch range being processed
         self.current_batch_range = None
 
-    def start_batch_range_processing(self, start_batch: int, end_batch: int):
+    def start_batch_range_processing(self, start_batch: int, end_batch: int) -> None:
         """Start processing a new batch range.
 
         Args:
@@ -54,7 +58,7 @@ class DiskOffloadManager(Offload):
         self.current_batch_range = (start_batch, end_batch)
         self.disk_io.start_batch_range(start_batch, end_batch)
 
-    def finish_batch_range_processing(self):
+    def finish_batch_range_processing(self) -> None:
         """Finish processing the current batch range and write chunks."""
         if self.current_batch_range is not None:
             self.disk_io.finalize_batch_range()

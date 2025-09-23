@@ -1,4 +1,5 @@
 """Memory-mapped file operations with non-blocking writes."""
+from __future__ import annotations
 
 import json
 import logging
@@ -122,7 +123,7 @@ class ChunkedMemoryMapHandler:
                 "flush_mode": flush_mode,  # Track how it was written
             }
 
-            with pathlib.Path(metadata_path).open("w") as f:
+            with pathlib.Path(metadata_path).open("w", encoding="utf-8") as f:
                 json.dump(metadata, f, separators=(",", ":"))
 
             logger.debug(
@@ -132,7 +133,7 @@ class ChunkedMemoryMapHandler:
             return chunk_filename
 
         except Exception as e:
-            logger.error(f"Error writing chunked memory-mapped file {mmap_path}: {e!s}")
+            logger.exception(f"Error writing chunked memory-mapped file {mmap_path}: {e!s}")
             raise
 
     @staticmethod
@@ -154,7 +155,7 @@ class ChunkedMemoryMapHandler:
         mmap = None
         try:
             # Load metadata
-            with pathlib.Path(metadata_path).open("r") as f:
+            with pathlib.Path(metadata_path).open("r", encoding="utf-8") as f:
                 metadata = json.load(f)
 
             storage_dtype = metadata["storage_dtype"]
@@ -211,7 +212,7 @@ class ChunkedMemoryMapHandler:
             Dict[str, Any]: Dictionary containing the chunk metadata.
         """
         metadata_path = os.path.join(path, f"{chunk_filename}_metadata.json")
-        with pathlib.Path(metadata_path).open("r") as f:
+        with pathlib.Path(metadata_path).open("r", encoding="utf-8") as f:
             return json.load(f)
 
     @staticmethod
@@ -387,7 +388,7 @@ class ChunkedMemoryMapHandler:
             ):
                 try:
                     # Try to load metadata to ensure it's complete
-                    with pathlib.Path(metadata_path).open("r") as f:
+                    with pathlib.Path(metadata_path).open("r", encoding="utf-8") as f:
                         metadata = json.load(f)
 
                     # Check if the file size matches expected size

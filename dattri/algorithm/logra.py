@@ -131,7 +131,8 @@ class LoGraAttributor(BaseAttributor):
 
         # Validation
         if offload == "disk" and cache_dir is None:
-            raise ValueError("cache_dir must be provided when offload='disk'")
+            msg = "cache_dir must be provided when offload='disk'"
+            raise ValueError(msg)
 
     def _setup_projectors(self, train_dataloader: "DataLoader") -> None:
         """Set up projectors for the model layers.
@@ -152,7 +153,7 @@ class LoGraAttributor(BaseAttributor):
             device=self.device,
         )
 
-    def _sync_layer_dims(self):
+    def _sync_layer_dims(self) -> None:
         """Synchronize layer dimensions between components."""
         if self.layer_dims is None:
             if self.metadata.layer_dims is not None:
@@ -285,7 +286,6 @@ class LoGraAttributor(BaseAttributor):
         Raises:
             ValueError: If layer dimensions are not found. Ensure gradients have been computed and stored.
         """
-
         logger.info("Computing preconditioners...")
 
         if damping is None:
@@ -299,8 +299,9 @@ class LoGraAttributor(BaseAttributor):
         self._sync_layer_dims()
 
         if self.layer_dims is None:
+            msg = "Layer dimensions not found. Ensure gradients have been computed and stored."
             raise ValueError(
-                "Layer dimensions not found. Ensure gradients have been computed and stored.",
+                msg,
             )
 
         # If hessian type is "none", no preconditioners needed
@@ -338,7 +339,7 @@ class LoGraAttributor(BaseAttributor):
             pin_memory=True,
         )
 
-        for chunk_tensor, batch_mapping in tqdm(
+        for chunk_tensor, _batch_mapping in tqdm(
             dataloader,
             desc="Computing preconditioners",
         ):
@@ -402,7 +403,8 @@ class LoGraAttributor(BaseAttributor):
         self._sync_layer_dims()
 
         if self.layer_dims is None:
-            raise ValueError("Layer dimensions not found.")
+            msg = "Layer dimensions not found."
+            raise ValueError(msg)
 
         # Return raw gradients if Hessian type is "none"
         if self.hessian == "none":
@@ -631,7 +633,7 @@ class LoGraAttributor(BaseAttributor):
         if self.full_train_dataloader is None:
             warnings.warn(
                 "The full training data loader was NOT cached. "
-                "Treating the train_dataloader as the full training data loader.",
+                "Treating the train_dataloader as the full training data loader.", stacklevel=2,
             )
             self.cache(train_dataloader)
 
@@ -656,7 +658,7 @@ class LoGraAttributor(BaseAttributor):
 
         # Compute test gradients
         logger.info("Computing test gradients")
-        test_grads_tensor, test_batch_mapping = self._compute_test_gradients(
+        test_grads_tensor, _test_batch_mapping = self._compute_test_gradients(
             test_dataloader,
         )
 
@@ -784,7 +786,8 @@ class LoGraAttributor(BaseAttributor):
                 if hasattr(outputs, "loss"):
                     loss = outputs.loss
                 else:
-                    raise ValueError("Model must return loss for dict-style inputs")
+                    msg = "Model must return loss for dict-style inputs"
+                    raise ValueError(msg)
             else:
                 inputs, targets = batch
                 inputs = inputs.to(self.device)
