@@ -34,7 +34,6 @@ conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
 pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 
 pip install -e .
-```
 
 ### 3. Install Pre-commit Hooks
 

@@ -13,7 +13,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Fine-tuning the library models for causal language modeling (GPT, GPT-2, CTRL, ...)
+"""
+Fine-tuning the library models for causal language modeling (GPT, GPT-2, CTRL, ...)
 on a text file or a dataset without using HuggingFace Trainer.
 
 Here is the full list of checkpoints on the hub that can be fine-tuned by this script:
@@ -22,7 +23,6 @@ https://huggingface.co/models?filter=text-generation
 # You can also adapt this script on your own causal language modeling task. Pointers for this are left as comments.
 
 import argparse
-import csv
 import json
 import logging
 import math
@@ -30,17 +30,20 @@ import os
 import random
 from itertools import chain
 from pathlib import Path
+import csv
+from pathlib import PosixPath
 
 import datasets
 import torch
-import transformers
-from accelerate import Accelerator
+from accelerate import Accelerator, DistributedType
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
 from datasets import load_dataset
 from huggingface_hub import HfApi
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
+
+import transformers
 from transformers import (
     CONFIG_MAPPING,
     MODEL_MAPPING,
@@ -55,6 +58,7 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
 from dattri.benchmark.utils import SubsetSampler
+
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.46.0")
@@ -72,7 +76,7 @@ MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description="Finetune a transformers model on a causal language modeling task",
+        description="Finetune a transformers model on a causal language modeling task"
     )
     parser.add_argument(
         "--dataset_name",
@@ -145,10 +149,7 @@ def parse_args():
         help="Initial learning rate (after the potential warmup period) to use.",
     )
     parser.add_argument(
-        "--weight_decay",
-        type=float,
-        default=0.0,
-        help="Weight decay to use.",
+        "--weight_decay", type=float, default=0.0, help="Weight decay to use."
     )
     parser.add_argument(
         "--num_train_epochs",
@@ -189,16 +190,10 @@ def parse_args():
         help="Number of steps for the warmup in the lr scheduler.",
     )
     parser.add_argument(
-        "--output_dir",
-        type=str,
-        default=None,
-        help="Where to store the final model.",
+        "--output_dir", type=str, default=None, help="Where to store the final model."
     )
     parser.add_argument(
-        "--seed",
-        type=int,
-        default=None,
-        help="A seed for reproducible training.",
+        "--seed", type=int, default=None, help="A seed for reproducible training."
     )
     parser.add_argument(
         "--model_type",
@@ -244,9 +239,7 @@ def parse_args():
         help="The name of the repository to keep in sync with the local `output_dir`.",
     )
     parser.add_argument(
-        "--hub_token",
-        type=str,
-        help="The token to use to push to the Model Hub.",
+        "--hub_token", type=str, help="The token to use to push to the Model Hub."
     )
     parser.add_argument(
         "--trust_remote_code",
@@ -307,19 +300,20 @@ def parse_args():
         and args.validation_file is None
     ):
         raise ValueError("Need either a dataset name or a training/validation file.")
-    if args.train_file is not None:
-        extension = args.train_file.split(".")[-1]
-        if extension not in ["csv", "json", "txt"]:
-            raise ValueError("`train_file` should be a csv, json or txt file.")
-    if args.validation_file is not None:
-        extension = args.validation_file.split(".")[-1]
-        if extension not in ["csv", "json", "txt"]:
-            raise ValueError("`validation_file` should be a csv, json or txt file.")
+    else:
+        if args.train_file is not None:
+            extension = args.train_file.split(".")[-1]
+            if extension not in ["csv", "json", "txt"]:
+                raise ValueError("`train_file` should be a csv, json or txt file.")
+        if args.validation_file is not None:
+            extension = args.validation_file.split(".")[-1]
+            if extension not in ["csv", "json", "txt"]:
+                raise ValueError("`validation_file` should be a csv, json or txt file.")
 
     if args.push_to_hub:
         if args.output_dir is None:
             raise ValueError(
-                "Need an `output_dir` to create a repo when `--push_to_hub` is passed.",
+                "Need an `output_dir` to create a repo when `--push_to_hub` is passed."
             )
 
     return args
@@ -374,20 +368,16 @@ def main():
             # Create repo and retrieve repo_id
             api = HfApi()
             repo_id = api.create_repo(
-                repo_name,
-                exist_ok=True,
-                token=args.hub_token,
+                repo_name, exist_ok=True, token=args.hub_token
             ).repo_id
 
-            with Path(os.path.join(args.output_dir, ".gitignore")).open(
-                "w+",
-            ) as gitignore:
+            with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
                 if "step_*" not in gitignore:
                     gitignore.write("step_*\n")
                 if "epoch_*" not in gitignore:
                     gitignore.write("epoch_*\n")
         elif args.output_dir is not None:
-            Path(args.output_dir).mkdir(exist_ok=True, parents=True)
+            os.makedirs(args.output_dir, exist_ok=True)
     accelerator.wait_for_everyone()
 
     # Get the datasets: you can either provide your own CSV/JSON/TXT training and evaluation files (see below)
@@ -483,7 +473,7 @@ def main():
     else:
         raise ValueError(
             "You are instantiating a new tokenizer from scratch. This is not supported by this script. "
-            "You can do it from another script, save it, and load it from here, using --tokenizer_name.",
+            "You can do it from another script, save it, and load it from here, using --tokenizer_name."
         )
 
     if args.model_name_or_path:
@@ -497,8 +487,7 @@ def main():
     else:
         logger.info("Training new model from scratch")
         model = AutoModelForCausalLM.from_config(
-            config,
-            trust_remote_code=args.trust_remote_code,
+            config, trust_remote_code=args.trust_remote_code
         )
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
@@ -530,14 +519,14 @@ def main():
         if block_size > config.max_position_embeddings:
             logger.warning(
                 f"The tokenizer picked seems to have a very large `model_max_length` ({tokenizer.model_max_length}). "
-                f"Using block_size={min(1024, config.max_position_embeddings)} instead. You can change that default value by passing --block_size xxx.",
+                f"Using block_size={min(1024, config.max_position_embeddings)} instead. You can change that default value by passing --block_size xxx."
             )
             block_size = min(1024, config.max_position_embeddings)
     else:
         if args.block_size > tokenizer.model_max_length:
             logger.warning(
                 f"The block_size passed ({args.block_size}) is larger than the maximum length for the model "
-                f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}.",
+                f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}."
             )
         block_size = min(args.block_size, tokenizer.model_max_length)
 
@@ -573,22 +562,12 @@ def main():
             desc=f"Grouping texts in chunks of {block_size}",
         )
 
+    # >>>>>>>>>>>>>>>>>>>>> dattri Code begins here >>>>>>>>>>>>>>>>>>>>>
+
     train_dataset = lm_datasets["train"]
     eval_dataset = lm_datasets["validation"]
 
-    # crop the data to subset
-    if args.subset_ratio < 1:
-        train_index = random.sample(
-            range(len(train_dataset)),
-            int(args.subset_ratio * len(train_dataset)),
-        )
-        train_sampler = SubsetSampler(train_index)
-    else:
-        train_sampler = None
-
-    # Log a few random samples from the training set:
-    # for index in random.sample(range(len(train_dataset)), 3):
-    #     logger.info(f"Sample {index} of the training set: {train_dataset[index]}.")
+    train_sampler = SubsetSampler(range(len(train_dataset)))
 
     # Dataset length
     logger.info(f"The training dataset length: {len(train_dataset)}.")
@@ -598,298 +577,170 @@ def main():
     train_dataloader = DataLoader(
         train_dataset,
         collate_fn=default_data_collator,
-        batch_size=args.per_device_train_batch_size,
+        batch_size=4,
         sampler=train_sampler,
     )
     eval_dataloader = DataLoader(
-        eval_dataset,
-        collate_fn=default_data_collator,
-        batch_size=args.per_device_eval_batch_size,
+        eval_dataset, collate_fn=default_data_collator, batch_size=4, shuffle=False
     )
 
-    # Optimizer
-    # Split weights in two groups, one with weight decay and the other not.
-    no_decay = ["bias", "layer_norm.weight"]
-    optimizer_grouped_parameters = [
-        {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if not any(nd in n for nd in no_decay)
-            ],
-            "weight_decay": args.weight_decay,
-        },
-        {
-            "params": [
-                p
-                for n, p in model.named_parameters()
-                if any(nd in n for nd in no_decay)
-            ],
-            "weight_decay": 0.0,
-        },
-    ]
-    optimizer = torch.optim.AdamW(optimizer_grouped_parameters, lr=args.learning_rate)
+    from dattri.algorithm.logra import LoGraAttributor
+    import torch.nn as nn
 
-    # Scheduler and math around the number of training steps.
-    overrode_max_train_steps = False
-    num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / args.gradient_accumulation_steps,
-    )
-    if args.max_train_steps is None:
-        args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
-        overrode_max_train_steps = True
+    # from transformers.modeling_utils import Conv1D
+    from transformers.pytorch_utils import Conv1D
+    from dattri.task import AttributionTask
 
-    lr_scheduler = get_scheduler(
-        name=args.lr_scheduler_type,
-        optimizer=optimizer,
-        num_warmup_steps=args.num_warmup_steps * accelerator.num_processes,
-        num_training_steps=(
-            args.max_train_steps
-            if overrode_max_train_steps
-            else args.max_train_steps * accelerator.num_processes
-        ),
-    )
+    model_id = -1
+    checkpoint = f"{args.output_dir}/{model_id}"
 
-    # Prepare everything with our `accelerator`.
-    model, optimizer, train_dataloader, eval_dataloader, lr_scheduler = (
-        accelerator.prepare(
-            model,
-            optimizer,
-            train_dataloader,
-            eval_dataloader,
-            lr_scheduler,
-        )
-    )
-
-    # On TPU, the tie weights in our model have been disconnected, so we need to restore the ties.
-    # if accelerator.distributed_type == DistributedType.TPU:
-    #     model.tie_weights()
-
-    # We need to recalculate our total training steps as the size of the training dataloader may have changed.
-    num_update_steps_per_epoch = math.ceil(
-        len(train_dataloader) / args.gradient_accumulation_steps,
-    )
-    if overrode_max_train_steps:
-        args.max_train_steps = args.num_train_epochs * num_update_steps_per_epoch
-    # Afterwards we recalculate our number of training epochs
-    args.num_train_epochs = math.ceil(args.max_train_steps / num_update_steps_per_epoch)
-
-    # Figure out how many steps we should save the Accelerator states
-    checkpointing_steps = args.checkpointing_steps
-    if checkpointing_steps is not None and checkpointing_steps.isdigit():
-        checkpointing_steps = int(checkpointing_steps)
-
-    # We need to initialize the trackers we use, and also store our configuration.
-    # The trackers initializes automatically on the main process.
-    if args.with_tracking:
-        experiment_config = vars(args)
-        # TensorBoard cannot log Enums, need the raw value
-        experiment_config["lr_scheduler_type"] = experiment_config[
-            "lr_scheduler_type"
-        ].value
-        accelerator.init_trackers("clm_no_trainer", experiment_config)
-
-    # Train!
-    total_batch_size = (
-        args.per_device_train_batch_size
-        * accelerator.num_processes
-        * args.gradient_accumulation_steps
-    )
-
-    logger.info("***** Running training *****")
-    logger.info(f"  Num examples = {len(train_dataset)}")
-    logger.info(f"  Num Epochs = {args.num_train_epochs}")
-    logger.info(
-        f"  Instantaneous batch size per device = {args.per_device_train_batch_size}",
-    )
-    logger.info(
-        "  Total train batch size (w. parallel, distributed & accumulation) = %s",
-        total_batch_size,
-    )
-    logger.info(f"  Gradient Accumulation steps = {args.gradient_accumulation_steps}")
-    logger.info(f"  Total optimization steps = {args.max_train_steps}")
-    # Only show the progress bar once on each machine.
-    progress_bar = tqdm(
-        range(args.max_train_steps),
-        disable=not accelerator.is_local_main_process,
-    )
-    completed_steps = 0
-    starting_epoch = 0
-
-    # Potentially load in the weights and states from a previous save
-    if args.resume_from_checkpoint:
-        if args.resume_from_checkpoint is not None or args.resume_from_checkpoint != "":
-            checkpoint_path = args.resume_from_checkpoint
-            path = os.path.basename(args.resume_from_checkpoint)
-        else:
-            # Get the most recent checkpoint
-            dirs = [f.name for f in os.scandir(Path.cwd()) if f.is_dir()]
-            dirs.sort(key=os.path.getctime)
-            path = dirs[
-                -1
-            ]  # Sorts folders by date modified, most recent checkpoint is the last
-            checkpoint_path = path
-            path = os.path.basename(checkpoint_path)
-
-        accelerator.print(f"Resumed from checkpoint: {checkpoint_path}")
-        accelerator.load_state(checkpoint_path)
-        # Extract `epoch_{i}` or `step_{i}`
-        training_difference = os.path.splitext(path)[0]
-
-        if "epoch" in training_difference:
-            starting_epoch = int(training_difference.replace("epoch_", "")) + 1
-            resume_step = None
-            completed_steps = starting_epoch * num_update_steps_per_epoch
-        else:
-            # need to multiply `gradient_accumulation_steps` to reflect real steps
-            resume_step = (
-                int(training_difference.replace("step_", ""))
-                * args.gradient_accumulation_steps
-            )
-            starting_epoch = resume_step // len(train_dataloader)
-            completed_steps = resume_step // args.gradient_accumulation_steps
-            resume_step -= starting_epoch * len(train_dataloader)
-
-    # update the progress_bar if load from checkpoint
-    progress_bar.update(completed_steps)
-
-    for epoch in range(starting_epoch, args.num_train_epochs):
-        model.train()
-        if args.with_tracking:
-            total_loss = 0
-        if (
-            args.resume_from_checkpoint
-            and epoch == starting_epoch
-            and resume_step is not None
-        ):
-            # We skip the first `n` batches in the dataloader when resuming from a checkpoint
-            active_dataloader = accelerator.skip_first_batches(
-                train_dataloader,
-                resume_step,
-            )
-        else:
-            active_dataloader = train_dataloader
-        for step, batch in enumerate(active_dataloader):
-            with accelerator.accumulate(model):
-                outputs = model(**batch)
-                loss = outputs.loss
-                # We keep track of the loss at each epoch
-                if args.with_tracking:
-                    total_loss += loss.detach().float()
-                accelerator.backward(loss)
-                optimizer.step()
-                lr_scheduler.step()
-                optimizer.zero_grad()
-
-            # Checks if the accelerator has performed an optimization step behind the scenes
-            if accelerator.sync_gradients:
-                progress_bar.update(1)
-                completed_steps += 1
-
-            if isinstance(checkpointing_steps, int):
-                if (
-                    completed_steps % checkpointing_steps == 0
-                    and accelerator.sync_gradients
-                ):
-                    output_dir = f"step_{completed_steps}"
-                    if args.output_dir is not None:
-                        output_dir = os.path.join(args.output_dir, output_dir)
-                    accelerator.save_state(output_dir)
-            if completed_steps >= args.max_train_steps:
-                break
-
+    def checkpoints_load_func(model, checkpoint):
+        model = AutoModelForCausalLM.from_pretrained(checkpoint).cuda()
         model.eval()
-        losses = []
-        for step, batch in enumerate(eval_dataloader):
-            with torch.no_grad():
-                outputs = model(**batch)
+        return replace_conv1d_modules(model)
 
-            loss = outputs.loss
-            losses.append(
-                accelerator.gather_for_metrics(
-                    loss.repeat(args.per_device_eval_batch_size),
-                ),
-            )
+    def f(model, batch, device):
+        inputs = {k: v.to(device) for k, v in batch.items()}
+        outputs = model(**inputs)
+        return outputs.loss
 
-        losses = torch.cat(losses)
-        try:
-            eval_loss = torch.mean(losses)
-            perplexity = math.exp(eval_loss)
-        except OverflowError:
-            perplexity = float("inf")
+    def find_layers(model, layer_type="Linear", return_type="instance"):
+        """
+        Find all layers of a certain type in a model.
+        Args:
+            model: The model to find layers in.
+            layer_type: The type of layer to find.
+            return_type: The type of return value.
+        Returns:
+            layers: A list of layers of the specified type.
+            If return_type is "instance", the layers are instances of the specified type.
+            If return_type is "name", the layers are named tuples of the specified type.
+            If return_type is "name_instance", the layers are named tuples of the specified type and their instances.
+        """
+        layers = []
+        return_module_name = not (return_type == "instance")
 
-        logger.info(
-            "epoch %s: perplexity: %s eval_loss: %s",
-            epoch,
-            perplexity,
-            eval_loss,
-        )
+        if return_module_name:
+            for module_name, module in model.named_modules():
+                if (
+                    isinstance(module, nn.Linear)
+                    or isinstance(module, nn.LayerNorm)
+                    or isinstance(module, nn.Embedding)
+                ):
+                    layers.append((module_name, module))
+        else:
+            for module in model.modules():
+                if (
+                    isinstance(module, nn.Linear)
+                    or isinstance(module, nn.LayerNorm)
+                    or isinstance(module, nn.Embedding)
+                ):
+                    layers.append(module)
 
-        if args.with_tracking:
-            accelerator.log(
-                {
-                    "perplexity": perplexity,
-                    "eval_loss": eval_loss,
-                    "train_loss": total_loss.item() / len(train_dataloader),
-                    "epoch": epoch,
-                    "step": completed_steps,
-                },
-                step=completed_steps,
-            )
-
-        if args.push_to_hub and epoch < args.num_train_epochs - 1:
-            accelerator.wait_for_everyone()
-            unwrapped_model = accelerator.unwrap_model(model)
-            unwrapped_model.save_pretrained(
-                args.output_dir,
-                is_main_process=accelerator.is_main_process,
-                save_function=accelerator.save,
-            )
-            if accelerator.is_main_process:
-                tokenizer.save_pretrained(args.output_dir)
-                api.upload_folder(
-                    commit_message=f"Training in progress epoch {epoch}",
-                    folder_path=args.output_dir,
-                    repo_id=repo_id,
-                    repo_type="model",
-                    token=args.hub_token,
+        if return_module_name:
+            if layer_type == "Linear":
+                layers = [
+                    (name, layer)
+                    for name, layer in layers
+                    if isinstance(layer, nn.Linear)
+                ]
+            elif layer_type == "Linear_LayerNorm":
+                layers = [
+                    (name, layer)
+                    for name, layer in layers
+                    if isinstance(layer, (nn.Linear, nn.LayerNorm))
+                ]
+            elif layer_type == "LayerNorm":
+                layers = [
+                    (name, layer)
+                    for name, layer in layers
+                    if isinstance(layer, nn.LayerNorm)
+                ]
+            else:
+                raise ValueError(
+                    "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
+                )
+        else:
+            if layer_type == "Linear":
+                layers = [layer for layer in layers if isinstance(layer, nn.Linear)]
+            elif layer_type == "Linear_LayerNorm":
+                layers = [
+                    layer
+                    for layer in layers
+                    if isinstance(layer, nn.Linear) or isinstance(layer, nn.LayerNorm)
+                ]
+            elif layer_type == "LayerNorm":
+                layers = [layer for layer in layers if isinstance(layer, nn.LayerNorm)]
+            else:
+                raise ValueError(
+                    "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
                 )
 
-        if args.checkpointing_steps == "epoch":
-            output_dir = f"epoch_{epoch}"
-            if args.output_dir is not None:
-                output_dir = os.path.join(args.output_dir, output_dir)
-            accelerator.save_state(output_dir)
+        if return_type == "instance":
+            return layers
+        elif return_type == "name":
+            return [name for name, layer in layers]
+        elif return_type == "name_instance":
+            return [(name, layer) for name, layer in layers]
+        else:
+            raise ValueError(
+                "Invalid return_type. Choose from 'instance', 'name', and 'name_instance'."
+            )
 
-    if args.with_tracking:
-        accelerator.end_training()
+    def replace_conv1d_modules(model):
+        """
+        Replace all Conv1D modules in a model with Linear modules.
+        Args:
+            model: The model to replace Conv1D modules in.
+        Returns:
+            model: The model with all Conv1D modules replaced with Linear modules.
+        """
+        # GPT-2 is defined in terms of Conv1D. However, this does not work for EK-FAC.
+        # Here, we convert these Conv1D modules to linear modules recursively.
+        for name, module in model.named_children():
+            if len(list(module.children())) > 0:
+                replace_conv1d_modules(module)
 
-    if args.output_dir is not None:
-        accelerator.wait_for_everyone()
-        unwrapped_model = accelerator.unwrap_model(model)
-        unwrapped_model.save_pretrained(
-            args.output_dir,
-            is_main_process=accelerator.is_main_process,
-            save_function=accelerator.save,
-        )
-        if accelerator.is_main_process:
-            tokenizer.save_pretrained(args.output_dir)
-            if args.push_to_hub:
-                api.upload_folder(
-                    commit_message="End of training",
-                    folder_path=args.output_dir,
-                    repo_id=repo_id,
-                    repo_type="model",
-                    token=args.hub_token,
+            if isinstance(module, Conv1D):
+                new_module = nn.Linear(
+                    in_features=module.weight.shape[0],
+                    out_features=module.weight.shape[1],
                 )
-            with Path(os.path.join(args.output_dir, "all_results.json")).open("w") as f:
-                json.dump({"perplexity": perplexity}, f)
-            with Path(os.path.join(args.output_dir, "train_index.csv")).open(
-                "w",
-                newline="",
-            ) as file:
-                writer = csv.writer(file)
-                writer.writerow(train_index)
+                new_module.weight.data.copy_(module.weight.data.t())
+                new_module.bias.data.copy_(module.bias.data)
+                setattr(model, name, new_module)
+        return model
+
+    model = replace_conv1d_modules(model)
+    layer_names = find_layers(model, "Linear", return_type="name")
+
+    projector_kwargs = {
+        "device": "cuda",
+        "proj_dim": 512,
+        "use_half_precision": False,
+        "proj_max_batch_size": 32,
+    }
+
+    task = AttributionTask(
+        model=model,
+        loss_func=f,
+        checkpoints=checkpoint,
+        checkpoints_load_func=checkpoints_load_func,
+    )
+
+    attributor = LoGraAttributor(
+        task=task,
+        layer_names=layer_names,
+        device="cuda",
+        damping=1e-2,
+        offload="cpu",
+        projector_kwargs=projector_kwargs,
+    )
+
+    attributor.cache(train_dataloader)
+    score = attributor.attribute(train_dataloader, eval_dataloader)
+
+    torch.save(score, "score.pt")
 
 
 if __name__ == "__main__":

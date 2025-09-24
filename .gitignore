@@ -20,6 +20,7 @@ dependency-reduced-pom.xml
 *.iml
 .idea/
 .vscode/
+.venv/ 
 
 # macOS specific
 .DS_Store
