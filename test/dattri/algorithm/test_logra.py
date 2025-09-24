@@ -13,6 +13,7 @@ class TestLoGraAttributor:
     """Test suite for the LoGra attributor."""
 
     def setup_method(self) -> None:
+        """Set up test fixtures with sample datasets and attributor configuration."""
         torch.manual_seed(0)
         train_dataset = TensorDataset(
             torch.randn(10, 1, 28, 28),

@@ -1,4 +1,5 @@
 """LoGra Attributor - Influence Function with gradient projection.
+
 Integrated with dattri task-based API.
 """
 
@@ -57,9 +58,10 @@ class LoGraAttributor(BaseAttributor):
 
         Args:
             task: Attribution task containing model, loss function, and checkpoints
-            layer_names: Names of layers in the model where gradients will be collected for attribution. If None, uses all Linear layers.
+            layer_names: Names of layers where gradients will be collected.
+                If None, uses all Linear layers.
                 You can check the names using model.named_modules().
-                HookManager will register hooks to named layers for gradient calculation and projection.
+                HookManager will register hooks to named layers.
             hessian: Type of Hessian approximation ("none" or "raw"). For "none",
                 the hessian will be taken as the identity matrix. For "raw",
                 the hessian will be computed as the fisher information matrix.
@@ -107,7 +109,9 @@ class LoGraAttributor(BaseAttributor):
             self.layer_names = layer_names
 
         logger.info(
-            f"LoGra initialized with {len(self.layer_names)} layers: {self.layer_names}",
+            "LoGra initialized with %d layers: %s",
+            len(self.layer_names),
+            self.layer_names,
         )
 
         # Create offload manager
@@ -138,7 +142,7 @@ class LoGraAttributor(BaseAttributor):
         """Set up projectors for the model layers.
 
         Args:
-            train_dataloader: DataLoader for training data used to initialize projectors.
+            train_dataloader: DataLoader for training data used to set up projectors.
         """
         if not self.projector_kwargs:
             self.projectors = []
@@ -180,7 +184,7 @@ class LoGraAttributor(BaseAttributor):
         Args:
             full_train_dataloader: DataLoader for full training data
         """
-        logger.info(f"Caching gradients with LoGra (offload: {self.offload})")
+        logger.info("Caching gradients with LoGra (offload: %s)", self.offload)
 
         self.full_train_dataloader = full_train_dataloader
 
@@ -239,7 +243,9 @@ class LoGraAttributor(BaseAttributor):
 
                     self.total_proj_dim = sum(self.layer_dims)
                     logger.info(
-                        f"Detected layer dimensions: {len(self.layer_dims)} layers, total dimension={self.total_proj_dim}",
+                        "Detected layer dimensions: %d layers, total dimension=%d",
+                        len(self.layer_dims),
+                        self.total_proj_dim,
                     )
 
                     # Save to metadata manager
@@ -284,7 +290,7 @@ class LoGraAttributor(BaseAttributor):
             damping: Damping factor for numerical stability
 
         Raises:
-            ValueError: If layer dimensions are not found. Ensure gradients have been computed and stored.
+            ValueError: If layer dimensions are not found.
         """
         logger.info("Computing preconditioners...")
 
@@ -299,7 +305,10 @@ class LoGraAttributor(BaseAttributor):
         self._sync_layer_dims()
 
         if self.layer_dims is None:
-            msg = "Layer dimensions not found. Ensure gradients have been computed and stored."
+            msg = (
+                "Layer dimensions not found. "
+                "Ensure gradients have been computed and stored."
+            )
             raise ValueError(
                 msg,
             )
@@ -344,14 +353,14 @@ class LoGraAttributor(BaseAttributor):
             desc="Computing preconditioners",
         ):
             # Move chunk to device
-            chunk_tensor = self.offload_manager.move_to_device(chunk_tensor)
+            chunk_tensor_device = self.offload_manager.move_to_device(chunk_tensor)
 
             # Process each layer
             for layer_idx in range(len(self.layer_names)):
                 # Extract layer slice
                 start_col = sum(self.layer_dims[:layer_idx])
                 end_col = start_col + self.layer_dims[layer_idx]
-                layer_data = chunk_tensor[:, start_col:end_col].detach()
+                layer_data = chunk_tensor_device[:, start_col:end_col].detach()
 
                 if layer_data.numel() == 0 or hessian_accumulators[layer_idx] is None:
                     continue
@@ -384,11 +393,8 @@ class LoGraAttributor(BaseAttributor):
         self.offload_manager.wait_for_async_operations()
         logger.info("Computed %s preconditioners", computed_count)
 
-    def compute_ifvp(self, worker: str = "0/1") -> None:
+    def compute_ifvp(self) -> None:
         """Compute inverse-Hessian-vector products (IFVP).
-
-        Args:
-            worker: Worker specification (for compatibility)
 
         Raises:
             ValueError: If layer dimensions are not found.
@@ -432,14 +438,14 @@ class LoGraAttributor(BaseAttributor):
 
         for chunk_tensor, batch_mapping in tqdm(dataloader, desc="Computing IFVP"):
             # Move chunk to device
-            chunk_tensor = self.offload_manager.move_to_device(chunk_tensor)
+            chunk_tensor_device = self.offload_manager.move_to_device(chunk_tensor)
 
             # Process each batch in the chunk
             for batch_idx, (start_row, end_row) in batch_mapping.items():
                 if batch_idx not in batch_to_sample_mapping:
                     continue
 
-                batch_tensor = chunk_tensor[start_row:end_row]
+                batch_tensor = chunk_tensor_device[start_row:end_row]
                 batch_ifvp = []
 
                 # Process each layer
@@ -581,8 +587,8 @@ class LoGraAttributor(BaseAttributor):
                 total=len(grad_dataloader),
             ):
                 # Move to device
-                grad_tensor = self.offload_manager.move_to_device(grad_tensor)
-                ifvp_tensor = self.offload_manager.move_to_device(ifvp_tensor)
+                grad_tensor_device = self.offload_manager.move_to_device(grad_tensor)
+                ifvp_tensor_device = self.offload_manager.move_to_device(ifvp_tensor)
 
                 # Process each batch
                 for batch_idx in grad_mapping:
@@ -598,8 +604,8 @@ class LoGraAttributor(BaseAttributor):
                     grad_start, grad_end = grad_mapping[batch_idx]
                     ifvp_start, ifvp_end = ifvp_mapping[batch_idx]
 
-                    batch_grad = grad_tensor[grad_start:grad_end]
-                    batch_ifvp = ifvp_tensor[ifvp_start:ifvp_end]
+                    batch_grad = grad_tensor_device[grad_start:grad_end]
+                    batch_ifvp = ifvp_tensor_device[ifvp_start:ifvp_end]
 
                     # Compute dot product
                     batch_influence = torch.sum(batch_grad * batch_ifvp, dim=1).cpu()
@@ -633,7 +639,8 @@ class LoGraAttributor(BaseAttributor):
         if self.full_train_dataloader is None:
             warnings.warn(
                 "The full training data loader was NOT cached. "
-                "Treating the train_dataloader as the full training data loader.", stacklevel=2,
+                "Treating the train_dataloader as the full training data loader.",
+                stacklevel=2,
             )
             self.cache(train_dataloader)
 
@@ -682,7 +689,7 @@ class LoGraAttributor(BaseAttributor):
         test_sample_count = test_grads_tensor.shape[0]
 
         # Initialize result
-        IF_score = torch.zeros(
+        if_score = torch.zeros(
             total_train_samples,
             test_sample_count,
             device=self.device,
@@ -728,8 +735,8 @@ class LoGraAttributor(BaseAttributor):
 
                     train_start, train_end = batch_to_sample_mapping[batch_idx]
                     batch_scores = chunk_scores[start_row:end_row]
-                    IF_score[train_start:train_end, test_start:test_end] = (
-                        batch_scores.to(IF_score.device)
+                    if_score[train_start:train_end, test_start:test_end] = (
+                        batch_scores.to(if_score.device)
                     )
 
                 torch.cuda.empty_cache()
@@ -737,9 +744,10 @@ class LoGraAttributor(BaseAttributor):
             torch.cuda.empty_cache()
 
         logger.info(
-            f"Attribution computation completed. Result shape: {IF_score.shape}",
+            "Attribution computation completed. Result shape: %s",
+            if_score.shape,
         )
-        return IF_score
+        return if_score
 
     def _compute_test_gradients(
         self,
@@ -752,11 +760,13 @@ class LoGraAttributor(BaseAttributor):
 
         Returns:
             Tuple containing:
-                - Tensor of concatenated test gradients of shape (num_test_samples, total_proj_dim)
+                - Tensor of concatenated test gradients
+                  Shape:(num_test_samples, total_proj_dim)
                 - Dictionary mapping batch indices to (start_row, end_row) positions
 
         Raises:
-            ValueError: If model must return loss for dict-style inputs but doesn't have loss attribute.
+            ValueError: If model must return loss for dict-style inputs
+            but doesn't have loss attribute.
         """
         # Create hook manager if needed
         if self.hook_manager is None:
