@@ -762,11 +762,10 @@ class LoGraAttributor(BaseAttributor):
             Tuple containing:
                 - Tensor of concatenated test gradients
                   Shape:(num_test_samples, total_proj_dim)
-                - Dictionary mapping batch indices to (start_row, end_row) positions
+                - Dictionary mapping batch indices to (start_row, end_row) positions.
 
         Raises:
-            ValueError: If model must return loss for dict-style inputs
-            but doesn't have loss attribute.
+            ValueError: If model can't return loss for dict-style inputs.
         """
         # Create hook manager if needed
         if self.hook_manager is None:
