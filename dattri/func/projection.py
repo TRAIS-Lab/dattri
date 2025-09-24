@@ -820,7 +820,8 @@ def make_random_projector(
             computations and arrays will be stored in torch.float16.
 
     Returns:
-        The initialized projector object (CudaProjector, ChunkedCudaProjector, or BasicProjector).
+        The initialized projector object
+        (CudaProjector, ChunkedCudaProjector, or BasicProjector).
     """
     using_cuda_projector = False
     dtype = torch.float16 if use_half_precision else torch.float32
