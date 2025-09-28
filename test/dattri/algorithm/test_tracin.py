@@ -7,7 +7,7 @@ from pathlib import Path
 import torch
 from torch import nn
 from torch.func import grad, vmap
-from torch.utils.data import DataLoader, TensorDataset
+from torch.utils.data import DataLoader, Dataset, TensorDataset
 
 from dattri.algorithm.tracin import TracInAttributor
 from dattri.benchmark.datasets.cifar import train_cifar_resnet9
@@ -30,6 +30,7 @@ class TestTracInAttributor:
             torch.randint(0, 10, (10,)),
         )
         train_loader = DataLoader(train_dataset, batch_size=4)
+        test_loader = train_loader
         test_loader = DataLoader(test_dataset, batch_size=2)
 
         model = train_mnist_lr(train_loader)
@@ -81,6 +82,8 @@ class TestTracInAttributor:
             projector_kwargs=projector_kwargs,
             device=torch.device(pytest_device),
         )
+
+        # Original test
         score = attributor.attribute(train_loader, test_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
@@ -147,6 +150,58 @@ class TestTracInAttributor:
         )
 
         shutil.rmtree(path)
+
+    def test_tracin_self_attribute(self):
+        """Test for self_attribute in TracIn without projectors."""
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+
+        train_loader = DataLoader(train_dataset, batch_size=10)
+
+        model = train_mnist_lr(train_loader)
+
+        # the function directly operate on batches of images/labels
+        # not on dataloader anymore to allow vmap usage
+        # need to prepare a batch dim in the begining
+        def f(params, image_label_pair):
+            image, label = image_label_pair
+            image_t = image.unsqueeze(0)
+            label_t = label.unsqueeze(0)
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image_t)
+            return loss(yhat, label_t)
+
+        # to simlulate multiple checkpoints
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
+        pytest_device = "cpu"
+        # test with no projector list
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+        )
+
+        tensor1 = attributor.attribute(train_loader, train_loader).diag()
+        tensor2 = attributor.self_attribute(train_loader)
+        assert torch.allclose(tensor1, tensor2, rtol=1e-03, atol=1e-05)
 
     def test_mnist_lr_multi_ckpts_grad(self):
         """Test for gradient computation correctness for mnist lr."""
@@ -220,6 +275,87 @@ class TestTracInAttributor:
         # match for mnist exp
         for idx in range(len(checkpoint_list)):
             assert torch.allclose(ckpt_grad_1[idx], ckpt_grad_2[idx])
+
+        shutil.rmtree(path)
+
+    def test_tracin_dict_input(self):
+        """Test dictionary input."""
+
+        class InlineDictDataset(Dataset):
+            def __init__(self, size=20):
+                super().__init__()
+                self.inputs = torch.randn(size, 1, 28, 28)
+                self.labels = torch.randint(0, 10, (size,))
+
+            def __len__(self):
+                return len(self.labels)
+
+            def __getitem__(self, idx):
+                return {
+                    "input": self.inputs[idx],
+                    "label": self.labels[idx],
+                }
+
+        def dict_to_tuple_collate_fn(batch):
+            inputs = []
+            labels = []
+            for item in batch:
+                inputs.append(item["input"])
+                labels.append(item["label"])
+            return torch.stack(inputs, dim=0), torch.stack(labels, dim=0)
+
+        train_dataset = InlineDictDataset(size=20)
+        test_dataset = InlineDictDataset(size=10)
+        train_loader = DataLoader(
+            train_dataset,
+            batch_size=4,
+            collate_fn=dict_to_tuple_collate_fn,
+        )
+        test_loader = DataLoader(
+            test_dataset,
+            batch_size=2,
+            collate_fn=dict_to_tuple_collate_fn,
+        )
+
+        model = train_mnist_lr(train_loader)
+
+        def f(params, dict_batch):
+            image, label = dict_batch
+            image_t = image.unsqueeze(0)
+            label_t = label.unsqueeze(0)
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image_t)
+            return loss(yhat, label_t)
+
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts_dict_input")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+        checkpoint_list = [str(path / "model_1.pt"), str(path / "model_2.pt")]
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
+        pytest_device = "cpu"
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+        )
+
+        score = attributor.attribute(train_loader, test_loader)
+
+        assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
+        assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
+            test_loader.dataset,
+        )
 
         shutil.rmtree(path)
 

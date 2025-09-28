@@ -385,7 +385,8 @@ class TestInfluenceFunction:
         # Calculating ground truth transformed query
         cached_train_reps = attributor._cached_train_reps[0]  # noqa: SLF001
         cached_train_reps_layers = attributor._get_layer_wise_reps(
-            0, cached_train_reps
+            0,
+            cached_train_reps,
         )  # noqa: SLF001
         test_rep_layers = attributor._get_layer_wise_reps(0, test_rep)  # noqa: SLF001
 
