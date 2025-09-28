@@ -7,10 +7,10 @@ from .influence_function import (
     IFAttributorExplicit,
     IFAttributorLiSSA,
 )
-from .trak import TRAKAttributor
-from .tracin import TracInAttributor
-from .rps import RPSAttributor
 from .logra.logra import LoGraAttributor
+from .rps import RPSAttributor
+from .tracin import TracInAttributor
+from .trak import TRAKAttributor
 
 __all__ = [
     "IFAttributorArnoldi",
@@ -18,8 +18,8 @@ __all__ = [
     "IFAttributorDataInf",
     "IFAttributorExplicit",
     "IFAttributorLiSSA",
+    "LoGraAttributor",
+    "RPSAttributor",
     "TRAKAttributor",
     "TracInAttributor",
-    "RPSAttributor",
-    "LoGraAttributor",
 ]
