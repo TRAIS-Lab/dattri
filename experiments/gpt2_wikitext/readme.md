@@ -83,16 +83,6 @@ python train.py \
     --seed ${SLURM_ARRAY_TASK_ID}  # 50 models
 ```
 
-```bash
-python train.py \
-    --dataset_name wikitext \
-    --dataset_config_name wikitext-2-raw-v1 \
-    --model_name_or_path openai-community/gpt2 \
-    --output_dir ./checkpoints/-1 \
-    --block_size 512 \
-    --subset_ratio 1.0
-```
-
 ## Calculate the attribution score
 
 ```bash
@@ -104,7 +94,7 @@ python score_logra.py \
     --block_size 512 \
     --method TRAK-5 \
     --seed 0
-```
+``` 
 
 ```shell
 python score_TRAK.py \
@@ -115,8 +105,6 @@ python score_TRAK.py \
     --block_size 512 \
     --seed 0
 ```
-
-
 
 ## Calculate the ground truth for LDS evaluation
 

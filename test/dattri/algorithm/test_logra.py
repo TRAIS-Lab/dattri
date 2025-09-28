@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm.logra import LoGraAttributor
+from dattri.algorithm.logra.logra import LoGraAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.task import AttributionTask
 

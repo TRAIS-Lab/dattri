@@ -69,14 +69,19 @@ check_min_version("4.46.0")
 
 logger = get_logger(__name__)
 
-require_version("datasets>=2.14.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt")
+require_version(
+    "datasets>=2.14.0",
+    "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt",
+)
 
 MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Finetune a transformers model on a causal language modeling task")
+    parser = argparse.ArgumentParser(
+        description="Finetune a transformers model on a causal language modeling task"
+    )
     parser.add_argument(
         "--dataset_name",
         type=str,
@@ -90,10 +95,16 @@ def parse_args():
         help="The configuration name of the dataset to use (via the datasets library).",
     )
     parser.add_argument(
-        "--train_file", type=str, default=None, help="A csv, txt or a json file containing the training data."
+        "--train_file",
+        type=str,
+        default=None,
+        help="A csv, txt or a json file containing the training data.",
     )
     parser.add_argument(
-        "--validation_file", type=str, default=None, help="A csv, txt or a json file containing the validation data."
+        "--validation_file",
+        type=str,
+        default=None,
+        help="A csv, txt or a json file containing the validation data.",
     )
     parser.add_argument(
         "--validation_split_percentage",
@@ -141,8 +152,15 @@ def parse_args():
         default=5e-5,
         help="Initial learning rate (after the potential warmup period) to use.",
     )
-    parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay to use.")
-    parser.add_argument("--num_train_epochs", type=int, default=3, help="Total number of training epochs to perform.")
+    parser.add_argument(
+        "--weight_decay", type=float, default=0.0, help="Weight decay to use."
+    )
+    parser.add_argument(
+        "--num_train_epochs",
+        type=int,
+        default=3,
+        help="Total number of training epochs to perform.",
+    )
     parser.add_argument(
         "--max_train_steps",
         type=int,
@@ -160,13 +178,27 @@ def parse_args():
         type=SchedulerType,
         default="linear",
         help="The scheduler type to use.",
-        choices=["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"],
+        choices=[
+            "linear",
+            "cosine",
+            "cosine_with_restarts",
+            "polynomial",
+            "constant",
+            "constant_with_warmup",
+        ],
     )
     parser.add_argument(
-        "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
+        "--num_warmup_steps",
+        type=int,
+        default=0,
+        help="Number of steps for the warmup in the lr scheduler.",
     )
-    parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
-    parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
+    parser.add_argument(
+        "--output_dir", type=str, default=None, help="Where to store the final model."
+    )
+    parser.add_argument(
+        "--seed", type=int, default=None, help="A seed for reproducible training."
+    )
     parser.add_argument(
         "--model_type",
         type=str,
@@ -191,16 +223,28 @@ def parse_args():
         help="The number of processes to use for the preprocessing.",
     )
     parser.add_argument(
-        "--overwrite_cache", action="store_true", help="Overwrite the cached training and evaluation sets"
+        "--overwrite_cache",
+        action="store_true",
+        help="Overwrite the cached training and evaluation sets",
     )
     parser.add_argument(
-        "--no_keep_linebreaks", action="store_true", help="Do not keep line breaks when using TXT files."
+        "--no_keep_linebreaks",
+        action="store_true",
+        help="Do not keep line breaks when using TXT files.",
     )
-    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
     parser.add_argument(
-        "--hub_model_id", type=str, help="The name of the repository to keep in sync with the local `output_dir`."
+        "--push_to_hub",
+        action="store_true",
+        help="Whether or not to push the model to the Hub.",
     )
-    parser.add_argument("--hub_token", type=str, help="The token to use to push to the Model Hub.")
+    parser.add_argument(
+        "--hub_model_id",
+        type=str,
+        help="The name of the repository to keep in sync with the local `output_dir`.",
+    )
+    parser.add_argument(
+        "--hub_token", type=str, help="The token to use to push to the Model Hub."
+    )
     parser.add_argument(
         "--trust_remote_code",
         action="store_true",
@@ -265,7 +309,11 @@ def parse_args():
     args = parser.parse_args()
 
     # Sanity checks
-    if args.dataset_name is None and args.train_file is None and args.validation_file is None:
+    if (
+        args.dataset_name is None
+        and args.train_file is None
+        and args.validation_file is None
+    ):
         raise ValueError("Need either a dataset name or a training/validation file.")
     else:
         if args.train_file is not None:
@@ -279,7 +327,9 @@ def parse_args():
 
     if args.push_to_hub:
         if args.output_dir is None:
-            raise ValueError("Need an `output_dir` to create a repo when `--push_to_hub` is passed.")
+            raise ValueError(
+                "Need an `output_dir` to create a repo when `--push_to_hub` is passed."
+            )
 
     return args
 
@@ -300,7 +350,10 @@ def main():
         accelerator_log_kwargs["log_with"] = args.report_to
         accelerator_log_kwargs["project_dir"] = args.output_dir
 
-    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, **accelerator_log_kwargs)
+    accelerator = Accelerator(
+        gradient_accumulation_steps=args.gradient_accumulation_steps,
+        **accelerator_log_kwargs,
+    )
 
     # Make one log on every process with the configuration for debugging.
     logging.basicConfig(
@@ -329,7 +382,9 @@ def main():
                 repo_name = Path(args.output_dir).absolute().name
             # Create repo and retrieve repo_id
             api = HfApi()
-            repo_id = api.create_repo(repo_name, exist_ok=True, token=args.hub_token).repo_id
+            repo_id = api.create_repo(
+                repo_name, exist_ok=True, token=args.hub_token
+            ).repo_id
 
             with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
                 if "step_*" not in gitignore:
@@ -352,7 +407,9 @@ def main():
     if args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset(
-            args.dataset_name, args.dataset_config_name, trust_remote_code=args.trust_remote_code
+            args.dataset_name,
+            args.dataset_config_name,
+            trust_remote_code=args.trust_remote_code,
         )
         if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
@@ -418,11 +475,15 @@ def main():
 
     if args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(
-            args.tokenizer_name, use_fast=not args.use_slow_tokenizer, trust_remote_code=args.trust_remote_code
+            args.tokenizer_name,
+            use_fast=not args.use_slow_tokenizer,
+            trust_remote_code=args.trust_remote_code,
         )
     elif args.model_name_or_path:
         tokenizer = AutoTokenizer.from_pretrained(
-            args.model_name_or_path, use_fast=not args.use_slow_tokenizer, trust_remote_code=args.trust_remote_code
+            args.model_name_or_path,
+            use_fast=not args.use_slow_tokenizer,
+            trust_remote_code=args.trust_remote_code,
         )
     else:
         raise ValueError(
