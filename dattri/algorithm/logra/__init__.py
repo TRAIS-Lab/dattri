@@ -7,6 +7,7 @@ from .core.metadata import MetadataManager
 from .offload import create_offload_manager
 from .utils.common import stable_inverse
 from .utils.projector import ProjectorContainer, setup_model_projectors
+from .logra import LoGraAttributor
 
 __all__ = [
     "HookManager",
@@ -15,4 +16,5 @@ __all__ = [
     "create_offload_manager",
     "setup_model_projectors",
     "stable_inverse",
+    "LoGraAttributor",
 ]

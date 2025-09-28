@@ -15,7 +15,10 @@ class Offload(ABC):
 
     @abstractmethod
     def __init__(
-        self, device: str, layer_names: List[str], cache_dir: Optional[str] = None,
+        self,
+        device: str,
+        layer_names: List[str],
+        cache_dir: Optional[str] = None,
     ) -> None:
         """Initialize the offload strategy.
 
@@ -27,7 +30,10 @@ class Offload(ABC):
 
     @abstractmethod
     def store_gradients(
-        self, batch_idx: int, gradients: List[torch.Tensor], is_test: bool = False,
+        self,
+        batch_idx: int,
+        gradients: List[torch.Tensor],
+        is_test: bool = False,
     ) -> None:
         """Store gradients for a batch.
 
@@ -39,7 +45,9 @@ class Offload(ABC):
 
     @abstractmethod
     def retrieve_gradients(
-        self, batch_idx: int, is_test: bool = False,
+        self,
+        batch_idx: int,
+        is_test: bool = False,
     ) -> List[torch.Tensor]:
         """Retrieve gradients for a batch.
 
@@ -53,7 +61,9 @@ class Offload(ABC):
 
     @abstractmethod
     def store_preconditioner(
-        self, layer_idx: int, preconditioner: torch.Tensor,
+        self,
+        layer_idx: int,
+        preconditioner: torch.Tensor,
     ) -> None:
         """Store a preconditioner for a layer.
 

@@ -524,9 +524,9 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
 
         # Assuming that full_train_dataloader has only one batch
         iter_number = math.ceil(len(full_train_dataloader) * self.precompute_data_ratio)
-        data_target_pair_list = []
-        for _ in range(iter_number):
-            data_target_pair_list.append(next(iter(full_train_dataloader)))  # noqa: PERF401
+        data_target_pair_list = [
+            next(iter(full_train_dataloader)) for _ in range(iter_number)
+        ]  # noqa: PERF401
 
         # concatenate all data
         data_target_pair = data_target_pair_list[0]
@@ -819,9 +819,9 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             iter_number = math.ceil(
                 len(full_train_dataloader) * self.fim_estimate_data_ratio,
             )
-            sampled_data_list = []
-            for _ in range(iter_number):
-                sampled_data_list.append(next(iter(full_train_dataloader)))  # noqa: PERF401
+            sampled_data_list = [
+                next(iter(full_train_dataloader)) for _ in range(iter_number)
+            ]  # noqa: PERF401
             for sampled_data_ in sampled_data_list:
                 sampled_data = tuple(
                     data.to(self.device).unsqueeze(0) for data in sampled_data_
