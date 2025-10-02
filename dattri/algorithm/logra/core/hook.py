@@ -1,6 +1,4 @@
-"""Hook manager for efficient gradient component capture and projection.
-Simplified version with sparsification removed.
-"""
+"""Hook manager for efficient gradient component capture and projection."""
 
 from __future__ import annotations
 
@@ -61,6 +59,7 @@ def compute_linear_gradients_3d(
 
 
 class HookManager:
+    """Manages hooks for efficient gradient component capturing and projection."""
 
     def __init__(
         self,
