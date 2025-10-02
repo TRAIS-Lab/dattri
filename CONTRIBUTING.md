@@ -36,7 +36,6 @@ pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 pip install -e .
 ```
 
-
 ### 3. Install Pre-commit Hooks
 
 We use pre-commit hooks to ensure that your contributions adhere to our code standards. To set up pre-commit hooks in your local repository, follow these steps:

@@ -1,6 +1,4 @@
-"""Projector container classes for gradient compression.
-Simplified version with sparsification removed.
-"""
+"""Projector container classes for gradient compression."""
 
 from __future__ import annotations
 
@@ -35,7 +33,6 @@ def setup_model_projectors(
     device: str = "cpu",
 ) -> List[ProjectorContainer]:
     """Sets up projectors for each layer in the model.
-    Simplified version with sparsification removed.
 
     Args:
         model: The PyTorch model

@@ -1,6 +1,7 @@
 """Simple metadata management with master worker approach.
 Just restore the original metadata.py with one small addition.
 """
+
 from __future__ import annotations
 
 import builtins
@@ -72,7 +73,9 @@ class MetadataManager:
                         logger.info("Metadata initialized by master worker")
                         break
                 else:
-                    msg = "Master worker failed to initialize metadata within 30 seconds"
+                    msg = (
+                        "Master worker failed to initialize metadata within 30 seconds"
+                    )
                     raise RuntimeError(
                         msg,
                     )
