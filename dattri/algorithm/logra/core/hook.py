@@ -18,7 +18,8 @@ logger = logging.getLogger(__name__)
 
 @jit.script
 def compute_linear_gradients_2d(
-    grad_pre_activation: Tensor, input_features: Tensor,
+    grad_pre_activation: Tensor,
+    input_features: Tensor,
 ) -> Tensor:
     """Compute weight gradients using outer products for 2D tensors.
 
@@ -39,7 +40,8 @@ def compute_linear_gradients_2d(
 
 @jit.script
 def compute_linear_gradients_3d(
-    grad_pre_activation: Tensor, input_features: Tensor,
+    grad_pre_activation: Tensor,
+    input_features: Tensor,
 ) -> Tensor:
     """Compute weight gradients using outer products for 3D tensors (sequence data).
 
@@ -59,9 +61,6 @@ def compute_linear_gradients_3d(
 
 
 class HookManager:
-    """Manages hooks for efficient gradient component capturing and projection.
-    Simplified version without sparsification functionality.
-    """
 
     def __init__(
         self,
@@ -175,7 +174,11 @@ class HookManager:
             self.normalized[idx] = normalized.detach()
 
     def _backward_hook_fn(
-        self, name: str, mod: nn.Module, grad_input: Any, grad_output: Any,
+        self,
+        name: str,
+        mod: nn.Module,
+        grad_input: Any,
+        grad_output: Any,
     ) -> None:
         """Backward hook function that computes projected gradients.
 
@@ -226,7 +229,6 @@ class HookManager:
         per_sample: bool = True,
     ) -> Tensor:
         """Compute the gradient for Linear layers with projection.
-        Simplified version without sparsification.
 
         Args:
             layer: Linear layer
@@ -253,7 +255,8 @@ class HookManager:
             # Reshape 3D tensors to 2D for consistent processing
             input_features_flat = input_features.reshape(-1, hidden_size)
             grad_pre_activation_flat = grad_pre_activation.reshape(
-                -1, layer.out_features,
+                -1,
+                layer.out_features,
             )
         else:
             batch_size = input_features.shape[0]
@@ -278,24 +281,32 @@ class HookManager:
         if is_3d:
             input_features_3d = input_features_flat.reshape(batch_size, seq_length, -1)
             grad_pre_activation_3d = grad_pre_activation_flat.reshape(
-                batch_size, seq_length, -1,
+                batch_size,
+                seq_length,
+                -1,
             )
 
         # Start timing for projection if profiling is enabled
         if self.profile:
-            torch.cuda.synchronize(
-                self.device,
-            ) if torch.cuda.is_available() and self.device != "cpu" else None
+            (
+                torch.cuda.synchronize(
+                    self.device,
+                )
+                if torch.cuda.is_available() and self.device != "cpu"
+                else None
+            )
             start_time = time.time()
 
         # Compute the outer product to get the gradient
         if is_3d:
             grad_tensor = compute_linear_gradients_3d(
-                grad_pre_activation_3d, input_features_3d,
+                grad_pre_activation_3d,
+                input_features_3d,
             )
         else:
             grad_tensor = compute_linear_gradients_2d(
-                grad_pre_activation_flat, input_features_flat,
+                grad_pre_activation_flat,
+                input_features_flat,
             )
 
         grad = grad_tensor.reshape(batch_size, -1)
@@ -306,9 +317,13 @@ class HookManager:
 
         # End timing for projection
         if self.profile:
-            torch.cuda.synchronize(
-                self.device,
-            ) if torch.cuda.is_available() and self.device != "cpu" else None
+            (
+                torch.cuda.synchronize(
+                    self.device,
+                )
+                if torch.cuda.is_available() and self.device != "cpu"
+                else None
+            )
             self.compression_time += time.time() - start_time
 
         return grad
@@ -344,7 +359,9 @@ class HookManager:
             grad_pre_activation *= normalized.shape[0]
             if is_3d:
                 grad_weight = torch.einsum(
-                    "ijk,ijk->ik", grad_pre_activation, normalized,
+                    "ijk,ijk->ik",
+                    grad_pre_activation,
+                    normalized,
                 )
                 grad_bias = torch.sum(grad_pre_activation, dim=1)
             else:
@@ -373,18 +390,26 @@ class HookManager:
         ):
             # Start timing for projection if profiling is enabled
             if self.profile:
-                torch.cuda.synchronize(
-                    self.device,
-                ) if torch.cuda.is_available() and self.device != "cpu" else None
+                (
+                    torch.cuda.synchronize(
+                        self.device,
+                    )
+                    if torch.cuda.is_available() and self.device != "cpu"
+                    else None
+                )
                 start_time = time.time()
 
             grad = projector.projector_grad(grad)
 
             # End timing for projection
             if self.profile:
-                torch.cuda.synchronize(
-                    self.device,
-                ) if torch.cuda.is_available() and self.device != "cpu" else None
+                (
+                    torch.cuda.synchronize(
+                        self.device,
+                    )
+                    if torch.cuda.is_available() and self.device != "cpu"
+                    else None
+                )
                 self.compression_time += time.time() - start_time
 
         return grad
