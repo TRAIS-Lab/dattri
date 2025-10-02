@@ -17,7 +17,7 @@ cd dattri
 
 ### 2. Install Dependencies
 
-Install the necessary dependencies: 
+Install the necessary dependencies:
 
 ```bash
 pip install -e .
