@@ -45,12 +45,19 @@ dattri = ["py.typed"]
 [tool.ruff]
 exclude = [
     "docs/",
+    "dattri/algorithm/logra/core",
+    "dattri/algorithm/logra/offload",
+    "dattri/algorithm/logra/utils",
     "dattri/benchmark/datasets/shakespeare_char",
     "dattri/benchmark/datasets/tinystories",
     "dattri/benchmark/models",
     "examples/",
     "experiments/",
 ]
+
+[tool.ruff.lint.per-file-ignores]
+"dattri/algorithm/logra/logra.py" = ["PLR0914", "PLR0912"]
+
 
 [tool.ruff.lint]
 preview = true
@@ -75,8 +82,10 @@ ignore = [
     "C901",    # too many parameters in function
     "RUF052",  # strict rule on dummy variables
     "RUF100",  # allow unused noqa for compatibility with different versions of checkers
+    "SLF001", # private member access
     "DOC201",  # don't need return in every docstring
 ]
+
 
 [tool.ruff.lint.extend-per-file-ignores]
 "__init__.py" = [
