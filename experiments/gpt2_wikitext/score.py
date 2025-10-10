@@ -58,6 +58,10 @@ from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
 from dattri.benchmark.utils import SubsetSampler
+from dattri.func.utils import flatten_func, flatten_params
+from dattri.task import AttributionTask
+from dattri.algorithm.trak import TRAKAttributor
+from dattri.algorithm.tracin import TracInAttributor
 
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
@@ -65,19 +69,14 @@ check_min_version("4.46.0")
 
 logger = get_logger(__name__)
 
-require_version(
-    "datasets>=2.14.0",
-    "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt",
-)
+require_version("datasets>=2.14.0", "To fix: pip install -r examples/pytorch/language-modeling/requirements.txt")
 
 MODEL_CONFIG_CLASSES = list(MODEL_MAPPING.keys())
 MODEL_TYPES = tuple(conf.model_type for conf in MODEL_CONFIG_CLASSES)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(
-        description="Finetune a transformers model on a causal language modeling task"
-    )
+    parser = argparse.ArgumentParser(description="Finetune a transformers model on a causal language modeling task")
     parser.add_argument(
         "--dataset_name",
         type=str,
@@ -91,16 +90,10 @@ def parse_args():
         help="The configuration name of the dataset to use (via the datasets library).",
     )
     parser.add_argument(
-        "--train_file",
-        type=str,
-        default=None,
-        help="A csv, txt or a json file containing the training data.",
+        "--train_file", type=str, default=None, help="A csv, txt or a json file containing the training data."
     )
     parser.add_argument(
-        "--validation_file",
-        type=str,
-        default=None,
-        help="A csv, txt or a json file containing the validation data.",
+        "--validation_file", type=str, default=None, help="A csv, txt or a json file containing the validation data."
     )
     parser.add_argument(
         "--validation_split_percentage",
@@ -148,15 +141,8 @@ def parse_args():
         default=5e-5,
         help="Initial learning rate (after the potential warmup period) to use.",
     )
-    parser.add_argument(
-        "--weight_decay", type=float, default=0.0, help="Weight decay to use."
-    )
-    parser.add_argument(
-        "--num_train_epochs",
-        type=int,
-        default=3,
-        help="Total number of training epochs to perform.",
-    )
+    parser.add_argument("--weight_decay", type=float, default=0.0, help="Weight decay to use.")
+    parser.add_argument("--num_train_epochs", type=int, default=3, help="Total number of training epochs to perform.")
     parser.add_argument(
         "--max_train_steps",
         type=int,
@@ -174,27 +160,13 @@ def parse_args():
         type=SchedulerType,
         default="linear",
         help="The scheduler type to use.",
-        choices=[
-            "linear",
-            "cosine",
-            "cosine_with_restarts",
-            "polynomial",
-            "constant",
-            "constant_with_warmup",
-        ],
+        choices=["linear", "cosine", "cosine_with_restarts", "polynomial", "constant", "constant_with_warmup"],
     )
     parser.add_argument(
-        "--num_warmup_steps",
-        type=int,
-        default=0,
-        help="Number of steps for the warmup in the lr scheduler.",
+        "--num_warmup_steps", type=int, default=0, help="Number of steps for the warmup in the lr scheduler."
     )
-    parser.add_argument(
-        "--output_dir", type=str, default=None, help="Where to store the final model."
-    )
-    parser.add_argument(
-        "--seed", type=int, default=None, help="A seed for reproducible training."
-    )
+    parser.add_argument("--output_dir", type=str, default=None, help="Where to store the final model.")
+    parser.add_argument("--seed", type=int, default=None, help="A seed for reproducible training.")
     parser.add_argument(
         "--model_type",
         type=str,
@@ -219,28 +191,16 @@ def parse_args():
         help="The number of processes to use for the preprocessing.",
     )
     parser.add_argument(
-        "--overwrite_cache",
-        action="store_true",
-        help="Overwrite the cached training and evaluation sets",
+        "--overwrite_cache", action="store_true", help="Overwrite the cached training and evaluation sets"
     )
     parser.add_argument(
-        "--no_keep_linebreaks",
-        action="store_true",
-        help="Do not keep line breaks when using TXT files.",
+        "--no_keep_linebreaks", action="store_true", help="Do not keep line breaks when using TXT files."
     )
+    parser.add_argument("--push_to_hub", action="store_true", help="Whether or not to push the model to the Hub.")
     parser.add_argument(
-        "--push_to_hub",
-        action="store_true",
-        help="Whether or not to push the model to the Hub.",
+        "--hub_model_id", type=str, help="The name of the repository to keep in sync with the local `output_dir`."
     )
-    parser.add_argument(
-        "--hub_model_id",
-        type=str,
-        help="The name of the repository to keep in sync with the local `output_dir`.",
-    )
-    parser.add_argument(
-        "--hub_token", type=str, help="The token to use to push to the Model Hub."
-    )
+    parser.add_argument("--hub_token", type=str, help="The token to use to push to the Model Hub.")
     parser.add_argument(
         "--trust_remote_code",
         action="store_true",
@@ -291,14 +251,21 @@ def parse_args():
         default=1.0,
         help="The ratio used for model training.",
     )
+
+    parser.add_argument(
+        "--method",
+        type=str,
+        default="TRAK-5",
+        help=(
+            "Which attribution method to run. "
+            "Examples: 'TRAK-1', 'TRAK-5', 'TracIn', 'Grad-Dot', 'Grad-Cos'. "
+            "Use 'TRAK-k' to load k checkpoints and run TRAK."
+        ),
+    )
     args = parser.parse_args()
 
     # Sanity checks
-    if (
-        args.dataset_name is None
-        and args.train_file is None
-        and args.validation_file is None
-    ):
+    if args.dataset_name is None and args.train_file is None and args.validation_file is None:
         raise ValueError("Need either a dataset name or a training/validation file.")
     else:
         if args.train_file is not None:
@@ -312,9 +279,7 @@ def parse_args():
 
     if args.push_to_hub:
         if args.output_dir is None:
-            raise ValueError(
-                "Need an `output_dir` to create a repo when `--push_to_hub` is passed."
-            )
+            raise ValueError("Need an `output_dir` to create a repo when `--push_to_hub` is passed.")
 
     return args
 
@@ -335,10 +300,7 @@ def main():
         accelerator_log_kwargs["log_with"] = args.report_to
         accelerator_log_kwargs["project_dir"] = args.output_dir
 
-    accelerator = Accelerator(
-        gradient_accumulation_steps=args.gradient_accumulation_steps,
-        **accelerator_log_kwargs,
-    )
+    accelerator = Accelerator(gradient_accumulation_steps=args.gradient_accumulation_steps, **accelerator_log_kwargs)
 
     # Make one log on every process with the configuration for debugging.
     logging.basicConfig(
@@ -367,9 +329,7 @@ def main():
                 repo_name = Path(args.output_dir).absolute().name
             # Create repo and retrieve repo_id
             api = HfApi()
-            repo_id = api.create_repo(
-                repo_name, exist_ok=True, token=args.hub_token
-            ).repo_id
+            repo_id = api.create_repo(repo_name, exist_ok=True, token=args.hub_token).repo_id
 
             with open(os.path.join(args.output_dir, ".gitignore"), "w+") as gitignore:
                 if "step_*" not in gitignore:
@@ -392,9 +352,7 @@ def main():
     if args.dataset_name is not None:
         # Downloading and loading a dataset from the hub.
         raw_datasets = load_dataset(
-            args.dataset_name,
-            args.dataset_config_name,
-            trust_remote_code=args.trust_remote_code,
+            args.dataset_name, args.dataset_config_name, trust_remote_code=args.trust_remote_code
         )
         if "validation" not in raw_datasets.keys():
             raw_datasets["validation"] = load_dataset(
@@ -460,15 +418,11 @@ def main():
 
     if args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(
-            args.tokenizer_name,
-            use_fast=not args.use_slow_tokenizer,
-            trust_remote_code=args.trust_remote_code,
+            args.tokenizer_name, use_fast=not args.use_slow_tokenizer, trust_remote_code=args.trust_remote_code
         )
     elif args.model_name_or_path:
         tokenizer = AutoTokenizer.from_pretrained(
-            args.model_name_or_path,
-            use_fast=not args.use_slow_tokenizer,
-            trust_remote_code=args.trust_remote_code,
+            args.model_name_or_path, use_fast=not args.use_slow_tokenizer, trust_remote_code=args.trust_remote_code
         )
     else:
         raise ValueError(
@@ -484,11 +438,11 @@ def main():
             low_cpu_mem_usage=args.low_cpu_mem_usage,
             trust_remote_code=args.trust_remote_code,
         )
+        model = model.cuda()
     else:
         logger.info("Training new model from scratch")
-        model = AutoModelForCausalLM.from_config(
-            config, trust_remote_code=args.trust_remote_code
-        )
+        model = AutoModelForCausalLM.from_config(config, trust_remote_code=args.trust_remote_code)
+        model = model.cuda()
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
     # on a small vocab and want a smaller embedding size, remove this test.
@@ -574,173 +528,175 @@ def main():
     logger.info(f"The eval dataset length: {len(eval_dataset)}.")
 
     # DataLoaders creation:
+    def custom_collate_fn(batch):
+        batch = default_data_collator(
+            [
+                {k: v for k, v in item.items() if k in ["input_ids", "attention_mask", "labels"]}
+                for item in batch
+            ]
+        )
+        return (
+            batch["input_ids"],
+            batch["attention_mask"],
+            batch["labels"]
+        )
+
     train_dataloader = DataLoader(
         train_dataset,
-        collate_fn=default_data_collator,
-        batch_size=4,
+        collate_fn=custom_collate_fn,
+        batch_size=args.per_device_train_batch_size,
         sampler=train_sampler,
     )
+
     eval_dataloader = DataLoader(
-        eval_dataset, collate_fn=default_data_collator, batch_size=4, shuffle=False
+        eval_dataset,
+        collate_fn=custom_collate_fn,
+        batch_size=args.per_device_eval_batch_size,
+        shuffle=False,
     )
 
-    from dattri.algorithm.logra.logra import LoGraAttributor
-    import torch.nn as nn
+    def f(params, batch):
+        """
+        Log-odds objective for TRAK.
+        """
+        input_ids, attention_mask, labels = batch
 
-    # from transformers.modeling_utils import Conv1D
-    from transformers.pytorch_utils import Conv1D
-    from dattri.task import AttributionTask
+        input_ids = input_ids.cuda()
+        attention_mask = attention_mask.cuda()
+        labels = labels.cuda()
 
-    model_id = -1
-    checkpoint = f"{args.output_dir}/{model_id}"
+        outputs = torch.func.functional_call(
+            model,
+            params,
+            input_ids,
+            kwargs={
+                "attention_mask": attention_mask,
+                "labels": labels
+            }
+        )
+        logp = -outputs.loss
+        return logp - torch.log(1 - torch.exp(logp))
 
-    def checkpoints_load_func(model, checkpoint):
-        model = AutoModelForCausalLM.from_pretrained(checkpoint).cuda()
-        model.eval()
-        return replace_conv1d_modules(model)
 
-    def f(model, batch, device):
-        inputs = {k: v.to(device) for k, v in batch.items()}
-        outputs = model(**inputs)
+    def m(params, batch):
+        """
+        Probability of correctness for TRAK.
+        """
+        input_ids, attention_mask, labels = batch
+
+        input_ids = input_ids.cuda()
+        attention_mask = attention_mask.cuda()
+        labels = labels.cuda()
+
+        outputs = torch.func.functional_call(
+            model,
+            params,
+            input_ids,
+            kwargs={
+                "attention_mask": attention_mask,
+                "labels": labels
+            }
+        )
+        p = torch.exp(-outputs.loss)
+        return p
+
+    def loss_tracin(params, batch):
+        """
+        Plain cross-entropy loss for TracIn / Grad-based similarity
+        (TracIn sums over checkpoint updates of gradient dot-products).
+        """
+        input_ids, attention_mask, labels = batch
+        input_ids = input_ids.cuda()
+        attention_mask = attention_mask.cuda()
+        labels = labels.cuda()
+        outputs = torch.func.functional_call(
+            model, params, input_ids,
+            kwargs={"attention_mask": attention_mask,
+                    "labels": labels}
+        )
         return outputs.loss
 
-    def find_layers(model, layer_type="Linear", return_type="instance"):
-        """
-        Find all layers of a certain type in a model.
-        Args:
-            model: The model to find layers in.
-            layer_type: The type of layer to find.
-            return_type: The type of return value.
-        Returns:
-            layers: A list of layers of the specified type.
-            If return_type is "instance", the layers are instances of the specified type.
-            If return_type is "name", the layers are named tuples of the specified type.
-            If return_type is "name_instance", the layers are named tuples of the specified type and their instances.
-        """
-        layers = []
-        return_module_name = not (return_type == "instance")
-
-        if return_module_name:
-            for module_name, module in model.named_modules():
-                if (
-                    isinstance(module, nn.Linear)
-                    or isinstance(module, nn.LayerNorm)
-                    or isinstance(module, nn.Embedding)
-                ):
-                    layers.append((module_name, module))
+    method = args.method
+    if method.startswith("TRAK-"):
+        parts = method.split("-")
+        if len(parts) == 2 and parts[1].isdigit():
+            num_checkpoints = int(parts[1])
         else:
-            for module in model.modules():
-                if (
-                    isinstance(module, nn.Linear)
-                    or isinstance(module, nn.LayerNorm)
-                    or isinstance(module, nn.Embedding)
-                ):
-                    layers.append(module)
+            raise ValueError("Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'.")
+        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+    elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
+        num_checkpoints = 5
+        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+    else:
+        raise ValueError(
+            f"Unknown --method {method}. Try 'TRAK-5', 'TracIn', 'Grad-Dot', or 'Grad-Cos'."
+        )
 
-        if return_module_name:
-            if layer_type == "Linear":
-                layers = [
-                    (name, layer)
-                    for name, layer in layers
-                    if isinstance(layer, nn.Linear)
-                ]
-            elif layer_type == "Linear_LayerNorm":
-                layers = [
-                    (name, layer)
-                    for name, layer in layers
-                    if isinstance(layer, (nn.Linear, nn.LayerNorm))
-                ]
-            elif layer_type == "LayerNorm":
-                layers = [
-                    (name, layer)
-                    for name, layer in layers
-                    if isinstance(layer, nn.LayerNorm)
-                ]
-            else:
-                raise ValueError(
-                    "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
-                )
+    def checkpoints_load_func(model, checkpoint_path):
+        new_model = AutoModelForCausalLM.from_pretrained(checkpoint_path).cuda()
+        new_model.eval()
+        return new_model
+
+    if method.startswith("TRAK"):
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoints,
+            target_func=None,
+            checkpoints_load_func=checkpoints_load_func,
+        )
+    else:
+        task = AttributionTask(
+            loss_func=loss_tracin,
+            model=model,
+            checkpoints=checkpoints,
+            target_func=None,
+            checkpoints_load_func=checkpoints_load_func,
+        )
+
+    if method.startswith("TRAK"):
+        projector_kwargs = {
+            "device": "cuda",
+            "proj_dim": 2048,
+            "use_half_precision": False,
+        }
+        attributor = TRAKAttributor(
+            task=task,
+            correct_probability_func=m,
+            device="cuda",
+            projector_kwargs=projector_kwargs,
+        )
+
+    else:
+        normalized_grad = False
+        if method == "Grad-Cos":
+            normalized_grad = True
+
+        weight_list = torch.ones(num_checkpoints) * 1e-3
+
+        projector_kwargs = {
+            "device": "cuda",
+            "proj_dim": 2048,
+            "use_half_precision": False,
+        }
+
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=weight_list,
+            normalized_grad=normalized_grad,
+            device="cuda",
+            projector_kwargs=projector_kwargs,
+        )
+
+    with torch.no_grad():
+        if isinstance(attributor, TRAKAttributor):
+            attributor.cache(train_dataloader)
+            score = attributor.attribute(eval_dataloader)
         else:
-            if layer_type == "Linear":
-                layers = [layer for layer in layers if isinstance(layer, nn.Linear)]
-            elif layer_type == "Linear_LayerNorm":
-                layers = [
-                    layer
-                    for layer in layers
-                    if isinstance(layer, nn.Linear) or isinstance(layer, nn.LayerNorm)
-                ]
-            elif layer_type == "LayerNorm":
-                layers = [layer for layer in layers if isinstance(layer, nn.LayerNorm)]
-            else:
-                raise ValueError(
-                    "Invalid setting now. Choose from 'Linear', 'LayerNorm', and 'Linear_LayerNorm'."
-                )
-
-        if return_type == "instance":
-            return layers
-        elif return_type == "name":
-            return [name for name, layer in layers]
-        elif return_type == "name_instance":
-            return [(name, layer) for name, layer in layers]
-        else:
-            raise ValueError(
-                "Invalid return_type. Choose from 'instance', 'name', and 'name_instance'."
-            )
-
-    def replace_conv1d_modules(model):
-        """
-        Replace all Conv1D modules in a model with Linear modules.
-        Args:
-            model: The model to replace Conv1D modules in.
-        Returns:
-            model: The model with all Conv1D modules replaced with Linear modules.
-        """
-        # GPT-2 is defined in terms of Conv1D. However, this does not work for EK-FAC.
-        # Here, we convert these Conv1D modules to linear modules recursively.
-        for name, module in model.named_children():
-            if len(list(module.children())) > 0:
-                replace_conv1d_modules(module)
-
-            if isinstance(module, Conv1D):
-                new_module = nn.Linear(
-                    in_features=module.weight.shape[0],
-                    out_features=module.weight.shape[1],
-                )
-                new_module.weight.data.copy_(module.weight.data.t())
-                new_module.bias.data.copy_(module.bias.data)
-                setattr(model, name, new_module)
-        return model
-
-    model = replace_conv1d_modules(model)
-    layer_names = find_layers(model, "Linear", return_type="name")
-
-    projector_kwargs = {
-        "device": "cuda",
-        "proj_dim": 512,
-        "use_half_precision": False,
-        "proj_max_batch_size": 32,
-    }
-
-    task = AttributionTask(
-        model=model,
-        loss_func=f,
-        checkpoints=checkpoint,
-        checkpoints_load_func=checkpoints_load_func,
-    )
-
-    attributor = LoGraAttributor(
-        task=task,
-        layer_names=layer_names,
-        device="cuda",
-        damping=1e-2,
-        offload="cpu",
-        projector_kwargs=projector_kwargs,
-    )
-
-    attributor.cache(train_dataloader)
-    score = attributor.attribute(train_dataloader, eval_dataloader)
+            score = attributor.attribute(train_dataloader, eval_dataloader)
 
     torch.save(score, "score.pt")
+    logger.info("Attribution scores saved to score.pt")
 
 
 if __name__ == "__main__":

@@ -85,18 +85,7 @@ python train.py \
 ## Calculate the attribution score
 
 ```bash
-python score_logra.py \
-    --dataset_name wikitext \
-    --dataset_config_name wikitext-2-raw-v1 \
-    --model_name_or_path openai-community/gpt2 \
-    --output_dir ./checkpoints \
-    --block_size 512 \
-    --method TRAK-5 \
-    --seed 0
-``` 
-
-```shell
-python score_TRAK.py \
+python score.py \
     --dataset_name wikitext \
     --dataset_config_name wikitext-2-raw-v1 \
     --model_name_or_path openai-community/gpt2 \
