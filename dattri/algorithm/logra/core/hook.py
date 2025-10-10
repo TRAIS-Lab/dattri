@@ -65,21 +65,15 @@ class HookManager:
         self,
         model: nn.Module,
         layer_names: List[str],
-        profile: bool = False,
-        device: str = "cpu",
     ) -> None:
         """Initialize the hook manager.
 
         Args:
             model: The model to hook
             layer_names: Names of layers to hook
-            profile: Whether to profile execution time
-            device: Device to use for profiling synchronization
         """
         self.model = model
         self.layer_names = layer_names
-        self.profile = profile
-        self.device = device
 
         # Create mapping from layer name to index for O(1) lookups
         self.layer_name_to_idx = {name: idx for idx, name in enumerate(layer_names)}
@@ -91,9 +85,6 @@ class HookManager:
         self.pre_activations = [None] * len(layer_names)
         self.normalized = [None] * len(layer_names)
         self.projectors = [None] * len(layer_names)
-
-        # Profiling stats
-        self.compression_time = 0.0
 
         # Register hooks
         self._register_hooks()
@@ -116,7 +107,7 @@ class HookManager:
                     backward_hook,
                 )
 
-                logger.debug("Registered hooks for layer: %s", name)
+                logger.info("Registered hooks for layer: %s", name)
 
     def set_projectors(self, projectors: List[Any]) -> None:
         """Set projector objects for each layer.
@@ -125,7 +116,7 @@ class HookManager:
             projectors: List of projector objects, ordered by layer_names
         """
         self.projectors = projectors
-        logger.debug(f"Set {len(projectors)} projectors for HookManager")
+        logger.info(f"Set {len(projectors)} projectors for HookManager")
 
     def get_compressed_grads(self) -> List[Tensor]:
         """Get all captured projected gradients.
@@ -134,14 +125,6 @@ class HookManager:
             List of projected gradient tensors, ordered by layer_names
         """
         return self.compressed_grads
-
-    def get_compression_time(self) -> float:
-        """Get the accumulated projection time.
-
-        Returns:
-            Total time spent in projection operations
-        """
-        return self.compression_time
 
     def _forward_hook_fn(self, name: str, mod: nn.Module, inp: Any, out: Any) -> None:
         """Forward hook function that captures inputs and pre-activations.
@@ -252,78 +235,64 @@ class HookManager:
         if is_3d:
             batch_size, seq_length, hidden_size = input_features.shape
             # Reshape 3D tensors to 2D for consistent processing
-            input_features_flat = input_features.reshape(-1, hidden_size)
-            grad_pre_activation_flat = grad_pre_activation.reshape(
-                -1,
-                layer.out_features,
-            )
+            input_features = input_features.reshape(-1, hidden_size)
+            grad_pre_activation = grad_pre_activation.reshape(-1, layer.out_features)
         else:
             batch_size = input_features.shape[0]
-            input_features_flat = input_features
-            grad_pre_activation_flat = grad_pre_activation
 
         # Scale the gradient if we're computing per-sample gradients
         if per_sample:
-            grad_pre_activation_flat *= batch_size
+            grad_pre_activation = grad_pre_activation * batch_size
 
         # Handle bias term by augmenting input with ones
         if layer.bias is not None:
             ones = torch.ones(
-                input_features_flat.size(0),
-                1,
-                device=input_features_flat.device,
-                dtype=input_features_flat.dtype,
+                input_features.size(0), 1,
+                device=input_features.device,
+                dtype=input_features.dtype
             )
-            input_features_flat = torch.cat([input_features_flat, ones], dim=1)
+            input_features = torch.cat([input_features, ones], dim=1)
 
-        # Reshape back to 3D if needed
         if is_3d:
-            input_features_3d = input_features_flat.reshape(batch_size, seq_length, -1)
-            grad_pre_activation_3d = grad_pre_activation_flat.reshape(
-                batch_size,
-                seq_length,
-                -1,
-            )
+            # Reshape back to 3D
+            input_features = input_features.reshape(batch_size, seq_length, -1)
+            grad_pre_activation = grad_pre_activation.reshape(batch_size, seq_length, -1)
 
-        # Start timing for projection if profiling is enabled
-        if self.profile:
-            (
-                torch.cuda.synchronize(
-                    self.device,
+        if projector and hasattr(projector, 'projector_grad_comp') and projector.projector_grad_comp != (None, None):
+            projector_grad_comp_1, projector_grad_comp_2 = projector.projector_grad_comp
+
+            # Apply projection to gradient components
+            grad_pre_activation_flatten = grad_pre_activation.view(-1, grad_pre_activation.shape[-1])
+            input_features_flatten = input_features.view(-1, input_features.shape[-1])
+
+            if is_3d:
+                grad_pre_activation = projector_grad_comp_1(grad_pre_activation_flatten).view(
+                    grad_pre_activation.shape[0], grad_pre_activation.shape[1], -1
                 )
-                if torch.cuda.is_available() and self.device != "cpu"
-                else None
-            )
-            start_time = time.time()
+                input_features = projector_grad_comp_2(input_features_flatten).view(
+                    input_features.shape[0], input_features.shape[1], -1
+                )
+            else:
+                grad_pre_activation = projector_grad_comp_1(grad_pre_activation_flatten)
+                input_features = projector_grad_comp_2(input_features_flatten)
 
         # Compute the outer product to get the gradient
         if is_3d:
             grad_tensor = compute_linear_gradients_3d(
-                grad_pre_activation_3d,
-                input_features_3d,
+                grad_pre_activation,
+                input_features,
             )
         else:
             grad_tensor = compute_linear_gradients_2d(
-                grad_pre_activation_flat,
-                input_features_flat,
+                grad_pre_activation,
+                input_features,
             )
 
         grad = grad_tensor.reshape(batch_size, -1)
 
         # Apply projector if available
-        if projector is not None:
+        if projector and hasattr(projector, 'projector_grad') and projector.projector_grad is not None:
             grad = projector.projector_grad(grad)
-
-        # End timing for projection
-        if self.profile:
-            (
-                torch.cuda.synchronize(
-                    self.device,
-                )
-                if torch.cuda.is_available() and self.device != "cpu"
-                else None
-            )
-            self.compression_time += time.time() - start_time
 
         return grad
 
@@ -382,34 +351,21 @@ class HookManager:
             if hasattr(self, "projectors") and idx < len(self.projectors)
             else None
         )
+
+        if projector and hasattr(projector, 'projector_grad_comp') and projector.projector_grad_comp != (None, None):
+            projector_grad_comp_1, projector_grad_comp_2 = projector.projector_grad_comp
+            grad_weight = projector_grad_comp_1(grad_weight)
+            grad_bias = projector_grad_comp_2(grad_bias)
+
+        # Concatenate weight and bias gradients
+        grad = torch.cat((grad_weight, grad_bias), dim=1)
+
         if (
             projector is not None
             and hasattr(projector, "projector_grad")
             and projector.projector_grad is not None
         ):
-            # Start timing for projection if profiling is enabled
-            if self.profile:
-                (
-                    torch.cuda.synchronize(
-                        self.device,
-                    )
-                    if torch.cuda.is_available() and self.device != "cpu"
-                    else None
-                )
-                start_time = time.time()
-
             grad = projector.projector_grad(grad)
-
-            # End timing for projection
-            if self.profile:
-                (
-                    torch.cuda.synchronize(
-                        self.device,
-                    )
-                    if torch.cuda.is_available() and self.device != "cpu"
-                    else None
-                )
-                self.compression_time += time.time() - start_time
 
         return grad
 
@@ -423,4 +379,4 @@ class HookManager:
                 hook.remove()
         self.forward_hooks = [None] * len(self.layer_names)
         self.backward_hooks = [None] * len(self.layer_names)
-        logger.debug("Removed all hooks from HookManager")
+        logger.info("Removed all hooks from HookManager")

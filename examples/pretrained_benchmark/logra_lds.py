@@ -29,7 +29,7 @@ if __name__ == "__main__":
 
     projector_kwargs = {
         "device": args.device,
-        "proj_dim": 512,
+        "proj_dim": 32,  # projection dimension = 32 * 32 = 1024
         "use_half_precision": False,
         "proj_max_batch_size": 32,
     }

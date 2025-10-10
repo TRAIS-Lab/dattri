@@ -1,7 +1,4 @@
-"""LoGra Attributor - Influence Function with gradient projection.
-
-Integrated with dattri task-based API.
-"""
+"""LoGra Attributor - Influence Function with gradient projection."""
 
 from __future__ import annotations
 
@@ -52,7 +49,6 @@ class LoGraAttributor(BaseAttributor):
         offload: Literal["none", "cpu", "disk"] = "cpu",
         cache_dir: Optional[str] = None,
         chunk_size: int = 16,
-        profile: bool = False,
     ) -> None:
         """Initialize LoGra attributor.
 
@@ -74,7 +70,6 @@ class LoGraAttributor(BaseAttributor):
                 "disk": stores gradients on disk and moves to device when needed.
             cache_dir: Directory for caching (required when offload="disk").
             chunk_size: Chunk size for processing in disk offload.
-            profile: Whether to profile execution time.
 
         Raises:
             ValueError: If cache_dir is None when offload="disk".
@@ -83,7 +78,6 @@ class LoGraAttributor(BaseAttributor):
         self.device = device
         self.hessian = hessian
         self.damping = damping
-        self.profile = profile
         self.projector_kwargs = projector_kwargs or {}
         self.offload = offload
         self.cache_dir = cache_dir
@@ -203,8 +197,6 @@ class LoGraAttributor(BaseAttributor):
             self.hook_manager = HookManager(
                 self.model,
                 self.layer_names,
-                profile=self.profile,
-                device=self.device,
             )
             if self.projectors:
                 self.hook_manager.set_projectors(self.projectors)
@@ -772,8 +764,6 @@ class LoGraAttributor(BaseAttributor):
             self.hook_manager = HookManager(
                 self.model,
                 self.layer_names,
-                profile=self.profile,
-                device=self.device,
             )
             if self.projectors:
                 self.hook_manager.set_projectors(self.projectors)
