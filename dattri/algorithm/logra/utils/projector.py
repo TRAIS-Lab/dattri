@@ -266,6 +266,7 @@ def _setup_layernorm_projector(
         pre_activation: Output tensor from the layer
         base_seed: Base seed for random projection
         projector_kwargs: Keyword arguments for the projection
+        proj_factorize: Whether to factorize the projection to 2 projection matrices
     """
     if not layer.elementwise_affine:
         return

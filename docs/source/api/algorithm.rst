@@ -26,3 +26,8 @@ Attributors
     :special-members: __init__
     :undoc-members:
     :show-inheritance:
+.. autoclass:: dattri.algorithm.LoGraAttributor
+    :members:
+    :special-members: __init__
+    :undoc-members:
+    :show-inheritance:
