@@ -740,7 +740,8 @@ def main():
     attributor.cache(train_dataloader)
     score = attributor.attribute(train_dataloader, eval_dataloader)
 
-    torch.save(score, "score.pt")
+    torch.save(score, "score_logra.pt")
+    logger.info("Attribution scores saved to score_logra.pt")
 
 
 if __name__ == "__main__":

@@ -502,7 +502,9 @@ def main():
         model = model.cuda()
     else:
         logger.info("Training new model from scratch")
-        model = AutoModelForCausalLM.from_config(config, trust_remote_code=args.trust_remote_code)
+        model = AutoModelForCausalLM.from_config(
+            config, trust_remote_code=args.trust_remote_code
+        )
         model = model.cuda()
 
     # We resize the embeddings only when necessary to avoid index errors. If you are creating a model from scratch
@@ -592,15 +594,15 @@ def main():
     def custom_collate_fn(batch):
         batch = default_data_collator(
             [
-                {k: v for k, v in item.items() if k in ["input_ids", "attention_mask", "labels"]}
+                {
+                    k: v
+                    for k, v in item.items()
+                    if k in ["input_ids", "attention_mask", "labels"]
+                }
                 for item in batch
             ]
         )
-        return (
-            batch["input_ids"],
-            batch["attention_mask"],
-            batch["labels"]
-        )
+        return (batch["input_ids"], batch["attention_mask"], batch["labels"])
 
     train_dataloader = DataLoader(
         train_dataset,
@@ -630,14 +632,10 @@ def main():
             model,
             params,
             input_ids,
-            kwargs={
-                "attention_mask": attention_mask,
-                "labels": labels
-            }
+            kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         logp = -outputs.loss
         return logp - torch.log(1 - torch.exp(logp))
-
 
     def m(params, batch):
         """
@@ -653,10 +651,7 @@ def main():
             model,
             params,
             input_ids,
-            kwargs={
-                "attention_mask": attention_mask,
-                "labels": labels
-            }
+            kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         p = torch.exp(-outputs.loss)
         return p
@@ -671,9 +666,10 @@ def main():
         attention_mask = attention_mask.cuda()
         labels = labels.cuda()
         outputs = torch.func.functional_call(
-            model, params, input_ids,
-            kwargs={"attention_mask": attention_mask,
-                    "labels": labels}
+            model,
+            params,
+            input_ids,
+            kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         return outputs.loss
 
@@ -683,7 +679,9 @@ def main():
         if len(parts) == 2 and parts[1].isdigit():
             num_checkpoints = int(parts[1])
         else:
-            raise ValueError("Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'.")
+            raise ValueError(
+                "Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'."
+            )
         checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
     elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
         num_checkpoints = 5
@@ -756,8 +754,8 @@ def main():
         else:
             score = attributor.attribute(train_dataloader, eval_dataloader)
 
-    torch.save(score, "score.pt")
-    logger.info("Attribution scores saved to score.pt")
+    torch.save(score, "score_TRAK.pt")
+    logger.info("Attribution scores saved to score_TRAK.pt")
 
 
 if __name__ == "__main__":
