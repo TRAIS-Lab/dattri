@@ -1,14 +1,14 @@
 <!doctype html>
 <html class="no-js" lang="en" data-content_root="../">
-  <head><meta charset="utf-8">
-    <meta name="viewport" content="width=device-width,initial-scale=1">
+  <head><meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1"/>
     <meta name="color-scheme" content="light dark"><meta name="viewport" content="width=device-width, initial-scale=1" />
-<link rel="index" title="Index" href="../genindex.html"><link rel="search" title="Search" href="../search.html"><link rel="next" title="Fisher Information Matrix (FIM) / IFVP" href="fisher.html"><link rel="prev" title="Attributors" href="algorithm.html">
+<link rel="index" title="Index" href="../genindex.html" /><link rel="search" title="Search" href="../search.html" /><link rel="next" title="Fisher Information Matrix (FIM) / IFVP" href="fisher.html" /><link rel="prev" title="Attributors" href="algorithm.html" />
 
-    <!-- Generated with Sphinx 8.1.3 and Furo 2025.09.25 -->
+    <!-- Generated with Sphinx 8.1.3 and Furo 2025.07.19 -->
         <title>Hessian, HVP, and IHVP - Dattri documentation</title>
       <link rel="stylesheet" type="text/css" href="../_static/pygments.css?v=d111a655" />
-    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=580074bf" />
+    <link rel="stylesheet" type="text/css" href="../_static/styles/furo.css?v=25af2a20" />
     <link rel="stylesheet" type="text/css" href="../_static/styles/furo-extensions.css?v=8dab3a3b" />
     
     
@@ -22,14 +22,14 @@
   }
   @media not print {
     body[data-theme="dark"] {
-      --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+      --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
   
     }
     @media (prefers-color-scheme: dark) {
       body:not([data-theme="light"]) {
-        --color-code-background: #202020;
-  --color-code-foreground: #d0d0d0;
+        --color-code-background: #2b2b2b;
+  --color-code-foreground: #f8f8f2;
   
       }
     }
@@ -144,10 +144,14 @@
   </symbol>
 </svg>
 
-<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation" aria-label="Toggle site navigation sidebar">
-<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc" aria-label="Toggle table of contents sidebar">
-<label class="overlay sidebar-overlay" for="__navigation"></label>
-<label class="overlay toc-overlay" for="__toc"></label>
+<input type="checkbox" class="sidebar-toggle" name="__navigation" id="__navigation">
+<input type="checkbox" class="sidebar-toggle" name="__toc" id="__toc">
+<label class="overlay sidebar-overlay" for="__navigation">
+  <div class="visually-hidden">Hide navigation sidebar</div>
+</label>
+<label class="overlay toc-overlay" for="__toc">
+  <div class="visually-hidden">Hide table of contents sidebar</div>
+</label>
 
 <a class="skip-to-content muted-link" href="#furo-main-content">Skip to content</a>
 
@@ -157,7 +161,8 @@
   <header class="mobile-header">
     <div class="header-left">
       <label class="nav-overlay-icon" for="__navigation">
-        <span class="icon"><svg><use href="#svg-menu"></use></svg></span>
+        <div class="visually-hidden">Toggle site navigation sidebar</div>
+        <i class="icon"><svg><use href="#svg-menu"></use></svg></i>
       </label>
     </div>
     <div class="header-center">
@@ -165,15 +170,17 @@
     </div>
     <div class="header-right">
       <div class="theme-toggle-container theme-toggle-header">
-        <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+        <button class="theme-toggle">
+          <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
           <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
           <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
           <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
           <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
         </button>
       </div>
-      <label class="toc-overlay-icon toc-header-icon no-toc" for="__toc">
-        <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+      <label class="toc-overlay-icon toc-header-icon" for="__toc">
+        <div class="visually-hidden">Toggle table of contents sidebar</div>
+        <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
       </label>
     </div>
   </header>
@@ -231,20 +238,508 @@
   </a>
 </div>
 <div class="theme-toggle-container theme-toggle-content">
-            <button class="theme-toggle" aria-label="Toggle Light / Dark / Auto color theme">
+            <button class="theme-toggle">
+              <div class="visually-hidden">Toggle Light / Dark / Auto color theme</div>
               <svg class="theme-icon-when-auto-light"><use href="#svg-sun-with-moon"></use></svg>
               <svg class="theme-icon-when-auto-dark"><use href="#svg-moon-with-sun"></use></svg>
               <svg class="theme-icon-when-dark"><use href="#svg-moon"></use></svg>
               <svg class="theme-icon-when-light"><use href="#svg-sun"></use></svg>
             </button>
           </div>
-          <label class="toc-overlay-icon toc-content-icon no-toc" for="__toc">
-            <span class="icon"><svg><use href="#svg-toc"></use></svg></span>
+          <label class="toc-overlay-icon toc-content-icon" for="__toc">
+            <div class="visually-hidden">Toggle table of contents sidebar</div>
+            <i class="icon"><svg><use href="#svg-toc"></use></svg></i>
           </label>
         </div>
         <article role="main" id="furo-main-content">
           <section id="hessian-hvp-and-ihvp">
 <h1>Hessian, HVP, and IHVP<a class="headerlink" href="#hessian-hvp-and-ihvp" title="Link to this heading">¶</a></h1>
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.hvp">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">hvp</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.hvp" title="Link to this definition">¶</a></dt>
+<dd><p>Hessian Vector Product(HVP) calculation function.</p>
+<p>This function takes the func where hessian is carried out and return a
+function takes x (the argument of func) and a vector v to calculate the
+hessian-vector production.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be calculated on this function. The positional arguments to func
+must all be Tensors.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute hessian with respect to.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
+term to be added to the Hessian vector product, which is useful for the
+later inverse calculation if the Hessian matrix is singular or
+ill-conditioned. Specifically, the regularization term is
+<cite>regularization * v</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a tuple of Tensor <cite>x</cite> as the arguments of func and
+a vector <cite>v</cite> and returns the HVP of the Hessian of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method does not fix the x. It’s suitable if you have multiple <cite>x</cite> for
+the hvp calculation. If you have a fixed x please consider using <cite>hvp_at_x</cite>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IHVPUsageError</strong> – If mode is not one of “rev-rev” and “rev-fwd”.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.hvp_at_x">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">hvp_at_x</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">x</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">torch.Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.hvp_at_x" title="Link to this definition">¶</a></dt>
+<dd><p>Hessian Vector Product(HVP) calculation function (with fixed x).</p>
+<p>This function returns a function that takes a vector <cite>v</cite> and calculate
+the hessian-vector production.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be calculated on this function. The positional arguments to func
+must all be Tensors.</p></li>
+<li><p><strong>x</strong> (<em>Tuple</em><em>[</em><em>torch.Tensor</em><em>, </em><em>...</em><em>]</em>) – The returned function will computed the
+hessian matrix with respect to these arguments. <cite>argnums</cite> indicate
+which of the input <cite>x</cite> is used as primal.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute hessian with respect to.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
+term to be added to the Hessian vector product, which is useful for the
+later inverse calculation if the Hessian matrix is singular or
+ill-conditioned. Specifically, the regularization term is
+<cite>regularization * v</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a vector <cite>v</cite> and returns the HVP of the Hessian
+of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method does fix the x to avoid some additional computation. If you have
+multiple x and want to use vmap to accelerate the computation, please consider
+using <cite>hvp</cite>.</p>
+</div>
+<dl class="field-list simple">
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>IHVPUsageError</strong> – If mode is not one of “rev-rev” and “rev-fwd”.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_explicit">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_explicit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_explicit" title="Link to this definition">¶</a></dt>
+<dd><p>IHVP via explicit Hessian calculation.</p>
+<p>IHVP stands for inverse-hessian-vector product. For a given function
+<cite>func</cite>, this method first calculates the Hessian matrix explicitly
+and then wraps the Hessian in a function that uses <cite>torch.linalg.solve</cite> to
+calculate the IHVP for any given vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A function taking one or more arguments and returning
+a single-element Tensor. The Hessian will be calculated based on
+this function.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute inverse hessian with respect to.</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
+term to be added to the Hessian matrix. This is useful when the Hessian
+matrix is singular or ill-conditioned. The regularization term is
+<cite>regularization * I</cite>, where <cite>I</cite> is the identity matrix directly added
+to the Hessian matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a tuple of Tensor <cite>x</cite> and a vector <cite>v</cite> and returns
+the IHVP of the Hessian of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_at_x_explicit">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_at_x_explicit</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">Tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_at_x_explicit" title="Link to this definition">¶</a></dt>
+<dd><p>IHVP via explicit Hessian calculation.</p>
+<p>IHVP stands for inverse-hessian-vector product. For a given function
+<cite>func</cite>, this method first calculates the Hessian matrix explicitly
+and then wraps the Hessian in a function that uses <cite>torch.linalg.solve</cite> to
+calculate the IHVP for any given vector.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A function taking one or more arguments and returning
+a single-element Tensor. The Hessian will be calculated based on
+this function.</p></li>
+<li><p><strong>*x</strong> – List of arguments for <cite>func</cite>.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em><em> or </em><em>Tuple</em><em>[</em><em>int</em><em>]</em><em>, </em><em>optional</em>) – An integer or a tuple of integers
+deciding which arguments in <cite>*x</cite> to get the Hessian with respect
+to. Default: 0.</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the
+regularization term to be added to the Hessian matrix. This is useful
+when the Hessian matrix is singular or ill-conditioned. The regularization
+term is <cite>regularization * I</cite>, where <cite>I</cite> is the identity matrix directly
+added to the Hessian matrix.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a vector <cite>v</cite> and returns the IHVP of the Hessian
+of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>This method stores the Hessian matrix explicitly and is not computationally
+efficient.</p>
+</div>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_cg">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_cg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-07</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_cg" title="Link to this definition">¶</a></dt>
+<dd><p>Conjugate Gradient Descent ihvp algorithm function.</p>
+<p>Standing for the inverse-hessian-vector product, returns a function that,
+when given vectors, computes the product of inverse-hessian and vector.</p>
+<p>Conjugate Gradient Descent algorithm calculate the hvp function and use
+it iteratively through Conjugate Gradient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be calculated on this function.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute inverse hessian with respect to.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – An integer default 10. Specifies the maximum iteration
+to calculate the ihvp through Conjugate Gradient Descent.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – A float default to 1e-7. Specifies the break condition that
+decide if the algorithm has converged. If the torch.norm of residual
+is less than tol, then the algorithm is truncated.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
+term to be added to the Hessian vector product, which is useful for the
+later inverse calculation if the Hessian matrix is singular or
+ill-conditioned. Specifically, the regularization term is
+<cite>regularization * v</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a tuple of Tensor <cite>x</cite> and a vector <cite>v</cite> and returns
+the IHVP of the Hessian of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_at_x_cg">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_at_x_cg</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">10</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-07</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_at_x_cg" title="Link to this definition">¶</a></dt>
+<dd><p>Conjugate Gradient Descent IHVP algorithm function (with fixed x).</p>
+<p>Standing for the inverse-hessian-vector product, returns a function that,
+when given vectors, computes the product of inverse-hessian and vector.</p>
+<p>Conjugate Gradient Descent algorithm calculated the hvp function and use
+it iteratively through Conjugate Gradient.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be calculated on this function.</p></li>
+<li><p><strong>*x</strong> – List of arguments for <cite>func</cite>.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute inverse hessian with respect to.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – An integer default 10. Specifies the maximum iteration
+to calculate the IHVP through Conjugate Gradient Descent.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – A float default to 1e-7. Specifies the break condition that
+decide if the algorithm has converged. If the torch.norm of residual
+is less than tol, then the algorithm is truncated.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
+term to be added to the Hessian vector product, which is useful for the
+later inverse calculation if the Hessian matrix is singular or
+ill-conditioned. Specifically, the regularization term is
+<cite>regularization * v</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a vector <cite>v</cite> and returns the IHVP of the Hessian
+of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_arnoldi">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_arnoldi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-07</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-fwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_arnoldi" title="Link to this definition">¶</a></dt>
+<dd><p>Arnoldi Iteration IHVP algorithm function.</p>
+<p>Standing for the inverse-hessian-vector product, returns a function that,
+when given vectors, computes the product of inverse-hessian and vector.</p>
+<p>Arnoldi Iteration builds an approximately H-invariant subspace by constructing
+the n-th order Krylov subspace and builds an orthonormal basis for it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be calculated on this function.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute inverse hessian with respect to.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – An integer default 100. Specifies the maximum iteration
+to calculate the IHVP through Arnoldi Iteration.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – A float default to 1e-7. Specifies the break condition that
+decide if the algorithm has converged. If the torch.norm of current
+basis vector is less than tol, then the arnoldi_iter algorithm is truncated.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
+term to be added to the Hessian vector product, which is useful for the
+later inverse calculation if the Hessian matrix is singular or
+ill-conditioned. Specifically, the regularization term is
+<cite>regularization * v</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a tuple of Tensor <cite>x</cite> and a vector <cite>v</cite> and returns
+the IHVP of the Hessian of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_at_x_arnoldi">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_at_x_arnoldi</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">max_iter</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">top_k</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">100</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">norm_constant</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">tol</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1e-07</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-fwd'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">regularization</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_at_x_arnoldi" title="Link to this definition">¶</a></dt>
+<dd><p>Arnoldi Iteration IHVP algorithm function (with fixed x).</p>
+<p>Standing for the inverse-hessian-vector product, returns a function that,
+when given vectors, computes the product of inverse-hessian and vector.</p>
+<p>Arnoldi Iteration builds an approximately H-invariant subspace by constructing
+the n-th order Krylov subspace and builds an orthonormal basis for it.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be calculated on this function.</p></li>
+<li><p><strong>*x</strong> – List of arguments for <cite>func</cite>.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute inverse hessian with respect to.</p></li>
+<li><p><strong>max_iter</strong> (<em>int</em>) – An integer default to 100. Specifies the maximum iteration
+to calculate the IHVP through Arnoldi Iteration.</p></li>
+<li><p><strong>top_k</strong> (<em>int</em>) – An integer default to 100. Specifies how many eigenvalues and
+eigenvectors to distill.</p></li>
+<li><p><strong>norm_constant</strong> (<em>float</em>) – A float default to 1.0. Specifies a constant value
+for the norm of each projection. In some situations (e.g. with a large
+numbers of parameters) it might be advisable to set norm_constant &gt; 1
+to avoid dividing projection components by a large normalization factor.</p></li>
+<li><p><strong>tol</strong> (<em>float</em>) – A float default to 1e-7. Specifies the break condition that
+decide if the algorithm has converged. If the torch.norm of current
+basis vector is less than tol, then the arnoldi_iter algorithm is truncated.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+<li><p><strong>regularization</strong> (<em>float</em>) – A float default to 0.0. Specifies the regularization
+term to be added to the Hessian vector product, which is useful for the
+later inverse calculation if the Hessian matrix is singular or
+ill-conditioned. Specifically, the regularization term is
+<cite>regularization * v</cite>.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a vector <cite>v</cite> and returns the IHVP of the Hessian
+of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_lissa">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_lissa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_repeat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursion_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collate_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_lissa" title="Link to this definition">¶</a></dt>
+<dd><p>IHVP via LiSSA algorithm.</p>
+<p>Standing for the inverse-hessian-vector product, returns a function that,
+when given vectors, computes the product of inverse-hessian and vector.</p>
+<p>LiSSA algorithm approximates the IHVP function by averaging multiple samples.
+The samples are estimated by recursion based on Taylor expansion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be estimated on this function.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute inverse hessian with respect to.</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em>) – An integer default to 1. Specifies the batch size used
+for LiSSA inner loop update.</p></li>
+<li><p><strong>num_repeat</strong> (<em>int</em>) – An integer default to 1. Specifies the number of samples
+of the hvp approximation to average on.</p></li>
+<li><p><strong>recursion_depth</strong> (<em>int</em>) – A integer default to 5000. Specifies the number of
+recursions used to estimate each IHVP sample.</p></li>
+<li><p><strong>damping</strong> (<em>int</em>) – Damping factor used for non-convexity in LiSSA IHVP calculation.</p></li>
+<li><p><strong>scaling</strong> (<em>int</em>) – Scaling factor used for convergence in LiSSA IHVP calculation.</p></li>
+<li><p><strong>collate_fn</strong> (<em>Optional</em><em>[</em><em>Callable</em><em>]</em>) – A function to collate the input data to fit
+the input of <cite>func</cite>. If None, the input data will be directly passed to
+<cite>func</cite>. This is useful when <cite>func</cite> has some nested input structure.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a list of tuples of Tensor <cite>x</cite> and a vector <cite>v</cite> and
+returns the IHVP of the Hessian of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py function">
+<dt class="sig sig-object py" id="dattri.func.hessian.ihvp_at_x_lissa">
+<span class="sig-prename descclassname"><span class="pre">dattri.func.hessian.</span></span><span class="sig-name descname"><span class="pre">ihvp_at_x_lissa</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">func</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span></span></em>, <em class="sig-param"><span class="o"><span class="pre">*</span></span><span class="n"><span class="pre">x</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">in_dims</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tuple</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">argnums</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_size</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">num_repeat</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">1</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">recursion_depth</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">5000</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">damping</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">scaling</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">50.0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">collate_fn</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Callable</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">mode</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'rev-rev'</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Callable</span></span></span><a class="headerlink" href="#dattri.func.hessian.ihvp_at_x_lissa" title="Link to this definition">¶</a></dt>
+<dd><p>IHVP with fixed func inputs via LiSSA algorithm.</p>
+<p>Standing for the inverse-hessian-vector product, returns a function that,
+when given vectors, computes the product of inverse-hessian and vector.</p>
+<p>LiSSA algorithm approximates the IHVP function by averaging multiple samples.
+The samples are estimated by recursion based on Taylor expansion.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>func</strong> (<em>Callable</em>) – A Python function that takes one or more arguments.
+Must return a single-element Tensor. The hessian will
+be estimated on this function.</p></li>
+<li><p><strong>*x</strong> – List of arguments for <cite>func</cite>.</p></li>
+<li><p><strong>in_dims</strong> (<em>Optional</em><em>[</em><em>Tuple</em><em>]</em>) – A tuple with the same shape as <a href="#id1"><span class="problematic" id="id2">*</span></a>x, indicating
+which dimension should be considered as batch size dimension. Take the
+first dimension as batch size dimension by default.</p></li>
+<li><p><strong>argnums</strong> (<em>int</em>) – An integer default to 0. Specifies which argument of func
+to compute inverse hessian with respect to.</p></li>
+<li><p><strong>batch_size</strong> (<em>int</em>) – An integer default to 1. Specifies the batch size used
+for LiSSA inner loop update.</p></li>
+<li><p><strong>num_repeat</strong> (<em>int</em>) – An integer default to 1. Specifies the number of samples
+of the hvp approximation to average on.</p></li>
+<li><p><strong>recursion_depth</strong> (<em>int</em>) – A integer default to 5000. Specifies the number of
+recursions used to estimate each IHVP sample.</p></li>
+<li><p><strong>damping</strong> (<em>int</em>) – Damping factor used for non-convexity in LiSSA IHVP calculation.</p></li>
+<li><p><strong>scaling</strong> (<em>int</em>) – Scaling factor used for convergence in LiSSA IHVP calculation.</p></li>
+<li><p><strong>collate_fn</strong> (<em>Optional</em><em>[</em><em>Callable</em><em>]</em>) – A function to collate the input data to fit
+the input of <cite>func</cite>. If None, the input data will be directly passed to
+<cite>func</cite>. This is useful when <cite>func</cite> has some nested input structure.</p></li>
+<li><p><strong>mode</strong> (<em>str</em>) – <p>The auto diff mode, which can have one of the following values:
+- rev-rev: calculate the hessian with two reverse-mode auto-diff. It has</p>
+<blockquote>
+<div><p>better compatibility while cost more memory.</p>
+</div></blockquote>
+<ul>
+<li><dl class="simple">
+<dt>rev-fwd: calculate the hessian with the composing of reverse-mode and</dt><dd><p>forward-mode. It’s more memory-efficient but may not be supported
+by some operator.</p>
+</dd>
+</dl>
+</li>
+</ul>
+</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A function that takes a vector <cite>v</cite> and returns the IHVP of the Hessian
+of <cite>func</cite> and <cite>v</cite>.</p>
+</dd>
+</dl>
+</dd></dl>
+
 </section>
 
         </article>
@@ -290,8 +785,36 @@
         
       </footer>
     </div>
-    <aside class="toc-drawer no-toc">
+    <aside class="toc-drawer">
       
+      
+      <div class="toc-sticky toc-scroll">
+        <div class="toc-title-container">
+          <span class="toc-title">
+            On this page
+          </span>
+        </div>
+        <div class="toc-tree-container">
+          <div class="toc-tree">
+            <ul>
+<li><a class="reference internal" href="#">Hessian, HVP, and IHVP</a><ul>
+<li><a class="reference internal" href="#dattri.func.hessian.hvp"><code class="docutils literal notranslate"><span class="pre">hvp()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.hvp_at_x"><code class="docutils literal notranslate"><span class="pre">hvp_at_x()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_explicit"><code class="docutils literal notranslate"><span class="pre">ihvp_explicit()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_at_x_explicit"><code class="docutils literal notranslate"><span class="pre">ihvp_at_x_explicit()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_cg"><code class="docutils literal notranslate"><span class="pre">ihvp_cg()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_at_x_cg"><code class="docutils literal notranslate"><span class="pre">ihvp_at_x_cg()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_arnoldi"><code class="docutils literal notranslate"><span class="pre">ihvp_arnoldi()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_at_x_arnoldi"><code class="docutils literal notranslate"><span class="pre">ihvp_at_x_arnoldi()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_lissa"><code class="docutils literal notranslate"><span class="pre">ihvp_lissa()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.func.hessian.ihvp_at_x_lissa"><code class="docutils literal notranslate"><span class="pre">ihvp_at_x_lissa()</span></code></a></li>
+</ul>
+</li>
+</ul>
+
+          </div>
+        </div>
+      </div>
       
       
     </aside>
