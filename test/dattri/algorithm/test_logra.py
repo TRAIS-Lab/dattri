@@ -60,7 +60,7 @@ class TestLoGraAttributor:
         self.attributor = LoGraAttributor(
             task=self.task,
             device="cpu",
-            hessian="none",
+            hessian="Identity",
             offload="cpu",
             projector_kwargs=self.projector_kwargs,
         )

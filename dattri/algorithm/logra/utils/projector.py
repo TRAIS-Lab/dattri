@@ -193,17 +193,11 @@ def _setup_linear_projector(
 
     if proj_factorize:
         dumb_grad_comp_1 = torch.zeros_like(pre_activation.view(-1, pre_activation.shape[-1]))
-        # active_indices = projector_kwargs.get("active_indices", None)
-
-        # if active_indices is None:
-        #     active_indices = {"pre_activation": None, "input_features": None}
 
         projector_grad_comp_1 = random_project(
             dumb_grad_comp_1,
             dumb_grad_comp_1.shape[0],
             proj_seed=base_seed,
-            # pre_compute=proj_factorize,
-            # active_indices=active_indices.get("pre_activation"),
             **{k: v for k, v in projector_kwargs.items() if k != 'active_indices'}
         )
 
@@ -212,14 +206,10 @@ def _setup_linear_projector(
             dumb_grad_comp_2,
             dumb_grad_comp_2.shape[0],
             proj_seed=base_seed + 1,
-            # pre_compute=proj_factorize,
-            # active_indices=active_indices.get("input_features"),
             **{k: v for k, v in projector_kwargs.items() if k != 'active_indices'}
         )
 
         projector.projector_grad_comp = (
-            # torch.compile(projector_grad_comp_1),
-            # torch.compile(projector_grad_comp_2)
             projector_grad_comp_1, projector_grad_comp_2
         )
     else:
@@ -282,7 +272,6 @@ def _setup_layernorm_projector(
             dumb_grad_comp_1,
             dumb_grad_comp_1.shape[0],
             proj_seed=base_seed,
-            pre_compute=proj_factorize,
             **projector_kwargs
         )
 
@@ -291,13 +280,10 @@ def _setup_layernorm_projector(
             dumb_grad_comp_2,
             dumb_grad_comp_2.shape[0],
             proj_seed=base_seed + 1,
-            pre_compute=proj_factorize,
             **projector_kwargs
         )
 
         projector.projector_grad_comp = (
-            # torch.compile(projector_grad_comp_1),
-            # torch.compile(projector_grad_comp_2)
             projector_grad_comp_1, projector_grad_comp_2
         )
     else:

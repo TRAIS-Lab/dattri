@@ -42,7 +42,7 @@ class LoGraAttributor(BaseAttributor):
         layer_names: Optional[
             Union[str, List[str]]
         ] = None,  # Maybe support layer class as input?
-        hessian: Literal["none", "raw"] = "raw",
+        hessian: Literal["Identity", "eFIM"] = "eFIM",
         damping: Optional[float] = None,
         device: str = "cpu",
         projector_kwargs: Optional[Dict[str, Any]] = None,
@@ -58,10 +58,11 @@ class LoGraAttributor(BaseAttributor):
                 If None, uses all Linear layers.
                 You can check the names using model.named_modules().
                 HookManager will register hooks to named layers.
-            hessian: Type of Hessian approximation ("none" or "raw"). For "none",
-                the hessian will be taken as the identity matrix. For "raw",
-                the hessian will be computed as the fisher information matrix.
-            damping: Damping factor for Hessian inverse (when hessian="raw")
+            hessian: Type of Hessian approximation ("Identity", "eFIM"). For
+                "Identity", the hessian will be taken as the identity matrix.
+                For "eFIM", the hessian will be computed as the empirical
+                fisher information matrix.
+            damping: Damping factor for Hessian inverse (when hessian="eFIM")
             device: Device to run computations on
             projector_kwargs: Arguments for random projection (proj_dim, method, etc.)
             offload: Memory management strategy ("none", "cpu", "disk"), stating
@@ -267,7 +268,7 @@ class LoGraAttributor(BaseAttributor):
         self.hook_manager = None
 
         # Compute preconditioners and IFVP if needed
-        if self.hessian == "raw":
+        if self.hessian == "eFIM":
             logger.info("Computing preconditioners...")
             self.compute_preconditioners()
             logger.info("Computing IFVP...")
@@ -305,8 +306,8 @@ class LoGraAttributor(BaseAttributor):
                 msg,
             )
 
-        # If hessian type is "none", no preconditioners needed
-        if self.hessian == "none":
+        # If hessian type is "Identity", no preconditioners needed
+        if self.hessian == "Identity":
             logger.info("Hessian type is 'none', skipping preconditioner computation")
             for layer_idx in range(len(self.layer_names)):
                 self.offload_manager.store_preconditioner(layer_idx, None)
@@ -375,7 +376,7 @@ class LoGraAttributor(BaseAttributor):
                 hessian = hessian_accumulator / sample_count
 
                 # Compute inverse
-                if self.hessian == "raw":
+                if self.hessian == "eFIM":
                     precond = stable_inverse(hessian, damping=damping)
                     self.offload_manager.store_preconditioner(layer_idx, precond)
 
@@ -387,6 +388,8 @@ class LoGraAttributor(BaseAttributor):
 
     def compute_ifvp(self) -> None:
         """Compute inverse-Hessian-vector products (IFVP).
+
+        Here we use empirical fisher information matrix.
 
         Raises:
             ValueError: If layer dimensions are not found.
@@ -404,9 +407,9 @@ class LoGraAttributor(BaseAttributor):
             msg = "Layer dimensions not found."
             raise ValueError(msg)
 
-        # Return raw gradients if Hessian type is "none"
-        if self.hessian == "none":
-            logger.debug("Using raw gradients as IFVP since hessian type is 'none'")
+        # Return raw gradients if Hessian type is "Identity"
+        if self.hessian == "Identity":
+            logger.debug("Using raw gradients as IFVP since hessian type is 'Identity'")
             self._copy_gradients_as_ifvp()
             return
 
@@ -531,11 +534,8 @@ class LoGraAttributor(BaseAttributor):
 
         logger.info("Copied %s batches as IFVP", processed_batches)
 
-    def compute_self_attribution(self, worker: str = "0/1") -> torch.Tensor:
+    def compute_self_attribution(self) -> torch.Tensor:
         """Compute self-influence scores.
-
-        Args:
-            worker: Worker specification (for compatibility)
 
         Returns:
             Self-influence scores
@@ -551,7 +551,7 @@ class LoGraAttributor(BaseAttributor):
         # Make sure IFVP is computed
         if not self.offload_manager.has_ifvp():
             logger.info("IFVP not found, computing it now...")
-            self.compute_ifvp(worker=worker)
+            self.compute_ifvp()
 
         # Get batch mapping
         batch_to_sample_mapping = self.metadata.get_batch_to_sample_mapping()
