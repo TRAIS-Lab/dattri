@@ -30,7 +30,7 @@ jobs:
           python -m pip install sphinx furo
           # Install your package the modern way (editable is handy for docs)
           # If you have extras like [docs], prefer: python -m pip install -e .[docs]
-          python -m pip install -e .
+          python -m pip install -e .[test]
 
       - name: Sphinx build
         run: |
