@@ -18,7 +18,9 @@ This section contains examples using the pretrained checkpoints and pre-calculat
 
 [Use pre-trained Mnist10 + LR benchmark setting and evaluate TRAK algorithm by LOO correlation](./pretrained_benchmark/trak_lds.py)
 
-[Use pre-trained MNIST10 + MLP benchmark setting and evaluate TRAK + dropout ensemble by LDS](./pretrained_benchmark/trak_dropout_lds.py)
+[Use pre-trained MNIST10 + MLP benchmark setting and evaluate TRAK + dropout ensemble by LDS](./pretrained_benchmark/trak_dropout_lds.py) 
+
+[Use pre-trained MNIST10 + MLP benchmark setting and evaluate LoGra by LDS](./pretrained_benchmark/logra_lds.py)
 
 ## Estimate the brittleness
 

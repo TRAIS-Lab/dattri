@@ -820,13 +820,8 @@ def make_random_projector(
             computations and arrays will be stored in torch.float16.
 
     Returns:
-        The projected feature with shape [batch_size, proj_dim].
-
-    Raises:
-        AttributeError: possible attribute error when initializing CudaProjector.
-        ImportError: fast_jl is not installed.
-        RuntimeError: Too many resources requested for launch CUDA. Try reduce
-            proj_max_batch_size.
+        The initialized projector object
+        (CudaProjector, ChunkedCudaProjector, or BasicProjector).
     """
     using_cuda_projector = False
     dtype = torch.float16 if use_half_precision else torch.float32
@@ -854,11 +849,11 @@ def make_random_projector(
             )
             projector = CudaProjector
             using_cuda_projector = True
+            proj_type = ProjectionType.rademacher
 
-        except (ImportError, RuntimeError, AttributeError):
+        except (ImportError, RuntimeError, AttributeError, ModuleNotFoundError):
             projector = BasicProjector
-            raise
-        proj_type = ProjectionType.rademacher
+            proj_type = ProjectionType.normal
 
     if using_cuda_projector:
         # TODO: make this support dict input

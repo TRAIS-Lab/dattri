@@ -7,6 +7,7 @@ from .influence_function import (
     IFAttributorExplicit,
     IFAttributorLiSSA,
 )
+from .logra.logra import LoGraAttributor
 
 __all__ = [
     "IFAttributorArnoldi",
@@ -14,4 +15,5 @@ __all__ = [
     "IFAttributorDataInf",
     "IFAttributorExplicit",
     "IFAttributorLiSSA",
+    "LoGraAttributor",
 ]
