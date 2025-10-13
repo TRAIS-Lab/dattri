@@ -23,7 +23,7 @@ def parse_args():
     )
     args = parser.parse_args()
     if args.score_path is None:
-        raise ValueError("Need to path of the score file.")
+        raise ValueError("Need the path of the score file.")
     return args
 
 

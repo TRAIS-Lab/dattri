@@ -85,7 +85,7 @@ python train.py \
 
 ## Calculate the attribution score
 
-You can calculate the attribution score after training completes. Currently we support LoGra and TRAK for attribution score calculation. 
+Currently we have LoGra and TRAK as two examples of data attribution methods.
 
 ```bash
 python score_logra.py \
