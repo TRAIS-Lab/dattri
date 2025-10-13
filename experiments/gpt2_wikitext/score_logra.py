@@ -587,7 +587,6 @@ def main():
     from dattri.algorithm.logra.logra import LoGraAttributor
     import torch.nn as nn
 
-    # from transformers.modeling_utils import Conv1D
     from transformers.pytorch_utils import Conv1D
     from dattri.task import AttributionTask
 
@@ -716,7 +715,7 @@ def main():
 
     projector_kwargs = {
         "device": "cuda",
-        "proj_dim": 512,
+        "proj_dim": 32,
         "use_half_precision": False,
         "proj_max_batch_size": 32,
     }

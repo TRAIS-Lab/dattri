@@ -85,6 +85,8 @@ python train.py \
 
 ## Calculate the attribution score
 
+You can calculate the attribution score after training completes. Currently we support LoGra and TRAK for attribution score calculation. 
+
 ```bash
 python score_logra.py \
     --dataset_name wikitext \
@@ -122,7 +124,13 @@ python groundtruth.py\
 # Calculate the LDS
 
 ```bash
-python spearman.py
+python spearman.py \
+     --score_path "score_logra.pt" 
+```
+
+```bash
+python spearman.py \
+    --score_path "score_TRAK.pt"
 ```
 
 ```bash
