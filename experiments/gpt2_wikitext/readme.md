@@ -7,8 +7,8 @@ https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-
 
 Four scripts are included in this example
 - `train.py`, the code is unchanged. Specific parameters are shown in following section.
-- `score_logra.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code. The original code run LoGra and save the score file in `score_logra.pt`
-- `score_TRAK.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code. The original code run TRAK-5 (5 independent ensemble on TRAK) and save the score file in `score_TRAK.pt`
+- `score_logra.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code, which runs LoGra and save the score file in `score_logra.pt`
+- `score_TRAK.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code, which runs TRAK-5 (5 independent ensemble on TRAK) and save the score file in `score_TRAK.pt`
 - `groundtruth.py`, code after "# ... dattri Code begins here ..." are `dattri` specific code. The original code calculate the LDS groundtruth for 50 checkpoints saved by `train.py`. The groundtruth is saved in `gt.pt`.
 - `spearman.py`, calculate the lds score.
 
