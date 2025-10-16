@@ -6,6 +6,7 @@ from .influence_function import (
     IFAttributorDataInf,
     IFAttributorExplicit,
     IFAttributorLiSSA,
+    IFAttributorEKFAC,
 )
 from .logra.logra import LoGraAttributor
 from .rps import RPSAttributor
@@ -17,6 +18,7 @@ __all__ = [
     "IFAttributorCG",
     "IFAttributorDataInf",
     "IFAttributorExplicit",
+    "IFAttributorEKFAC",
     "IFAttributorLiSSA",
     "LoGraAttributor",
     "RPSAttributor",
