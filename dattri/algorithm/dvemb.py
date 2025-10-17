@@ -128,6 +128,10 @@ class DVEmbAttributor:
             (e.g., (epoch -> list of per-sample gradients)).
             learning_rates: Optional external learning rates instead of cached ones
             (e.g., (epoch -> list of learning rates)).
+
+        Raises:
+            ValueError: If no gradients are cached before computation,
+                        or if NaN values are detected during computation.
         """
         if gradients is not None:
             self.cached_gradients = gradients
@@ -197,6 +201,12 @@ class DVEmbAttributor:
 
         Returns:
             A tensor of influence scores.
+
+        Raises:
+            RuntimeError: If embeddings have not been computed by calling
+                          `compute_embeddings` first, or if a projection dimension
+                          was specified but the projector is not initialized.
+            ValueError: If embeddings for the specified `epoch` are not found.
         """
         if not self.embeddings:
             msg = "Embeddings not computed. Call compute_embeddings first."
