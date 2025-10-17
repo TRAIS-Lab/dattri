@@ -35,7 +35,6 @@ class DVEmbAttributor:
         model: nn.Module,
         loss_func: Callable,
         device: str = "cpu",
-        use_projection: bool = False,
         projection_dim: Optional[int] = None,
     ) -> None:
         """Initializes the DVEmb attributor.
@@ -45,17 +44,14 @@ class DVEmbAttributor:
             loss_func: A per-sample loss function. It should take model parameters
                        and a single data sample (unbatched) as input.
             device: The device to run computations on (e.g., "cpu", "cuda").
-            use_projection: Specifies if cached gradients should be projected.
             projection_dim: The dimension for projection (if used).
         """
         self.model = model
         self.device = device
         self.per_sample_loss_fn = loss_func
-        self.use_projection = use_projection
         self.projection_dim = projection_dim
         self.projector = None
 
-        # Data structures are now dictionaries keyed by epoch
         self.cached_gradients: Dict[int, List[Tensor]] = {}
         self.learning_rates: Dict[int, List[float]] = {}
         self.data_indices: Dict[int, List[Tensor]] = {}
@@ -78,8 +74,6 @@ class DVEmbAttributor:
                      in batch_data.
             learning_rate: The learning rate for this step.
         """
-        self.model.eval()
-
         if epoch not in self.cached_gradients:
             self.cached_gradients[epoch] = []
             self.learning_rates[epoch] = []
@@ -96,6 +90,7 @@ class DVEmbAttributor:
         per_sample_grad_fn = vmap(
             grad_wrapper,
             in_dims=(None, *([0] * len(batch_data_tensors))),
+            randomness="different",
         )
 
         model_params = flatten_params(
@@ -103,7 +98,7 @@ class DVEmbAttributor:
         )
         per_sample_grads = per_sample_grad_fn(model_params, *batch_data_tensors)
 
-        if self.use_projection:
+        if self.projection_dim is not None:
             if self.projector is None:
                 self.projector = random_project(
                     per_sample_grads,
@@ -117,12 +112,28 @@ class DVEmbAttributor:
             scaling_factor = 1.0 / math.sqrt(self.projection_dim)
             per_sample_grads = projected_grads * scaling_factor
 
-        self.cached_gradients[epoch].append(per_sample_grads.cpu())
+        self.cached_gradients[epoch].append(per_sample_grads.cpu() / len(indices))
         self.learning_rates[epoch].append(learning_rate)
         self.data_indices[epoch].append(indices.cpu())
 
-    def compute_embeddings(self) -> None:
-        """Computes data value embeddings for each epoch separately."""
+    def compute_embeddings(
+        self,
+        gradients: Optional[Dict[int, List[Tensor]]] = None,
+        learning_rates: Optional[Dict[int, List[float]]] = None,
+    ) -> None:
+        """Computes data value embeddings for each epoch separately.
+
+        Args:
+            gradients: Optional external gradients instead of cached ones
+            (e.g., (epoch -> list of per-sample gradients)).
+            learning_rates: Optional external learning rates instead of cached ones
+            (e.g., (epoch -> list of learning rates)).
+        """
+        if gradients is not None:
+            self.cached_gradients = gradients
+        if learning_rates is not None:
+            self.learning_rates = learning_rates
+
         if not self.cached_gradients:
             msg = "No gradients cached. Call cache_gradients during training first."
             raise ValueError(msg)
@@ -155,7 +166,7 @@ class DVEmbAttributor:
                 grads_t = self.cached_gradients[epoch][t].to(self.device)
                 indices_t = self.data_indices[epoch][t]
 
-                dvemb_t = eta_t * grads_t - eta_t * (m_matrix @ grads_t.T).T
+                dvemb_t = eta_t * grads_t - eta_t * (grads_t @ m_matrix)
                 if torch.isnan(dvemb_t).any():
                     msg = f"NaN detected in dvemb_t at epoch {epoch}, iteration {t}"
                     raise ValueError(msg)
@@ -206,6 +217,7 @@ class DVEmbAttributor:
             per_sample_grad_fn = vmap(
                 grad_wrapper,
                 in_dims=(None, *([0] * len(batch_data_tensors))),
+                randomness="different",
             )
 
             model_params = flatten_params(
@@ -213,7 +225,7 @@ class DVEmbAttributor:
             )
             grads = per_sample_grad_fn(model_params, *batch_data_tensors)
 
-            if self.use_projection:
+            if self.projection_dim is not None:
                 if self.projector is None:
                     msg = "Projector is not initialized."
                     raise RuntimeError(msg)
