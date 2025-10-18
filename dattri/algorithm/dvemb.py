@@ -125,13 +125,13 @@ class DVEmbAttributor:
 
         Args:
             gradients: Optional external gradients instead of cached ones
-            (e.g., (epoch -> list of per-sample gradients)).
+                (e.g., (epoch -> list of per-sample gradients)).
             learning_rates: Optional external learning rates instead of cached ones
-            (e.g., (epoch -> list of learning rates)).
+                (e.g., (epoch -> list of learning rates)).
 
         Raises:
             ValueError: If no gradients are cached before computation,
-                        or if NaN values are detected during computation.
+                or if NaN values are detected during computation.
         """
         if gradients is not None:
             self.cached_gradients = gradients
