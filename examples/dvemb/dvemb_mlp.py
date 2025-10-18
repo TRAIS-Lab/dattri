@@ -218,7 +218,6 @@ class TestDVEmbMLP(unittest.TestCase):
             model=model,
             loss_func=per_sample_loss_fn,
             device=self.device,
-            use_projection=True,
             projection_dim=4096
         )
 
