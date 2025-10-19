@@ -83,6 +83,7 @@ class TestCudaProjector(unittest.TestCase):
         projected_grads = self.projector.project(grads, ensemble_id)
         assert projected_grads.shape == (64, self.proj_dim)
 
+
 @unittest.skipUnless(
     torch.cuda.is_available() and SJLT_AVAILABLE,
     "CUDA is not available or sjlt is not installed",
