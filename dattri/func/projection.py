@@ -857,9 +857,9 @@ def make_random_projector(
             about to be projected. The typical type of feature are gradients of
             torch.nn.Module model but can be restricted to this.
         proj_dim (int): Dimension of the projected feature.
-        proj_max_batch_size (int): The maximum batch size used by fast_jl if the
-            CudaProjector is used. Must be a multiple of 8. The maximum
-            batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
+        proj_max_batch_size (int): The maximum batch size if the CudaProjector is
+            used. Must be a multiple of 8. The maximum batch size is 32 for A100
+            GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
         device (str): "cuda" or "cpu".
         proj_seed (int): Random seed used by the projector. Defaults to 0.
         proj_type (ProjectionType): The random projection type used for the
@@ -868,10 +868,12 @@ def make_random_projector(
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
 
+    Raises:
+        ValueError: When an invalid proj_type is specified.
+
     Returns:
         The initialized projector object
         (CudaProjector, ChunkedCudaProjector, or BasicProjector).
-        ValueError: When an invalid proj_type is specified.
     """
     using_cuda_projector = False
     dtype = torch.float16 if use_half_precision else torch.float32
@@ -1076,9 +1078,9 @@ def random_project(
             about to be projected. The typical type of feature are gradients of
             torch.nn.Module model but can restricted to this.
         proj_dim (int): Dimension of the projected feature.
-        proj_max_batch_size (int): The maximum batch size used by fast_jl if the
-            CudaProjector is used. Must be a multiple of 8. The maximum
-            batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
+        proj_max_batch_size (int): The maximum batch size if the CudaProjector is
+            used. Must be a multiple of 8. The maximum batch size is 32 for A100
+            GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
         device (str): "cuda" or "cpu".
         proj_seed (int): Random seed used by the projector. Defaults to 0.
         proj_type (ProjectionType): The random projection type used for the

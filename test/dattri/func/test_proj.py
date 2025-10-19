@@ -57,7 +57,7 @@ class TestCudaProjector(unittest.TestCase):
     """Test cuda projector function."""
 
     def setUp(self):
-        """Set up varibles for testing."""
+        """Set up variables for testing."""
         self.feature_dim = 100000
         self.proj_dim = 512
         self.seed = 42
@@ -92,7 +92,7 @@ class TestChunkedCudaProjector(unittest.TestCase):
     """Test chunked cuda projector function."""
 
     def setUp(self):
-        """Set up varibles for testing."""
+        """Set up variables for testing."""
         self.device = torch.device("cuda:0")
         self.dtype = torch.float32
         self.proj_dim = 512
@@ -383,7 +383,7 @@ class TestGetProjection(unittest.TestCase):
     """Test the random_project function."""
 
     def setUp(self):
-        """Set up varibles for testing."""
+        """Set up variables for testing."""
         self.small_model = SmallModel()
         self.large_model = LargerModel()
         self.ensemble_id = 0
@@ -391,7 +391,7 @@ class TestGetProjection(unittest.TestCase):
         self.proj_max_batch_size = 16
 
     def test_basicprojector(self):
-        """Test funcionality of BasicProjetor."""
+        """Test functionality of BasicProjetor."""
         test_batch_size = 8
         # mimic gradient
         small_gradient = {}
@@ -417,7 +417,7 @@ class TestGetProjection(unittest.TestCase):
         "CUDA is not available or sjlt is not installed",
     )
     def test_cudaprojector(self):
-        """Test funcionality of CudaProjetor."""
+        """Test functionality of CudaProjetor."""
         test_batch_size = 32
         # mimic gradient
         small_gradient = {}
@@ -443,7 +443,7 @@ class TestGetProjection(unittest.TestCase):
         "CUDA is not available or sjlt is not installed",
     )
     def test_chunkedcudaprojector(self):
-        """Test funcionality of ChunkedCudaProjector."""
+        """Test functionality of ChunkedCudaProjector."""
         test_batch_size = 64
         # Define parameters
         num_layers = 16
@@ -530,7 +530,7 @@ class TestGetProjection(unittest.TestCase):
     def test_tensor_input_chunked_cuda(self):
         """Test the usage of tensor input."""
         feature_batch_size = 4
-        # 0.3B is slighly larger then max_chunk_size (~0.26B)
+        # 0.3B is slightly larger then max_chunk_size (~0.26B)
         test_tensor = torch.rand(feature_batch_size, 300000000)
         # suppose to be ChunkedCudaProjector
         project = random_project(
@@ -547,7 +547,7 @@ class TestGetProjection(unittest.TestCase):
         assert result.shape == (feature_batch_size, self.proj_dim)
 
     def test_arnoldi_project(self):
-        """Test the funcitonality of arnoldi_project."""
+        """Test the functionality of arnoldi_project."""
         feature_dim = 10
         proj_dim = 5
         vec_dim = 20
