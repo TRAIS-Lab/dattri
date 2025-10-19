@@ -17,6 +17,7 @@ from dattri.func.projection import (
 # Check if sjlt is available
 try:
     from sjlt import SJLTProjection  # noqa: F401
+
     SJLT_AVAILABLE = True
 except ImportError:
     SJLT_AVAILABLE = False
@@ -62,7 +63,7 @@ class TestCudaProjector(unittest.TestCase):
         self.proj_dim = 512
         self.seed = 42
         self.proj_type = "sjlt"
-        self.device = "cuda:0"
+        self.device = "cuda"
         self.max_batch_size = 32
 
         self.projector = CudaProjector(
@@ -93,21 +94,21 @@ class TestChunkedCudaProjector(unittest.TestCase):
 
     def setUp(self):
         """Set up variables for testing."""
-        self.device = torch.device("cuda:0")
+        self.device = torch.device("cuda")
         self.dtype = torch.float32
         self.proj_dim = 512
-        self.max_chunk_size = 5
+        self.max_chunk_size = 50000
         self.proj_max_batch_size = 16
         self.feature_dim = 100000
         self.feature_batch_size = 1000
         self.seed = 42
         self.proj_type = "sjlt"
         self.max_batch_size = 32
-        self.dim_per_chunk = [5, 5]
+        self.dim_per_chunk = [self.max_chunk_size, self.max_chunk_size]
 
         self.projectors = [
             CudaProjector(
-                feature_dim=self.feature_dim,
+                feature_dim=self.max_chunk_size,
                 proj_dim=self.proj_dim,
                 seed=self.seed,
                 proj_type=self.proj_type,
@@ -115,7 +116,7 @@ class TestChunkedCudaProjector(unittest.TestCase):
                 max_batch_size=self.max_batch_size,
             ),
             CudaProjector(
-                feature_dim=self.feature_dim,
+                feature_dim=self.max_chunk_size,
                 proj_dim=self.proj_dim,
                 seed=self.seed,
                 proj_type=self.proj_type,
@@ -136,10 +137,10 @@ class TestChunkedCudaProjector(unittest.TestCase):
     def test_project_output_shape(self):
         """Test the projection output shape."""
         grads = {
-            "grad1": torch.randn(self.feature_batch_size, 3, device=self.device),
-            "grad2": torch.randn(self.feature_batch_size, 2, device=self.device),
-            "grad3": torch.randn(self.feature_batch_size, 3, device=self.device),
-            "grad4": torch.randn(self.feature_batch_size, 2, device=self.device),
+            "grad1": torch.randn(self.feature_batch_size, 30000, device=self.device),
+            "grad2": torch.randn(self.feature_batch_size, 20000, device=self.device),
+            "grad3": torch.randn(self.feature_batch_size, 20000, device=self.device),
+            "grad4": torch.randn(self.feature_batch_size, 30000, device=self.device),
         }
         ensemble_id = 1
         projected_grads = self.chunked_projector.project(grads, ensemble_id)
