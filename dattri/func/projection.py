@@ -270,7 +270,7 @@ class CudaProjector(AbstractProjector):
         feature_dim: int,
         proj_dim: int,
         seed: int,
-        proj_type: ProjectionType,
+        proj_type: Union[str, ProjectionType],
         device: str,
         max_batch_size: int,
         blow_up: int = 4,
@@ -283,15 +283,16 @@ class CudaProjector(AbstractProjector):
                 (dimension of the gradient vectors).
             proj_dim (int): Dimension we project *to* during the projection step
             seed (int): Random seed.
-            proj_type (ProjectionType): Type of randomness to use for
-                projection matrix (rademacher or normal).
+            proj_type (ProjectionType): The random projection (JL
+                transform) guarantees that distances will be approximately
+                preserved for a variety of choices of the random matrix. Here,
+                we provide an implementation for "mask", "sjlt", "rademacher",
+                "normal", and "grass".
             device (str): CUDA device to use.
             max_batch_size (int): Explicitly constrains the batch size of
                 the CudaProjector is going to use for projection.
                 Set this if you get a 'The batch size of the CudaProjector is
                 too large for your GPU' error. Must be either 8, 16, or 32.
-            method (str): The projection method to use. Available options are
-                "Mask", "SJLT", "Rademacher", "Gaussian", and "GraSS". Defaults to "SJLT".
             blow_up (int): The blow up factor used by GraSS method.
 
         Raises:
@@ -302,82 +303,135 @@ class CudaProjector(AbstractProjector):
         self.max_batch_size = max_batch_size
         self.blow_up = blow_up
 
-        if isinstance(device, str):
-            device = torch.device(device)
+        if isinstance(self.device, str):
+            self.device = torch.device(self.device)
 
-        if device.type != "cuda":
+        if self.device.type != "cuda":
             err = "CudaProjector only works on a CUDA device; \
             Either switch to a CUDA device, or use the BasicProjector"
             raise ValueError(err)
 
         self.num_sms = torch.cuda.get_device_properties(
-            device.index,
+            self.device.index,
         ).multi_processor_count
 
-        torch.manual_seed(self.seed)
+        # Use a generator for reproducible randomness
+        self.generator = torch.Generator(device=self.device)
+
+        # Track the current ensemble to know when to regenerate randomness
+        self.current_ensemble_id = -1  # Init to -1 to force generation on first call
+
+        # Initialize placeholders for projection components
+        self.active_indices = None
+        self.sjlt = None
+        self.proj_matrix = None
+
+        # Check for sjlt import early if needed
+        if self.proj_type in {ProjectionType.sjlt, "sjlt", ProjectionType.grass, "grass"}:
+            try:
+                from sjlt import SJLTProjection  # noqa: F401
+            except ImportError:
+                msg = "You should make sure to install the CUDA projector \
+                (the sjlt library)."
+                raise ModuleNotFoundError(msg) from None
+
+    def _generate_randomness(self, ensemble_id: int):
+        """Generates the random projection components for a given ensemble_id."""
+
+        # Create a unique, reproducible seed for this specific ensemble
+        current_seed = self.seed + int(1e5) * ensemble_id
+        self.generator.manual_seed(current_seed)
 
         # Initialize based on method
         if self.proj_type in {ProjectionType.mask, "mask"}:
-            # Only Mask uses a subset of indices
-            if feature_dim > proj_dim:
-                indices = torch.randperm(feature_dim, device=device)[:proj_dim]
+            if self.feature_dim > self.proj_dim:
+                indices = torch.randperm(
+                    self.feature_dim,
+                    generator=self.generator,
+                    device=self.device,
+                )[:self.proj_dim]
                 self.active_indices = indices.sort()[0]  # Sort for potential efficiency
             else:
-                self.active_indices = torch.arange(feature_dim, device=device)
+                self.active_indices = torch.arange(self.feature_dim, device=self.device)
 
         elif self.proj_type in {ProjectionType.grass, "grass"}:
-            # GraSS: Mask to proj_dim*blow_up, then SJLT to proj_dim
-            intermediate_dim = proj_dim * blow_up
+            intermediate_dim = self.proj_dim * self.blow_up
 
             # Step 1: Create active_indices for Mask part
-            if feature_dim > intermediate_dim:
-                indices = torch.randperm(feature_dim, device=device)[:intermediate_dim]
-                self.active_indices = indices.sort()[0]  # Sort for potential efficiency
+            if self.feature_dim > intermediate_dim:
+                indices = torch.randperm(
+                    self.feature_dim,
+                    generator=self.generator,
+                    device=self.device,
+                )[:intermediate_dim]
+                self.active_indices = indices.sort()[0]
             else:
-                self.active_indices = torch.arange(feature_dim, device=device)
+                self.active_indices = torch.arange(self.feature_dim, device=self.device)
 
             # Step 2: Initialize SJLT for the second projection
-            try:
-                from sjlt import SJLTProjection
-                c = 1  # Hard set the column sparsity to 1
-                actual_intermediate_dim = self.active_indices.numel()
-                rand_indices = torch.randint(proj_dim, (actual_intermediate_dim, c), device=device)
-                rand_signs = torch.randint(0, 2, (actual_intermediate_dim, c), device=device) * 2 - 1
-                self.sjlt_cuda_module = SJLTProjection(actual_intermediate_dim, proj_dim, c, device=device)
-                self.sjlt_cuda_module.rand_indices.copy_(rand_indices)
-                self.sjlt_cuda_module.rand_signs.copy_(rand_signs.to(torch.int8))
-            except ImportError:
-                msg = "You should make sure to install the CUDA projector \
-                (the sjlt library)."
-                raise ModuleNotFoundError(msg) from None
+            from sjlt import SJLTProjection
+            c = 1  # Hard set the column sparsity to 1
+            intermediate_dim = self.active_indices.numel()
+            rand_indices = torch.randint(
+                self.proj_dim,
+                (intermediate_dim, c),
+                generator=self.generator,
+                device=self.device,
+            )
+            rand_signs = torch.randint(
+                0, 2,
+                (intermediate_dim, c),
+                generator=self.generator,
+                device=self.device,
+            ) * 2 - 1
+
+            # Create the SJLT object if it doesn't exist
+            if self.sjlt is None:
+                self.sjlt = SJLTProjection(
+                    intermediate_dim, self.proj_dim, c, device=self.device,
+                )
+            # Copy the new randomness into the existing object
+            self.sjlt.rand_indices.copy_(rand_indices)
+            self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
 
         elif self.proj_type in {ProjectionType.sjlt, "sjlt"}:
-            try:
-                from sjlt import SJLTProjection
-                c = 1  # Hard set the column sparsity to 1
-                # Use full feature_dim for SJLT
-                rand_indices = torch.randint(proj_dim, (feature_dim, c), device=device)
-                rand_signs = torch.randint(0, 2, (feature_dim, c), device=device) * 2 - 1
-                self.sjlt_cuda_module = SJLTProjection(feature_dim, proj_dim, c, device=device)
-                self.sjlt_cuda_module.rand_indices.copy_(rand_indices)
-                self.sjlt_cuda_module.rand_signs.copy_(rand_signs.to(torch.int8))
-            except ImportError:
-                msg = "You should make sure to install the CUDA projector \
-                (the sjlt library)."
-                raise ModuleNotFoundError(msg) from None
+            from sjlt import SJLTProjection
+            c = 1  # Hard set the column sparsity to 1
+            rand_indices = torch.randint(
+                self.proj_dim,
+                (self.feature_dim, c),
+                generator=self.generator,
+                device=self.device,
+            )
+            rand_signs = torch.randint(
+                0, 2,
+                (self.feature_dim, c),
+                generator=self.generator,
+                device=self.device,
+            ) * 2 - 1
+
+            if self.sjlt is None:
+                self.sjlt = SJLTProjection(
+                    self.feature_dim, self.proj_dim, c, device=self.device,
+                )
+            self.sjlt.rand_indices.copy_(rand_indices)
+            self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
 
         elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
-            self.proj_matrix = torch.empty(feature_dim, proj_dim, device=device)
-            self.proj_matrix.bernoulli_(p=0.5)
+            if self.proj_matrix is None:
+                self.proj_matrix = torch.empty(
+                    self.feature_dim, self.proj_dim, device=self.device,
+                )
+            self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
             self.proj_matrix *= 2.0
             self.proj_matrix -= 1.0
 
         elif self.proj_type in {ProjectionType.normal, "normal"}:
-            self.proj_matrix = torch.randn(
-                feature_dim,
-                proj_dim,
-                device=device,
-            )
+            if self.proj_matrix is None:
+                self.proj_matrix = torch.empty(
+                    self.feature_dim, self.proj_dim, device=self.device,
+                )
+            self.proj_matrix.normal_(generator=self.generator)
 
         else:
             raise ValueError(f"Unknown projection type: {self.proj_type}")
@@ -400,6 +454,10 @@ class CudaProjector(AbstractProjector):
         Returns:
             Tensor: The projected features.
         """
+        # Regenerate randomness if the ensemble_id has changed
+        if ensemble_id != self.current_ensemble_id:
+            self._generate_randomness(ensemble_id)
+            self.current_ensemble_id = ensemble_id
 
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
@@ -407,29 +465,22 @@ class CudaProjector(AbstractProjector):
             features = features.to(self.device)
 
         if self.proj_type in {ProjectionType.sjlt, "sjlt"}:
-            # SJLT uses all indices
             with torch.no_grad():
-                result = self.sjlt_cuda_module(features)
+                result = self.sjlt(features)
 
         elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
-            # Rademacher uses all indices
             result = features @ self.proj_matrix / (self.proj_dim ** 0.5)
 
         elif self.proj_type in {ProjectionType.normal, "normal"}:
-            # Gaussian uses all indices
             result = features @ self.proj_matrix / (self.proj_dim ** 0.5)
 
         elif self.proj_type in {ProjectionType.mask, "mask"}:
-            # Mask uses subset of indices
             result = features[:, self.active_indices]
 
         elif self.proj_type in {ProjectionType.grass, "grass"}:
-            # Step 1: Apply mask using active_indices
             features = features[:, self.active_indices]
-
-            # Step 2: Apply SJLT projection
             with torch.no_grad():
-                result = self.sjlt_cuda_module(features)
+                result = self.sjlt(features)
 
         return result
 
@@ -521,7 +572,7 @@ class ChunkedCudaProjector:
             dtype=self.dtype,
         )
         pointer = 0
-        # iterate over feature dimenions, keep a counter of #dim so far, and when prev
+        # iterate over feature dimensions, keep a counter of #dim so far, and when prev
         # chunk reaches max_chunk_size, project and accumulate.
         projector_index = 0
         vector_dim = 1
@@ -871,8 +922,9 @@ def make_random_projector(
             batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
         device (str): "cuda" or "cpu".
         proj_seed (int): Random seed used by the projector. Defaults to 0.
-        proj_type (str): The projection method to use. Available options are
-            "mask", "sjlt", "rademacher", "normal", and "grass". Defaults to "sjlt".
+        proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "mask", "sjlt", "rademacher",
+                "normal", and "grass".
         blow_up (int): The blow up factor used by GraSS method.
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
@@ -1091,8 +1143,9 @@ def random_project(
             batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
         device (str): "cuda" or "cpu".
         proj_seed (int): Random seed used by the projector. Defaults to 0.
-        proj_type (str): The projection method to use. Available options are
-            "mask", "sjlt", "rademacher", "normal", and "grass". Defaults to "sjlt".
+        proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "mask", "sjlt", "rademacher",
+                "normal", and "grass".
         blow_up (int): The blow up factor used by GraSS method.
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
