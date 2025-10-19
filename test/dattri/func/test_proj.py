@@ -48,6 +48,7 @@ class TestBasicProjector(unittest.TestCase):
         projected_grads = self.projector.project(test_grads, ensemble_id=0)
         assert projected_grads.shape == (10, self.proj_dim)
 
+
 @unittest.skipUnless(
     torch.cuda.is_available() and SJLT_AVAILABLE,
     "CUDA is not available or sjlt is not installed",
@@ -81,7 +82,6 @@ class TestCudaProjector(unittest.TestCase):
         projected_grads = self.projector.project(grads, ensemble_id)
         assert projected_grads.shape == (64, self.proj_dim)
         assert projected_grads.shape == (64, self.proj_dim)
-
 
 
 @unittest.skipUnless(
@@ -412,7 +412,6 @@ class TestGetProjection(unittest.TestCase):
         result_1 = project(small_gradient)
         assert result_1.shape == (test_batch_size, self.proj_dim)
 
-
     @unittest.skipUnless(
         torch.cuda.is_available() and SJLT_AVAILABLE,
         "CUDA is not available or sjlt is not installed",
@@ -438,7 +437,6 @@ class TestGetProjection(unittest.TestCase):
 
         result_2 = project(small_gradient)
         assert result_2.shape == (test_batch_size, self.proj_dim)
-
 
     @unittest.skipUnless(
         torch.cuda.is_available() and SJLT_AVAILABLE,
@@ -502,7 +500,6 @@ class TestGetProjection(unittest.TestCase):
         result = project(test_tensor)
         assert result.shape == (test_batch_size, self.proj_dim)
 
-
     @unittest.skipUnless(
         torch.cuda.is_available() and SJLT_AVAILABLE,
         "CUDA is not available or sjlt is not installed",
@@ -525,7 +522,6 @@ class TestGetProjection(unittest.TestCase):
 
         result = project(test_tensor)
         assert result.shape == (test_batch_size, self.proj_dim)
-
 
     @unittest.skipUnless(
         torch.cuda.is_available() and SJLT_AVAILABLE,

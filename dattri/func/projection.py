@@ -871,6 +871,7 @@ def make_random_projector(
     Returns:
         The initialized projector object
         (CudaProjector, ChunkedCudaProjector, or BasicProjector).
+        ValueError: When an invalid proj_type is specified.
     """
     using_cuda_projector = False
     dtype = torch.float16 if use_half_precision else torch.float32
