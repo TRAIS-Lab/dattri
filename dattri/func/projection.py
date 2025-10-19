@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
 import warnings
 
-import numpy as np
 import torch
 from torch import Tensor
 
@@ -333,6 +332,7 @@ class CudaProjector(AbstractProjector):
     def _gen_randomness_sjlt(self) -> None:
         """Generates randomness for 'sjlt' projection."""
         from sjlt import SJLTProjection
+
         c = 1  # Hard set the column sparsity to 1
         rand_indices = torch.randint(
             self.proj_dim,
@@ -340,25 +340,40 @@ class CudaProjector(AbstractProjector):
             generator=self.generator,
             device=self.device,
         )
-        rand_signs = torch.randint(
-            0, 2,
-            (self.feature_dim, c),
-            generator=self.generator,
-            device=self.device,
-        ) * 2 - 1
+        rand_signs = (
+            torch.randint(
+                0,
+                2,
+                (self.feature_dim, c),
+                generator=self.generator,
+                device=self.device,
+            )
+            * 2
+            - 1
+        )
 
         if self.sjlt is None:
             self.sjlt = SJLTProjection(
-                self.feature_dim, self.proj_dim, c, device=self.device,
+                self.feature_dim,
+                self.proj_dim,
+                c,
+                device=self.device,
             )
         self.sjlt.rand_indices.copy_(rand_indices)
         self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
 
     def _gen_randomness_dense(self, method: str) -> None:
-        """Generates randomness for 'normal' or 'rademacher'."""
+        """Generates the random projection matrix for dense projections.
+
+        Args:
+            method (str): The method to use for generating the projection
+                matrix. Must be either "rademacher" or "normal".
+        """
         if self.proj_matrix is None:
             self.proj_matrix = torch.empty(
-                self.feature_dim, self.proj_dim, device=self.device,
+                self.feature_dim,
+                self.proj_dim,
+                device=self.device,
             )
         if method == "rademacher":
             self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
@@ -369,6 +384,10 @@ class CudaProjector(AbstractProjector):
 
     def _generate_randomness(self, ensemble_id: int) -> None:
         """Generates the random projection components for a given ensemble_id.
+
+        Args:
+            ensemble_id (int): A unique ID for this ensemble to generate
+                reproducible randomness.
 
         Raises:
             ValueError: If the projection type is unknown.
@@ -410,7 +429,8 @@ class CudaProjector(AbstractProjector):
 
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
-        elif features.device.type != self.device:
+
+        if features.device.type != self.device:
             features = features.to(self.device)
 
         if self.proj_type in {ProjectionType.sjlt, "sjlt"}:
@@ -418,10 +438,12 @@ class CudaProjector(AbstractProjector):
                 result = self.sjlt(features)
 
         elif self.proj_type in {
-            ProjectionType.rademacher, "rademacher",
-            ProjectionType.normal, "normal",
+            ProjectionType.rademacher,
+            "rademacher",
+            ProjectionType.normal,
+            "normal",
         }:
-            result = features @ self.proj_matrix / (self.proj_dim ** 0.5)
+            result = features @ self.proj_matrix / (self.proj_dim**0.5)
 
         return result
 
@@ -589,6 +611,8 @@ class ChunkedCudaProjector:
         # TODO: support dict input
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
+        if features.device.type != self.device:
+            features = features.to(self.device)
 
         pointer = 0
         for chunk_idx, chunk_dim in enumerate(self.dim_per_chunk):
@@ -825,6 +849,8 @@ class ArnoldiProjector(AbstractProjector):
         # transform to tensors
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
+        if features.device.type != self.device:
+            features = features.to(self.device)
         # have not compute the eigen space yet
         if self.eigvals is None or self.eigvecs is None:
             self.get_eigenspace()
@@ -902,20 +928,24 @@ def make_random_projector(
         using_cuda_projector = True
 
     if using_cuda_projector:
-        # TODO: make this support dict input
-        # currently, only tensor input will be considered
         max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
             param_shape_list,
             proj_max_batch_size,
         )
         if len(param_chunk_sizes) > 1:  # we have to use the ChunkedCudaProjector
-            rng = np.random.default_rng(proj_seed)
-            # different seeds for each chunk
-            seeds = rng.integers(
+            # Use torch RNG instead of numpy
+            generator = torch.Generator()
+            generator.manual_seed(proj_seed)
+
+            # Generate seeds using torch.randint
+            seeds = torch.randint(
                 low=0,
                 high=500,
-                size=len(param_chunk_sizes),
-            )
+                size=(len(param_chunk_sizes),),
+                generator=generator,
+                dtype=torch.int64,
+            ).tolist()  # Convert to list for indexing
+
             projector_per_chunk = [
                 projector(
                     feature_dim=chunk_size,
@@ -1083,9 +1113,8 @@ def random_project(
             GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
         device (str): "cuda" or "cpu".
         proj_seed (int): Random seed used by the projector. Defaults to 0.
-        proj_type (ProjectionType): The random projection type used for the
-                projection. Available options are "sjlt", "rademacher",
-                "normal".
+        proj_type (str): The random projection type used for the projection.
+            Available options are "sjlt", "rademacher", "normal".
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
 

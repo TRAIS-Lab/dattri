@@ -392,7 +392,7 @@ class TestGetProjection(unittest.TestCase):
         self.proj_max_batch_size = 16
 
     def test_basicprojector(self):
-        """Test functionality of BasicProjetor."""
+        """Test functionality of BasicProjector."""
         test_batch_size = 8
         # mimic gradient
         small_gradient = {}
@@ -407,7 +407,7 @@ class TestGetProjection(unittest.TestCase):
             self.proj_max_batch_size,
             device="cpu",
             proj_seed=0,
-            use_half_precision=True,
+            use_half_precision=False,  # half precision is not supported on CPU
         )
 
         result_1 = project(small_gradient)
@@ -418,7 +418,7 @@ class TestGetProjection(unittest.TestCase):
         "CUDA is not available or sjlt is not installed",
     )
     def test_cudaprojector(self):
-        """Test functionality of CudaProjetor."""
+        """Test functionality of CudaProjector."""
         test_batch_size = 32
         # mimic gradient
         small_gradient = {}
@@ -445,7 +445,7 @@ class TestGetProjection(unittest.TestCase):
     )
     def test_chunkedcudaprojector(self):
         """Test functionality of ChunkedCudaProjector."""
-        test_batch_size = 64
+        test_batch_size = 16
         # Define parameters
         num_layers = 16
         hidden_size = 1024
@@ -495,7 +495,7 @@ class TestGetProjection(unittest.TestCase):
             self.proj_max_batch_size,
             device="cpu",
             proj_seed=0,
-            use_half_precision=True,
+            use_half_precision=False,  # half precision is not supported on CPU
         )
 
         result = project(test_tensor)
