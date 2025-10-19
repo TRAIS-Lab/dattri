@@ -327,7 +327,8 @@ class CudaProjector(AbstractProjector):
         self.proj_matrix = None
 
         # Check for sjlt import early if needed
-        if self.proj_type in {ProjectionType.sjlt, "sjlt", ProjectionType.grass, "grass"}:
+        if self.proj_type in {ProjectionType.sjlt, "sjlt",
+                             ProjectionType.grass, "grass"}:
             try:
                 from sjlt import SJLTProjection  # noqa: F401
             except ImportError:
@@ -335,106 +336,120 @@ class CudaProjector(AbstractProjector):
                 (the sjlt library)."
                 raise ModuleNotFoundError(msg) from None
 
-    def _generate_randomness(self, ensemble_id: int):
-        """Generates the random projection components for a given ensemble_id."""
+    def _gen_randomness_mask(self) -> None:
+        """Generates randomness for 'mask' projection."""
+        if self.feature_dim > self.proj_dim:
+            indices = torch.randperm(
+                self.feature_dim,
+                generator=self.generator,
+                device=self.device,
+            )[:self.proj_dim]
+            self.active_indices = indices.sort()[0]  # Sort for potential efficiency
+        else:
+            self.active_indices = torch.arange(self.feature_dim, device=self.device)
 
+    def _gen_randomness_grass(self) -> None:
+        """Generates randomness for 'grass' projection."""
+        intermediate_dim = self.proj_dim * self.blow_up
+
+        # Step 1: Create active_indices for Mask part
+        if self.feature_dim > intermediate_dim:
+            indices = torch.randperm(
+                self.feature_dim,
+                generator=self.generator,
+                device=self.device,
+            )[:intermediate_dim]
+            self.active_indices = indices.sort()[0]
+        else:
+            self.active_indices = torch.arange(self.feature_dim, device=self.device)
+
+        # Step 2: Initialize SJLT for the second projection
+        from sjlt import SJLTProjection
+        c = 1  # Hard set the column sparsity to 1
+        intermediate_dim = self.active_indices.numel()
+        rand_indices = torch.randint(
+            self.proj_dim,
+            (intermediate_dim, c),
+            generator=self.generator,
+            device=self.device,
+        )
+        rand_signs = torch.randint(
+            0, 2,
+            (intermediate_dim, c),
+            generator=self.generator,
+            device=self.device,
+        ) * 2 - 1
+
+        # Create the SJLT object if it doesn't exist
+        if self.sjlt is None:
+            self.sjlt = SJLTProjection(
+                intermediate_dim, self.proj_dim, c, device=self.device,
+            )
+        # Copy the new randomness into the existing object
+        self.sjlt.rand_indices.copy_(rand_indices)
+        self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
+
+    def _gen_randomness_sjlt(self) -> None:
+        """Generates randomness for 'sjlt' projection."""
+        from sjlt import SJLTProjection
+        c = 1  # Hard set the column sparsity to 1
+        rand_indices = torch.randint(
+            self.proj_dim,
+            (self.feature_dim, c),
+            generator=self.generator,
+            device=self.device,
+        )
+        rand_signs = torch.randint(
+            0, 2,
+            (self.feature_dim, c),
+            generator=self.generator,
+            device=self.device,
+        ) * 2 - 1
+
+        if self.sjlt is None:
+            self.sjlt = SJLTProjection(
+                self.feature_dim, self.proj_dim, c, device=self.device,
+            )
+        self.sjlt.rand_indices.copy_(rand_indices)
+        self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
+
+    def _gen_randomness_dense(self, method: str) -> None:
+        """Generates randomness for 'normal' or 'rademacher'."""
+        if self.proj_matrix is None:
+            self.proj_matrix = torch.empty(
+                self.feature_dim, self.proj_dim, device=self.device,
+            )
+        if method == "rademacher":
+            self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
+            self.proj_matrix *= 2.0
+            self.proj_matrix -= 1.0
+        elif method == "normal":
+            self.proj_matrix.normal_(generator=self.generator)
+
+    def _generate_randomness(self, ensemble_id: int) -> None:
+        """Generates the random projection components for a given ensemble_id.
+
+        Raises:
+            ValueError: If the projection type is unknown.
+        """
         # Create a unique, reproducible seed for this specific ensemble
         current_seed = self.seed + int(1e5) * ensemble_id
         self.generator.manual_seed(current_seed)
 
         # Initialize based on method
         if self.proj_type in {ProjectionType.mask, "mask"}:
-            if self.feature_dim > self.proj_dim:
-                indices = torch.randperm(
-                    self.feature_dim,
-                    generator=self.generator,
-                    device=self.device,
-                )[:self.proj_dim]
-                self.active_indices = indices.sort()[0]  # Sort for potential efficiency
-            else:
-                self.active_indices = torch.arange(self.feature_dim, device=self.device)
-
+            self._gen_randomness_mask()
         elif self.proj_type in {ProjectionType.grass, "grass"}:
-            intermediate_dim = self.proj_dim * self.blow_up
-
-            # Step 1: Create active_indices for Mask part
-            if self.feature_dim > intermediate_dim:
-                indices = torch.randperm(
-                    self.feature_dim,
-                    generator=self.generator,
-                    device=self.device,
-                )[:intermediate_dim]
-                self.active_indices = indices.sort()[0]
-            else:
-                self.active_indices = torch.arange(self.feature_dim, device=self.device)
-
-            # Step 2: Initialize SJLT for the second projection
-            from sjlt import SJLTProjection
-            c = 1  # Hard set the column sparsity to 1
-            intermediate_dim = self.active_indices.numel()
-            rand_indices = torch.randint(
-                self.proj_dim,
-                (intermediate_dim, c),
-                generator=self.generator,
-                device=self.device,
-            )
-            rand_signs = torch.randint(
-                0, 2,
-                (intermediate_dim, c),
-                generator=self.generator,
-                device=self.device,
-            ) * 2 - 1
-
-            # Create the SJLT object if it doesn't exist
-            if self.sjlt is None:
-                self.sjlt = SJLTProjection(
-                    intermediate_dim, self.proj_dim, c, device=self.device,
-                )
-            # Copy the new randomness into the existing object
-            self.sjlt.rand_indices.copy_(rand_indices)
-            self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
-
+            self._gen_randomness_grass()
         elif self.proj_type in {ProjectionType.sjlt, "sjlt"}:
-            from sjlt import SJLTProjection
-            c = 1  # Hard set the column sparsity to 1
-            rand_indices = torch.randint(
-                self.proj_dim,
-                (self.feature_dim, c),
-                generator=self.generator,
-                device=self.device,
-            )
-            rand_signs = torch.randint(
-                0, 2,
-                (self.feature_dim, c),
-                generator=self.generator,
-                device=self.device,
-            ) * 2 - 1
-
-            if self.sjlt is None:
-                self.sjlt = SJLTProjection(
-                    self.feature_dim, self.proj_dim, c, device=self.device,
-                )
-            self.sjlt.rand_indices.copy_(rand_indices)
-            self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
-
+            self._gen_randomness_sjlt()
         elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
-            if self.proj_matrix is None:
-                self.proj_matrix = torch.empty(
-                    self.feature_dim, self.proj_dim, device=self.device,
-                )
-            self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
-            self.proj_matrix *= 2.0
-            self.proj_matrix -= 1.0
-
+            self._gen_randomness_dense("rademacher")
         elif self.proj_type in {ProjectionType.normal, "normal"}:
-            if self.proj_matrix is None:
-                self.proj_matrix = torch.empty(
-                    self.feature_dim, self.proj_dim, device=self.device,
-                )
-            self.proj_matrix.normal_(generator=self.generator)
-
+            self._gen_randomness_dense("normal")
         else:
-            raise ValueError(f"Unknown projection type: {self.proj_type}")
+            msg = f"Unknown projection type: {self.proj_type}"
+            raise ValueError(msg)
 
     def project(
         self,
@@ -447,9 +462,6 @@ class CudaProjector(AbstractProjector):
             features (Union[dict, Tensor]): A batch of features or a dictionary
                 of batch of features.
             ensemble_id (int): A unique ID for this ensemble.
-
-        Raises:
-            RuntimeError: Too many resources requested for launch CUDA.
 
         Returns:
             Tensor: The projected features.
@@ -468,10 +480,10 @@ class CudaProjector(AbstractProjector):
             with torch.no_grad():
                 result = self.sjlt(features)
 
-        elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
-            result = features @ self.proj_matrix / (self.proj_dim ** 0.5)
-
-        elif self.proj_type in {ProjectionType.normal, "normal"}:
+        elif self.proj_type in {
+            ProjectionType.rademacher, "rademacher",
+            ProjectionType.normal, "normal",
+        }:
             result = features @ self.proj_matrix / (self.proj_dim ** 0.5)
 
         elif self.proj_type in {ProjectionType.mask, "mask"}:
