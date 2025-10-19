@@ -882,6 +882,7 @@ def make_random_projector(
     Returns:
         The initialized projector object
         (CudaProjector, ChunkedCudaProjector, or BasicProjector).
+        ValueError: When an invalid proj_type is specified.
     """
     if use_half_precision:
         if device.type == "cpu":
