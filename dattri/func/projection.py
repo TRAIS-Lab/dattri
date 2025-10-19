@@ -324,25 +324,40 @@ class CudaProjector(AbstractProjector):
             generator=self.generator,
             device=self.device,
         )
-        rand_signs = torch.randint(
-            0, 2,
-            (self.feature_dim, c),
-            generator=self.generator,
-            device=self.device,
-        ) * 2 - 1
+        rand_signs = (
+            torch.randint(
+                0,
+                2,
+                (self.feature_dim, c),
+                generator=self.generator,
+                device=self.device,
+            )
+            * 2
+            - 1
+        )
 
         if self.sjlt is None:
             self.sjlt = SJLTProjection(
-                self.feature_dim, self.proj_dim, c, device=self.device,
+                self.feature_dim,
+                self.proj_dim,
+                c,
+                device=self.device,
             )
         self.sjlt.rand_indices.copy_(rand_indices)
         self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
 
     def _gen_randomness_dense(self, method: str) -> None:
-        """Generates randomness for 'normal' or 'rademacher'."""
+        """Generates the random projection matrix for dense projections.
+
+        Args:
+            method (str): The method to use for generating the projection
+                matrix. Must be either "rademacher" or "normal".
+        """
         if self.proj_matrix is None:
             self.proj_matrix = torch.empty(
-                self.feature_dim, self.proj_dim, device=self.device,
+                self.feature_dim,
+                self.proj_dim,
+                device=self.device,
             )
         if method == "rademacher":
             self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
@@ -407,11 +422,8 @@ class CudaProjector(AbstractProjector):
             with torch.no_grad():
                 result = self.sjlt(features)
 
-        elif self.proj_type in {
-            ProjectionType.rademacher, "rademacher",
-            ProjectionType.normal, "normal",
-        }:
-            result = features @ self.proj_matrix / (self.proj_dim ** 0.5)
+        elif self.proj_type in [ProjectionType.rademacher, ProjectionType.normal]:
+            result = features @ self.proj_matrix / (self.proj_dim**0.5)
 
         return result
 
