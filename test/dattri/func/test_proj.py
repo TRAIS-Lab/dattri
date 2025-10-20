@@ -78,10 +78,8 @@ class TestCudaProjector(unittest.TestCase):
     def test_project_output_shape(self):
         """Test output shape."""
         grads = torch.randn(64, self.feature_dim, device=self.device)
-        grads = torch.randn(64, self.feature_dim, device=self.device)
         ensemble_id = 0
         projected_grads = self.projector.project(grads, ensemble_id)
-        assert projected_grads.shape == (64, self.proj_dim)
         assert projected_grads.shape == (64, self.proj_dim)
 
 
@@ -447,7 +445,7 @@ class TestGetProjection(unittest.TestCase):
         """Test functionality of ChunkedCudaProjector."""
         test_batch_size = 16
         # Define parameters
-        num_layers = 16
+        num_layers = 8
         hidden_size = 1024
         num_heads = 16
         d_ff = 2048

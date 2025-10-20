@@ -305,18 +305,12 @@ class CudaProjector(AbstractProjector):
             Either switch to a CUDA device, or use the BasicProjector"
             raise ValueError(err)
 
-        self.num_sms = torch.cuda.get_device_properties(
-            self.device.index,
-        ).multi_processor_count
-
         # Use a generator for reproducible randomness
         self.generator = torch.Generator(device=self.device)
-
         # Track the current ensemble to know when to regenerate randomness
         self.current_ensemble_id = -1  # Init to -1 to force generation on first call
 
         # Initialize placeholders for projection components
-        self.active_indices = None
         self.sjlt = None
         self.proj_matrix = None
 
@@ -429,8 +423,7 @@ class CudaProjector(AbstractProjector):
 
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
-
-        if features.device.type != self.device:
+        if features.device != self.device:
             features = features.to(self.device)
 
         if self.proj_type in {ProjectionType.sjlt, "sjlt"}:
@@ -934,7 +927,7 @@ def make_random_projector(
         )
         if len(param_chunk_sizes) > 1:  # we have to use the ChunkedCudaProjector
             # Use torch RNG instead of numpy
-            generator = torch.Generator()
+            generator = torch.Generator(device=device)
             generator.manual_seed(proj_seed)
 
             # Generate seeds using torch.randint
@@ -944,6 +937,7 @@ def make_random_projector(
                 size=(len(param_chunk_sizes),),
                 generator=generator,
                 dtype=torch.int64,
+                device=device,
             ).tolist()  # Convert to list for indexing
 
             projector_per_chunk = [
