@@ -37,8 +37,18 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_lr,
     train_mnist_mlp,
 )
+
+from dattri.benchmark.datasets.wikitext import (
+    create_gpt2_model,
+    loss_wikitext_gpt2,
+    train_wikitext_gpt2,
+    create_wikitext_dataset,
+)
+
+
 from dattri.benchmark.datasets.shakespeare_char import create_shakespeare_dataset
 from dattri.benchmark.utils import SubsetSampler
+
 
 REPO_URL = "https://huggingface.co/datasets/trais-lab/dattri-benchmark/resolve/main/"
 
@@ -73,6 +83,7 @@ SUPPORTED_DATASETS = {
     "cifar2": create_cifar2_dataset,
     "shakespeare": create_shakespeare_dataset,
     "maestro": partial(create_maestro_datasets, generated_music=True),
+    "wikitext": create_wikitext_dataset,
 }
 
 LOSS_MAP = {
@@ -81,6 +92,7 @@ LOSS_MAP = {
     "cifar2_resnet9": loss_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": loss_maestro_musictransformer,
+    "wikitext_gpt2": loss_wikitext_gpt2,
 }
 
 TRAIN_FUNC_MAP = {
@@ -89,6 +101,7 @@ TRAIN_FUNC_MAP = {
     "cifar2_resnet9": train_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": train_maestro_musictransformer,
+    "wikitext_gpt2": train_wikitext_gpt2,
 }
 
 MODEL_MAP = {
@@ -97,6 +110,7 @@ MODEL_MAP = {
     "cifar2_resnet9": create_resnet9_model,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": create_musictransformer_model,
+    "wikitext_gpt2": create_gpt2_model,
 }
 
 
