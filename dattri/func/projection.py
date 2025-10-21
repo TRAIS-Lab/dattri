@@ -270,6 +270,7 @@ class CudaProjector(AbstractProjector):
         proj_type: Union[str, ProjectionType],
         device: str,
         max_batch_size: int,
+        dtype: torch.dtype = torch.float32,
     ) -> None:
         """Initializes hyperparameters for CudaProjector.
 
@@ -289,6 +290,7 @@ class CudaProjector(AbstractProjector):
                 the CudaProjector is going to use for projection.
                 Set this if you get a 'The batch size of the CudaProjector is
                 too large for your GPU' error. Must be either 8, 16, or 32.
+            dtype (torch.dtype): The dtype used in the projector.
 
         Raises:
             ValueError: When attempting to use this on a non-CUDA device.
@@ -296,6 +298,7 @@ class CudaProjector(AbstractProjector):
         """
         super().__init__(feature_dim, proj_dim, seed, proj_type, device)
         self.max_batch_size = max_batch_size
+        self.dtype = dtype
 
         if isinstance(self.device, str):
             self.device = torch.device(self.device)
@@ -425,6 +428,8 @@ class CudaProjector(AbstractProjector):
             features = vectorize(features, device=self.device)
         if features.device != self.device:
             features = features.to(self.device)
+        if features.dtype != self.dtype:
+            features = features.to(self.dtype)
 
         if self.proj_type in {ProjectionType.sjlt, "sjlt"}:
             with torch.no_grad():
@@ -895,7 +900,7 @@ def make_random_projector(
         (CudaProjector, ChunkedCudaProjector, or BasicProjector).
     """
     using_cuda_projector = False
-    dtype = torch.float16 if use_half_precision else torch.float32
+    dtype = torch.bfloat16 if use_half_precision else torch.float32
     # the total feature dim
     feature_dim = sum(param_shape_list)
     if device == "cpu":
@@ -948,6 +953,7 @@ def make_random_projector(
                     proj_type=proj_type,
                     device=device,
                     max_batch_size=proj_max_batch_size,
+                    dtype=dtype,
                 )
                 for i, chunk_size in enumerate(param_chunk_sizes)
             ]
@@ -969,6 +975,7 @@ def make_random_projector(
             proj_type=proj_type,
             device=device,
             max_batch_size=proj_max_batch_size,
+            dtype=dtype,
         )
     elif projector == BasicProjector:
         assigned_projector = projector(
@@ -1152,6 +1159,10 @@ def random_project(
             The projected result of feature, which is a tensor with size
                 [feature_batch_size, proj_dim].
         """
+        # Check if we should use the memory-efficient dict_project
+        if isinstance(projector, ChunkedCudaProjector) and isinstance(feature, dict):
+            return projector.dict_project(feature, ensemble_id)
+
         return projector.project(feature, ensemble_id)
 
     return _random_project_func
