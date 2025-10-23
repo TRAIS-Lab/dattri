@@ -122,7 +122,15 @@ class DVEmbAttributor:
 
     @staticmethod
     def _generate_projector(dim: int, proj_dim: int) -> Tensor:
-        """Generates a random projection matrix."""
+        """Generates a random projection matrix.
+
+        Args:
+            dim: The original dimension of the features.
+            proj_dim: The dimension to project to.
+
+        Returns:
+            A random projection matrix.
+        """
         return torch.randn(dim, proj_dim) / torch.sqrt(
             torch.tensor(proj_dim, dtype=torch.float32),
         )
@@ -218,7 +226,14 @@ class DVEmbAttributor:
         self,
         batch_data: tuple[Tensor, ...],
     ) -> Tensor:
-        """Calculate full per-sample gradients."""
+        """Calculate full per-sample gradients.
+
+        Args:
+            batch_data: A tuple of data tensors for a batch.
+
+        Returns:
+            A tensor of per-sample gradients, possibly projected.
+        """
         batch_data_tensors = [d.to(self.device) for d in batch_data]
 
         def grad_wrapper(
@@ -262,7 +277,14 @@ class DVEmbAttributor:
         indices: Tensor,
         learning_rate: float,
     ) -> None:
-        """Cache full per-sample gradients."""
+        """Cache full per-sample gradients.
+
+        Args:
+            epoch: The current epoch number.
+            batch_data: A tuple of data tensors for a batch.
+            indices: Original indices of the samples in the batch.
+            learning_rate: The learning rate for the current step.
+        """
         if epoch not in self.cached_gradients:
             self.cached_gradients[epoch] = []
             self.learning_rates[epoch] = []
@@ -278,7 +300,14 @@ class DVEmbAttributor:
         self,
         batch_data: tuple[Tensor, ...],
     ) -> List[Dict[str, Tensor]]:
-        """Calculate per-layer gradient factors."""
+        """Calculate per-layer gradient factors.
+
+        Args:
+            batch_data: A tuple of data tensors for a batch.
+
+        Returns:
+            A list of cached factor dictionaries for each linear layer.
+        """
         self.model.zero_grad()
         handles, caches = self._register_factorization_hooks(self.model)
 
@@ -296,7 +325,14 @@ class DVEmbAttributor:
         self,
         gradient_factors: List[Dict[str, Tensor]],
     ) -> Tensor:
-        """Reconstruct per-sample gradients from their factors."""
+        """Reconstruct per-sample gradients from their factors.
+
+        Args:
+            gradient_factors: A list of factor dictionaries for each layer.
+
+        Returns:
+            A tensor of reconstructed per-sample gradients.
+        """
         projected_grads_parts = []
         for item in gradient_factors:
             a = item["A"]
@@ -310,8 +346,15 @@ class DVEmbAttributor:
     def _project_gradients_factors_kronecker(
         self,
         gradient_factors: List[Dict[str, Tensor]],
-    ) -> Tensor:
-        """Project gradient factors using Kronecker product."""
+    ) -> List[Dict[str, Tensor]]:
+        """Project gradient factors using Kronecker product.
+
+        Args:
+            gradient_factors: A list of factor dictionaries for each layer.
+
+        Returns:
+            A list of projected gradient factor dictionaries.
+        """
         proj_factors = []
         for (proj_a, proj_b), item in zip(
             self.random_projectors,
@@ -326,7 +369,14 @@ class DVEmbAttributor:
         self,
         gradient_factors: List[Dict[str, Tensor]],
     ) -> Tensor:
-        """Project gradient factors using element-wise product."""
+        """Project gradient factors using element-wise product.
+
+        Args:
+            gradient_factors: A list of factor dictionaries for each layer.
+
+        Returns:
+            A tensor of projected gradients.
+        """
         projected_grads_parts = []
         for (proj_a, proj_b), item in zip(
             self.random_projectors,
@@ -345,7 +395,14 @@ class DVEmbAttributor:
         indices: Tensor,
         learning_rate: float,
     ) -> None:
-        """Cache per-sample gradients using factorization."""
+        """Cache per-sample gradients using factorization.
+
+        Args:
+            epoch: The current epoch number.
+            batch_data: A tuple of data tensors for a batch.
+            indices: Original indices of the samples in the batch.
+            learning_rate: The learning rate for the current step.
+        """
         if epoch not in self.cached_factors:
             self.cached_factors[epoch] = []
             self.cached_gradients[epoch] = []
