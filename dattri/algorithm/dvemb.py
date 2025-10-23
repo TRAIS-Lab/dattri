@@ -18,7 +18,6 @@ from torch import nn
 from torch.func import grad, vmap
 from tqdm import tqdm
 
-from dattri.func.projection import random_project
 from dattri.func.utils import flatten_func, flatten_params
 
 
@@ -60,9 +59,9 @@ class DVEmbAttributor:
         self.projector = None
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
+        self.projection_dim = proj_dim
 
         if not self.use_factorization:
-            self.projection_dim = proj_dim
 
             @flatten_func(self.model)
             def vmap_loss_fn(
@@ -241,14 +240,15 @@ class DVEmbAttributor:
 
         if self.projection_dim is not None:
             if self.projector is None:
-                self.projector = random_project(
-                    per_sample_grads,
-                    per_sample_grads.shape[0],
-                    proj_dim=self.projection_dim,
-                    proj_max_batch_size=per_sample_grads.shape[0],
+                num_features = per_sample_grads.shape[1]
+                self.projector = self._generate_projector(
+                    num_features,
+                    self.projection_dim,
+                ).to(
                     device=self.device,
+                    dtype=per_sample_grads.dtype,
                 )
-            projected_grads = self.projector(per_sample_grads)
+            projected_grads = per_sample_grads @ self.projector
 
             scaling_factor = 1.0 / math.sqrt(self.projection_dim)
             per_sample_grads = projected_grads * scaling_factor
