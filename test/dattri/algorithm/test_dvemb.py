@@ -144,8 +144,8 @@ class TestDVEmbAttributor:
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
         assert attributor.random_projectors is not None
-        factor_dim = attributor.cached_factors[0][0][0]["A"].shape[1]
-        assert factor_dim == attributor.projection_dim
+        grad_dim = attributor.cached_gradients[0][0].shape[1]
+        assert grad_dim == attributor.projection_dim
 
 
 if __name__ == "__main__":
