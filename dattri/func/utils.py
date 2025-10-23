@@ -134,7 +134,7 @@ def _get_parameter_chunk_sizes(
 def get_parameter_chunk_sizes(
     param_shape_list: List,
     batch_size: int,
-) -> tuple[int, int]:
+) -> tuple[int, List[int]]:
     """Compute chunk size information from feature to be projected.
 
     Get a tuple containing max chunk size and a list of the number of
