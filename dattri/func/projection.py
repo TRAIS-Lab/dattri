@@ -51,8 +51,8 @@ class AbstractProjector(ABC):
         feature_dim: int,
         proj_dim: int,
         seed: int,
-        proj_type: Union[str, ProjectionType],
-        device: Union[str, torch.device],
+        proj_type: ProjectionType,
+        device: torch.device,
     ) -> None:
         """Initializes hyperparameters for the projection.
 
@@ -63,12 +63,9 @@ class AbstractProjector(ABC):
             proj_dim (int): Dimension after the projection.
             seed (int): Random seed for the generation of the sketching
                 (projection) matrix.
-            proj_type (Union[str, ProjectionType]): The random projection (JL
-                transform) guarantees that distances will be approximately
-                preserved for a variety of choices of the random matrix. Here,
-                we provide an implementation for matrices with iid Gaussian
-                entries and iid Rademacher entries.
-            device (Union[str, torch.device]): CUDA device to use.
+            proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "sjlt", "rademacher", "normal".
+            device (torch.device): Device to use. Defaults to cpu.
         """
         self.feature_dim = feature_dim
         self.proj_dim = proj_dim
@@ -116,7 +113,7 @@ class BasicProjector(AbstractProjector):
         feature_dim: int,
         proj_dim: int,
         seed: int,
-        proj_type: Union[str, ProjectionType],
+        proj_type: ProjectionType,
         device: torch.device,
         block_size: int = 100,
         dtype: torch.dtype = torch.float32,
@@ -131,12 +128,9 @@ class BasicProjector(AbstractProjector):
             proj_dim (int): Dimension after the projection.
             seed (int): Random seed for the generation of the sketching
                 (projection) matrix.
-            proj_type (Union[str, ProjectionType]): The random projection (JL
-                transform) guarantees that distances will be approximately
-                preserved for a variety of choices of the random matrix. Here,
-                we provide an implementation for matrices with iid Gaussian
-                entries and iid Rademacher entries.
-            device (torch.device): CUDA device to use.
+            proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "sjlt", "rademacher", "normal".
+            device (torch.device): Device to use. Defaults to cpu.
             block_size (int): Maximum number of projection dimension allowed.
                 Thus, min(block_size, proj_dim) will be used as the actual
                 projection dimension.
@@ -203,9 +197,9 @@ class BasicProjector(AbstractProjector):
 
         self.generator.set_state(generator_state)
 
-        if self.proj_type in {ProjectionType.normal, "normal"}:
+        if self.proj_type == ProjectionType.normal:
             self.proj_matrix.normal_(generator=self.generator)
-        elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
+        elif self.proj_type == ProjectionType.rademacher:
             self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
             self.proj_matrix *= 2.0
             self.proj_matrix -= 1.0
@@ -267,8 +261,8 @@ class CudaProjector(AbstractProjector):
         feature_dim: int,
         proj_dim: int,
         seed: int,
-        proj_type: Union[str, ProjectionType],
-        device: str,
+        proj_type: ProjectionType,
+        device: torch.device,
         max_batch_size: int,
         dtype: torch.dtype = torch.float32,
     ) -> None:
@@ -280,12 +274,9 @@ class CudaProjector(AbstractProjector):
                 (dimension of the gradient vectors).
             proj_dim (int): Dimension we project *to* during the projection step
             seed (int): Random seed.
-            proj_type (ProjectionType): The random projection (JL
-                transform) guarantees that distances will be approximately
-                preserved for a variety of choices of the random matrix. Here,
-                we provide an implementation for "sjlt", "rademacher",
-                "normal".
-            device (str): CUDA device to use.
+            proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "sjlt", "rademacher", "normal".
+            device (torch.device): Device to use. Defaults to cpu.
             max_batch_size (int): Explicitly constrains the batch size of
                 the CudaProjector is going to use for projection.
                 Set this if you get a 'The batch size of the CudaProjector is
@@ -299,9 +290,6 @@ class CudaProjector(AbstractProjector):
         super().__init__(feature_dim, proj_dim, seed, proj_type, device)
         self.max_batch_size = max_batch_size
         self.dtype = dtype
-
-        if isinstance(self.device, str):
-            self.device = torch.device(self.device)
 
         if self.device.type != "cuda":
             err = "CudaProjector only works on a CUDA device; \
@@ -318,7 +306,7 @@ class CudaProjector(AbstractProjector):
         self.proj_matrix = None
 
         # Check for sjlt import early if needed
-        if self.proj_type in {ProjectionType.sjlt, "sjlt"}:
+        if self.proj_type == ProjectionType.sjlt:
             try:
                 from sjlt import SJLTProjection  # noqa: F401
             except ImportError:
@@ -394,11 +382,11 @@ class CudaProjector(AbstractProjector):
         self.generator.manual_seed(current_seed)
 
         # Initialize based on method
-        if self.proj_type in {ProjectionType.sjlt, "sjlt"}:
+        if self.proj_type == ProjectionType.sjlt:
             self._gen_randomness_sjlt()
-        elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
+        elif self.proj_type == ProjectionType.rademacher:
             self._gen_randomness_dense("rademacher")
-        elif self.proj_type in {ProjectionType.normal, "normal"}:
+        elif self.proj_type == ProjectionType.normal:
             self._gen_randomness_dense("normal")
         else:
             msg = f"Unknown projection type: {self.proj_type}"
@@ -431,16 +419,11 @@ class CudaProjector(AbstractProjector):
         if features.dtype != self.dtype:
             features = features.to(self.dtype)
 
-        if self.proj_type in {ProjectionType.sjlt, "sjlt"}:
+        if self.proj_type == ProjectionType.sjlt:
             with torch.no_grad():
                 result = self.sjlt(features)
 
-        elif self.proj_type in {
-            ProjectionType.rademacher,
-            "rademacher",
-            ProjectionType.normal,
-            "normal",
-        }:
+        elif self.proj_type in [ProjectionType.rademacher, ProjectionType.normal]:
             result = features @ self.proj_matrix / (self.proj_dim**0.5)
 
         return result
@@ -476,7 +459,7 @@ class ChunkedCudaProjector:
             dim_per_chunk (list): The number of feature dimensions per chunk.
             feature_batch_size (int): The batch size of input feature.
             proj_max_batch_size (int): The maximum batch size for each projector.
-            device (torch.device): Device to use. Will be "cuda" or "cpu".
+            device (torch.device): Device to use. Defaults to cpu.
             dtype (torch.dtype): The dtype of the projected matrix.
         """
         self.projector_per_chunk = projector_per_chunk
@@ -864,9 +847,9 @@ def make_random_projector(
     feature_batch_size: int,
     proj_dim: int,
     proj_max_batch_size: int,
-    device: str,
+    device: torch.device = "cpu",
     proj_seed: int = 0,
-    proj_type: Union[str, ProjectionType] = "sjlt",
+    proj_type: ProjectionType = ProjectionType.sjlt,
     *,
     use_half_precision: bool = True,
 ) -> Tensor:
@@ -884,54 +867,39 @@ def make_random_projector(
         proj_max_batch_size (int): The maximum batch size if the CudaProjector is
             used. Must be a multiple of 8. The maximum batch size is 32 for A100
             GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
-        device (str): "cuda" or "cpu".
+        device (torch.device): Device to use. Defaults to cpu.
         proj_seed (int): Random seed used by the projector. Defaults to 0.
         proj_type (ProjectionType): The random projection type used for the
-                projection. Available options are "sjlt", "rademacher",
-                "normal".
+            projection. Available options are "sjlt", "rademacher", "normal".
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
-
-    Raises:
-        ValueError: When an invalid proj_type is specified.
 
     Returns:
         The initialized projector object
         (CudaProjector, ChunkedCudaProjector, or BasicProjector).
     """
-    using_cuda_projector = False
     dtype = torch.bfloat16 if use_half_precision else torch.float32
     # the total feature dim
     feature_dim = sum(param_shape_list)
-    if device == "cpu":
-        projector = BasicProjector
-        # Sampling from bernoulli distribution is not supported for
-        # dtype float16 on CPU; playing it safe here by defaulting to
-        # normal projection, rather than rademacher.
-        proj_type = ProjectionType.normal
-    else:
-        if proj_type == "sjlt":
-            proj_type = ProjectionType.sjlt
-        elif proj_type == "rademacher":
-            proj_type = ProjectionType.rademacher
-        elif proj_type == "normal":
-            proj_type = ProjectionType.normal
-        else:
-            # Raise error: invalid proj_type for CudaProjector
-            msg = f"Invalid proj_type {proj_type}. \
-            Available options are 'sjlt', 'rademacher', and 'normal'."
-            raise ValueError(msg)
 
-        projector = CudaProjector
-        using_cuda_projector = True
+    projector = BasicProjector if device.type == "cpu" else CudaProjector
 
-    if using_cuda_projector:
+    if projector == CudaProjector:
         max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
             param_shape_list,
             proj_max_batch_size,
         )
-        if len(param_chunk_sizes) > 1:  # we have to use the ChunkedCudaProjector
-            # Use torch RNG instead of numpy
+        if len(param_chunk_sizes) == 1:
+            assigned_projector = projector(
+                feature_dim=feature_dim,
+                proj_dim=proj_dim,
+                seed=proj_seed,
+                proj_type=proj_type,
+                device=device,
+                max_batch_size=proj_max_batch_size,
+                dtype=dtype,
+            )
+        else:  # we have to use the ChunkedCudaProjector
             generator = torch.Generator(device=device)
             generator.manual_seed(proj_seed)
 
@@ -957,7 +925,7 @@ def make_random_projector(
                 )
                 for i, chunk_size in enumerate(param_chunk_sizes)
             ]
-            return ChunkedCudaProjector(
+            assigned_projector = ChunkedCudaProjector(
                 projector_per_chunk,
                 max_chunk_size,
                 param_chunk_sizes,
@@ -966,18 +934,7 @@ def make_random_projector(
                 device,
                 dtype,
             )
-
-    if projector == CudaProjector:
-        assigned_projector = projector(
-            feature_dim=feature_dim,
-            proj_dim=proj_dim,
-            seed=proj_seed,
-            proj_type=proj_type,
-            device=device,
-            max_batch_size=proj_max_batch_size,
-            dtype=dtype,
-        )
-    elif projector == BasicProjector:
+    else:
         assigned_projector = projector(
             feature_dim=feature_dim,
             proj_dim=proj_dim,
@@ -1002,7 +959,7 @@ def arnoldi_project(
     mode: str = "rev-fwd",
     regularization: float = 0.0,
     seed: int = 0,
-    device: torch.device = "cpu",
+    device: Union[str, torch.device] = "cpu",
 ) -> Callable:
     """Apply Arnoldi algorithm to approximate iHVP.
 
@@ -1044,7 +1001,7 @@ def arnoldi_project(
             matrix is singular or ill-conditioned. Specifically, the
             regularization term is `regularization * v`.
         seed (int): Random seed used by the projector. Defaults to 0.
-        device (torch.device): "cuda" or "cpu". Defaults to "cpu".
+        device (Union[str, torch.device]): "cuda" or "cpu". Defaults to "cpu".
 
     Returns:
         A function that applies Arnoldi algorithm on input feature.
@@ -1091,7 +1048,7 @@ def random_project(
     feature_batch_size: int,
     proj_dim: int,
     proj_max_batch_size: int,
-    device: str,
+    device: Union[str, torch.device] = "cpu",
     proj_seed: int = 0,
     proj_type: str = "sjlt",
     *,
@@ -1112,12 +1069,15 @@ def random_project(
         proj_max_batch_size (int): The maximum batch size if the CudaProjector is
             used. Must be a multiple of 8. The maximum batch size is 32 for A100
             GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
-        device (str): "cuda" or "cpu".
+        device (Union[str, torch.device]): "cuda" or "cpu". Defaults to "cpu".
         proj_seed (int): Random seed used by the projector. Defaults to 0.
         proj_type (str): The random projection type used for the projection.
             Available options are "sjlt", "rademacher", "normal".
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
+
+    Raises:
+        ValueError: When an invalid proj_type or device is provided.
 
     Returns:
         A function that takes projects feature to a smaller dimension.
@@ -1129,6 +1089,40 @@ def random_project(
         ]
     else:
         param_shape_list = [feature.numel() // feature_batch_size]
+
+    # convert device to torch.device if needed
+    if isinstance(device, str):
+        device = torch.device(device)
+
+    # convert proj_type to ProjectionType
+    if device.type == "cpu":
+        # Sampling from bernoulli distribution is not supported for
+        # dtype float16 on CPU; playing it safe here by defaulting to
+        # normal projection, rather than rademacher.
+        if proj_type != "normal":
+            warnings.warn(
+                "proj_type is set to 'normal' since the projection is performed"
+                " on CPU. Sampling from bernoulli distribution is not supported"
+                " for dtype float16 on CPU.",
+                stacklevel=1,
+            )
+        proj_type = ProjectionType.normal
+    elif device.type == "cuda":
+        if proj_type == "sjlt":
+            proj_type = ProjectionType.sjlt
+        elif proj_type == "rademacher":
+            proj_type = ProjectionType.rademacher
+        elif proj_type == "normal":
+            proj_type = ProjectionType.normal
+        else:
+            # Raise error: invalid proj_type for CudaProjector
+            msg = f"Invalid proj_type {proj_type}. \
+            Available options are 'sjlt', 'rademacher', and 'normal'."
+            raise ValueError(msg)
+    else:
+        msg = f"Invalid device type {device.type}. Available options \
+            are 'cpu' and 'cuda'."
+        raise ValueError(msg)
 
     projector = make_random_projector(
         param_shape_list=param_shape_list,

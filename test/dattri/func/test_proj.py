@@ -32,7 +32,7 @@ class TestBasicProjector(unittest.TestCase):
         self.proj_dim = 50
         self.seed = 42
         self.proj_type = "rademacher"
-        self.device = "cuda:1"
+        self.device = torch.device("cpu")
         self.projector = None
 
     def test_basic_projector_shape(self):
@@ -42,7 +42,7 @@ class TestBasicProjector(unittest.TestCase):
             proj_dim=self.proj_dim,
             seed=self.seed,
             proj_type=self.proj_type,
-            device="cpu",
+            device=self.device,
         )
 
         test_grads = torch.randn(10, self.feature_dim)
@@ -63,7 +63,7 @@ class TestCudaProjector(unittest.TestCase):
         self.proj_dim = 512
         self.seed = 42
         self.proj_type = "sjlt"
-        self.device = "cuda:1"
+        self.device = torch.device("cuda")
         self.max_batch_size = 32
 
         self.projector = CudaProjector(
@@ -93,7 +93,7 @@ class TestChunkedCudaProjector(unittest.TestCase):
 
     def setUp(self):
         """Set up variables for testing."""
-        self.device = torch.device("cuda:1")
+        self.device = torch.device("cuda")
         self.dtype = torch.float32
         self.proj_dim = 512
         self.max_chunk_size = 50000
@@ -155,7 +155,7 @@ class TestArnoldiProjector(unittest.TestCase):
         self.feature_dim = 5
         self.vec_dim = 10
         self.proj_dim = 5
-        self.device = "cpu"
+        self.device = torch.device("cpu")
         self.projector = None
 
     def test_arnoldi_projector(self):
@@ -404,7 +404,7 @@ class TestGetProjection(unittest.TestCase):
             test_batch_size,
             self.proj_dim,
             self.proj_max_batch_size,
-            device="cpu",
+            device=torch.device("cpu"),
             proj_seed=0,
             use_half_precision=False,  # half precision is not supported on CPU
         )
@@ -430,7 +430,7 @@ class TestGetProjection(unittest.TestCase):
             test_batch_size,
             self.proj_dim,
             self.proj_max_batch_size,
-            device="cuda:1",
+            device=torch.device("cuda"),
             proj_seed=0,
             use_half_precision=True,
         )
@@ -473,7 +473,7 @@ class TestGetProjection(unittest.TestCase):
             test_batch_size,
             self.proj_dim,
             self.proj_max_batch_size,
-            device="cuda:1",
+            device=torch.device("cuda"),
             proj_seed=0,
             use_half_precision=True,
         )
@@ -492,7 +492,7 @@ class TestGetProjection(unittest.TestCase):
             test_batch_size,
             self.proj_dim,
             self.proj_max_batch_size,
-            device="cpu",
+            device=torch.device("cpu"),
             proj_seed=0,
             use_half_precision=False,  # half precision is not supported on CPU
         )
@@ -515,7 +515,7 @@ class TestGetProjection(unittest.TestCase):
             test_batch_size,
             self.proj_dim,
             self.proj_max_batch_size,
-            device="cuda:1",
+            device=torch.device("cuda"),
             proj_seed=0,
             use_half_precision=True,
         )
@@ -538,7 +538,7 @@ class TestGetProjection(unittest.TestCase):
             feature_batch_size,
             self.proj_dim,
             self.proj_max_batch_size,
-            device="cuda:1",
+            device=torch.device("cuda"),
             proj_seed=0,
             use_half_precision=True,
         )
