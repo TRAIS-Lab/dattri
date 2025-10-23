@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.dvemb import DVEmbAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
-from dattri.func.utils import flatten_func
 
 
 class TestDVEmbAttributor:
@@ -30,17 +29,10 @@ class TestDVEmbAttributor:
         self.model = train_mnist_lr(self.train_loader, epoch_num=1)
         self.device = "cpu"
 
-        @flatten_func(self.model)
-        def per_sample_loss_fn(params, data_tensors):
-            image, label = data_tensors
-            image = image.unsqueeze(0)
-            label = label.unsqueeze(0)
-            yhat = torch.func.functional_call(self.model, params, image)
-            return nn.CrossEntropyLoss()(yhat, label)
-
-        self.loss_func = per_sample_loss_fn
+        self.loss_func = nn.CrossEntropyLoss()
 
     def _run_dvemb_simulation(self, attributor: DVEmbAttributor):
+        """A generic simulation runner for any configured DVEmbAttributor."""
         num_epochs = 2
         learning_rate = 0.01
         for epoch in range(num_epochs):
@@ -92,21 +84,68 @@ class TestDVEmbAttributor:
             model=self.model,
             loss_func=self.loss_func,
             device=self.device,
+            factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
 
     def test_dvemb_with_projection(self):
         """Test DVEmb with random projection."""
-        projection_dim = 16
+        proj_dim = 16
         attributor = DVEmbAttributor(
             model=self.model,
             loss_func=self.loss_func,
             device=self.device,
-            projection_dim=projection_dim,
+            proj_dim=proj_dim,
+            factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.projector is not None
-        assert attributor.cached_gradients[0][0].shape[1] == projection_dim
+        assert attributor.cached_gradients[0][0].shape[1] == proj_dim
+
+    def test_dvemb_kronecker_no_projection(self):
+        """Test DVEmb with Kronecker factorization and no projection."""
+        attributor = DVEmbAttributor(
+            model=self.model,
+            loss_func=self.loss_func,
+            device=self.device,
+            factorization_type="kronecker",
+        )
+        self._run_dvemb_simulation(attributor)
+        assert attributor.cached_factors
+
+    def test_dvemb_kronecker_with_projection(self):
+        """Test DVEmb with Kronecker factorization and projection."""
+        proj_dim = 36
+        attributor = DVEmbAttributor(
+            model=self.model,
+            loss_func=self.loss_func,
+            device=self.device,
+            factorization_type="kronecker",
+            proj_dim=proj_dim,
+        )
+        self._run_dvemb_simulation(attributor)
+        assert attributor.use_factorization
+        assert attributor.random_projectors is not None
+        assert (
+            attributor.cached_factors[0][0][0]["A"].shape[1]
+            == attributor.projection_dim
+        )
+
+    def test_dvemb_elementwise_with_projection(self):
+        """Test DVEmb with elementwise factorization and projection."""
+        proj_dim = 16
+        attributor = DVEmbAttributor(
+            model=self.model,
+            loss_func=self.loss_func,
+            device=self.device,
+            factorization_type="elementwise",
+            proj_dim=proj_dim,
+        )
+        self._run_dvemb_simulation(attributor)
+        assert attributor.use_factorization
+        assert attributor.random_projectors is not None
+        factor_dim = attributor.cached_factors[0][0][0]["A"].shape[1]
+        assert factor_dim == attributor.projection_dim
 
 
 if __name__ == "__main__":
