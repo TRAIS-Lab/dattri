@@ -873,11 +873,37 @@ def make_random_projector(
         use_half_precision (bool): If True, torch.float16 will be used for all
             computations and arrays will be stored in torch.float16.
 
+    Raises:
+        RuntimeError: If BFloat16 is not supported on CPU when
+            `use_half_precision=True`.
+        RuntimeError: If BFloat16 is not supported on the CUDA device when
+            `use_half_precision=True` and `proj_type` is 'sjlt'.
+
     Returns:
         The initialized projector object
         (CudaProjector, ChunkedCudaProjector, or BasicProjector).
     """
-    dtype = torch.bfloat16 if use_half_precision else torch.float32
+    if use_half_precision:
+        if device.type == "cpu":
+            if torch.cuda.is_bf16_supported():
+                dtype = torch.bfloat16
+            else:
+                msg = "BFloat16 is not supported on CPU.\
+                    Please set `use_half_precision=False`."
+                raise RuntimeError(msg)
+        elif torch.cuda.is_bf16_supported(device=device):
+            dtype = torch.bfloat16
+        elif proj_type == ProjectionType.sjlt:
+            msg = f"BFloat16 is not supported on CUDA device {device}. \
+                SJLT projection requires BFloat16. Please switch to a \
+                CUDA device that supports BFloat16 or set \
+                `proj_type` to 'rademacher' or 'normal'."
+            raise RuntimeError(msg)
+        else:
+            dtype = torch.float16
+    else:
+        dtype = torch.float32
+
     # the total feature dim
     feature_dim = sum(param_shape_list)
 
