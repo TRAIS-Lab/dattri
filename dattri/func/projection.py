@@ -276,7 +276,7 @@ class CudaProjector(AbstractProjector):
             seed (int): Random seed.
             proj_type (ProjectionType): The random projection type used for the
                 projection. Available options are "sjlt", "rademacher", "normal".
-            device (torch.device): Device to use. Defaults to cpu.
+            device (torch.device): Device to use.
             max_batch_size (int): Explicitly constrains the batch size of
                 the CudaProjector is going to use for projection.
                 Set this if you get a 'The batch size of the CudaProjector is
@@ -310,8 +310,7 @@ class CudaProjector(AbstractProjector):
             try:
                 from sjlt import SJLTProjection  # noqa: F401
             except ImportError:
-                msg = "You should make sure to install the CUDA projector \
-                (the sjlt library)."
+                msg = "sjlt not found. Please run `pip install sjlt` to install."
                 raise ModuleNotFoundError(msg) from None
 
     def _gen_randomness_sjlt(self) -> None:
@@ -459,7 +458,7 @@ class ChunkedCudaProjector:
             dim_per_chunk (list): The number of feature dimensions per chunk.
             feature_batch_size (int): The batch size of input feature.
             proj_max_batch_size (int): The maximum batch size for each projector.
-            device (torch.device): Device to use. Defaults to cpu.
+            device (torch.device): Device to use.
             dtype (torch.dtype): The dtype of the projected matrix.
         """
         self.projector_per_chunk = projector_per_chunk
