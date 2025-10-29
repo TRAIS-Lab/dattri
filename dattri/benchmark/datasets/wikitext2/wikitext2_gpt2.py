@@ -14,7 +14,7 @@ from dattri.benchmark.models.gpt2 import (
 )
 
 
-def train_wikitext_gpt2(
+def train_wikitext2_gpt2(
     dataloader: torch.utils.data.DataLoader,
     seed: int = 0,
     device: str = "cpu",
@@ -55,7 +55,7 @@ def train_wikitext_gpt2(
     return model
 
 
-def loss_wikitext_gpt2(
+def loss_wikitext2_gpt2(
     model_path: str,
     dataloader: torch.utils.data.DataLoader,
     device: str = "cpu",

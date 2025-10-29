@@ -7,7 +7,7 @@ from transformers import AutoModelForCausalLM
 def create_gpt2_model() -> nn.Module:
     model = AutoModelForCausalLM.from_pretrained(
         "openai-community/gpt2",
-        from_tf=bool(".ckpt" in "openai-community/gpt2"),
+        from_tf=False,
     )
 
     return model
