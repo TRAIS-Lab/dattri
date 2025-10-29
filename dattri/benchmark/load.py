@@ -38,11 +38,11 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_mlp,
 )
 
-from dattri.benchmark.datasets.wikitext import (
+from dattri.benchmark.datasets.wikitext2 import (
     create_gpt2_model,
-    loss_wikitext_gpt2,
-    train_wikitext_gpt2,
-    create_wikitext_dataset,
+    loss_wikitext2_gpt2,
+    train_wikitext2_gpt2,
+    create_wikitext2_dataset,
 )
 
 
@@ -83,7 +83,7 @@ SUPPORTED_DATASETS = {
     "cifar2": create_cifar2_dataset,
     "shakespeare": create_shakespeare_dataset,
     "maestro": partial(create_maestro_datasets, generated_music=True),
-    "wikitext": create_wikitext_dataset,
+    "wikitext": create_wikitext2_dataset,
 }
 
 LOSS_MAP = {
@@ -92,7 +92,7 @@ LOSS_MAP = {
     "cifar2_resnet9": loss_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": loss_maestro_musictransformer,
-    "wikitext_gpt2": loss_wikitext_gpt2,
+    "wikitext_gpt2": loss_wikitext2_gpt2,
 }
 
 TRAIN_FUNC_MAP = {
@@ -101,7 +101,7 @@ TRAIN_FUNC_MAP = {
     "cifar2_resnet9": train_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": train_maestro_musictransformer,
-    "wikitext_gpt2": train_wikitext_gpt2,
+    "wikitext_gpt2": train_wikitext2_gpt2,
 }
 
 MODEL_MAP = {
@@ -111,6 +111,15 @@ MODEL_MAP = {
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": create_musictransformer_model,
     "wikitext_gpt2": create_gpt2_model,
+}
+
+SAMPLERSIZE_MAP = {
+    "mnist_mlp": [5000, 500],
+    "mnist_lr": [5000, 500],
+    "cifar2_resnet9": [5000, 500],
+    "shakespeare_nanogpt": [5000, 500],
+    "maestro_musictransformer": [5000, 500],
+    "wikitext_gpt2": [4681, 481],
 }
 
 
@@ -316,8 +325,8 @@ def load_benchmark(  # noqa:PLR0914
         "models_half": models_half_list,
         "train_dataset": train_dataset,
         "test_dataset": test_dataset,
-        "train_sampler": SubsetSampler(range(5000)),
-        "test_sampler": SubsetSampler(range(500)),
+        "train_sampler": SubsetSampler(range(SAMPLERSIZE_MAP[identifier][0])),
+        "test_sampler": SubsetSampler(range(SAMPLERSIZE_MAP[identifier][1])),
         "loss_func": loss_func,
         "target_func": target_func,
         "train_func": train_func,
