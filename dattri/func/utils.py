@@ -90,47 +90,6 @@ def _vectorize(
     return arr
 
 
-def _get_parameter_chunk_sizes(
-    param_shape_list: List,
-    batch_size: int,
-) -> tuple[int, List[int]]:
-    """Compute chunk size information from feature to be projected.
-
-    Get a tuple containing max chunk size and a list of the number of
-    parameters in each chunk.
-
-    Args:
-        param_shape_list (List): A list of numbers indicating the total number of
-            features to be projected. A typical example is a list of parameter
-            size of each module in a torch.nn.Module model.
-        batch_size (int): The batch size. Each term (or module) in feature
-            will have the same batch size.
-
-    Returns:
-        tuple[int, List[int]]: A tuple containing:
-            - Maximum number of parameters per chunk
-            - A list of the number of parameters in each chunk
-    """
-    # get the number of params of each term in feature
-    param_shapes = np.array(param_shape_list)
-
-    chunk_sum = 0
-    max_chunk_size = np.iinfo(np.uint32).max // batch_size
-    params_per_chunk = []
-
-    for ps in param_shapes:
-        if chunk_sum + ps >= max_chunk_size:
-            params_per_chunk.append(chunk_sum)
-            chunk_sum = 0
-
-        chunk_sum += ps
-
-    if param_shapes.sum() - np.sum(params_per_chunk) > 0:
-        params_per_chunk.append(param_shapes.sum() - np.sum(params_per_chunk))
-
-    return max_chunk_size, params_per_chunk
-
-
 def get_parameter_chunk_sizes(
     param_shape_list: List,
     batch_size: int,
