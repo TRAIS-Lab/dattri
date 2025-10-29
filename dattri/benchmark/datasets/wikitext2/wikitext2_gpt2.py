@@ -32,7 +32,7 @@ def train_wikitext2_gpt2(
         The trained gpt2 model.
     """
     torch.manual_seed(seed)
-    np.random.seed(seed)
+    np.random.default_rng(seed)
     random.seed(seed)
 
     # model, optimizer

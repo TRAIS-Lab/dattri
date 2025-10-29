@@ -1,4 +1,7 @@
-# Code is adapted from https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm_no_trainer.py .
+"""This module contains function for creating wikitext2 dataset."""
+
+# Code adapted from
+# https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm_no_trainer.py.
 
 from __future__ import annotations
 
@@ -35,7 +38,7 @@ def create_wikitext2_dataset(
     text_column_name = "text" if "text" in column_names else column_names[0]
 
     # tokenize all text samples
-    def tokenize_function(examples):
+    def tokenize_function(examples: dict) -> dict:
         return tokenizer(examples[text_column_name])
 
     tokenized_datasets = raw_datasets.map(
@@ -49,15 +52,16 @@ def create_wikitext2_dataset(
     # check block size
     if block_size > tokenizer.model_max_length:
         logging.Logger.warning(
-            f"The block_size passed ({block_size}) is larger than the maximum length for the model "
-            f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}.",
+            f"Block size ({block_size}) is larger than the model's maximum length."
+            f"(Maximum: ({tokenizer.model_max_length}))"
+            f"Using block_size={tokenizer.model_max_length}.",
         )
     block_size = min(block_size, tokenizer.model_max_length)
 
-    def group_texts(examples):
+    def group_texts(examples: dict) -> dict:
         # Concatenate all texts.
-        concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        concatenated_examples = {k: list(chain(*examples[k])) for k in examples}
+        total_length = len(concatenated_examples[next(iter(examples.keys()))])
         total_length = (total_length // block_size) * block_size
         result = {
             k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
