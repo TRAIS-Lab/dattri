@@ -1,16 +1,20 @@
+# Code is adapted from https://github.com/huggingface/transformers/blob/main/examples/pytorch/language-modeling/run_clm_no_trainer.py .
+
 from __future__ import annotations
+
+import logging
+import random
+from itertools import chain
 from typing import Tuple
+
 import torch
 from datasets import load_dataset
 from transformers import AutoTokenizer
-from itertools import chain
-import random
-import logging
 
 
-def create_wikitext_dataset(
+def create_wikitext2_dataset(
     block_size: int = 512,
-    subset_ratio: float = 0.5,  # default half dataset
+    subset_ratio: float = 1,  # default half dataset
     seed: int = 0,
 ) -> Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Create tokenized WikiText datasets for GPT-style language modeling.
@@ -46,7 +50,7 @@ def create_wikitext_dataset(
     if block_size > tokenizer.model_max_length:
         logging.Logger.warning(
             f"The block_size passed ({block_size}) is larger than the maximum length for the model "
-            f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}."
+            f"({tokenizer.model_max_length}). Using block_size={tokenizer.model_max_length}.",
         )
     block_size = min(block_size, tokenizer.model_max_length)
 
