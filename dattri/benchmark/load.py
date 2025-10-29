@@ -37,18 +37,14 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_lr,
     train_mnist_mlp,
 )
-
-from dattri.benchmark.models.gpt2 import create_gpt2_model
+from dattri.benchmark.datasets.shakespeare_char import create_shakespeare_dataset
 from dattri.benchmark.datasets.wikitext2 import (
+    create_wikitext2_dataset,
     loss_wikitext2_gpt2,
     train_wikitext2_gpt2,
-    create_wikitext2_dataset,
 )
-
-
-from dattri.benchmark.datasets.shakespeare_char import create_shakespeare_dataset
+from dattri.benchmark.models.gpt2 import create_gpt2_model
 from dattri.benchmark.utils import SubsetSampler
-
 
 REPO_URL = "https://huggingface.co/datasets/trais-lab/dattri-benchmark/resolve/main/"
 
