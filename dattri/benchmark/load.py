@@ -38,8 +38,8 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_mlp,
 )
 
+from dattri.benchmark.models.gpt2 import create_gpt2_model
 from dattri.benchmark.datasets.wikitext2 import (
-    create_gpt2_model,
     loss_wikitext2_gpt2,
     train_wikitext2_gpt2,
     create_wikitext2_dataset,
