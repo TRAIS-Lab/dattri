@@ -891,7 +891,7 @@ def make_random_projector(
                 msg = "BFloat16 is not supported on CPU.\
                     Please set `use_half_precision=False`."
                 raise RuntimeError(msg)
-        elif torch.cuda.is_bf16_supported(device=device):
+        elif torch.cuda.is_bf16_supported():
             dtype = torch.bfloat16
         elif proj_type == ProjectionType.sjlt:
             msg = f"BFloat16 is not supported on CUDA device {device}. \
