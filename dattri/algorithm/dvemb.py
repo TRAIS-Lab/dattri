@@ -168,9 +168,6 @@ class DVEmbAttributor:
     def _register_factorization_hooks(self) -> Tuple[list, list]:
         """Register forward/backward hooks on each Linear layer to collect factors.
 
-        Args:
-            model: The PyTorch model.
-
         Returns:
             A tuple containing lists of handles and caches for the hooks.
         """
