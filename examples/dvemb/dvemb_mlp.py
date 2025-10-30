@@ -14,6 +14,8 @@ import matplotlib.pyplot as plt
 from dattri.benchmark.load import load_benchmark
 from dattri.benchmark.models.mlp import MLPMnist
 from dattri.algorithm.dvemb import DVEmbAttributor
+from dattri.task import AttributionTask
+from torch.func import functional_call
 
 class DVEmbExample(unittest.TestCase):
     def setUp(self):
@@ -64,14 +66,29 @@ class DVEmbExample(unittest.TestCase):
         train_dataset = TensorDataset(train_inputs, train_labels, train_indices)
         train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
 
+        # Define loss function for AttributionTask
+        def loss_func_for_task(params, data):
+            inputs, labels = data
+            inputs = inputs.unsqueeze(0)
+            labels = labels.unsqueeze(0)
+            outputs = torch.func.functional_call(model, params, (inputs,))
+            return criterion(outputs, labels)
+
+        # Initialize AttributionTask
+        task = AttributionTask(
+            loss_func=loss_func_for_task,
+            model=model,
+            checkpoints=[model.state_dict()],
+        )
+
         # DVEmb initialization
         attributor = DVEmbAttributor(
-            model=model,
-            loss_func=criterion,
-            device=self.device,
+            task=task,
+            criterion=criterion,
             proj_dim=4096,
-            factorization_type="kronecker"
+            factorization_type="kronecker",
             # "kronecker" is the same as used in the original DVEmb paper
+            # To get better performance, consider using "elementwise"
         )
 
         # Train the model and cache gradients using DVEmbAttributor
