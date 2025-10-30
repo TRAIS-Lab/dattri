@@ -427,10 +427,19 @@ class DVEmbAttributor:
         self.learning_rates[epoch].append(learning_rate)
         self.data_indices[epoch].append(indices.cpu())
 
-    def compute_embeddings(  # noqa: PLR0912, PLR0914
+    def clear_cache(self) -> None:
+        """Clears cached gradients and factors to free memory."""
+        if self.use_factorization:
+            self.cached_factors.clear()
+        self.cached_gradients.clear()
+        self.learning_rates.clear()
+        self.data_indices.clear()
+
+    def compute_embeddings(  # noqa: PLR0912, PLR0914, PLR0915
         self,
         gradients: Optional[Dict[int, List[Tensor]]] = None,
         learning_rates: Optional[Dict[int, List[float]]] = None,
+        clear_cache: Optional[bool] = True,
     ) -> None:
         """Computes data value embeddings for each epoch separately.
 
@@ -439,6 +448,8 @@ class DVEmbAttributor:
                 (e.g., (epoch -> list of per-sample gradients)).
             learning_rates: Optional external learning rates instead of cached ones
                 (e.g., (epoch -> list of learning rates)).
+            clear_cache: If True, cached gradients will be cleared from memory
+                         after computation to save space.
 
         Raises:
             ValueError: If no gradients are cached before computation,
@@ -511,10 +522,16 @@ class DVEmbAttributor:
                         grads_t = self._reconstruct_gradients(gradient_factors).to(
                             self.device,
                         )
+                        if clear_cache:
+                            self.cached_factors[epoch][t] = None
                     else:
                         grads_t = self.cached_gradients[epoch][t].to(self.device)
+                        if clear_cache:
+                            self.cached_gradients[epoch][t] = None
                 else:
                     grads_t = self.cached_gradients[epoch][t].to(self.device)
+                    if clear_cache:
+                        self.cached_gradients[epoch][t] = None
 
                 dvemb_t = eta_t * grads_t - eta_t * (grads_t @ m_matrix)
 
@@ -529,6 +546,9 @@ class DVEmbAttributor:
                     raise ValueError(msg)
 
             self.embeddings[epoch] = epoch_embeddings
+
+        if clear_cache:
+            self.clear_cache()
 
     def attribute(
         self,
