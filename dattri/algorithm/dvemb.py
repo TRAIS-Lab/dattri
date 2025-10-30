@@ -11,14 +11,15 @@ if TYPE_CHECKING:
     from torch import Tensor
     from torch.utils.data import DataLoader
 
+    from dattri.task import AttributionTask
+
 import math
 
 import torch
 from torch import nn
-from torch.func import grad, vmap
 from tqdm import tqdm
 
-from dattri.func.utils import flatten_func, flatten_params
+from dattri.func.utils import flatten_params
 
 
 class DVEmbAttributor:
@@ -31,19 +32,18 @@ class DVEmbAttributor:
 
     def __init__(
         self,
-        model: nn.Module,
-        loss_func: Callable,
-        device: str = "cpu",
+        task: AttributionTask,
+        criterion: nn.Module,
         proj_dim: Optional[int] = None,
         factorization_type: str = "none",
     ) -> None:
         """Initializes the DVEmb attributor.
 
         Args:
-            model: The PyTorch model to be attributed.
-            loss_func: A per-sample loss function. It should take model parameters
-                       and a single data sample (unbatched) as input.
-            device: The device to run computations on (e.g., "cpu", "cuda").
+            task: Task to attribute. Must be an instance of `AttributionTask`.
+                  Note: The checkpoint functionality of the task is not used by DVEmb.
+            criterion: The loss function module (e.g., nn.CrossEntropyLoss())
+                       used for gradient factorization.
             proj_dim: The dimension for projection (if used).
             factorization_type: Type of gradient factorization to use. Options are
                                 "none"(default),
@@ -54,27 +54,14 @@ class DVEmbAttributor:
         Raises:
             ValueError: If an unknown factorization type is provided.
         """
-        self.model = model
-        self.device = device
-        self.criterion = loss_func
+        self.task = task
+        self.model = task.get_model()
+        self.device = next(self.model.parameters()).device
+        self.criterion = criterion
         self.projector = None
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
         self.projection_dim = proj_dim
-
-        if not self.use_factorization:
-
-            @flatten_func(self.model)
-            def vmap_loss_fn(
-                params: Tensor,
-                data_tensors: Tuple[Tensor, Tensor],
-            ) -> Tensor:
-                inputs = data_tensors[0].unsqueeze(0)
-                targets = data_tensors[1].unsqueeze(0)
-                outputs = torch.func.functional_call(self.model, params, inputs)
-                return self.criterion(outputs, targets)
-
-            self.per_sample_loss_fn = vmap_loss_fn
 
         if self.use_factorization:
             self.cached_factors: Dict[int, List[List[Dict[str, Tensor]]]] = {}
@@ -235,24 +222,15 @@ class DVEmbAttributor:
         Returns:
             A tensor of per-sample gradients, possibly projected.
         """
-        batch_data_tensors = [d.to(self.device) for d in batch_data]
+        batch_data_tensors = tuple(d.to(self.device) for d in batch_data)
 
-        def grad_wrapper(
-            params: Tensor,
-            *single_data_tensors: tuple[Tensor, ...],
-        ) -> Tensor:
-            return grad(self.per_sample_loss_fn)(params, single_data_tensors)
-
-        per_sample_grad_fn = vmap(
-            grad_wrapper,
-            in_dims=(None, *([0] * len(batch_data_tensors))),
-            randomness="different",
-        )
+        in_dims = (None, tuple(0 for _ in batch_data_tensors))
+        grad_loss_fn = self.task.get_grad_loss_func(in_dims=in_dims)
 
         model_params = flatten_params(
             {k: v.detach() for k, v in self.model.named_parameters()},
         )
-        per_sample_grads = per_sample_grad_fn(model_params, *batch_data_tensors)
+        per_sample_grads = grad_loss_fn(model_params, batch_data_tensors)
 
         if self.projection_dim is not None:
             if self.projector is None:
