@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
+
+from yaml import warnings
 
 if TYPE_CHECKING:
-    from collections.abc import Callable, Iterator
+    from collections.abc import Callable
     from typing import Dict, List, Optional, Tuple
 
     from torch import Tensor
@@ -35,7 +37,8 @@ class DVEmbAttributor:
         task: AttributionTask,
         criterion: nn.Module,
         proj_dim: Optional[int] = None,
-        factorization_type: str = "none",
+        factorization_type: Optional[str] = "none",
+        layer_names: Optional[Union[str, List[str]]] = None,
     ) -> None:
         """Initializes the DVEmb attributor.
 
@@ -50,9 +53,15 @@ class DVEmbAttributor:
                                 "kronecker"(same with paper),
                                 or "elementwise"(better performance while
                                 using same projection dimension).
+            layer_names: Names of layers where gradients will be collected.
+                If None, uses all Linear layers.
+                You can check the names using model.named_modules().
+                Hooks will be registered on these layers to collect gradients.
+                Only available when factorization_type is not "none".
 
         Raises:
-            ValueError: If an unknown factorization type is provided.
+            ValueError: If an unknown factorization type is provided
+                        or if no Linear layers are found for factorization.
         """
         self.task = task
         self.model = task.get_model()
@@ -63,9 +72,19 @@ class DVEmbAttributor:
         self.factorization_type = factorization_type
         self.projection_dim = proj_dim
 
+        if layer_names is None:
+            self.layer_names = None
+        elif isinstance(layer_names, str):
+            self.layer_names = [layer_names]
+        else:
+            self.layer_names = layer_names
+
         if self.use_factorization:
             self.cached_factors: Dict[int, List[List[Dict[str, Tensor]]]] = {}
-            self._linear_layers = list(self._iter_linear_layers(self.model))
+            self._linear_layers = self._get_target_linear_layers()
+            if not self._linear_layers:
+                msg = "No Linear layers found for gradient factorization."
+                raise ValueError(msg)
             if proj_dim is None:
                 self._params_dim = sum(
                     p.numel()
@@ -108,6 +127,27 @@ class DVEmbAttributor:
         self.data_indices: Dict[int, List[Tensor]] = {}
         self.embeddings: Dict[int, Tensor] = {}
 
+    def _get_target_linear_layers(self) -> List[nn.Module]:
+        """Gets the target Linear layers based on specified layer names.
+
+        If `self.layer_names` is specified, it selects layers by name.
+        Otherwise, it defaults to selecting all `nn.Linear` layers.
+
+        Returns:
+            A list of PyTorch modules to apply hooks to.
+        """
+        if self.layer_names is None:
+            return [m for m in self.model.modules() if isinstance(m, nn.Linear)]
+
+        target_layers = []
+        model_layers = dict(self.model.named_modules())
+        for name in self.layer_names:
+            if name in model_layers:
+                target_layers.append(model_layers[name])
+            else:
+                warnings.warn(f"Layer with name '{name}' not found in the model.")
+        return target_layers
+
     @staticmethod
     def _generate_projector(dim: int, proj_dim: int) -> Tensor:
         """Generates a random projection matrix.
@@ -123,22 +163,7 @@ class DVEmbAttributor:
             torch.tensor(proj_dim, dtype=torch.float32),
         )
 
-    @staticmethod
-    def _iter_linear_layers(model: nn.Module) -> Iterator[nn.Linear]:
-        """Iterate over all Linear layers in the model.
-
-        Args:
-            model: The PyTorch model.
-
-        Yields:
-            Each Linear layer in the model.
-        """
-        for m in model.modules():
-            if isinstance(m, nn.Linear):
-                yield m
-
-    @staticmethod
-    def _register_factorization_hooks(model: nn.Module) -> Tuple[list, list]:
+    def _register_factorization_hooks(self) -> Tuple[list, list]:
         """Register forward/backward hooks on each Linear layer to collect factors.
 
         Args:
@@ -148,8 +173,9 @@ class DVEmbAttributor:
             A tuple containing lists of handles and caches for the hooks.
         """
         handles, caches = [], []
-        layers = list(DVEmbAttributor._iter_linear_layers(model))
-        caches.extend([{"A": None, "B": None, "has_bias": False} for _ in layers])
+        caches.extend(
+            [{"A": None, "B": None, "has_bias": False} for _ in self._linear_layers],
+        )
 
         def fwd_hook(idx: int) -> Callable:
             def _hook(
@@ -179,7 +205,7 @@ class DVEmbAttributor:
 
             return _hook
 
-        for i, layer in enumerate(layers):
+        for i, layer in enumerate(self._linear_layers):
             handles.extend(
                 [
                     layer.register_forward_hook(fwd_hook(i)),
@@ -285,7 +311,7 @@ class DVEmbAttributor:
             A list of cached factor dictionaries for each linear layer.
         """
         self.model.zero_grad()
-        handles, caches = self._register_factorization_hooks(self.model)
+        handles, caches = self._register_factorization_hooks()
 
         batch_data_tensors = [d.to(self.device) for d in batch_data]
         outputs = self.model(batch_data_tensors[0])
