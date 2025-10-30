@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
+import warnings
 from typing import TYPE_CHECKING, Union
-
-from yaml import warnings
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -145,7 +144,10 @@ class DVEmbAttributor:
             if name in model_layers:
                 target_layers.append(model_layers[name])
             else:
-                warnings.warn(f"Layer with name '{name}' not found in the model.")
+                warnings.warn(
+                    f"Layer with name '{name}' not found in the model.",
+                    stacklevel=2,
+                )
         return target_layers
 
     @staticmethod
