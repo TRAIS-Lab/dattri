@@ -48,7 +48,8 @@ class DVEmbAttributor:
             factorization_type: Type of gradient factorization to use. Options are
                                 "none"(default),
                                 "kronecker"(same with paper),
-                                or "elementwise"(more memory-efficient).
+                                or "elementwise"(better performance while
+                                using same projection dimension).
 
         Raises:
             ValueError: If an unknown factorization type is provided.
@@ -263,10 +264,7 @@ class DVEmbAttributor:
                     device=self.device,
                     dtype=per_sample_grads.dtype,
                 )
-            projected_grads = per_sample_grads @ self.projector
-
-            scaling_factor = 1.0 / math.sqrt(self.projection_dim)
-            per_sample_grads = projected_grads * scaling_factor
+            per_sample_grads @= self.projector
 
         return per_sample_grads
 
