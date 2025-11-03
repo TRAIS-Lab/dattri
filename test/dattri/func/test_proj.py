@@ -619,6 +619,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             self.proj_dim,
             self.proj_max_batch_size,
             device=torch.device("cuda"),
+            proj_type="sjlt",
             proj_seed=0,
         )
 
@@ -705,6 +706,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             self.proj_dim,
             self.proj_max_batch_size,
             device=torch.device("cuda"),
+            proj_type="sjlt",
             proj_seed=0,
         )
 
