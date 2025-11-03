@@ -19,6 +19,7 @@ jobs:
         pip uninstall -y dattri
         python -m pip install --upgrade pip
         pip install -e .[test]
+        CC=gcc-11 CXX=g++-11 pip install sjlt --no-build-isolation --no-cache-dir --force-reinstall
     - name: Run examples
       run: |
         python examples/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
@@ -35,6 +36,7 @@ jobs:
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
+        pip uninstall -y sjlt
     - name: Cleanup build artifacts
       run: |
         rm -rf *.egg-info

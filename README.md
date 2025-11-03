@@ -3,6 +3,7 @@
 </div>
 
 # A Library for Efficient Data Attribution
+
 [![Doc](https://img.shields.io/badge/Doc-API-00E64D.svg)](https://trais-lab.github.io/dattri/)
 [![PyPI version](https://img.shields.io/pypi/v/dattri)](https://pypi.org/project/dattri/)
 [![Paper](https://img.shields.io/badge/Paper-NeurIPS24-00bfff.svg)](https://arxiv.org/pdf/2410.04555)
@@ -26,26 +27,25 @@
 
 ### Contents
 
-- [A Library for Efficient Data Attribution](#a-library-for-efficient-data-attribution)
-  - [What is *dattri* ?](#what-is-dattri-)
-    - [Contents](#contents)
-  - [Quick Start](#quick-start)
-    - [Installation](#installation)
-      - [Recommended enviroment setup](#recommended-enviroment-setup)
-    - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
-    - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
-      - [HVP/IHVP](#hvpihvp)
-      - [Random Projection](#random-projection)
-      - [Dropout Ensemble](#dropout-ensemble)
-  - [Supported Algorithms](#supported-algorithms)
-  - [Supported Metrics](#supported-metrics)
-  - [Supported Benchmark Settings](#supported-benchmark-settings)
-  - [Benchmark Results](#benchmark-results)
-    - [MNIST+LR/MLP](#mnistlrmlp)
-    - [LDS performance on larger models](#lds-performance-on-larger-models)
-    - [AUC performance](#auc-performance)
-  - [Development Plan](#development-plan)
-  - [Citation](#citation)
+- [What is *dattri* ?](#what-is-dattri-)
+	- [Contents](#contents)
+- [Quick Start](#quick-start)
+	- [Installation](#installation)
+		- [Recommended enviroment setup](#recommended-enviroment-setup)
+	- [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
+	- [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
+		- [HVP/IHVP](#hvpihvp)
+		- [Random Projection](#random-projection)
+		- [Dropout Ensemble](#dropout-ensemble)
+- [Supported Algorithms](#supported-algorithms)
+- [Supported Metrics](#supported-metrics)
+- [Supported Benchmark Settings](#supported-benchmark-settings)
+- [Benchmark Results](#benchmark-results)
+	- [MNIST+LR/MLP](#mnistlrmlp)
+	- [LDS performance on larger models](#lds-performance-on-larger-models)
+	- [AUC performance](#auc-performance)
+- [Development Plan](#development-plan)
+- [Citation](#citation)
 
 ## Quick Start
 
@@ -55,19 +55,20 @@
 pip install dattri
 ```
 
-If you want to use `fast_jl` to accelerate the random projection, you may install the version with `fast_jl` by
+If you want to use `sjlt` to accelerate the random projection, you may install the version with `sjlt` by
 
 ```bash
-pip install dattri[fast_jl]
+pip install dattri[sjlt]
 ```
 
 > [!NOTE]
-> It's highly recommended to use a device support CUDA to run *dattri*, especially for large models or datasets.
+> It's highly recommended using a device support CUDA to run *dattri*, especially for large models or datasets.
 
 > [!NOTE]
-> It's required to have CUDA if you want to install and use the fast_jl version `dattri[fast_jl]` to accelerate the random projection. The projection is mainly used in `TRAKAttributor`. Please use `pip<23` and `torch<2.3` due to some known issue of `fast_jl` library.
+> It's required to have CUDA if you want to install and use the sjlt version `dattri[sjlt]` to accelerate the random projection.
 
 #### Recommended enviroment setup
+
 It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
 
 ```bash
@@ -77,12 +78,13 @@ conda activate dattri
 conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
 pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
 
-pip install dattri[fast_jl]
+pip install dattri[sjlt]
 ```
 
 ### Apply data attribution methods on PyTorch models
 
 One can apply different data attribution methods on PyTorch Models. One only needs to define:
+
 1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
 2. trained model checkpoints (one or more).
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
@@ -138,12 +140,11 @@ with torch.no_grad():
     score = attributor.attribute(train_loader, test_loader)
 ```
 
-
 ### Use low-level utility functions to develop new data attribution methods
 
 #### HVP/IHVP
-Hessian-vector product (HVP), inverse-Hessian-vector product
-(IHVP) are widely used in data attribution methods. `dattri` provides efficient implementation to these operators by `torch.func`. This example shows how to use the CG implementation of the IHVP implementation.
+
+Hessian-vector product (HVP), inverse-Hessian-vector product (IHVP) are widely used in data attribution methods. `dattri` provides efficient implementation to these operators by `torch.func`. This example shows how to use the CG implementation of the IHVP implementation.
 
 ```python
 import torch
@@ -167,7 +168,8 @@ assert torch.allclose(ihvp_result_1, ihvp_result_2)
 ```
 
 #### Random Projection
-It has been shown that long vectors will retain most of their relative information when projected down to a smaller feature dimension. To reduce the computational cost, random projection is widely used in data attribution methods. Following is an example to use `random_project`. The implementation leaverges [`fast_jl`](https://pypi.org/project/fast-jl/).
+
+It has been shown that long vectors will retain most of their relative information when projected down to a smaller feature dimension. To reduce the computational cost, random projection is widely used in data attribution methods. Following is an example to use `random_project`. The implementation leverages [`sjlt`](https://github.com/TRAIS-Lab/sjlt/).
 
 ```python
 from dattri.func.random_projection import random_project
@@ -182,6 +184,7 @@ projected_tensor = project_func(torch.full_like(tensor))
 Normally speaking, `tensor` is probably the gradient of loss/target function and has a large dimension (i.e., the number of parameters).
 
 #### Dropout Ensemble
+
 Recent studies found that ensemble methods can significantly improve the performance of data attribution, [DROPOUT ENSEMBLE](https://arxiv.org/pdf/2405.17293) is one of these ensemble methods. One may prepare their model with
 
 ```python
@@ -199,51 +202,59 @@ model = activate_dropout(model, ["dropout1", "dropout2"], dropout_prob=0.2)
 ```
 
 ## Supported Algorithms
+
 We have implemented most of the state-of-the-art methods. The categories and reference paper of the algorithms are listed in the following table.
-| Family |               Algorithms              |
-|:------:|:-------------------------------------:|
-|   [IF](https://arxiv.org/abs/1703.04730)   | [Explicit](https://arxiv.org/abs/1703.04730) |
-|        |       [CG](https://www.cs.toronto.edu/~jmartens/docs/Deep_HessianFree.pdf)      |
-|        |    [LiSSA](https://arxiv.org/abs/1602.03943)    |
-|        |  [Arnoldi](https://arxiv.org/abs/2112.03052)  |
-| | [DataInf](https://arxiv.org/abs/2310.00902)|
-| | [EK-FAC](https://arxiv.org/abs/2308.03296) |
-| | [RelatIF](https://arxiv.org/pdf/2003.11630) |
-| | [LoGra](https://arxiv.org/pdf/2405.13954) |
-| [TracIn](https://arxiv.org/abs/2002.08484) | [TracInCP](https://arxiv.org/abs/2002.08484) |
-|        |   [Grad-Dot](https://arxiv.org/abs/2102.05262)  |
-|        |   [Grad-Cos](https://arxiv.org/abs/2102.05262)  |
-|   [RPS](https://arxiv.org/abs/1811.09720)  |   [RPS-L2](https://arxiv.org/abs/1811.09720)   |
-|  [TRAK](https://arxiv.org/abs/2303.14186)  |       [TRAK](https://arxiv.org/abs/2303.14186)       |
-|  [Shapley Value](https://arxiv.org/abs/1904.02868)  |       [KNN-Shapley](https://dl.acm.org/doi/10.14778/3342263.3342637)       |
+|                      Family                       |                              Algorithms                              |
+| :-----------------------------------------------: | :------------------------------------------------------------------: |
+|      [IF](https://arxiv.org/abs/1703.04730)       |             [Explicit](https://arxiv.org/abs/1703.04730)             |
+|                                                   | [CG](https://www.cs.toronto.edu/~jmartens/docs/Deep_HessianFree.pdf) |
+|                                                   |              [LiSSA](https://arxiv.org/abs/1602.03943)               |
+|                                                   |             [Arnoldi](https://arxiv.org/abs/2112.03052)              |
+|                                                   |             [DataInf](https://arxiv.org/abs/2310.00902)              |
+|                                                   |              [EK-FAC](https://arxiv.org/abs/2308.03296)              |
+|                                                   |             [RelatIF](https://arxiv.org/pdf/2003.11630)              |
+|                                                   |              [LoGra](https://arxiv.org/pdf/2405.13954)               |
+|    [TracIn](https://arxiv.org/abs/2002.08484)     |             [TracInCP](https://arxiv.org/abs/2002.08484)             |
+|                                                   |             [Grad-Dot](https://arxiv.org/abs/2102.05262)             |
+|                                                   |             [Grad-Cos](https://arxiv.org/abs/2102.05262)             |
+|      [RPS](https://arxiv.org/abs/1811.09720)      |              [RPS-L2](https://arxiv.org/abs/1811.09720)              |
+|     [TRAK](https://arxiv.org/abs/2303.14186)      |               [TRAK](https://arxiv.org/abs/2303.14186)               |
+| [Shapley Value](https://arxiv.org/abs/1904.02868) |    [KNN-Shapley](https://dl.acm.org/doi/10.14778/3342263.3342637)    |
 
 ## Supported Metrics
+
 - Leave-one-out (LOO) correlation
 - Linear datamodeling score (LDS)
 - Area under the ROC curve (AUC) for noisy label detection
 - Brittleness test for checking flipped label
 
 ## Supported Benchmark Settings
-|   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric   |          Data Source         |
-|:-----------:|:-----------------:|:--------------------:|:------------------------:|:--------------:|:-----------:|:----------------------------:|
-|   MNIST-10  |         LR        | Image Classification |        (5000,500)        |      7840      | LOO/LDS/AUC |      [link](http://yann.lecun.com/exdb/mnist/)     |
-|   MNIST-10  |        MLP        | Image Classification |        (5000,500)        |      0.11M     | LOO/LDS/AUC |      [link](http://yann.lecun.com/exdb/mnist/)     |
-|   CIFAR-2   |      ResNet-9     | Image Classification |        (5000,500)        |      4.83M     |     LDS     | [link](https://www.cs.toronto.edu/~kriz/cifar.html) |
-|   CIFAR-10  |      ResNet-9     | Image Classification |        (5000,500)        |      4.83M     |     AUC     | [link](https://www.cs.toronto.edu/~kriz/cifar.html) |
-|   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)        |      13.3M     |     LDS     |  [link](https://magenta.tensorflow.org/datasets/maestro) |
-| Shakespeare |      nanoGPT      |    Text Generation   |        (3921,435)        |      10.7M     |     LDS     |     [link](https://github.com/karpathy/nanoGPT)    |
+
+|   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric    |                       Data Source                       |
+| :---------: | :---------------: | :------------------: | :-----------------------: | :------------: | :---------: | :-----------------------------------------------------: |
+|  MNIST-10   |        LR         | Image Classification |        (5000,500)         |      7840      | LOO/LDS/AUC |        [link](http://yann.lecun.com/exdb/mnist/)        |
+|  MNIST-10   |        MLP        | Image Classification |        (5000,500)         |     0.11M      | LOO/LDS/AUC |        [link](http://yann.lecun.com/exdb/mnist/)        |
+|   CIFAR-2   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     LDS     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
+|  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
+|   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     | [link](https://magenta.tensorflow.org/datasets/maestro) |
+| Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |       [link](https://github.com/karpathy/nanoGPT)       |
 
 ## Benchmark Results
+
 ### MNIST+LR/MLP
+
 ![mnist-result](assets/images/benchmark-result-mnist.png)
 
 ### LDS performance on larger models
+
 ![larger-lds-result](assets/images/benchmark-result-larger-lds.png)
 
 ### AUC performance
+
 ![larger-lds-result](assets/images/benchmark-result-auc.png)
 
 ## Development Plan
+
 - More (larger) benchmark settings to come
   - Wikitext + GPT2
 - More algorithms and low-level utility functions to come
@@ -257,7 +268,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 ## Citation
 
 ```bibtex
-@inproceedings{NEURIPS2024_f7326833,
+@inproceedings{deng2024dattri,
     author    = {Deng, Junwei and Li, Ting-Wei and Zhang, Shiyuan and Liu, Shixuan and Pan, Yijun and Huang, Hao and Wang, Xinhe and Hu, Pingbang and Zhang, Xingjian and Ma, Jiaqi},
     title     = {dattri: A Library for Efficient Data Attribution},
     booktitle = {Advances in Neural Information Processing Systems},

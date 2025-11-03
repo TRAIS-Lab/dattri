@@ -4,7 +4,7 @@ We welcome contributions from the community and are pleased to have you join us.
 
 ## Setting Up Your Development Environment
 
-Before you can contribute to the project, you need to set up your development environment. Here are the steps to do so:
+Before you can contribute to the project, you need to set up your development environment. Here are the steps to take:
 
 ### 1. Clone the Repository
 
@@ -24,6 +24,7 @@ pip install -e .
 ```
 
 #### Recommended enviroment setup
+
 It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
 
 ```bash
@@ -46,6 +47,7 @@ pre-commit install
 ```
 
 ## Making Changes
+
 When you're ready to make changes, please follow these steps:
 
 ### 1. Create a Branch
