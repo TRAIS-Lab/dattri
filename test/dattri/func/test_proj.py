@@ -396,7 +396,11 @@ class TestGetProjection(unittest.TestCase):
         # mimic gradient
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
-            small_gradient[name] = torch.rand(test_batch_size, p.numel(), dtype=torch.float16)
+            small_gradient[name] = torch.rand(
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float16,
+        )
 
         # suppose to be BasicProjector
         project = random_project(
@@ -421,7 +425,11 @@ class TestGetProjection(unittest.TestCase):
         # mimic gradient
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
-            small_gradient[name] = torch.rand(test_batch_size, p.numel(), dtype=torch.float16)
+            small_gradient[name] = torch.rand(
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float16,
+            )
 
         # suppose to be CudaProjector
         project = random_project(
@@ -463,7 +471,11 @@ class TestGetProjection(unittest.TestCase):
         # mimic gradient
         large_gradient = {}
         for name, p in self.large_transformer.named_parameters():
-            large_gradient[name] = torch.rand(test_batch_size, p.numel(), dtype=torch.float16)
+            large_gradient[name] = torch.rand(
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float16,
+            )
 
         # suppose to be ChunkedCudaProjector
         project = random_project(
@@ -580,7 +592,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                self.test_batch_size, p.numel(), dtype=torch.float64
+                self.test_batch_size,
+                p.numel(),
+                dtype=torch.float64,
             )
 
         # suppose to be BasicProjector
@@ -603,7 +617,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                self.test_batch_size, p.numel(), dtype=torch.float32
+                self.test_batch_size,
+                p.numel(),
+                dtype=torch.float32,
             )
 
         # suppose to be BasicProjector
@@ -626,7 +642,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                self.test_batch_size, p.numel(), dtype=torch.float16
+                self.test_batch_size,
+                p.numel(),
+                dtype=torch.float16,
             )
 
         # suppose to be BasicProjector
@@ -649,7 +667,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                self.test_batch_size, p.numel(), dtype=torch.bfloat16
+                self.test_batch_size,
+                p.numel(),
+                dtype=torch.bfloat16,
             )
 
         # suppose to be BasicProjector
@@ -677,7 +697,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                test_batch_size, p.numel(), dtype=torch.float64
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float64,
             )
 
         # suppose to be CudaProjector
@@ -705,7 +727,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                test_batch_size, p.numel(), dtype=torch.float32
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float32,
             )
 
         # suppose to be CudaProjector
@@ -733,7 +757,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                test_batch_size, p.numel(), dtype=torch.float16
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float16,
             )
 
         # suppose to be CudaProjector
@@ -761,7 +787,9 @@ class TestProjectionDtypes(unittest.TestCase):
         small_gradient = {}
         for name, p in self.small_model.named_parameters():
             small_gradient[name] = torch.rand(
-                test_batch_size, p.numel(), dtype=torch.bfloat16
+                test_batch_size,
+                p.numel(),
+                dtype=torch.bfloat16,
             )
 
         # suppose to be CudaProjector

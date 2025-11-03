@@ -846,7 +846,7 @@ def make_random_projector(
     feature_batch_size: int,
     proj_dim: int,
     proj_max_batch_size: int,
-    device: torch.device = torch.device("cpu"),
+    device: torch.device,
     proj_seed: int = 0,
     proj_type: ProjectionType = ProjectionType.sjlt,
     *,
