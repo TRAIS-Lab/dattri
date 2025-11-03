@@ -49,7 +49,6 @@ class TestLoGraAttributor:
             "proj_dim": 8,
             "proj_max_batch_size": 8,
             "device": "cpu",
-            "use_half_precision": False,
         }
 
         self.task = AttributionTask(

@@ -25,7 +25,6 @@ if TYPE_CHECKING:
 
 import warnings
 
-import numpy as np
 import torch
 from torch import Tensor
 
@@ -40,6 +39,7 @@ class ProjectionType(str, Enum):
 
     normal: str = "normal"
     rademacher: str = "rademacher"
+    sjlt: str = "sjlt"
 
 
 class AbstractProjector(ABC):
@@ -51,8 +51,8 @@ class AbstractProjector(ABC):
         feature_dim: int,
         proj_dim: int,
         seed: int,
-        proj_type: Union[str, ProjectionType],
-        device: Union[str, torch.device],
+        proj_type: ProjectionType,
+        device: torch.device,
     ) -> None:
         """Initializes hyperparameters for the projection.
 
@@ -63,12 +63,9 @@ class AbstractProjector(ABC):
             proj_dim (int): Dimension after the projection.
             seed (int): Random seed for the generation of the sketching
                 (projection) matrix.
-            proj_type (Union[str, ProjectionType]): The random projection (JL
-                transform) guarantees that distances will be approximately
-                preserved for a variety of choices of the random matrix. Here,
-                we provide an implementation for matrices with iid Gaussian
-                entries and iid Rademacher entries.
-            device (Union[str, torch.device]): CUDA device to use.
+            proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "sjlt", "rademacher", "normal".
+            device (torch.device): Device to use. Defaults to cpu.
         """
         self.feature_dim = feature_dim
         self.proj_dim = proj_dim
@@ -116,7 +113,7 @@ class BasicProjector(AbstractProjector):
         feature_dim: int,
         proj_dim: int,
         seed: int,
-        proj_type: Union[str, ProjectionType],
+        proj_type: ProjectionType,
         device: torch.device,
         block_size: int = 100,
         dtype: torch.dtype = torch.float32,
@@ -131,12 +128,9 @@ class BasicProjector(AbstractProjector):
             proj_dim (int): Dimension after the projection.
             seed (int): Random seed for the generation of the sketching
                 (projection) matrix.
-            proj_type (Union[str, ProjectionType]): The random projection (JL
-                transform) guarantees that distances will be approximately
-                preserved for a variety of choices of the random matrix. Here,
-                we provide an implementation for matrices with iid Gaussian
-                entries and iid Rademacher entries.
-            device (torch.device): CUDA device to use.
+            proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "sjlt", "rademacher", "normal".
+            device (torch.device): Device to use. Defaults to cpu.
             block_size (int): Maximum number of projection dimension allowed.
                 Thus, min(block_size, proj_dim) will be used as the actual
                 projection dimension.
@@ -203,9 +197,9 @@ class BasicProjector(AbstractProjector):
 
         self.generator.set_state(generator_state)
 
-        if self.proj_type in {ProjectionType.normal, "normal"}:
+        if self.proj_type == ProjectionType.normal:
             self.proj_matrix.normal_(generator=self.generator)
-        elif self.proj_type in {ProjectionType.rademacher, "rademacher"}:
+        elif self.proj_type == ProjectionType.rademacher:
             self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
             self.proj_matrix *= 2.0
             self.proj_matrix -= 1.0
@@ -268,8 +262,9 @@ class CudaProjector(AbstractProjector):
         proj_dim: int,
         seed: int,
         proj_type: ProjectionType,
-        device: str,
+        device: torch.device,
         max_batch_size: int,
+        dtype: torch.dtype = torch.float32,
     ) -> None:
         """Initializes hyperparameters for CudaProjector.
 
@@ -279,47 +274,122 @@ class CudaProjector(AbstractProjector):
                 (dimension of the gradient vectors).
             proj_dim (int): Dimension we project *to* during the projection step
             seed (int): Random seed.
-            proj_type (ProjectionType): Type of randomness to use for
-                projection matrix (rademacher or normal).
-            device (str): CUDA device to use.
+            proj_type (ProjectionType): The random projection type used for the
+                projection. Available options are "sjlt", "rademacher", "normal".
+            device (torch.device): Device to use.
             max_batch_size (int): Explicitly constrains the batch size of
                 the CudaProjector is going to use for projection.
                 Set this if you get a 'The batch size of the CudaProjector is
                 too large for your GPU' error. Must be either 8, 16, or 32.
+            dtype (torch.dtype): The dtype used in the projector.
 
         Raises:
             ValueError: When attempting to use this on a non-CUDA device.
-            ModuleNotFoundError: When fast_jl is not installed.
+            ModuleNotFoundError: When sjlt is not installed.
         """
         super().__init__(feature_dim, proj_dim, seed, proj_type, device)
         self.max_batch_size = max_batch_size
+        self.dtype = dtype
 
-        if isinstance(device, str):
-            device = torch.device(device)
-
-        if device.type != "cuda":
+        if self.device.type != "cuda":
             err = "CudaProjector only works on a CUDA device; \
             Either switch to a CUDA device, or use the BasicProjector"
             raise ValueError(err)
 
-        self.num_sms = torch.cuda.get_device_properties(
-            device.index,
-        ).multi_processor_count
+        # Use a generator for reproducible randomness
+        self.generator = torch.Generator(device=self.device)
+        # Track the current ensemble to know when to regenerate randomness
+        self.current_ensemble_id = -1  # Init to -1 to force generation on first call
 
-        try:
-            import fast_jl
+        # Initialize placeholders for projection components
+        self.sjlt = None
+        self.proj_matrix = None
 
-            # test run to catch at init time if projection goes through
-            fast_jl.project_rademacher_8(
-                torch.zeros(8, 1_000, device="cuda"),
-                512,
+        # Check for sjlt import early if needed
+        if self.proj_type == ProjectionType.sjlt:
+            try:
+                from sjlt import SJLTProjection  # noqa: F401
+            except ImportError:
+                msg = "sjlt not found. Please run `pip install sjlt` to install."
+                raise ModuleNotFoundError(msg) from None
+
+    def _gen_randomness_sjlt(self) -> None:
+        """Generates randomness for 'sjlt' projection."""
+        from sjlt import SJLTProjection
+
+        c = 1  # Hard set the column sparsity to 1
+        rand_indices = torch.randint(
+            self.proj_dim,
+            (self.feature_dim, c),
+            generator=self.generator,
+            device=self.device,
+        )
+        rand_signs = (
+            torch.randint(
                 0,
-                self.num_sms,
+                2,
+                (self.feature_dim, c),
+                generator=self.generator,
+                device=self.device,
             )
-        except ImportError:
-            msg = "You should make sure to install the CUDA projector \
-            (the fast_jl library)."
-            raise ModuleNotFoundError(msg) from None
+            * 2
+            - 1
+        )
+
+        if self.sjlt is None:
+            self.sjlt = SJLTProjection(
+                self.feature_dim,
+                self.proj_dim,
+                c,
+                device=self.device,
+            )
+        self.sjlt.rand_indices.copy_(rand_indices)
+        self.sjlt.rand_signs.copy_(rand_signs.to(torch.int8))
+
+    def _gen_randomness_dense(self, method: str) -> None:
+        """Generates the random projection matrix for dense projections.
+
+        Args:
+            method (str): The method to use for generating the projection
+                matrix. Must be either "rademacher" or "normal".
+        """
+        if self.proj_matrix is None:
+            self.proj_matrix = torch.empty(
+                self.feature_dim,
+                self.proj_dim,
+                device=self.device,
+            )
+        if method == "rademacher":
+            self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
+            self.proj_matrix *= 2.0
+            self.proj_matrix -= 1.0
+        elif method == "normal":
+            self.proj_matrix.normal_(generator=self.generator)
+
+    def _generate_randomness(self, ensemble_id: int) -> None:
+        """Generates the random projection components for a given ensemble_id.
+
+        Args:
+            ensemble_id (int): A unique ID for this ensemble to generate
+                reproducible randomness.
+
+        Raises:
+            ValueError: If the projection type is unknown.
+        """
+        # Create a unique, reproducible seed for this specific ensemble
+        current_seed = self.seed + int(1e5) * ensemble_id
+        self.generator.manual_seed(current_seed)
+
+        # Initialize based on method
+        if self.proj_type == ProjectionType.sjlt:
+            self._gen_randomness_sjlt()
+        elif self.proj_type == ProjectionType.rademacher:
+            self._gen_randomness_dense("rademacher")
+        elif self.proj_type == ProjectionType.normal:
+            self._gen_randomness_dense("normal")
+        else:
+            msg = f"Unknown projection type: {self.proj_type}"
+            raise ValueError(msg)
 
     def project(
         self,
@@ -333,50 +403,27 @@ class CudaProjector(AbstractProjector):
                 of batch of features.
             ensemble_id (int): A unique ID for this ensemble.
 
-        Raises:
-            RuntimeError: The batch size of the CudaProjector is too large for
-                your GPU.
-            RuntimeError: Too many resources requested for launch CUDA.
-
         Returns:
             Tensor: The projected features.
         """
-        import fast_jl
+        # Regenerate randomness if the ensemble_id has changed
+        if ensemble_id != self.current_ensemble_id:
+            self._generate_randomness(ensemble_id)
+            self.current_ensemble_id = ensemble_id
 
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
-        elif features.device.type != self.device:
+        if features.device != self.device:
             features = features.to(self.device)
-        batch_size = features.shape[0]
+        if features.dtype != self.dtype:
+            features = features.to(self.dtype)
 
-        effective_batch_size = 32
-        min_proj_batch_size = 8
-        if batch_size <= min_proj_batch_size:
-            effective_batch_size = min_proj_batch_size
-        elif batch_size <= min_proj_batch_size * 2:
-            effective_batch_size = min_proj_batch_size * 2
+        if self.proj_type == ProjectionType.sjlt:
+            with torch.no_grad():
+                result = self.sjlt(features)
 
-        effective_batch_size = min(self.max_batch_size, effective_batch_size)
-
-        function_name = f"project_{self.proj_type}_{effective_batch_size}"
-
-        fn = getattr(fast_jl, function_name)
-
-        try:
-            result = fn(
-                features,
-                self.proj_dim,
-                self.seed + int(1e4) * ensemble_id,
-                self.num_sms,
-            )
-        except RuntimeError as e:
-            if "CUDA error: too many resources requested for launch" in str(e):
-                # provide a more helpful error message
-                msg = "The batch size of the CudaProjector is too large for your GPU. \
-                    Reduce it by using the proj_max_batch_size argument.\
-                    \nOriginal error:"
-                raise RuntimeError(msg) from e
-            raise e from None
+        elif self.proj_type in [ProjectionType.rademacher, ProjectionType.normal]:
+            result = features @ self.proj_matrix / (self.proj_dim**0.5)
 
         return result
 
@@ -411,7 +458,7 @@ class ChunkedCudaProjector:
             dim_per_chunk (list): The number of feature dimensions per chunk.
             feature_batch_size (int): The batch size of input feature.
             proj_max_batch_size (int): The maximum batch size for each projector.
-            device (torch.device): Device to use. Will be "cuda" or "cpu".
+            device (torch.device): Device to use.
             dtype (torch.dtype): The dtype of the projected matrix.
         """
         self.projector_per_chunk = projector_per_chunk
@@ -468,7 +515,7 @@ class ChunkedCudaProjector:
             dtype=self.dtype,
         )
         pointer = 0
-        # iterate over feature dimenions, keep a counter of #dim so far, and when prev
+        # iterate over feature dimensions, keep a counter of #dim so far, and when prev
         # chunk reaches max_chunk_size, project and accumulate.
         projector_index = 0
         vector_dim = 1
@@ -544,6 +591,8 @@ class ChunkedCudaProjector:
         # TODO: support dict input
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
+        if features.device.type != self.device:
+            features = features.to(self.device)
 
         pointer = 0
         for chunk_idx, chunk_dim in enumerate(self.dim_per_chunk):
@@ -780,6 +829,8 @@ class ArnoldiProjector(AbstractProjector):
         # transform to tensors
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
+        if features.device.type != self.device:
+            features = features.to(self.device)
         # have not compute the eigen space yet
         if self.eigvals is None or self.eigvecs is None:
             self.get_eigenspace()
@@ -795,10 +846,11 @@ def make_random_projector(
     feature_batch_size: int,
     proj_dim: int,
     proj_max_batch_size: int,
-    device: str,
+    device: torch.device,
     proj_seed: int = 0,
+    proj_type: ProjectionType = ProjectionType.sjlt,
     *,
-    use_half_precision: bool = True,
+    dtype: torch.dtype = torch.float32,
 ) -> Tensor:
     """Initialize random projector by the info of feature about to be projected.
 
@@ -811,77 +863,66 @@ def make_random_projector(
             about to be projected. The typical type of feature are gradients of
             torch.nn.Module model but can be restricted to this.
         proj_dim (int): Dimension of the projected feature.
-        proj_max_batch_size (int): The maximum batch size used by fast_jl if the
-            CudaProjector is used. Must be a multiple of 8. The maximum
-            batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
-        device (str): "cuda" or "cpu".
+        proj_max_batch_size (int): The maximum batch size if the CudaProjector is
+            used. Must be a multiple of 8. The maximum batch size is 32 for A100
+            GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
+        device (torch.device): Device to use. Defaults to cpu.
         proj_seed (int): Random seed used by the projector. Defaults to 0.
-        use_half_precision (bool): If True, torch.float16 will be used for all
-            computations and arrays will be stored in torch.float16.
+        proj_type (ProjectionType): The random projection type used for the
+            projection. Available options are "sjlt", "rademacher", "normal".
+        dtype (torch.dtype): The dtype used in the projector.
 
     Returns:
         The initialized projector object
         (CudaProjector, ChunkedCudaProjector, or BasicProjector).
     """
-    using_cuda_projector = False
-    dtype = torch.float16 if use_half_precision else torch.float32
     # the total feature dim
     feature_dim = sum(param_shape_list)
-    if device == "cpu":
-        projector = BasicProjector
-        # Sampling from bernoulli distribution is not supported for
-        # dtype float16 on CPU; playing it safe here by defaulting to
-        # normal projection, rather than rademacher.
-        proj_type = ProjectionType.normal
-    else:
-        try:
-            import fast_jl
 
-            test_feature = torch.ones(1, feature_dim).cuda()
-            num_sms = torch.cuda.get_device_properties(
-                "cuda",
-            ).multi_processor_count
-            fast_jl.project_rademacher_8(
-                test_feature,
-                proj_dim,
-                0,
-                num_sms,
-            )
-            projector = CudaProjector
-            using_cuda_projector = True
-            proj_type = ProjectionType.rademacher
+    projector = BasicProjector if device.type == "cpu" else CudaProjector
 
-        except (ImportError, RuntimeError, AttributeError, ModuleNotFoundError):
-            projector = BasicProjector
-            proj_type = ProjectionType.normal
-
-    if using_cuda_projector:
-        # TODO: make this support dict input
-        # currently, only tensor input will be considered
+    if projector == CudaProjector:
         max_chunk_size, param_chunk_sizes = get_parameter_chunk_sizes(
             param_shape_list,
             proj_max_batch_size,
         )
-        if len(param_chunk_sizes) > 1:  # we have to use the ChunkedCudaProjector
-            rng = np.random.default_rng(proj_seed)
-            # different seeds for each chunk
-            seeds = rng.integers(
+        if len(param_chunk_sizes) == 1:
+            assigned_projector = projector(
+                feature_dim=feature_dim,
+                proj_dim=proj_dim,
+                seed=proj_seed,
+                proj_type=proj_type,
+                device=device,
+                max_batch_size=proj_max_batch_size,
+                dtype=dtype,
+            )
+        else:  # we have to use the ChunkedCudaProjector
+            generator = torch.Generator(device=device)
+            generator.manual_seed(proj_seed)
+
+            # Generate seeds using torch.randint
+            seeds = torch.randint(
                 low=0,
                 high=500,
-                size=len(param_chunk_sizes),
-            )
+                size=(len(param_chunk_sizes),),
+                generator=generator,
+                dtype=torch.int64,
+                device=device,
+            ).tolist()  # Convert to list for indexing
+
             projector_per_chunk = [
                 projector(
                     feature_dim=chunk_size,
                     proj_dim=proj_dim,
                     seed=seeds[i],
                     proj_type=proj_type,
-                    max_batch_size=proj_max_batch_size,
                     device=device,
+                    max_batch_size=proj_max_batch_size,
+                    dtype=dtype,
                 )
                 for i, chunk_size in enumerate(param_chunk_sizes)
             ]
-            return ChunkedCudaProjector(
+            assigned_projector = ChunkedCudaProjector(
                 projector_per_chunk,
                 max_chunk_size,
                 param_chunk_sizes,
@@ -890,17 +931,7 @@ def make_random_projector(
                 device,
                 dtype,
             )
-
-    if projector == CudaProjector:
-        assigned_projector = projector(
-            feature_dim=feature_dim,
-            proj_dim=proj_dim,
-            seed=proj_seed,
-            proj_type=proj_type,
-            max_batch_size=proj_max_batch_size,
-            device=device,
-        )
-    elif projector == BasicProjector:
+    else:
         assigned_projector = projector(
             feature_dim=feature_dim,
             proj_dim=proj_dim,
@@ -925,7 +956,7 @@ def arnoldi_project(
     mode: str = "rev-fwd",
     regularization: float = 0.0,
     seed: int = 0,
-    device: torch.device = "cpu",
+    device: Union[str, torch.device] = "cpu",
 ) -> Callable:
     """Apply Arnoldi algorithm to approximate iHVP.
 
@@ -967,7 +998,7 @@ def arnoldi_project(
             matrix is singular or ill-conditioned. Specifically, the
             regularization term is `regularization * v`.
         seed (int): Random seed used by the projector. Defaults to 0.
-        device (torch.device): "cuda" or "cpu". Defaults to "cpu".
+        device (Union[str, torch.device]): "cuda" or "cpu". Defaults to "cpu".
 
     Returns:
         A function that applies Arnoldi algorithm on input feature.
@@ -1014,10 +1045,10 @@ def random_project(
     feature_batch_size: int,
     proj_dim: int,
     proj_max_batch_size: int,
-    device: str,
     proj_seed: int = 0,
+    proj_type: str = "sjlt",
     *,
-    use_half_precision: bool = True,
+    device: Union[str, torch.device] = "cpu",
 ) -> Callable:
     """Randomly projects the features to a smaller dimension.
 
@@ -1031,13 +1062,16 @@ def random_project(
             about to be projected. The typical type of feature are gradients of
             torch.nn.Module model but can restricted to this.
         proj_dim (int): Dimension of the projected feature.
-        proj_max_batch_size (int): The maximum batch size used by fast_jl if the
-            CudaProjector is used. Must be a multiple of 8. The maximum
-            batch size is 32 for A100 GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
-        device (str): "cuda" or "cpu".
+        proj_max_batch_size (int): The maximum batch size if the CudaProjector is
+            used. Must be a multiple of 8. The maximum batch size is 32 for A100
+            GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
         proj_seed (int): Random seed used by the projector. Defaults to 0.
-        use_half_precision (bool): If True, torch.float16 will be used for all
-            computations and arrays will be stored in torch.float16.
+        proj_type (str): The random projection type used for the projection.
+            Available options are "sjlt", "rademacher", "normal".
+        device (Union[str, torch.device]): "cuda" or "cpu". Defaults to "cpu".
+
+    Raises:
+        ValueError: When an invalid proj_type or device is provided.
 
     Returns:
         A function that takes projects feature to a smaller dimension.
@@ -1047,8 +1081,44 @@ def random_project(
         param_shape_list = [
             feature[param_name].numel() // feature_batch_size for param_name in feature
         ]
+        dtype = feature[next(iter(feature))].dtype
     else:
         param_shape_list = [feature.numel() // feature_batch_size]
+        dtype = feature.dtype
+
+    # convert device to torch.device if needed
+    if isinstance(device, str):
+        device = torch.device(device)
+
+    # convert proj_type to ProjectionType
+    if device.type == "cpu":
+        # Sampling from bernoulli distribution is not supported for
+        # dtype float16 on CPU; playing it safe here by defaulting to
+        # normal projection, rather than rademacher.
+        if proj_type != "normal":
+            warnings.warn(
+                "proj_type is set to 'normal' since the projection is performed"
+                " on CPU. Sampling from bernoulli distribution is not supported"
+                " for dtype float16 on CPU.",
+                stacklevel=1,
+            )
+        proj_type = ProjectionType.normal
+    elif device.type == "cuda":
+        if proj_type == "sjlt":
+            proj_type = ProjectionType.sjlt
+        elif proj_type == "rademacher":
+            proj_type = ProjectionType.rademacher
+        elif proj_type == "normal":
+            proj_type = ProjectionType.normal
+        else:
+            # Raise error: invalid proj_type for CudaProjector
+            msg = f"Invalid proj_type {proj_type}. \
+            Available options are 'sjlt', 'rademacher', and 'normal'."
+            raise ValueError(msg)
+    else:
+        msg = f"Invalid device type {device.type}. Available options \
+            are 'cpu' and 'cuda'."
+        raise ValueError(msg)
 
     projector = make_random_projector(
         param_shape_list=param_shape_list,
@@ -1057,7 +1127,8 @@ def random_project(
         proj_max_batch_size=proj_max_batch_size,
         device=device,
         proj_seed=proj_seed,
-        use_half_precision=use_half_precision,
+        proj_type=proj_type,
+        dtype=dtype,
     )
 
     def _random_project_func(
@@ -1078,6 +1149,10 @@ def random_project(
             The projected result of feature, which is a tensor with size
                 [feature_batch_size, proj_dim].
         """
+        # Check if we should use the memory-efficient dict_project
+        if isinstance(projector, ChunkedCudaProjector) and isinstance(feature, dict):
+            return projector.dict_project(feature, ensemble_id)
+
         return projector.project(feature, ensemble_id)
 
     return _random_project_func

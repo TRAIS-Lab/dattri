@@ -52,7 +52,7 @@ python benchmark_result_nanogpt.py --method TRAK-10 --device cuda
 ```
 The result will be like
 ```bash
-TRAK-10 RESULT: {'proj_dim': 2048, 'device': 'cuda', 'use_half_precision': False} lds: tensor(0.1419)
+TRAK-10 RESULT: {'proj_dim': 2048, 'device': 'cuda'} lds: tensor(0.1419)
 ```
 
 ## MAESTRO + MusicTransformer
@@ -73,5 +73,5 @@ python benchmark_result_mt.py --method TRAK-10 --device cuda
 ```
 The result will be like
 ```bash
-TRAK-10 RESULT: {'proj_dim': 2048, 'device': 'cuda', 'use_half_precision': False} lds: tensor(0.3243)
+TRAK-10 RESULT: {'proj_dim': 2048, 'device': 'cuda'} lds: tensor(0.3243)
 ```

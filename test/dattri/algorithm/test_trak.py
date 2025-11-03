@@ -52,7 +52,6 @@ class TestTRAK:
 
         projector_kwargs = {
             "device": "cpu",
-            "use_half_precision": False,
         }
         task = AttributionTask(
             loss_func=f,
@@ -137,7 +136,6 @@ class TestTRAK:
 
         projector_kwargs = {
             "device": "cpu",
-            "use_half_precision": False,
         }
         task = AttributionTask(
             loss_func=f,
@@ -224,7 +222,6 @@ class TestTRAK:
 
         projector_kwargs = {
             "device": "cpu",
-            "use_half_precision": False,
         }
         task = AttributionTask(
             loss_func=f,

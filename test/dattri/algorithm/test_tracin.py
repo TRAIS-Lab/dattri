@@ -71,7 +71,6 @@ class TestTracInAttributor:
             "proj_max_batch_size": 32,
             "proj_seed": 42,
             "device": pytest_device,
-            "use_half_precision": True,
         }
 
         # test with projector list
