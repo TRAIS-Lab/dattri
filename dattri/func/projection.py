@@ -1181,7 +1181,7 @@ def random_project(
     proj_dim: int,
     proj_max_batch_size: int,
     proj_seed: int = 0,
-    proj_type: str = "sjlt",
+    proj_type: str = "normal",
     *,
     device: Union[str, torch.device] = "cpu",
 ) -> Callable:
