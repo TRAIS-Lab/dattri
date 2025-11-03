@@ -14,14 +14,6 @@ from dattri.func.projection import (
     random_project,
 )
 
-# Check if sjlt is available
-try:
-    from sjlt import SJLTProjection  # noqa: F401
-
-    SJLT_AVAILABLE = True
-except ImportError:
-    SJLT_AVAILABLE = False
-
 
 class TestBasicProjector(unittest.TestCase):
     """Test basic projector functions."""
@@ -51,8 +43,8 @@ class TestBasicProjector(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    torch.cuda.is_available() and SJLT_AVAILABLE,
-    "CUDA is not available or sjlt is not installed",
+    torch.cuda.is_available(),
+    "CUDA is not available",
 )
 class TestCudaProjector(unittest.TestCase):
     """Test cuda projector function."""
@@ -85,8 +77,8 @@ class TestCudaProjector(unittest.TestCase):
 
 
 @unittest.skipUnless(
-    torch.cuda.is_available() and SJLT_AVAILABLE,
-    "CUDA is not available or sjlt is not installed",
+    torch.cuda.is_available(),
+    "CUDA is not available",
 )
 class TestChunkedCudaProjector(unittest.TestCase):
     """Test chunked cuda projector function."""
@@ -416,8 +408,8 @@ class TestGetProjection(unittest.TestCase):
         assert result_1.shape == (test_batch_size, self.proj_dim)
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_cudaprojector(self):
         """Test functionality of CudaProjector."""
@@ -445,8 +437,8 @@ class TestGetProjection(unittest.TestCase):
         assert result_2.shape == (test_batch_size, self.proj_dim)
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_chunkedcudaprojector(self):
         """Test functionality of ChunkedCudaProjector."""
@@ -509,8 +501,8 @@ class TestGetProjection(unittest.TestCase):
         assert result.shape == (test_batch_size, self.proj_dim)
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_tensor_input_cuda(self):
         """Test the usage of tensor input."""
@@ -531,8 +523,8 @@ class TestGetProjection(unittest.TestCase):
         assert result.shape == (test_batch_size, self.proj_dim)
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_tensor_input_chunked_cuda(self):
         """Test the usage of tensor input."""
@@ -687,8 +679,8 @@ class TestProjectionDtypes(unittest.TestCase):
         assert result.dtype == torch.bfloat16
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_cudaprojector_float64(self):
         """Test CudaProjector with float64 dtype."""
@@ -717,8 +709,8 @@ class TestProjectionDtypes(unittest.TestCase):
         assert result.dtype == torch.float64
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_cudaprojector_float32(self):
         """Test CudaProjector with float32 dtype."""
@@ -747,8 +739,8 @@ class TestProjectionDtypes(unittest.TestCase):
         assert result.dtype == torch.float32
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_cudaprojector_float16(self):
         """Test CudaProjector with float16 dtype."""
@@ -777,8 +769,8 @@ class TestProjectionDtypes(unittest.TestCase):
         assert result.dtype == torch.float16
 
     @unittest.skipUnless(
-        torch.cuda.is_available() and SJLT_AVAILABLE,
-        "CUDA is not available or sjlt is not installed",
+        torch.cuda.is_available(),
+        "CUDA is not available",
     )
     def test_cudaprojector_bfloat16(self):
         """Test CudaProjector with bfloat16 dtype."""
