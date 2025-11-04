@@ -38,7 +38,8 @@ jobs:
         run: |
           pip uninstall -y dattri
           python -m pip install --upgrade pip
-          pip install pytest
+          pip install pytest build pre-commit ruff darglint scikit-learn pretty_midi requests matplotlib pyparsing "torch>=2.2.0" "torchvision>=0.17.0"
+          pip install -e .
           # pip install -e .[test]
       - name: Analysing the code with pytest
         run: |
