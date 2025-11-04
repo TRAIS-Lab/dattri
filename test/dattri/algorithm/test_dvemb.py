@@ -46,6 +46,10 @@ class TestDVEmbAttributor:
 
     def _run_dvemb_simulation(self, attributor: DVEmbAttributor):
         """A generic simulation runner for any configured DVEmbAttributor."""
+        # Note: This loop simulates gradient collection purely for testing the
+        # attributor's mechanics. In a real-world scenario, gradients
+        # should be collected *during* the actual model training run.
+        # See examples/dvemb/dvemb_mlp.py for a full example.
         num_epochs = 2
         learning_rate = 0.01
         for epoch in range(num_epochs):
