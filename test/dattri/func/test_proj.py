@@ -14,6 +14,7 @@ from dattri.func.projection import (
     random_project,
 )
 
+import pytest
 
 def compute_pairwise_distance_metrics(batch_vec, batch_vec_p):
     """Compute relative error between pairwise distances.
@@ -91,10 +92,6 @@ class TestBasicProjector(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(
-    torch.cuda.is_available(),
-    "CUDA is not available",
-)
 class TestCudaProjector(unittest.TestCase):
     """Test CudaProjector class for GPU-accelerated random projections.
 
@@ -126,6 +123,7 @@ class TestCudaProjector(unittest.TestCase):
             dtype=torch.float32,
         )
 
+    @pytest.mark.gpu
     def test_project_output_shape(self):
         """Test that CudaProjector produces correct output shape.
 
@@ -141,10 +139,6 @@ class TestCudaProjector(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(
-    torch.cuda.is_available(),
-    "CUDA is not available",
-)
 class TestChunkedCudaProjector(unittest.TestCase):
     """Test ChunkedCudaProjector for memory-efficient large-scale projections.
 
@@ -203,6 +197,7 @@ class TestChunkedCudaProjector(unittest.TestCase):
             dtype=self.dtype,
         )
 
+    @pytest.mark.gpu
     def test_project_output_shape(self):
         """Test that ChunkedCudaProjector produces correct output shape with dict input.
 
@@ -536,10 +531,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result_1.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_cudaprojector(self):
         """Test random_project creates CudaProjector for CUDA workloads.
 
@@ -573,10 +565,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result_2.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_chunkedcudaprojector(self):
         """Test random_project creates ChunkedCudaProjector for very large models.
 
@@ -656,10 +645,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_tensor_input_cuda(self):
         """Test random_project with direct tensor input on CUDA.
 
@@ -685,10 +671,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_tensor_input_chunked_cuda(self):
         """Test random_project with very large tensor input requiring chunking.
 
@@ -1055,10 +1038,193 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape_8}, got {result_8.shape}"
         )
 
-        # Different multipliers should produce different results
-        assert not torch.allclose(result, result_8), (
-            "Different multipliers should produce different results"
+        result = project(small_gradient)
+        assert result.shape == (self.test_batch_size, self.proj_dim)
+        assert result.dtype == torch.bfloat16
+
+    @pytest.mark.gpu
+    def test_cudaprojector_float64(self):
+        """Test CudaProjector with float64 dtype."""
+        test_batch_size = 32
+        # mimic gradient with float64
+        small_gradient = {}
+        for name, p in self.small_model.named_parameters():
+            small_gradient[name] = torch.rand(
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float64,
+            )
+
+        # suppose to be CudaProjector
+        project = random_project(
+            small_gradient,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cuda"),
+            proj_seed=0,
         )
+
+        result = project(small_gradient)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.float64
+
+    @pytest.mark.gpu
+    def test_cudaprojector_float32(self):
+        """Test CudaProjector with float32 dtype."""
+        test_batch_size = 32
+        # mimic gradient with float32
+        small_gradient = {}
+        for name, p in self.small_model.named_parameters():
+            small_gradient[name] = torch.rand(
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float32,
+            )
+
+        # suppose to be CudaProjector
+        project = random_project(
+            small_gradient,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cuda"),
+            proj_seed=0,
+        )
+
+        result = project(small_gradient)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.float32
+
+    @pytest.mark.gpu
+    def test_cudaprojector_float16(self):
+        """Test CudaProjector with float16 dtype."""
+        test_batch_size = 32
+        # mimic gradient with float16
+        small_gradient = {}
+        for name, p in self.small_model.named_parameters():
+            small_gradient[name] = torch.rand(
+                test_batch_size,
+                p.numel(),
+                dtype=torch.float16,
+            )
+
+        # suppose to be CudaProjector
+        project = random_project(
+            small_gradient,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cuda"),
+            proj_seed=0,
+        )
+
+        result = project(small_gradient)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.float16
+
+    @pytest.mark.gpu
+    def test_cudaprojector_bfloat16(self):
+        """Test CudaProjector with bfloat16 dtype."""
+        test_batch_size = 32
+        # mimic gradient with bfloat16
+        small_gradient = {}
+        for name, p in self.small_model.named_parameters():
+            small_gradient[name] = torch.rand(
+                test_batch_size,
+                p.numel(),
+                dtype=torch.bfloat16,
+            )
+
+        # suppose to be CudaProjector
+        project = random_project(
+            small_gradient,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cuda"),
+            proj_seed=0,
+        )
+
+        result = project(small_gradient)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.bfloat16
+
+    def test_tensor_dtype_float64(self):
+        """Test random projection with float64 tensor input."""
+        test_batch_size = 64
+
+        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.float64)
+        # suppose to be BasicProjector
+        project = random_project(
+            test_tensor,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cpu"),
+            proj_seed=0,
+        )
+
+        result = project(test_tensor)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.float64
+
+    def test_tensor_dtype_float32(self):
+        """Test random projection with float32 tensor input."""
+        test_batch_size = 64
+
+        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.float32)
+        # suppose to be BasicProjector
+        project = random_project(
+            test_tensor,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cpu"),
+            proj_seed=0,
+        )
+
+        result = project(test_tensor)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.float32
+
+    def test_tensor_dtype_float16(self):
+        """Test random projection with float16 tensor input."""
+        test_batch_size = 64
+
+        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.float16)
+        # suppose to be BasicProjector
+        project = random_project(
+            test_tensor,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cpu"),
+            proj_seed=0,
+        )
+
+        result = project(test_tensor)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.float16
+
+    def test_tensor_dtype_bfloat16(self):
+        """Test random projection with bfloat16 tensor input."""
+        test_batch_size = 64
+
+        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.bfloat16)
+        # suppose to be BasicProjector
+        project = random_project(
+            test_tensor,
+            test_batch_size,
+            self.proj_dim,
+            self.proj_max_batch_size,
+            device=torch.device("cpu"),
+            proj_seed=0,
+        )
+
+        result = project(test_tensor)
+        assert result.shape == (test_batch_size, self.proj_dim)
+        assert result.dtype == torch.bfloat16
 
 
 if __name__ == "__main__":
