@@ -1,9 +1,9 @@
 """Projection matrix constructions.
 
 This file contains functions to (1) construct random projection (normal/Rademacher
-projection matrix and sjlt projection) for dimension reduction and (2) perform
-eigen decomposition on the inverse Hessian matrix using Arnoldi iteration and derive
-the corresponding projection matrix.
+projection matrix and sjlt/random mask/GraSS projection) for dimension reduction and
+(2) perform eigen decomposition on the inverse Hessian matrix using Arnoldi iteration
+and derive the corresponding projection matrix.
 
 Typically, the feature will correspond to gradient w.r.t model parameters.
 
@@ -32,6 +32,103 @@ from dattri.func.hessian import hvp_at_x
 
 from .utils import _vectorize as vectorize
 from .utils import get_parameter_chunk_sizes
+
+
+def _rademacher(
+    matrix: Tensor,
+    generator: torch.Generator,
+    dtype: torch.dtype,
+) -> Tensor:
+    """Generate Rademacher random matrix in-place.
+
+    Args:
+        matrix (Tensor): The matrix to fill with Rademacher values.
+        generator (torch.Generator): Random number generator.
+        dtype (torch.dtype): Target dtype for the matrix.
+
+    Returns:
+        Tensor: The filled matrix.
+    """
+    matrix.bernoulli_(p=0.5, generator=generator)
+    matrix *= 2.0
+    matrix -= 1.0
+    return matrix.to(dtype=dtype)
+
+
+def _generate_mask_indices(
+    input_dim: int,
+    output_dim: int,
+    generator: torch.Generator,
+    device: torch.device,
+) -> Tensor:
+    """Generate sorted random mask indices.
+
+    Args:
+        input_dim (int): Input dimension.
+        output_dim (int): Output dimension (number of indices to select).
+        generator (torch.Generator): Random number generator.
+        device (torch.device): Device for the indices.
+
+    Returns:
+        Tensor: Sorted indices tensor.
+    """
+    indices = torch.randperm(
+        input_dim,
+        generator=generator,
+        device=device,
+    )[:output_dim]
+    return indices.sort()[0]
+
+
+def _preprocess_features(
+    features: Union[dict, Tensor],
+    device: torch.device,
+    dtype: torch.dtype,
+) -> Tensor:
+    """Convert features to tensor on correct device and dtype.
+
+    Args:
+        features (Union[dict, Tensor]): Input features.
+        device (torch.device): Target device.
+        dtype (torch.dtype): Target dtype.
+
+    Returns:
+        Tensor: Preprocessed features tensor.
+    """
+    if isinstance(features, dict):
+        features = vectorize(features, device=device)
+    elif features.device != device:
+        features = features.to(device)
+    if features.dtype != dtype:
+        features = features.to(dtype)
+    return features
+
+
+def _parse_grass_projection_type(proj_type: str) -> Tuple[str, int]:
+    """Parse grass projection type and extract multiplier.
+
+    Args:
+        proj_type (str): Projection type string (e.g., "grass" or "grass_4").
+
+    Returns:
+        Tuple[str, int]: Base projection type and grass multiplier.
+
+    Raises:
+        ValueError: If grass multiplier format is invalid.
+    """
+    grass_multiplier = 4  # Default value
+    if proj_type.startswith("grass") and "_" in proj_type:
+        parts = proj_type.split("_")
+        expected_parts_count = 2  # Expected format: "grass_N"
+        if len(parts) == expected_parts_count:
+            try:
+                grass_multiplier = int(parts[1])
+            except ValueError:
+                msg = f"Invalid grass multiplier format: {proj_type}. \
+                Expected format: 'grass_N' where N is an integer."
+                raise ValueError(msg) from None
+        proj_type = "grass"  # Normalize to base type
+    return proj_type, grass_multiplier
 
 
 class ProjectionType(str, Enum):
@@ -145,7 +242,6 @@ class BasicProjector(AbstractProjector):
         self.block_size = min(self.proj_dim, block_size)
         self.num_blocks = math.ceil(self.proj_dim / self.block_size)
         self.dtype = dtype
-        self.proj_type = proj_type
         self.ensemble_id = ensemble_id
 
         if proj_type in {ProjectionType.normal, ProjectionType.rademacher}:
@@ -191,14 +287,12 @@ class BasicProjector(AbstractProjector):
                 block will be given a unique generator states.
         """
         self.generator.set_state(generator_state)
-        # Generate random indices without replacement
-        self.active_indices = torch.randperm(
+        self.active_indices = _generate_mask_indices(
             self.feature_dim,
-            generator=self.generator,
-            device=self.device,
-        )[: self.proj_dim]
-        # Sort indices for better memory access patterns
-        self.active_indices = self.active_indices.sort()[0]
+            self.proj_dim,
+            self.generator,
+            self.device,
+        )
 
     def _gen_randomness_dense(self, generator_state: List) -> None:
         """Set generator states and generate sketch matrices.
@@ -224,10 +318,7 @@ class BasicProjector(AbstractProjector):
         if self.proj_type == ProjectionType.normal:
             self.proj_matrix.normal_(generator=self.generator)
         elif self.proj_type == ProjectionType.rademacher:
-            self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
-            self.proj_matrix *= 2.0
-            self.proj_matrix -= 1.0
-            self.proj_matrix = self.proj_matrix.to(dtype=self.dtype)
+            self.proj_matrix = _rademacher(self.proj_matrix, self.generator, self.dtype)
         else:
             msg = f"Projection type {self.proj_type} not recognized."
             raise KeyError(msg)
@@ -243,11 +334,7 @@ class BasicProjector(AbstractProjector):
         Returns:
             Tensor: The projected features.
         """
-        if isinstance(features, dict):
-            features = vectorize(features, device=self.device)
-        elif features.device.type != self.device:
-            features = features.to(self.device)
-        features = features.to(dtype=self.dtype)
+        features = _preprocess_features(features, self.device, self.dtype)
 
         if ensemble_id != self.ensemble_id:
             self.ensemble_id = ensemble_id
@@ -428,14 +515,12 @@ class CudaProjector(AbstractProjector):
         if output_dim is None:
             output_dim = self.proj_dim
 
-        # Generate random indices without replacement
-        self.active_indices = torch.randperm(
+        self.active_indices = _generate_mask_indices(
             input_dim,
-            generator=self.generator,
-            device=self.device,
-        )[:output_dim]
-        # Sort indices for better memory access patterns
-        self.active_indices = self.active_indices.sort()[0]
+            output_dim,
+            self.generator,
+            self.device,
+        )
 
     def _gen_randomness_dense(self, method: str) -> None:
         """Generates the random projection matrix for dense projections.
@@ -455,10 +540,7 @@ class CudaProjector(AbstractProjector):
         if method == "normal":
             self.proj_matrix.normal_(generator=self.generator)
         elif method == "rademacher":
-            self.proj_matrix.bernoulli_(p=0.5, generator=self.generator)
-            self.proj_matrix *= 2.0
-            self.proj_matrix -= 1.0
-            self.proj_matrix = self.proj_matrix.to(dtype=self.dtype)
+            self.proj_matrix = _rademacher(self.proj_matrix, self.generator, self.dtype)
 
     def _gen_randomness_grass(self) -> None:
         """Generates randomness for 'grass' projection (random_mask + sjlt)."""
@@ -529,12 +611,7 @@ class CudaProjector(AbstractProjector):
             self._generate_randomness(ensemble_id)
             self.current_ensemble_id = ensemble_id
 
-        if isinstance(features, dict):
-            features = vectorize(features, device=self.device)
-        if features.device != self.device:
-            features = features.to(self.device)
-        if features.dtype != self.dtype:
-            features = features.to(self.dtype)
+        features = _preprocess_features(features, self.device, self.dtype)
 
         if self.proj_type == ProjectionType.sjlt:
             with torch.no_grad():
@@ -954,14 +1031,15 @@ class ArnoldiProjector(AbstractProjector):
         Returns:
             Tensor: The projected features.
         """
-        # transform to tensors
+        # Have not computed the eigen space yet
+        if self.eigvals is None or self.eigvecs is None:
+            self.get_eigenspace()
+
+        # Transform to tensors (note: ArnoldiProjector doesn't have self.dtype)
         if isinstance(features, dict):
             features = vectorize(features, device=self.device)
         if features.device.type != self.device:
             features = features.to(self.device)
-        # have not compute the eigen space yet
-        if self.eigvals is None or self.eigvecs is None:
-            self.get_eigenspace()
 
         return features @ self.eigvecs.T * (1.0 / torch.sqrt(self.eigvals.unsqueeze(0)))
 
@@ -1228,19 +1306,10 @@ def random_project(
         device = torch.device(device)
 
     # Parse grass multiplier if present (e.g., "grass_4" -> multiplier=4)
-    grass_multiplier = 4  # Default value
-    if isinstance(proj_type, str) and proj_type.startswith("grass"):
-        if "_" in proj_type:
-            parts = proj_type.split("_")
-            expected_parts_count = 2  # Expected format: "grass_N"
-            if len(parts) == expected_parts_count:
-                try:
-                    grass_multiplier = int(parts[1])
-                except ValueError:
-                    msg = f"Invalid grass multiplier format: {proj_type}. \
-                    Expected format: 'grass_N' where N is an integer."
-                    raise ValueError(msg) from None
-        proj_type = "grass"  # Normalize to base type
+    if isinstance(proj_type, str):
+        proj_type, grass_multiplier = _parse_grass_projection_type(proj_type)
+    else:
+        grass_multiplier = 4
 
     # convert proj_type to ProjectionType
     # Define valid projection types for each device

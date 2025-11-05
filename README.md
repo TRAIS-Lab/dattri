@@ -261,7 +261,6 @@ We have implemented most of the state-of-the-art methods. The categories and ref
   - KNN filter
   - TF-IDF filter
   - [Data Value Embedding](https://arxiv.org/pdf/2412.09538)
-  - [GraSS](https://arxiv.org/pdf/2505.18976)
 - Better documentation
   - Quick start colab notebooks
 
