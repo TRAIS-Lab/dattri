@@ -15,7 +15,7 @@ jobs:
     if: |
       github.event.issue.pull_request &&
       contains(github.event.comment.body, 'run gpu test')
-    runs-on: ubuntu-latest
+    runs-on: self-hosted
     
     steps:
       - name: Acknowledge trigger
