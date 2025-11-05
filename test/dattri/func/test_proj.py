@@ -859,10 +859,6 @@ class TestProjectionCombinationsCPU(unittest.TestCase):
                     self._test_projection_combination("cpu", proj_type, dtype)
 
 
-@unittest.skipUnless(
-    torch.cuda.is_available(),
-    "CUDA is not available",
-)
 class TestProjectionCombinationsCUDA(unittest.TestCase):
     """Test CUDA random projections with all proj_type and dtype combinations.
 
@@ -976,6 +972,7 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
             f"exceeds threshold={max_relative_error} for {proj_type} with {dtype}"
         )
 
+    @pytest.mark.gpu
     def test_cuda_projections(self):
         """Test CUDA CudaProjector with all projection types and dtypes."""
         proj_types = ["sjlt", "normal", "rademacher", "random_mask", "grass"]
@@ -991,6 +988,7 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
                         batch_size=32,
                     )
 
+    @pytest.mark.gpu
     def test_cuda_grass_with_multiplier(self):
         """Test CUDA CudaProjector with GraSS projection using custom multipliers."""
         device = torch.device("cuda")
@@ -1038,193 +1036,10 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape_8}, got {result_8.shape}"
         )
 
-        result = project(small_gradient)
-        assert result.shape == (self.test_batch_size, self.proj_dim)
-        assert result.dtype == torch.bfloat16
-
-    @pytest.mark.gpu
-    def test_cudaprojector_float64(self):
-        """Test CudaProjector with float64 dtype."""
-        test_batch_size = 32
-        # mimic gradient with float64
-        small_gradient = {}
-        for name, p in self.small_model.named_parameters():
-            small_gradient[name] = torch.rand(
-                test_batch_size,
-                p.numel(),
-                dtype=torch.float64,
-            )
-
-        # suppose to be CudaProjector
-        project = random_project(
-            small_gradient,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_seed=0,
+        # Different multipliers should produce different results
+        assert not torch.allclose(result, result_8), (
+            "Different multipliers should produce different results"
         )
-
-        result = project(small_gradient)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.float64
-
-    @pytest.mark.gpu
-    def test_cudaprojector_float32(self):
-        """Test CudaProjector with float32 dtype."""
-        test_batch_size = 32
-        # mimic gradient with float32
-        small_gradient = {}
-        for name, p in self.small_model.named_parameters():
-            small_gradient[name] = torch.rand(
-                test_batch_size,
-                p.numel(),
-                dtype=torch.float32,
-            )
-
-        # suppose to be CudaProjector
-        project = random_project(
-            small_gradient,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_seed=0,
-        )
-
-        result = project(small_gradient)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.float32
-
-    @pytest.mark.gpu
-    def test_cudaprojector_float16(self):
-        """Test CudaProjector with float16 dtype."""
-        test_batch_size = 32
-        # mimic gradient with float16
-        small_gradient = {}
-        for name, p in self.small_model.named_parameters():
-            small_gradient[name] = torch.rand(
-                test_batch_size,
-                p.numel(),
-                dtype=torch.float16,
-            )
-
-        # suppose to be CudaProjector
-        project = random_project(
-            small_gradient,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_seed=0,
-        )
-
-        result = project(small_gradient)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.float16
-
-    @pytest.mark.gpu
-    def test_cudaprojector_bfloat16(self):
-        """Test CudaProjector with bfloat16 dtype."""
-        test_batch_size = 32
-        # mimic gradient with bfloat16
-        small_gradient = {}
-        for name, p in self.small_model.named_parameters():
-            small_gradient[name] = torch.rand(
-                test_batch_size,
-                p.numel(),
-                dtype=torch.bfloat16,
-            )
-
-        # suppose to be CudaProjector
-        project = random_project(
-            small_gradient,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_seed=0,
-        )
-
-        result = project(small_gradient)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.bfloat16
-
-    def test_tensor_dtype_float64(self):
-        """Test random projection with float64 tensor input."""
-        test_batch_size = 64
-
-        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.float64)
-        # suppose to be BasicProjector
-        project = random_project(
-            test_tensor,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cpu"),
-            proj_seed=0,
-        )
-
-        result = project(test_tensor)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.float64
-
-    def test_tensor_dtype_float32(self):
-        """Test random projection with float32 tensor input."""
-        test_batch_size = 64
-
-        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.float32)
-        # suppose to be BasicProjector
-        project = random_project(
-            test_tensor,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cpu"),
-            proj_seed=0,
-        )
-
-        result = project(test_tensor)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.float32
-
-    def test_tensor_dtype_float16(self):
-        """Test random projection with float16 tensor input."""
-        test_batch_size = 64
-
-        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.float16)
-        # suppose to be BasicProjector
-        project = random_project(
-            test_tensor,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cpu"),
-            proj_seed=0,
-        )
-
-        result = project(test_tensor)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.float16
-
-    def test_tensor_dtype_bfloat16(self):
-        """Test random projection with bfloat16 tensor input."""
-        test_batch_size = 64
-
-        test_tensor = torch.rand(test_batch_size, 1000, dtype=torch.bfloat16)
-        # suppose to be BasicProjector
-        project = random_project(
-            test_tensor,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cpu"),
-            proj_seed=0,
-        )
-
-        result = project(test_tensor)
-        assert result.shape == (test_batch_size, self.proj_dim)
-        assert result.dtype == torch.bfloat16
 
 
 if __name__ == "__main__":
