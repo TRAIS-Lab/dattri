@@ -2,6 +2,7 @@
 
 import unittest
 
+import pytest
 import torch
 from torch import nn
 
@@ -14,7 +15,6 @@ from dattri.func.projection import (
     random_project,
 )
 
-import pytest
 
 def compute_pairwise_distance_metrics(batch_vec, batch_vec_p):
     """Compute relative error between pairwise distances.
