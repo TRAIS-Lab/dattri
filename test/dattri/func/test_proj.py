@@ -2,6 +2,7 @@
 
 import unittest
 
+import pytest
 import torch
 from torch import nn
 
@@ -91,10 +92,6 @@ class TestBasicProjector(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(
-    torch.cuda.is_available(),
-    "CUDA is not available",
-)
 class TestCudaProjector(unittest.TestCase):
     """Test CudaProjector class for GPU-accelerated random projections.
 
@@ -126,6 +123,7 @@ class TestCudaProjector(unittest.TestCase):
             dtype=torch.float32,
         )
 
+    @pytest.mark.gpu
     def test_project_output_shape(self):
         """Test that CudaProjector produces correct output shape.
 
@@ -141,10 +139,6 @@ class TestCudaProjector(unittest.TestCase):
         )
 
 
-@unittest.skipUnless(
-    torch.cuda.is_available(),
-    "CUDA is not available",
-)
 class TestChunkedCudaProjector(unittest.TestCase):
     """Test ChunkedCudaProjector for memory-efficient large-scale projections.
 
@@ -203,6 +197,7 @@ class TestChunkedCudaProjector(unittest.TestCase):
             dtype=self.dtype,
         )
 
+    @pytest.mark.gpu
     def test_project_output_shape(self):
         """Test that ChunkedCudaProjector produces correct output shape with dict input.
 
@@ -536,10 +531,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result_1.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_cudaprojector(self):
         """Test random_project creates CudaProjector for CUDA workloads.
 
@@ -573,10 +565,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result_2.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_chunkedcudaprojector(self):
         """Test random_project creates ChunkedCudaProjector for very large models.
 
@@ -656,10 +645,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_tensor_input_cuda(self):
         """Test random_project with direct tensor input on CUDA.
 
@@ -685,10 +671,7 @@ class TestRandomProjectionFactory(unittest.TestCase):
             f"Shape mismatch: expected {expected_shape}, got {result.shape}"
         )
 
-    @unittest.skipUnless(
-        torch.cuda.is_available(),
-        "CUDA is not available",
-    )
+    @pytest.mark.gpu
     def test_tensor_input_chunked_cuda(self):
         """Test random_project with very large tensor input requiring chunking.
 
@@ -876,10 +859,6 @@ class TestProjectionCombinationsCPU(unittest.TestCase):
                     self._test_projection_combination("cpu", proj_type, dtype)
 
 
-@unittest.skipUnless(
-    torch.cuda.is_available(),
-    "CUDA is not available",
-)
 class TestProjectionCombinationsCUDA(unittest.TestCase):
     """Test CUDA random projections with all proj_type and dtype combinations.
 
@@ -993,6 +972,7 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
             f"exceeds threshold={max_relative_error} for {proj_type} with {dtype}"
         )
 
+    @pytest.mark.gpu
     def test_cuda_projections(self):
         """Test CUDA CudaProjector with all projection types and dtypes."""
         proj_types = ["sjlt", "normal", "rademacher", "random_mask", "grass"]
@@ -1008,6 +988,7 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
                         batch_size=32,
                     )
 
+    @pytest.mark.gpu
     def test_cuda_grass_with_multiplier(self):
         """Test CUDA CudaProjector with GraSS projection using custom multipliers."""
         device = torch.device("cuda")
