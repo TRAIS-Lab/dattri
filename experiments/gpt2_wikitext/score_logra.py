@@ -326,8 +326,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
-    # information sent is the one passed as arguments along with your Python/PyTorch versions.
+    #fix the import error in newer transformers versions
     if send_example_telemetry is not None:
         send_example_telemetry("run_clm_no_trainer", args)
 
@@ -599,8 +598,14 @@ def main():
     model_id = -1
     checkpoint = f"{args.output_dir}/{model_id}"
 
-    def checkpoints_load_func(model, checkpoint):
-        model = AutoModelForCausalLM.from_pretrained(checkpoint).cuda()
+    def checkpoints_load_func(model, checkpoint_path):
+        # Convert to absolute path to avoid HuggingFace Hub validation error
+        import os
+        checkpoint_abs = os.path.abspath(checkpoint_path)
+        model = AutoModelForCausalLM.from_pretrained(
+            checkpoint_abs,
+            local_files_only=True,  # Force local file loading
+        ).cuda()
         model.eval()
         return replace_conv1d_modules(model)
 

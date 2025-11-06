@@ -697,7 +697,13 @@ def main():
         )
 
     def checkpoints_load_func(model, checkpoint_path):
-        new_model = AutoModelForCausalLM.from_pretrained(checkpoint_path).cuda()
+        # Convert to absolute path to avoid HuggingFace Hub validation error
+        import os
+        checkpoint_abs = os.path.abspath(checkpoint_path)
+        new_model = AutoModelForCausalLM.from_pretrained(
+            checkpoint_abs,
+            local_files_only=True,  # Force local file loading
+        ).cuda()
         new_model.eval()
         return new_model
 
