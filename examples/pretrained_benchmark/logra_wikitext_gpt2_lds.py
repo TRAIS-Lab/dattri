@@ -8,6 +8,7 @@ from dattri.algorithm.logra import LoGraAttributor
 from dattri.benchmark.load import load_benchmark
 from dattri.metric import lds
 from dattri.task import AttributionTask
+from transformers import default_data_collator
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -21,10 +22,10 @@ if __name__ == "__main__":
     )
 
     def f(model, batch, device):
-        # inputs, targets = batch
-        # inputs = inputs.to(device)
-        # targets = targets.to(device)
-        model.to(device)
+        model.to(device)  # puts the model on MPS if device="mps"
+        batch = {
+            k: (v.to(device) if torch.is_tensor(v) else v) for k, v in batch.items()
+        }
         outputs = model(**batch)
         return outputs.loss
 
@@ -48,11 +49,13 @@ if __name__ == "__main__":
         offload="cpu",
         projector_kwargs=projector_kwargs,
     )
+
     attributor.cache(
         DataLoader(
             model_details["train_dataset"],
             batch_size=4681,
             sampler=model_details["train_sampler"],
+            collate_fn=default_data_collator,
         )
     )
 
@@ -61,11 +64,13 @@ if __name__ == "__main__":
             model_details["train_dataset"],
             batch_size=4681,
             sampler=model_details["train_sampler"],
+            collate_fn=default_data_collator,
         ),
         DataLoader(
             model_details["test_dataset"],
             batch_size=4681,
             sampler=model_details["test_sampler"],
+            collate_fn=default_data_collator,
         ),
     )
 
