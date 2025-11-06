@@ -66,7 +66,6 @@ if __name__ == "__main__":
 
     projector_kwargs = {
         "device": args.device,
-        "use_half_precision": False,
     }
 
     attributor = TRAKAttributor(

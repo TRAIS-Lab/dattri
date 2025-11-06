@@ -21,7 +21,7 @@ jobs:
         pip install -e .[test]
     - name: Analysing the code with pytest
       run: |
-        pytest -v test
+        pytest -v -m "not gpu" test
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri

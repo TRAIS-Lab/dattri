@@ -716,7 +716,6 @@ def main():
     projector_kwargs = {
         "device": "cuda",
         "proj_dim": 32,
-        "use_half_precision": False,
         "proj_max_batch_size": 32,
     }
 

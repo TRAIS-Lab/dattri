@@ -717,7 +717,6 @@ def main():
         projector_kwargs = {
             "device": "cuda",
             "proj_dim": 2048,
-            "use_half_precision": False,
         }
         attributor = TRAKAttributor(
             task=task,
@@ -736,7 +735,6 @@ def main():
         projector_kwargs = {
             "device": "cuda",
             "proj_dim": 2048,
-            "use_half_precision": False,
         }
 
         attributor = TracInAttributor(

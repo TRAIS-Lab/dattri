@@ -27,7 +27,6 @@ DEFAULT_PROJECTOR_KWARGS = {
     "proj_max_batch_size": 32,
     "proj_seed": 0,
     "device": "cpu",
-    "use_half_precision": False,
 }
 
 
