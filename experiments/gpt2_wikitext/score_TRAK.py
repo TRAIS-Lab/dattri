@@ -498,6 +498,7 @@ def main():
             config=config,
             low_cpu_mem_usage=args.low_cpu_mem_usage,
             trust_remote_code=args.trust_remote_code,
+            attn_implementation="eager",  # Use eager attention for better performance
         )
         model = model.cuda()
     else:
