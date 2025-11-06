@@ -53,7 +53,7 @@ if __name__ == "__main__":
     attributor.cache(
         DataLoader(
             model_details["train_dataset"],
-            batch_size=4681,
+            batch_size=4651,
             sampler=model_details["train_sampler"],
             collate_fn=default_data_collator,
         )
@@ -62,13 +62,13 @@ if __name__ == "__main__":
     score = attributor.attribute(
         DataLoader(
             model_details["train_dataset"],
-            batch_size=4681,
+            batch_size=4651,
             sampler=model_details["train_sampler"],
             collate_fn=default_data_collator,
         ),
         DataLoader(
             model_details["test_dataset"],
-            batch_size=4681,
+            batch_size=481,
             sampler=model_details["test_sampler"],
             collate_fn=default_data_collator,
         ),

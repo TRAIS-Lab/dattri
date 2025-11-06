@@ -11,8 +11,6 @@ from itertools import chain
 from typing import Tuple
 
 import torch
-from datasets import load_dataset
-from transformers import AutoTokenizer
 
 
 def create_wikitext2_dataset(
@@ -30,6 +28,9 @@ def create_wikitext2_dataset(
     Returns:
         (train_dataset, eval_dataset): tokenized torch datasets.
     """
+    from datasets import load_dataset
+    from transformers import AutoTokenizer
+
     # dataset and tokenizer
     raw_datasets = load_dataset("wikitext", "wikitext-2-raw-v1")
     tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True)
