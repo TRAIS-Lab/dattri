@@ -629,14 +629,15 @@ def main():
         """
         input_ids, attention_mask, labels = batch
 
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
+        # Re-add batch dimension removed by vmap
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
 
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         logp = -outputs.loss
@@ -648,14 +649,15 @@ def main():
         """
         input_ids, attention_mask, labels = batch
 
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
+        # Re-add batch dimension removed by vmap
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
 
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         p = torch.exp(-outputs.loss)
@@ -667,13 +669,16 @@ def main():
         (TracIn sums over checkpoint updates of gradient dot-products).
         """
         input_ids, attention_mask, labels = batch
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
+        
+        # Re-add batch dimension removed by vmap
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
+        
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         return outputs.loss
@@ -695,7 +700,8 @@ def main():
         raise ValueError(
             f"Unknown --method {method}. Try 'TRAK-5', 'TracIn', 'Grad-Dot', or 'Grad-Cos'."
         )
-
+    
+    #modified for huggingface hub validation error
     def checkpoints_load_func(model, checkpoint_path):
         # Convert to absolute path and verify it exists
         import os
