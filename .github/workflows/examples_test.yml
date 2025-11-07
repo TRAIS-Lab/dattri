@@ -32,7 +32,9 @@ jobs:
         python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
         python examples/data_cleaning/influence_function_data_cleaning.py --device cpu --train_size 1000 --val_size 100 --test_size 100 --remove_number 10
         python examples/relatIF/influence_function_comparison.py --no_output
-    - name: Uninstall the package
+        sed -i 's/4656/64/g' dattri/benchmark/load.py
+        python examples/pretrained_benchmark/logra_wikitext_gpt2_lds.py
+    - name: Uninstall the package 
       run: |
         pip uninstall -y dattri
     - name: Cleanup build artifacts
