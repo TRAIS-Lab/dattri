@@ -15,7 +15,7 @@ import torch
 
 def create_wikitext2_dataset(
     block_size: int = 512,
-    subset_ratio: float = 1,  # default half dataset
+    # subset_ratio: float = 1,  # default half dataset
     seed: int = 0,
 ) -> Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Create tokenized WikiText datasets for GPT-style language modeling.
@@ -28,12 +28,24 @@ def create_wikitext2_dataset(
     Returns:
         (train_dataset, eval_dataset): tokenized torch datasets.
     """
+
     from datasets import load_dataset
     from transformers import AutoTokenizer
 
     # dataset and tokenizer
     raw_datasets = load_dataset("wikitext", "wikitext-2-raw-v1")
-    tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=True)
+    if "validation" not in raw_datasets.keys():
+        raw_datasets["validation"] = load_dataset(
+            "wikitext",
+            "wikitext-2-raw-v1",
+            split=f"train[:5%]",
+        )
+        raw_datasets["train"] = load_dataset(
+            "wikitext",
+            "wikitext-2-raw-v1",
+            split=f"train[5%:]",
+        )
+    tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2", use_fast=True)
 
     column_names = raw_datasets["train"].column_names
     text_column_name = "text" if "text" in column_names else column_names[0]
@@ -45,8 +57,9 @@ def create_wikitext2_dataset(
     tokenized_datasets = raw_datasets.map(
         tokenize_function,
         batched=True,
-        num_proc=4,
+        num_proc=None,
         remove_columns=column_names,
+        load_from_cache_file=True,
         desc="Running tokenizer on dataset",
     )
 
@@ -59,11 +72,14 @@ def create_wikitext2_dataset(
         )
     block_size = min(block_size, tokenizer.model_max_length)
 
-    def group_texts(examples: dict) -> dict:
+    def group_texts(examples):
         # Concatenate all texts.
-        concatenated_examples = {k: list(chain(*examples[k])) for k in examples}
-        total_length = len(concatenated_examples[next(iter(examples.keys()))])
+        concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
+        total_length = len(concatenated_examples[list(examples.keys())[0]])
+        # We drop the small remainder, and if the total_length < block_size  we exclude this batch and return an empty dict.
+        # We could add padding if the model supported it instead of this drop, you can customize this part to your needs.
         total_length = (total_length // block_size) * block_size
+        # Split by chunks of max_len.
         result = {
             k: [t[i : i + block_size] for i in range(0, total_length, block_size)]
             for k, t in concatenated_examples.items()
@@ -74,18 +90,12 @@ def create_wikitext2_dataset(
     lm_datasets = tokenized_datasets.map(
         group_texts,
         batched=True,
-        num_proc=4,
+        num_proc=None,
+        load_from_cache_file=True,
         desc=f"Grouping texts in chunks of {block_size}",
     )
 
     train_dataset = lm_datasets["train"]
     eval_dataset = lm_datasets["validation"]
-
-    # in default cut to half.
-    if subset_ratio < 1.0:
-        random.seed(seed)
-        subset_size = int(subset_ratio * len(train_dataset))
-        indices = random.sample(range(len(train_dataset)), subset_size)
-        train_dataset = torch.utils.data.Subset(train_dataset, indices)
 
     return train_dataset, eval_dataset

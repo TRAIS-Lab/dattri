@@ -305,14 +305,20 @@ def load_benchmark(  # noqa:PLR0914
     else:
         train_func = None
 
-    target_values = torch.load(
+    def load(path):
+        if torch.cuda.is_available():
+            return torch.load(path)
+        else:
+            return torch.load(path, map_location=torch.device("cpu"))
+
+    target_values = load(
         download_path
         / "benchmark"
         / identifier
         / metric
         / f"target_values_{metric}.pt",
     )
-    indices = torch.load(
+    indices = load(
         download_path / "benchmark" / identifier / metric / f"indices_{metric}.pt",
     )
 
