@@ -6,44 +6,39 @@
 from __future__ import annotations
 
 import logging
-import random
 from itertools import chain
-from typing import Tuple
+from typing import TYPE_CHECKING, Tuple
 
-import torch
+if TYPE_CHECKING:
+    import torch
 
 
 def create_wikitext2_dataset(
     block_size: int = 512,
-    # subset_ratio: float = 1,  # default half dataset
-    seed: int = 0,
 ) -> Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Create tokenized WikiText datasets for GPT-style language modeling.
 
     Args:
         block_size: Length of each sequence block after tokenization.
-        subset_ratio: Fraction of the training set to use (for quick experiments).
-        seed: Random seed for reproducibility.
 
     Returns:
         (train_dataset, eval_dataset): tokenized torch datasets.
     """
-
     from datasets import load_dataset
     from transformers import AutoTokenizer
 
     # dataset and tokenizer
     raw_datasets = load_dataset("wikitext", "wikitext-2-raw-v1")
-    if "validation" not in raw_datasets.keys():
+    if "validation" not in raw_datasets:
         raw_datasets["validation"] = load_dataset(
             "wikitext",
             "wikitext-2-raw-v1",
-            split=f"train[:5%]",
+            split="train[:5%]",
         )
         raw_datasets["train"] = load_dataset(
             "wikitext",
             "wikitext-2-raw-v1",
-            split=f"train[5%:]",
+            split="train[5%:]",
         )
     tokenizer = AutoTokenizer.from_pretrained("openai-community/gpt2", use_fast=True)
 
@@ -72,12 +67,10 @@ def create_wikitext2_dataset(
         )
     block_size = min(block_size, tokenizer.model_max_length)
 
-    def group_texts(examples):
+    def group_texts(examples: dict) -> dict:
         # Concatenate all texts.
-        concatenated_examples = {k: list(chain(*examples[k])) for k in examples.keys()}
-        total_length = len(concatenated_examples[list(examples.keys())[0]])
-        # We drop the small remainder, and if the total_length < block_size  we exclude this batch and return an empty dict.
-        # We could add padding if the model supported it instead of this drop, you can customize this part to your needs.
+        concatenated_examples = {k: list(chain(*examples[k])) for k in examples}
+        total_length = len(concatenated_examples[next(iter(examples.keys()))])
         total_length = (total_length // block_size) * block_size
         # Split by chunks of max_len.
         result = {

@@ -305,11 +305,10 @@ def load_benchmark(  # noqa:PLR0914
     else:
         train_func = None
 
-    def load(path):
+    def load(path: str) -> Any:
         if torch.cuda.is_available():
             return torch.load(path)
-        else:
-            return torch.load(path, map_location=torch.device("cpu"))
+        return torch.load(path, map_location=torch.device("cpu"))
 
     target_values = load(
         download_path
