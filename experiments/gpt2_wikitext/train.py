@@ -502,9 +502,8 @@ def main():
     eval_dataset = lm_datasets["validation"]
 
     # crop the data to subset
-    if args.subset_ratio < 1:
-        train_index = random.sample(range(len(train_dataset)), int(args.subset_ratio * len(train_dataset)))
-        train_sampler = SubsetSampler(train_index)
+    train_index = random.sample(range(len(train_dataset)), int(args.subset_ratio * len(train_dataset)))
+    train_sampler = SubsetSampler(train_index)
 
     # Log a few random samples from the training set:
     # for index in random.sample(range(len(train_dataset)), 3):
