@@ -1,0 +1,16 @@
+# SSH Configuration Template for Markov Server
+# Copy this content to ~/.ssh/config and replace <your NetID> with your actual UIUC NetID
+
+Host markov.ischool.illinois.edu
+    HostName markov.ischool.illinois.edu
+    Port 22
+    User <your NetID>
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    TCPKeepAlive yes
+
+# Instructions:
+# 1. Copy this content to ~/.ssh/config
+# 2. Replace <your NetID> with your actual UIUC NetID
+# 3. Set proper permissions: chmod 600 ~/.ssh/config
+# 4. Test connection: ssh markov.ischool.illinois.edu

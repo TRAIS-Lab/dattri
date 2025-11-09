@@ -20,7 +20,7 @@ This experiment could only be run on cuda device.
 pip install -r requirements.txt
 ```
 
-### Troubleshooting: vmap over calling .item() Error in Transformers
+<!-- ### Troubleshooting: vmap over calling .item() Error in Transformers
 After installing transformers, you might encounter the following error:
 ```bash
 We don't support vmap over calling .item() on a Tensor, please try to rewrite what you're doing with other operations.
@@ -66,7 +66,20 @@ Comment out these lines:
 Then, add the following line:
 ```bash
 return AttentionMaskConverter._expand_mask(mask=mask, dtype=dtype, tgt_len=tgt_len)
-```
+``` -->
+
+the troubleshooting can be avoided by setting the attn_implementation paramater to 'eager' in from_pretrained function 
+
+if args.model_name_or_path:
+        model = AutoModelForCausalLM.from_pretrained(
+            args.model_name_or_path,
+            from_tf=bool(".ckpt" in args.model_name_or_path),
+            config=config,
+            low_cpu_mem_usage=args.low_cpu_mem_usage,
+            trust_remote_code=args.trust_remote_code,
+            attn_implementation="eager",  # Use eager attention for better performance
+        )
+        model = model.cuda()
 
 ## Training
 
