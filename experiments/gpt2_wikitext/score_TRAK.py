@@ -235,11 +235,6 @@ def parse_args():
         help="Maximum batch size to process per projection block (controls memory usage).",
     )
     parser.add_argument(
-        "--use_half_precision",
-        action="store_true",
-        help="Use half precision for projection matrices to reduce memory footprint.",
-    )
-    parser.add_argument(
         "--preprocessing_num_workers",
         type=int,
         default=None,
@@ -795,7 +790,6 @@ def main():
             "device": "cuda",
             "proj_dim": args.proj_dim,
             "proj_max_batch_size": args.proj_max_batch_size,
-            "use_half_precision": args.use_half_precision,
         }
         attributor = TRAKAttributor(
             task=task,
@@ -816,7 +810,6 @@ def main():
             "device": "cuda",
             "proj_dim": args.proj_dim,
             "proj_max_batch_size": args.proj_max_batch_size,
-            "use_half_precision": args.use_half_precision,
         }
 
         attributor = TracInAttributor(
