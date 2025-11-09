@@ -31,5 +31,8 @@ python ../score_TRAK.py \
     --method TRAK-5 \
     --seed ${SEED} \
     --per_device_train_batch_size 2 \
-    --per_device_eval_batch_size 2
+    --per_device_eval_batch_size 2 \
+    --proj_dim 512 \
+    --proj_max_batch_size 16 \
+    --use_half_precision
 

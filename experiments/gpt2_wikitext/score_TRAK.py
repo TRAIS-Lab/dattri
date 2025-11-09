@@ -220,6 +220,25 @@ def parse_args():
             " account special tokens)."
         ),
     )
+
+    # add arguments for random projection and fix memory issues
+    parser.add_argument(
+        "--proj_dim",
+        type=int,
+        default=512,
+        help="Output dimension for random projection used by TRAK / TracIn.",
+    )
+    parser.add_argument(
+        "--proj_max_batch_size",
+        type=int,
+        default=16,
+        help="Maximum batch size to process per projection block (controls memory usage).",
+    )
+    parser.add_argument(
+        "--use_half_precision",
+        action="store_true",
+        help="Use half precision for projection matrices to reduce memory footprint.",
+    )
     parser.add_argument(
         "--preprocessing_num_workers",
         type=int,
@@ -771,9 +790,12 @@ def main():
         )
 
     if method.startswith("TRAK"):
+        # fix memory issues
         projector_kwargs = {
             "device": "cuda",
-            "proj_dim": 2048,
+            "proj_dim": args.proj_dim,
+            "proj_max_batch_size": args.proj_max_batch_size,
+            "use_half_precision": args.use_half_precision,
         }
         attributor = TRAKAttributor(
             task=task,
@@ -789,9 +811,12 @@ def main():
 
         weight_list = torch.ones(num_checkpoints) * 1e-3
 
+        # fix memory issues
         projector_kwargs = {
             "device": "cuda",
-            "proj_dim": 2048,
+            "proj_dim": args.proj_dim,
+            "proj_max_batch_size": args.proj_max_batch_size,
+            "use_half_precision": args.use_half_precision,
         }
 
         attributor = TracInAttributor(
