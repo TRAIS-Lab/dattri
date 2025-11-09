@@ -705,18 +705,53 @@ def main():
         return outputs.loss
 
     method = args.method
+
+    #fix checkpoint loading error
+    checkpoint_root = Path(args.output_dir)
+    available_checkpoint_dirs = sorted(
+        [p for p in checkpoint_root.iterdir() if p.is_dir() and p.name.isdigit()],
+        key=lambda p: int(p.name),
+    )
+
+    if not available_checkpoint_dirs:
+        raise FileNotFoundError(
+            f"No numeric checkpoint directories found in {checkpoint_root}."
+        )
+
     if method.startswith("TRAK-"):
         parts = method.split("-")
         if len(parts) == 2 and parts[1].isdigit():
-            num_checkpoints = int(parts[1])
+            requested_checkpoints = int(parts[1])
         else:
             raise ValueError(
                 "Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'."
             )
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+
+        #fix checkpoint loading error
+        if len(available_checkpoint_dirs) < requested_checkpoints:
+            logger.warning(
+                "Requested %s checkpoints but only found %s in %s. Using available checkpoints instead.",
+                requested_checkpoints,
+                len(available_checkpoint_dirs),
+                checkpoint_root,
+            )
+            requested_checkpoints = len(available_checkpoint_dirs)
+
+        checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
+
     elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
-        num_checkpoints = 5
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+        requested_checkpoints = min(5, len(available_checkpoint_dirs))
+        if requested_checkpoints == 0:
+            raise FileNotFoundError(
+                f"No numeric checkpoint directories found in {checkpoint_root}."
+            )
+        if requested_checkpoints < 5:
+            logger.warning(
+                "Only %s checkpoint(s) available; using these for %s.",
+                requested_checkpoints,
+                method,
+            )
+        checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
     else:
         raise ValueError(
             f"Unknown --method {method}. Try 'TRAK-5', 'TracIn', 'Grad-Dot', or 'Grad-Cos'."
