@@ -33,5 +33,6 @@ python ../score_TRAK.py \
     --per_device_train_batch_size 1 \
     --per_device_eval_batch_size 1 \
     --proj_dim 256 \
-    --proj_max_batch_size 8
+    --proj_max_batch_size 8 \
+    --proj_type random_mask
 

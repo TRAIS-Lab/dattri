@@ -235,6 +235,13 @@ def parse_args():
         help="Maximum batch size to process per projection block (controls memory usage).",
     )
     parser.add_argument(
+        "--proj_type",
+        type=str,
+        default="random_mask",
+        choices=["normal", "rademacher", "random_mask", "sjlt", "grass"],
+        help="Random projection type used for TRAK/TracIn (default: random_mask).",
+    )
+    parser.add_argument(
         "--preprocessing_num_workers",
         type=int,
         default=None,
@@ -790,6 +797,7 @@ def main():
             "device": "cuda",
             "proj_dim": args.proj_dim,
             "proj_max_batch_size": args.proj_max_batch_size,
+            "proj_type": args.proj_type,
         }
         attributor = TRAKAttributor(
             task=task,
@@ -810,6 +818,7 @@ def main():
             "device": "cuda",
             "proj_dim": args.proj_dim,
             "proj_max_batch_size": args.proj_max_batch_size,
+            "proj_type": args.proj_type,
         }
 
         attributor = TracInAttributor(
