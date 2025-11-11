@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Union
+from typing import TYPE_CHECKING, Any, Union
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -20,7 +20,15 @@ import torch
 from torch import nn
 from tqdm import tqdm
 
+from dattri.func.projection import random_project
 from dattri.func.utils import flatten_params
+
+DEFAULT_PROJECTOR_KWARGS = {
+    "feature_batch_size": 0,
+    "proj_max_batch_size": 16,
+    "proj_seed": 0,
+    "device": "cpu",
+}
 
 
 class DVEmbAttributor:
@@ -31,13 +39,14 @@ class DVEmbAttributor:
     stores embeddings for each epoch separately, allowing for epoch-specific analysis.
     """
 
-    def __init__(
+    def __init__(  # noqa: PLR0912, PLR0915
         self,
         task: AttributionTask,
         criterion: nn.Module,
         proj_dim: Optional[int] = None,
         factorization_type: Optional[str] = "none",
         layer_names: Optional[Union[str, List[str]]] = None,
+        projector_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initializes the DVEmb attributor.
 
@@ -57,10 +66,12 @@ class DVEmbAttributor:
                 You can check the names using model.named_modules().
                 Hooks will be registered on these layers to collect gradients.
                 Only available when factorization_type is not "none".
+            projector_kwargs: The keyword arguments for the projector.
 
         Raises:
             ValueError: If an unknown factorization type is provided
-                        or if no Linear layers are found for factorization.
+                        or if no Linear layers are found for factorization
+                        or if `feature_batch_size` is not set when using projection.
         """
         self.task = task
         self.model = task.get_model()
@@ -70,6 +81,18 @@ class DVEmbAttributor:
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
         self.projection_dim = proj_dim
+        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
+        self.projector_kwargs["device"] = self.device
+        if projector_kwargs is not None:
+            self.projector_kwargs.update(projector_kwargs)
+        if proj_dim is not None and self.projector_kwargs["feature_batch_size"] == 0:
+            msg = (
+                "When using random projection, please set "
+                "`feature_batch_size` in `projector_kwargs` "
+                "to the maximum batch size of input features "
+                "(including train and test)."
+            )
+            raise ValueError(msg)
 
         if layer_names is None:
             self.layer_names = None
@@ -111,13 +134,16 @@ class DVEmbAttributor:
                 for layer in self._linear_layers:
                     output_dim = layer.weight.shape[0]
                     input_dim = layer.weight.shape[1]
-                    project_output = self._generate_projector(
-                        output_dim,
-                        self.projection_dim,
+                    batch_size = self.projector_kwargs["feature_batch_size"]
+                    project_output = random_project(
+                        feature=torch.zeros((batch_size, output_dim)),
+                        proj_dim=self.projection_dim,
+                        **self.projector_kwargs,
                     )
-                    project_input = self._generate_projector(
-                        input_dim,
-                        self.projection_dim,
+                    project_input = random_project(
+                        feature=torch.zeros((batch_size, input_dim)),
+                        proj_dim=self.projection_dim,
+                        **self.projector_kwargs,
                     )
                     self.random_projectors.append((project_input, project_output))
 
@@ -149,21 +175,6 @@ class DVEmbAttributor:
                     stacklevel=2,
                 )
         return target_layers
-
-    @staticmethod
-    def _generate_projector(dim: int, proj_dim: int) -> Tensor:
-        """Generates a random projection matrix.
-
-        Args:
-            dim: The original dimension of the features.
-            proj_dim: The dimension to project to.
-
-        Returns:
-            A random projection matrix.
-        """
-        return torch.randn(dim, proj_dim) / torch.sqrt(
-            torch.tensor(proj_dim, dtype=torch.float32),
-        )
 
     def _register_factorization_hooks(self) -> Tuple[list, list]:
         """Register forward/backward hooks on each Linear layer to collect factors.
@@ -260,14 +271,13 @@ class DVEmbAttributor:
         if self.projection_dim is not None:
             if self.projector is None:
                 num_features = per_sample_grads.shape[1]
-                self.projector = self._generate_projector(
-                    num_features,
-                    self.projection_dim,
-                ).to(
-                    device=self.device,
-                    dtype=per_sample_grads.dtype,
+                batch_size = self.projector_kwargs["feature_batch_size"]
+                self.projector = random_project(
+                    feature=torch.zeros((batch_size, num_features)),
+                    proj_dim=self.projection_dim,
+                    **self.projector_kwargs,
                 )
-            per_sample_grads @= self.projector
+            per_sample_grads = self.projector(per_sample_grads)
 
         return per_sample_grads
 
@@ -361,8 +371,8 @@ class DVEmbAttributor:
             self.random_projectors,
             gradient_factors,
         ):
-            a_proj = item["A"] @ proj_a.to(self.device)
-            b_proj = item["B"] @ proj_b.to(self.device)
+            a_proj = proj_a(item["A"])
+            b_proj = proj_b(item["B"])
             proj_factors.append({"A": a_proj, "B": b_proj, "has_bias": False})
         return proj_factors
 
@@ -383,8 +393,8 @@ class DVEmbAttributor:
             self.random_projectors,
             gradient_factors,
         ):
-            a_proj = item["A"] @ proj_a.to(self.device)
-            b_proj = item["B"] @ proj_b.to(self.device)
+            a_proj = proj_a(item["A"])
+            b_proj = proj_b(item["B"])
             grad = a_proj.mul(b_proj)
             projected_grads_parts.append(grad.flatten(start_dim=1))
         return torch.cat(projected_grads_parts, dim=1)

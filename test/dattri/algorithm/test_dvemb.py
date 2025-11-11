@@ -112,6 +112,7 @@ class TestDVEmbAttributor:
             criterion=self.criterion,
             proj_dim=proj_dim,
             factorization_type="none",
+            projector_kwargs={"feature_batch_size": 4},
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.projector is not None
@@ -135,6 +136,7 @@ class TestDVEmbAttributor:
             criterion=self.criterion,
             factorization_type="kronecker",
             proj_dim=proj_dim,
+            projector_kwargs={"feature_batch_size": 4},
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
@@ -157,6 +159,7 @@ class TestDVEmbAttributor:
             criterion=self.criterion,
             factorization_type="elementwise",
             proj_dim=proj_dim,
+            projector_kwargs={"feature_batch_size": 4},
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
@@ -172,6 +175,7 @@ class TestDVEmbAttributor:
             criterion=self.criterion,
             factorization_type="kronecker",
             layer_names=[target_layer],
+            projector_kwargs={"feature_batch_size": 4},
         )
         assert len(attributor._linear_layers) == 1
         assert (
