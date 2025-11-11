@@ -89,6 +89,8 @@ class DVEmbExample(unittest.TestCase):
             factorization_type="kronecker",
             # "kronecker" is the same as used in the original DVEmb paper
             # To get better performance, consider using "elementwise"
+            projector_kwargs={"feature_batch_size": 128},
+            # 128 is the maximum batch size of input features (including train and test)
         )
 
         # Train the model and cache gradients using DVEmbAttributor
