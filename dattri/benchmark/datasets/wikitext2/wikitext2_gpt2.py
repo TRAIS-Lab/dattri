@@ -23,7 +23,7 @@ def train_wikitext2_gpt2(
     """Train a gpt2  model on the wikitext dataset.
 
     Args:
-        dataloader: The training dataloader for the wikitext dataset.
+        dataloader: The dataloader for the wikitext dataset.
         seed: The seed for training the model.
         device: The device to train the model on.
         epoch_num: The number of epochs to train the model.
@@ -50,7 +50,6 @@ def train_wikitext2_gpt2(
             loss = outputs.loss
             loss.backward()
             optimizer.step()
-            lr_scheduler.step() 
             optimizer.zero_grad()
 
     return model
@@ -65,14 +64,14 @@ def loss_wikitext2_gpt2(
 
     Args:
         model_path: The path to the saved model weights.
-        dataloader: The eval dataloader for the wikitext dataset.
+        dataloader: The dataloader for the wikitext dataset.
         device: The device to evaluate the model on.
 
     Returns:
         float: The per-example loss of the model on the loader.
     """
-    model = create_gpt2_model() 
-    model.load_state_dict(torch.load(Path(model_path))) 
+    model = create_gpt2_model()
+    model.load_state_dict(torch.load(Path(model_path)))
     model.eval()
     model.to(device)
     loss_list = []
@@ -82,5 +81,5 @@ def loss_wikitext2_gpt2(
         for batch in dataloader:
             outputs = model(**batch)
             loss = outputs.loss
-            loss_list.append(loss.repeat(batch['input_ids'].shape[0]).cpu().unsqueeze(0))
+            loss_list.append(loss.clone().detach().cpu().unsqueeze(0))
     return torch.cat(loss_list)
