@@ -285,12 +285,9 @@ def load_benchmark(  # noqa:PLR0914
         for i in range(models_half_count)
     ]
     if SUPPORTED_DATASETS[dataset] is not None:
-        if dataset == "wikitext2":
-            train_dataset, test_dataset = SUPPORTED_DATASETS[dataset]()
-        else:
-            train_dataset, test_dataset = SUPPORTED_DATASETS[dataset](
-                download_path / "dataset",
-            )
+        train_dataset, test_dataset = SUPPORTED_DATASETS[dataset](
+            download_path / "dataset",
+        )
 
     else:
         train_dataset = test_dataset = None

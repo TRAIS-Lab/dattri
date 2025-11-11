@@ -13,7 +13,7 @@ from dattri.task import AttributionTask
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("--device", default="cuda:1", type=str)
+    parser.add_argument("--device", default="cpu", type=str)
     args = parser.parse_args()
 
     model_details, groundtruth = load_benchmark(
@@ -29,7 +29,7 @@ if __name__ == "__main__":
         Returns:
             model: The model with all Conv1D modules replaced with Linear modules.
         """
-        # GPT-2 is defined in terms of Conv1D. However, this does not work for EK-FAC.
+        # GPT-2 is defined in terms of Conv1D.
         # Here, we convert these Conv1D modules to linear modules recursively.
         for name, module in model.named_children():
             if len(list(module.children())) > 0:
@@ -58,13 +58,12 @@ if __name__ == "__main__":
         model.load_state_dict(state_dict, strict=True)
         model = replace_conv1d_modules(model)
 
-        model.cuda()
+        model.to(args.device)
         model.eval()
         return model
 
     def f(model, batch, device):
-        # This is the same as the loss_wikitext_gpt function
-        model.to(device)  # puts the model on MPS if device="mps"
+        model.to(device)
         inputs = {
             k: (v.to(device) if torch.is_tensor(v) else v) for k, v in batch.items()
         }
@@ -72,7 +71,7 @@ if __name__ == "__main__":
         return outputs.loss
 
     model = model_details["model"]
-    model = replace_conv1d_modules(model)  # conv the model
+    model = replace_conv1d_modules(model)  # replace conv1d with linear 
     train_dataset = model_details["train_dataset"]
     eval_dataset = model_details["test_dataset"]
 
@@ -87,7 +86,7 @@ if __name__ == "__main__":
     )
 
     eval_dataloader = DataLoader(
-        eval_dataset, collate_fn=default_data_collator, batch_size=4, shuffle=False,
+        eval_dataset, collate_fn=default_data_collator, batch_size=4, sampler = test_sampler, shuffle=False,
     )
 
     projector_kwargs = {
@@ -99,7 +98,7 @@ if __name__ == "__main__":
     task = AttributionTask(
         model=model.to(args.device),
         loss_func=f,
-        checkpoints=model_details["models_half"][0],
+        checkpoints=model_details["models_full"][0],
         checkpoints_load_func=checkpoints_load_func,
     )
 
