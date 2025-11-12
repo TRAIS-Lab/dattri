@@ -1,4 +1,4 @@
-"""This module contains functions for GPT2 training/evaluation on the wikitext2 dataset."""
+"""This module contains functions for GPT2 training/evaluation on wikitext2 dataset."""
 
 from __future__ import annotations
 

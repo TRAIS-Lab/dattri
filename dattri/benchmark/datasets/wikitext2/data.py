@@ -14,12 +14,13 @@ if TYPE_CHECKING:
 
 
 def create_wikitext2_dataset(
-    path: str | None = None, 
+    path: str | None = None,
     block_size: int = 512,
 ) -> Tuple[torch.utils.data.Dataset, torch.utils.data.Dataset]:
     """Create tokenized WikiText datasets for GPT-style language modeling.
 
     Args:
+        path: The path to the dataset directory.
         block_size: Length of each sequence block after tokenization.
 
     Returns:
@@ -29,7 +30,7 @@ def create_wikitext2_dataset(
     from transformers import AutoTokenizer
 
     # dataset and tokenizer
-    raw_datasets = load_dataset("wikitext", "wikitext-2-raw-v1", cache_dir = path)
+    raw_datasets = load_dataset("wikitext", "wikitext-2-raw-v1", cache_dir=path)
     if "validation" not in raw_datasets:
         raw_datasets["validation"] = load_dataset(
             "wikitext",
