@@ -54,8 +54,14 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
-from transformers.utils import check_min_version, send_example_telemetry
+from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
+
+# send_example_telemetry was removed in newer versions of transformers
+try:
+    from transformers.utils import send_example_telemetry
+except ImportError:
+    send_example_telemetry = None
 
 from dattri.benchmark.utils import SubsetSampler
 
@@ -324,7 +330,8 @@ def main():
 
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    send_example_telemetry("run_clm_no_trainer", args)
+    if send_example_telemetry is not None:
+        send_example_telemetry("run_clm_no_trainer", args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
@@ -590,7 +597,7 @@ def main():
     from transformers.pytorch_utils import Conv1D
     from dattri.task import AttributionTask
 
-    model_id = -1
+    model_id = 1
     checkpoint = f"{args.output_dir}/{model_id}"
 
     def checkpoints_load_func(model, checkpoint):
@@ -713,10 +720,20 @@ def main():
     model = replace_conv1d_modules(model)
     layer_names = find_layers(model, "Linear", return_type="name")
 
+    # Sparsifier kwargs: First stage compression
+    sparsifier_kwargs = {
+        "device": "cuda",
+        "proj_dim": 64,
+        "proj_max_batch_size": 32,
+        "proj_type": "normal",
+    }
+
+    # Projector kwargs: Second stage
     projector_kwargs = {
         "device": "cuda",
-        "proj_dim": 32,
+        "proj_dim": -1,
         "proj_max_batch_size": 32,
+        "proj_type": "identity",
     }
 
     task = AttributionTask(
@@ -730,8 +747,10 @@ def main():
         task=task,
         layer_names=layer_names,
         device="cuda",
-        damping=1e-2,
+        damping=1e0,
+        hessian="eFIM",
         offload="cpu",
+        sparsifier_kwargs=sparsifier_kwargs,
         projector_kwargs=projector_kwargs,
     )
 

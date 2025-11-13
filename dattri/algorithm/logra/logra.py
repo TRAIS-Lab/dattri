@@ -23,7 +23,7 @@ from dattri.algorithm.logra.core.hook import HookManager
 from dattri.algorithm.logra.core.metadata import MetadataManager
 from dattri.algorithm.logra.offload import create_offload_manager
 from dattri.algorithm.logra.utils.common import stable_inverse
-from dattri.algorithm.logra.utils.projector import setup_model_projectors
+from dattri.algorithm.logra.utils.projector import setup_model_compressors
 from dattri.algorithm.utils import _check_shuffle
 
 logger = logging.getLogger(__name__)
@@ -45,6 +45,7 @@ class LoGraAttributor(BaseAttributor):
         hessian: Literal["Identity", "eFIM"] = "eFIM",
         damping: Optional[float] = None,
         device: str = "cpu",
+        sparsifier_kwargs: Optional[Dict[str, Any]] = None,
         projector_kwargs: Optional[Dict[str, Any]] = None,
         offload: Literal["none", "cpu", "disk"] = "cpu",
         cache_dir: Optional[str] = None,
@@ -64,7 +65,9 @@ class LoGraAttributor(BaseAttributor):
                 fisher information matrix.
             damping: Damping factor for Hessian inverse (when hessian="eFIM")
             device: Device to run computations on
-            projector_kwargs: Arguments for random projection (proj_dim, method, etc.)
+            sparsifier_kwargs: Arguments for sparsifier stage (first stage compression)
+            projector_kwargs: Arguments for projector stage (second stage compression).
+                If None, defaults to identity projection (no further compression).
             offload: Memory management strategy ("none", "cpu", "disk"), stating
                 the place to offload the gradients.
                 "cpu": stores gradients on CPU and moves to device when needed.
@@ -79,7 +82,17 @@ class LoGraAttributor(BaseAttributor):
         self.device = device
         self.hessian = hessian
         self.damping = damping
-        self.projector_kwargs = projector_kwargs or {}
+        self.sparsifier_kwargs = sparsifier_kwargs or {
+            device: device,
+            "proj_dim": 32,
+            "proj_type": "normal",
+        }
+        # Default projector_kwargs to identity if not specified
+        self.projector_kwargs = projector_kwargs or {
+            "device": device,
+            "proj_dim": -1,
+            "proj_type": "identity",
+        }
         self.offload = offload
         self.cache_dir = cache_dir
         self.chunk_size = chunk_size
@@ -88,7 +101,6 @@ class LoGraAttributor(BaseAttributor):
         task._load_checkpoints(0)
         self.model = task.get_model()
         self.model.to(device)
-        self.model.eval()
 
         # Determine layer names
         if layer_names is None:
@@ -124,7 +136,7 @@ class LoGraAttributor(BaseAttributor):
         # Initialize other components
         self.full_train_dataloader: Optional["DataLoader"] = None
         self.hook_manager: Optional[HookManager] = None
-        self.projectors: Optional[List[Any]] = None
+        self.compressors: Optional[List[Any]] = None
         self.layer_dims: Optional[List[int]] = None
         self.total_proj_dim: Optional[int] = None
 
@@ -133,22 +145,32 @@ class LoGraAttributor(BaseAttributor):
             msg = "cache_dir must be provided when offload='disk'"
             raise ValueError(msg)
 
-    def _setup_projectors(self, train_dataloader: "DataLoader") -> None:
-        """Set up projectors for the model layers.
+    def _setup_compressors(self, train_dataloader: "DataLoader") -> None:
+        """Set up compressors for the model layers.
 
         Args:
-            train_dataloader: DataLoader for training data used to set up projectors.
+            train_dataloader: DataLoader for training data used to get sample inputs.
         """
-        if not self.projector_kwargs:
-            self.projectors = []
+        if not self.sparsifier_kwargs and not self.projector_kwargs:
+            self.compressors = []
             return
 
-        logger.info("Setting up projectors...")
-        self.projectors = setup_model_projectors(
+        logger.info("Setting up compressors...")
+
+        # Get sample batch from dataloader
+        sample_batch = next(iter(train_dataloader))
+        if isinstance(sample_batch, dict):
+            sample_inputs = {k: v.to(self.device) for k, v in sample_batch.items()}
+        else:
+            sample_inputs = sample_batch[0].to(self.device)
+
+        # Use separate kwargs for sparsifier and projector stages
+        self.compressors = setup_model_compressors(
             self.model,
             self.layer_names,
-            self.projector_kwargs,
-            train_dataloader,
+            sparsifier_kwargs=self.sparsifier_kwargs,
+            projector_kwargs=self.projector_kwargs,
+            sample_inputs=sample_inputs,
             device=self.device,
         )
 
@@ -183,9 +205,9 @@ class LoGraAttributor(BaseAttributor):
 
         self.full_train_dataloader = full_train_dataloader
 
-        # Setup projectors if not already done
-        if self.projectors is None:
-            self._setup_projectors(full_train_dataloader)
+        # Setup compressors if not already done
+        if self.compressors is None:
+            self._setup_compressors(full_train_dataloader)
 
         # Initialize metadata for complete dataset
         self.metadata.initialize_complete_dataset(
@@ -198,9 +220,10 @@ class LoGraAttributor(BaseAttributor):
             self.hook_manager = HookManager(
                 self.model,
                 self.layer_names,
+                device=self.device,
             )
-            if self.projectors:
-                self.hook_manager.set_projectors(self.projectors)
+            if self.compressors:
+                self.hook_manager.set_compressors(self.compressors)
 
         # Collect gradients using hooks
         logger.info("Computing gradients using hooks...")
@@ -643,9 +666,9 @@ class LoGraAttributor(BaseAttributor):
         # Synchronize layer dimensions
         self._sync_layer_dims()
 
-        # Set up projectors if needed
-        if self.projectors is None:
-            self._setup_projectors(test_dataloader)
+        # Set up compressors if needed
+        if self.compressors is None:
+            self._setup_compressors(test_dataloader)
 
         # Get or compute IFVP
         use_cached_ifvp = self.offload_manager.has_ifvp()
@@ -764,9 +787,10 @@ class LoGraAttributor(BaseAttributor):
             self.hook_manager = HookManager(
                 self.model,
                 self.layer_names,
+                device=self.device,
             )
-            if self.projectors:
-                self.hook_manager.set_projectors(self.projectors)
+            if self.compressors:
+                self.hook_manager.set_compressors(self.compressors)
 
         all_test_grads = []
         test_batch_mapping = {}

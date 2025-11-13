@@ -55,7 +55,7 @@ def _rademacher(
     return matrix.to(dtype=dtype)
 
 
-def _generate_mask_indices(
+def _mask(
     input_dim: int,
     output_dim: int,
     generator: torch.Generator,
@@ -133,7 +133,7 @@ def _parse_grass_projection_type(proj_type: str) -> Tuple[str, int]:
 
 class ProjectionType(str, Enum):
     """Projection type used for projectors."""
-
+    identity: str = "identity"
     normal: str = "normal"
     rademacher: str = "rademacher"
     sjlt: str = "sjlt"
@@ -163,7 +163,8 @@ class AbstractProjector(ABC):
             seed (int): Random seed for the generation of the sketching
                 (projection) matrix.
             proj_type (ProjectionType): The random projection type used for the
-                projection. Available options are "sjlt", "rademacher", "normal".
+                projection. Available options are "sjlt" (if cuda), "rademacher",
+                "normal", "random_mask", and "identity".
             device (torch.device): Device to use. Defaults to cpu.
         """
         self.feature_dim = feature_dim
@@ -228,8 +229,8 @@ class BasicProjector(AbstractProjector):
             seed (int): Random seed for the generation of the sketching
                 (projection) matrix.
             proj_type (ProjectionType): The random projection type used for the
-                projection. Available options are "sjlt", "rademacher", "normal",
-                "random_mask".
+                projection. Available options are "rademacher", "normal",
+                "random_mask", and "identity".
             device (torch.device): Device to use. Defaults to cpu.
             block_size (int): Maximum number of projection dimension allowed.
                 Thus, min(block_size, proj_dim) will be used as the actual
@@ -258,6 +259,8 @@ class BasicProjector(AbstractProjector):
         self.get_generator_states()
         if proj_type == ProjectionType.random_mask:
             self._gen_randomness_mask(self.generator_states[0])
+        elif proj_type == ProjectionType.identity:
+            pass  # No randomness needed for identity projection
         else:
             self._gen_randomness_dense(self.generator_states[0])
 
@@ -287,7 +290,7 @@ class BasicProjector(AbstractProjector):
                 block will be given a unique generator states.
         """
         self.generator.set_state(generator_state)
-        self.active_indices = _generate_mask_indices(
+        self.active_indices = _mask(
             self.feature_dim,
             self.proj_dim,
             self.generator,
@@ -341,12 +344,16 @@ class BasicProjector(AbstractProjector):
             self.get_generator_states()  # regenerate random seeds for new ensemble_id
             if self.proj_type == ProjectionType.random_mask:
                 self._gen_randomness_mask(self.generator_states[0])
+            elif self.proj_type == ProjectionType.identity:
+                pass  # No randomness needed for identity projection
             elif self.num_blocks == 1:
                 self._gen_randomness_dense(self.generator_states[0])
 
         # Handle random_mask projection separately
         if self.proj_type == ProjectionType.random_mask:
             return features[:, self.active_indices]
+        elif self.proj_type == ProjectionType.identity:
+            return features
 
         sketch = torch.zeros(
             size=(features.size(0), self.proj_dim),
@@ -387,7 +394,6 @@ class CudaProjector(AbstractProjector):
         seed: int,
         proj_type: ProjectionType,
         device: torch.device,
-        max_batch_size: int,
         dtype: torch.dtype = torch.float32,
         grass_multiplier: int = 4,
     ) -> None:
@@ -401,12 +407,8 @@ class CudaProjector(AbstractProjector):
             seed (int): Random seed.
             proj_type (ProjectionType): The random projection type used for the
                 projection. Available options are "sjlt", "rademacher", "normal",
-                "random_mask", "grass".
+                "random_mask", "grass", and "identity".
             device (torch.device): Device to use.
-            max_batch_size (int): Explicitly constrains the batch size of
-                the CudaProjector is going to use for projection.
-                Set this if you get a 'The batch size of the CudaProjector is
-                too large for your GPU' error. Must be either 8, 16, or 32.
             dtype (torch.dtype): The dtype used in the projector.
             grass_multiplier (int): For GraSS projection, the multiplier for the
                 intermediate dimension. Intermediate dim = proj_dim * grass_multiplier.
@@ -417,7 +419,6 @@ class CudaProjector(AbstractProjector):
             ModuleNotFoundError: When sjlt is not installed.
         """
         super().__init__(feature_dim, proj_dim, seed, proj_type, device)
-        self.max_batch_size = max_batch_size
         self.dtype = dtype
         self.grass_multiplier = grass_multiplier
 
@@ -432,17 +433,21 @@ class CudaProjector(AbstractProjector):
         self.current_ensemble_id = -1  # Init to -1 to force generation on first call
 
         # Initialize placeholders for projection components
-        self.sjlt = None
-        self.proj_matrix = None
-        self.active_indices = None
-
-        # Check for sjlt import early if needed
-        if self.proj_type in {ProjectionType.sjlt, ProjectionType.grass}:
+        if self.proj_type == ProjectionType.sjlt:
+            # Check for sjlt import early if needed
             try:
                 from sjlt import SJLTProjection  # noqa: F401
             except ImportError:
                 msg = "sjlt not found. Please run `pip install sjlt` to install."
                 raise ModuleNotFoundError(msg) from None
+            self.sjlt = None
+        elif self.proj_type in [ProjectionType.rademacher, ProjectionType.normal]:
+            self.proj_matrix = None
+        elif self.proj_type == ProjectionType.random_mask:
+            self.active_indices = None
+        elif self.proj_type == ProjectionType.grass:
+            self.sjlt = None
+            self.active_indices = None
 
     def _gen_randomness_sjlt(
         self,
@@ -515,7 +520,7 @@ class CudaProjector(AbstractProjector):
         if output_dim is None:
             output_dim = self.proj_dim
 
-        self.active_indices = _generate_mask_indices(
+        self.active_indices = _mask(
             input_dim,
             output_dim,
             self.generator,
@@ -587,6 +592,8 @@ class CudaProjector(AbstractProjector):
             self._gen_randomness_mask()
         elif self.proj_type == ProjectionType.grass:
             self._gen_randomness_grass()
+        elif self.proj_type == ProjectionType.identity:
+            pass  # No randomness needed for identity projection
         else:
             msg = f"Unknown projection type: {self.proj_type}"
             raise ValueError(msg)
@@ -623,12 +630,14 @@ class CudaProjector(AbstractProjector):
         elif self.proj_type == ProjectionType.random_mask:
             result = features[:, self.active_indices]
 
-        elif self.proj_type == ProjectionType.grass:  # TODO: scaling
+        elif self.proj_type == ProjectionType.grass:
             # Stage 1: random_mask (feature_dim -> intermediate_dim)
             intermediate = features[:, self.active_indices]
             # Stage 2: sjlt (intermediate_dim -> proj_dim)
             with torch.no_grad():
                 result = self.sjlt(intermediate)
+        elif self.proj_type == ProjectionType.identity:
+            result = features
 
         return result
 
@@ -650,7 +659,6 @@ class ChunkedCudaProjector:
         max_chunk_size: int,
         dim_per_chunk: list,
         feature_batch_size: int,
-        proj_max_batch_size: int,
         device: torch.device,
         dtype: torch.dtype,
     ) -> None:
@@ -662,7 +670,6 @@ class ChunkedCudaProjector:
             max_chunk_size (int): The maximum size of each chunk.
             dim_per_chunk (list): The number of feature dimensions per chunk.
             feature_batch_size (int): The batch size of input feature.
-            proj_max_batch_size (int): The maximum batch size for each projector.
             device (torch.device): Device to use.
             dtype (torch.dtype): The dtype of the projected matrix.
         """
@@ -672,7 +679,6 @@ class ChunkedCudaProjector:
         self.dim_per_chunk = dim_per_chunk
         self.feature_batch_size = feature_batch_size
         self.max_chunk_size = max_chunk_size
-        self.proj_max_batch_size = proj_max_batch_size
         self.device = device
         self.dtype = dtype
         self.input_allocated = False
@@ -1104,7 +1110,6 @@ def make_random_projector(
                 seed=proj_seed,
                 proj_type=proj_type,
                 device=device,
-                max_batch_size=proj_max_batch_size,
                 dtype=dtype,
                 grass_multiplier=grass_multiplier,
             )
@@ -1129,7 +1134,6 @@ def make_random_projector(
                     seed=seeds[i],
                     proj_type=proj_type,
                     device=device,
-                    max_batch_size=proj_max_batch_size,
                     dtype=dtype,
                     grass_multiplier=grass_multiplier,
                 )
@@ -1140,7 +1144,6 @@ def make_random_projector(
                 max_chunk_size,
                 param_chunk_sizes,
                 feature_batch_size,
-                proj_max_batch_size,
                 device,
                 dtype,
             )
@@ -1314,6 +1317,7 @@ def random_project(
     # convert proj_type to ProjectionType
     # Define valid projection types for each device
     proj_type_mapping = {
+        "identity": ProjectionType.identity,
         "rademacher": ProjectionType.rademacher,
         "normal": ProjectionType.normal,
         "random_mask": ProjectionType.random_mask,
@@ -1322,8 +1326,8 @@ def random_project(
     }
 
     valid_proj_types = {
-        "cpu": {"rademacher", "normal", "random_mask"},
-        "cuda": {"sjlt", "rademacher", "normal", "random_mask", "grass"},
+        "cpu": {"rademacher", "normal", "random_mask", "identity"},
+        "cuda": {"sjlt", "rademacher", "normal", "random_mask", "grass", "identity"},
     }
 
     if device.type not in valid_proj_types:
