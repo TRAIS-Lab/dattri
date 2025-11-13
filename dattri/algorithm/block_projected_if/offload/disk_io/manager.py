@@ -390,7 +390,10 @@ class ChunkedDiskIOManager:
             chunk_id: ID of the chunk being written.
             tensor: Tensor data to write.
             batch_info: List of batch metadata dictionaries.
-        """
+
+        Raises:
+            Exception: If an error occurs while writing the chunk to disk.
+        """  # noqa: DOC502
         try:
             subdir = "grad" if data_type == "gradients" else data_type
             chunk_dir = str(pathlib.Path(self.cache_dir) / subdir)

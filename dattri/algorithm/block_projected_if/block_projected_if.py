@@ -245,7 +245,9 @@ class BlockProjectedIFAttributor(BaseAttributor):
 
             # Prepare inputs and compute loss
             loss = self.task.original_loss_func(self.model, batch, self.device)
-            batch_size = full_train_dataloader.batch_size
+
+            # Get actual batch size (the last batch may have fewer samples)
+            batch_size = batch[0].shape[0]
 
             # Update metadata
             self.metadata.add_batch_info(batch_idx, batch_size)

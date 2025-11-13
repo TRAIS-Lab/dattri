@@ -46,8 +46,8 @@ class TestLoGraAttributor:
             return nn.functional.cross_entropy(outputs, targets)
 
         self.task = AttributionTask(
-            loss_func=f,
             model=model,
+            loss_func=f,
             checkpoints=model.state_dict(),
         )
         self.attributor = LoGraAttributor(
@@ -61,7 +61,7 @@ class TestLoGraAttributor:
     def test_attribute(self) -> None:
         """Ensure attribution works with non-empty projectors."""
         self.attributor.cache(self.train_loader)
-        assert self.attributor.projectors, "Projectors should be initialized"
+        assert self.attributor.compressors, "Compressors should be initialized"
         assert self.attributor.layer_dims == [
             64,  # proj_dim = 64 (8*8)
         ] * len(

@@ -203,7 +203,7 @@ def _compute_compressed_grad(
         tensor_input = torch.cat([tensor_input, ones], dim=-1)
 
     # Delegate to compressor: it handles component-based compression
-    return compressor.forward((grad_output, tensor_input))
+    return compressor.forward(grad_output, tensor_input)
 
 
 class HookManager:
@@ -314,10 +314,6 @@ class HookManager:
         gradient.
         Otherwise: Uses standard F.linear (no overhead)
 
-        Note: Control hook activation by setting model to train/eval mode and
-        managing requires_grad on inputs. The hook is typically active only
-        when model.train() is explicitly called before computing gradients.
-
         Args:
             module: The Linear module being hooked
             idx: Index of the layer in the layer_names list
@@ -326,7 +322,7 @@ class HookManager:
         Returns:
             Output tensor from the linear layer
         """
-        if tensor_input.requires_grad:
+        if module.weight.requires_grad:
             # Use our custom backward that computes only compressed gradients
             # Pass hook_manager_id (not self) to avoid keeping hook manager
             # in autograd graph
@@ -337,7 +333,7 @@ class HookManager:
                 self._hook_manager_id,
                 idx,
             )
-        # Use standard forward when gradients not needed
+        # No gradient needed: use standard linear forward
         return F.linear(tensor_input, module.weight, module.bias)
 
     def set_compressors(self, compressors: List[Compressor]) -> None:
