@@ -7,7 +7,6 @@ This module implements a two-stage compression pipeline:
 
 from __future__ import annotations
 
-from abc import ABC
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -24,27 +23,13 @@ from dattri.func.projection import AbstractProjector, random_project
 logger = logging.getLogger(__name__)
 
 
-class ProjectionContainer(ABC):  # noqa: B024 - Abstract base class, forward method defined in subclasses
-    """Abstract base class for compression containers."""
-
-    def __init__(self, name: str, index: int) -> None:
-        """Initialize the projection container.
-
-        Args:
-            name: Name of the layer.
-            index: Index of the layer.
-        """
-        self.name = name
-        self.index = index
-
-
-class Sparsifier(ProjectionContainer):
+class Sparsifier:
     """Container for sparsification (first stage of two-step compression).
 
     Sparsification is always factorized, operating component-wise:
-        Pv = (P_1 ⊗ P_2) (v1 ⊗ v2) = (P_1 v1) ⊗ (P_2 v2),
-    with P_1 in R^{d_1 * k_1'}, P_2 in R^{d_2 * k_2'},
-    and v in R^{d_1 * d_2}.
+        Pv = (P1 ⊗ P2) (v1 ⊗ v2) = (P1 v1) ⊗ (P2 v2),
+    with P1 in R^(d1 * k1'), P2 in R^(d2 * k2'),
+    and v in R^(d1 * d2).
     """
 
     def __init__(self, name: str, index: int) -> None:
@@ -54,7 +39,9 @@ class Sparsifier(ProjectionContainer):
             name: Name of the layer.
             index: Index of the layer.
         """
-        super().__init__(name, index)
+        self.name = name
+        self.index = index
+
         # Sparsifier functions (always factorized)
         self.sparsifier_comp: Tuple[
             AbstractProjector,
@@ -62,7 +49,7 @@ class Sparsifier(ProjectionContainer):
         ] = (None, None)
 
         # Dimensions after sparsification
-        self.intermediate_dims = None  # (k_1', k_2')
+        self.intermediate_dims = None  # (k1', k2')
 
     def forward(
         self,
@@ -72,20 +59,21 @@ class Sparsifier(ProjectionContainer):
         """Apply sparsification to input components.
 
         Sparsification is always factorized, operating component-wise:
-            Input: (v1, v2) - input components [batch, d_1] and
-            [batch, d_2]
+            Input: (v1, v2) - input components [batch, d1] and
+            [batch, d2]
             Output: (v1_sparse, v2_sparse) - sparsified components
-            [batch, k_1'] and [batch, k_2']
+            [batch, k1'] and [batch, k2']
 
         Use case: During gradient computation, apply sparsifiers to each
         component (grad_output, input)
 
         Args:
-            v1: First input component [batch, d_1]
-            v2: Second input component [batch, d_2]
+            v1: First input component [batch, d1]
+            v2: Second input component [batch, d2]
 
         Returns:
-            (component_1_sparse, component_2_sparse) - sparsified components
+            (v1_sparse, v2_sparse): sparsified components ([batch, k1'],
+            [batch, k2'])
         """
         sparsifier_1, sparsifier_2 = self.sparsifier_comp
 
@@ -96,12 +84,12 @@ class Sparsifier(ProjectionContainer):
         return v1_sparse, v2_sparse
 
 
-class Projector(ProjectionContainer):
+class Projector:
     """Container for projection (second stage of two-step compression).
 
     Projection is a simple, one-step projection:
         Pv = P v.
-    with P in R^{k * k'} and v in R^{k'}.
+    with P in R^(k * k') and v in R^(k').
     """
 
     def __init__(self, name: str, index: int) -> None:
@@ -111,7 +99,8 @@ class Projector(ProjectionContainer):
             name: Name of the layer.
             index: Index of the layer.
         """
-        super().__init__(name, index)
+        self.name = name
+        self.index = index
         self.projector: AbstractProjector = None
 
     def forward(self, v: Tensor) -> Tensor:
@@ -126,7 +115,7 @@ class Projector(ProjectionContainer):
         return self.projector(v, ensemble_id=0)
 
 
-class Compressor(ProjectionContainer):
+class Compressor:
     """Unified container for full two-stage compression pipeline.
 
     Forward:   input → Sparsifier → Projector → compressed
@@ -139,7 +128,8 @@ class Compressor(ProjectionContainer):
             name: Name of the layer.
             index: Index of the layer.
         """
-        super().__init__(name, index)
+        self.name = name
+        self.index = index
         self.sparsifier: Sparsifier = None
         self.projector: Projector = None
 
@@ -161,8 +151,8 @@ class Compressor(ProjectionContainer):
            - Applies projection
 
         Args:
-            v1: First input component [batch, d_1] or [batch, seq, d_1]
-            v2: Second input component [batch, d_2] or [batch, seq, d_2]
+            v1: First input component [batch, d1] or [batch, seq, d1]
+            v2: Second input component [batch, d2] or [batch, seq, d2]
 
         Returns:
             Compressed output tensor
