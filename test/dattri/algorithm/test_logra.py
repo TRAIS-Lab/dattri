@@ -36,6 +36,7 @@ class TestLoGraAttributor:
             pin_memory=False,
         )
         model = train_mnist_lr(self.train_loader, epoch_num=1)
+        model.eval()
 
         def f(model, batch, device):
             inputs, targets = batch
