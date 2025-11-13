@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm.logra.logra import LoGraAttributor
+from dattri.algorithm import LoGraAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.task import AttributionTask
 
@@ -44,13 +44,6 @@ class TestLoGraAttributor:
             outputs = model(inputs)
             return nn.functional.cross_entropy(outputs, targets)
 
-        # init projectors.
-        self.projector_kwargs = {
-            "proj_dim": 8,
-            "proj_max_batch_size": 8,
-            "device": "cpu",
-        }
-
         self.task = AttributionTask(
             loss_func=f,
             model=model,
@@ -60,8 +53,8 @@ class TestLoGraAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
+            proj_dim=64,  # projection dimension (must be perfect square: 8*8=64)
             offload="cpu",
-            projector_kwargs=self.projector_kwargs,
         )
 
     def test_attribute(self) -> None:
@@ -69,7 +62,7 @@ class TestLoGraAttributor:
         self.attributor.cache(self.train_loader)
         assert self.attributor.projectors, "Projectors should be initialized"
         assert self.attributor.layer_dims == [
-            self.projector_kwargs["proj_dim"] ** 2,
+            64,  # proj_dim = 64 (8*8)
         ] * len(
             self.attributor.layer_names,
         )

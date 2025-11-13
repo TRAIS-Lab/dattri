@@ -591,7 +591,7 @@ def main():
         eval_dataset, collate_fn=default_data_collator, batch_size=4, shuffle=False
     )
 
-    from dattri.algorithm.logra.logra import LoGraAttributor
+    from dattri.algorithm import LoGraAttributor
     import torch.nn as nn
 
     from transformers.pytorch_utils import Conv1D
@@ -720,22 +720,6 @@ def main():
     model = replace_conv1d_modules(model)
     layer_names = find_layers(model, "Linear", return_type="name")
 
-    # Sparsifier kwargs: First stage compression
-    sparsifier_kwargs = {
-        "device": "cuda",
-        "proj_dim": 128,
-        "proj_max_batch_size": 32,
-        "proj_type": "random_mask",
-    }
-
-    # Projector kwargs: Second stage
-    projector_kwargs = {
-        "device": "cuda",
-        "proj_dim": 4096,
-        "proj_max_batch_size": 32,
-        "proj_type": "sjlt",
-    }
-
     task = AttributionTask(
         model=model,
         loss_func=f,
@@ -746,12 +730,11 @@ def main():
     attributor = LoGraAttributor(
         task=task,
         layer_names=layer_names,
-        device="cuda",
-        damping=1e0,
         hessian="eFIM",
+        damping=1e0,
+        device="cuda",
+        proj_dim=4096,  # 64*64
         offload="cpu",
-        sparsifier_kwargs=sparsifier_kwargs,
-        projector_kwargs=projector_kwargs,
     )
 
     attributor.cache(train_dataloader)

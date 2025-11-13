@@ -1,4 +1,7 @@
-"""LoGra Attributor - Influence Function with gradient projection."""
+"""Block-Projected Influence Function Attributor.
+
+General two-stage gradient compression.
+"""
 
 from __future__ import annotations
 
@@ -17,23 +20,27 @@ from torch import nn
 from tqdm import tqdm
 
 from dattri.algorithm.base import BaseAttributor
+from dattri.algorithm.block_projected_if.core.compressor import setup_model_compressors
 
-# Import LoGra utilities
-from dattri.algorithm.logra.core.hook import HookManager
-from dattri.algorithm.logra.core.metadata import MetadataManager
-from dattri.algorithm.logra.offload import create_offload_manager
-from dattri.algorithm.logra.utils.common import stable_inverse
-from dattri.algorithm.logra.utils.projector import setup_model_compressors
+# Import utilities
+from dattri.algorithm.block_projected_if.core.hook import HookManager
+from dattri.algorithm.block_projected_if.core.metadata import MetadataManager
+from dattri.algorithm.block_projected_if.core.utils import stable_inverse
+from dattri.algorithm.block_projected_if.offload import create_offload_manager
 from dattri.algorithm.utils import _check_shuffle
 
 logger = logging.getLogger(__name__)
 
 
-class LoGraAttributor(BaseAttributor):
-    """LoGra Attributor.
+class BlockProjectedIFAttributor(BaseAttributor):
+    """Block-Projected Influence Function Attributor.
 
-    Computes influence scores using projected gradients for efficiency.
+    A general attributor that computes influence scores using a two-stage
+    compression pipeline with projected gradients for efficiency.
     Uses hooks to capture per-sample gradients and applies random projections.
+
+    This is a general implementation that supports arbitrary compressor configurations.
+    For specific methods like LoGra or FactGraSS, use the wrapper classes.
     """
 
     def __init__(
@@ -51,7 +58,7 @@ class LoGraAttributor(BaseAttributor):
         cache_dir: Optional[str] = None,
         chunk_size: int = 16,
     ) -> None:
-        """Initialize LoGra attributor.
+        """Initialize Block-Projected IF attributor.
 
         Args:
             task: Attribution task containing model, loss function, and checkpoints
@@ -116,7 +123,7 @@ class LoGraAttributor(BaseAttributor):
             self.layer_names = layer_names
 
         logger.info(
-            "LoGra initialized with %d layers: %s",
+            "BlockProjectedIFAttributor initialized with %d layers: %s",
             len(self.layer_names),
             self.layer_names,
         )
@@ -201,7 +208,10 @@ class LoGraAttributor(BaseAttributor):
         Args:
             full_train_dataloader: DataLoader for full training data
         """
-        logger.info("Caching gradients with LoGra (offload: %s)", self.offload)
+        logger.info(
+            "Caching gradients with BlockProjectedIF (offload: %s)",
+            self.offload,
+        )
 
         self.full_train_dataloader = full_train_dataloader
 
@@ -210,10 +220,7 @@ class LoGraAttributor(BaseAttributor):
             self._setup_compressors(full_train_dataloader)
 
         # Initialize metadata for complete dataset
-        self.metadata.initialize_complete_dataset(
-            full_train_dataloader,
-            is_master_worker=True,
-        )
+        self.metadata.initialize_complete_dataset(full_train_dataloader)
 
         # Create hook manager
         if self.hook_manager is None:
@@ -299,7 +306,10 @@ class LoGraAttributor(BaseAttributor):
 
         logger.info("Caching completed")
 
-    def compute_preconditioners(self, damping: Optional[float] = None) -> None:
+    def compute_preconditioners(  # noqa: PLR0912, PLR0914 - Complex preconditioner computation requires multiple branches and variables
+        self,
+        damping: Optional[float] = None,
+    ) -> None:
         """Compute preconditioners (inverse Hessian) from gradients.
 
         Args:
@@ -557,7 +567,9 @@ class LoGraAttributor(BaseAttributor):
 
         logger.info("Copied %s batches as IFVP", processed_batches)
 
-    def compute_self_attribution(self) -> torch.Tensor:
+    def compute_self_attribution(  # noqa: PLR0914 - Complex self-attribution computation requires multiple local variables for tracking state
+        self,
+    ) -> torch.Tensor:
         """Compute self-influence scores.
 
         Returns:
@@ -630,7 +642,7 @@ class LoGraAttributor(BaseAttributor):
 
         return self_influence
 
-    def attribute(
+    def attribute(  # noqa: PLR0914 - Complex attribution computation requires multiple local variables for dataloader management and tensor processing
         self,
         train_dataloader: "DataLoader",
         test_dataloader: "DataLoader",
@@ -644,7 +656,7 @@ class LoGraAttributor(BaseAttributor):
         Returns:
             Influence score tensor of shape (num_train, num_test)
         """
-        logger.info("Computing influence attribution with LoGra")
+        logger.info("Computing influence attribution with BlockProjectedIF")
 
         # Validation
         _check_shuffle(train_dataloader)
@@ -764,7 +776,7 @@ class LoGraAttributor(BaseAttributor):
         )
         return if_score
 
-    def _compute_test_gradients(
+    def _compute_test_gradients(  # noqa: PLR0912 - Complex gradient computation requires multiple branches for different input types and error handling
         self,
         test_dataloader: "DataLoader",
     ) -> Tuple[torch.Tensor, Dict]:
@@ -777,7 +789,8 @@ class LoGraAttributor(BaseAttributor):
             Tuple containing:
                 - Tensor of concatenated test gradients
                   Shape:(num_test_samples, total_proj_dim)
-                - Dictionary mapping batch indices to (start_row, end_row) positions.
+                - Dictionary mapping batch indices to (start_row, end_row)
+                  positions.
 
         Raises:
             ValueError: If model can't return loss for dict-style inputs.
