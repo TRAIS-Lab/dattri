@@ -61,91 +61,83 @@ class ChunkedMemoryMapHandler:
         )
 
         # Create memory-mapped file
-        try:
-            # Determine storage dtype
-            storage_dtype = "uint16" if tensor.dtype == torch.bfloat16 else dtype
+        # Determine storage dtype
+        storage_dtype = "uint16" if tensor.dtype == torch.bfloat16 else dtype
 
-            # Ensure tensor is on CPU and contiguous
-            if tensor.device.type != "cpu":
-                tensor = tensor.cpu()
-            tensor = tensor.contiguous()
+        # Ensure tensor is on CPU and contiguous
+        if tensor.device.type != "cpu":
+            tensor = tensor.cpu()
+        tensor = tensor.contiguous()
 
-            # Option 1: Direct file write without mmap for better async behavior
-            if flush_mode == "async":
-                # Convert to numpy array
-                if tensor.dtype == torch.bfloat16:
-                    np_array = tensor.view(torch.uint16).numpy()
-                else:
-                    np_array = tensor.numpy()
-
-                # Save using numpy's memmap which doesn't require explicit flush
-                np_memmap = np.memmap(
-                    mmap_path,
-                    dtype=np.dtype(storage_dtype),
-                    mode="w+",
-                    shape=tensor.shape,
-                )
-                np_memmap[:] = np_array
-
-                # Let the OS handle flushing in the background
-                # No explicit flush() call - this allows the write to be non-blocking
-                del np_memmap  # This triggers implicit flush but doesn't block
-
+        # Option 1: Direct file write without mmap for better async behavior
+        if flush_mode == "async":
+            # Convert to numpy array
+            if tensor.dtype == torch.bfloat16:
+                np_array = tensor.view(torch.uint16).numpy()
             else:
-                # Original behavior for compatibility
-                mmap = np.memmap(
-                    mmap_path,
-                    dtype=np.dtype(storage_dtype),
-                    mode="w+",
-                    shape=tensor.shape,
-                )
+                np_array = tensor.numpy()
 
-                # Write tensor data directly
-                if tensor.dtype == torch.bfloat16:
-                    uint16_view = tensor.view(torch.uint16)
-                    mmap[:] = uint16_view.numpy()
-                else:
-                    mmap[:] = tensor.numpy()
-
-                # Handle flush based on mode
-                if flush_mode == "sync":
-                    mmap.flush()  # Blocking flush
-                elif flush_mode == "none":
-                    pass  # No flush, let OS handle it
-
-                del mmap  # Cleanup
-
-            # Save metadata - this is small and fast
-            metadata = {
-                "chunk_filename": chunk_filename,
-                "data_type": data_type,
-                "batch_start": batch_start,
-                "batch_end": batch_end,
-                "storage_dtype": storage_dtype,
-                "shape": list(tensor.shape),
-                "layer_dims": layer_dims,
-                "batches": batch_info,
-                "flush_mode": flush_mode,  # Track how it was written
-            }
-
-            with pathlib.Path(metadata_path).open("w", encoding="utf-8") as f:
-                json.dump(metadata, f, separators=(",", ":"))
-
-            logger.debug(
-                "Wrote tensor chunk %s: shape=%s, flush_mode=%s",
-                chunk_filename,
-                tensor.shape,
-                flush_mode,
-            )
-
-        except Exception:
-            logger.exception(
-                "Error writing chunked memory-mapped file %s",
+            # Save using numpy's memmap which doesn't require explicit flush
+            np_memmap = np.memmap(
                 mmap_path,
+                dtype=np.dtype(storage_dtype),
+                mode="w+",
+                shape=tensor.shape,
             )
-            raise
+            np_memmap[:] = np_array
+
+            # Let the OS handle flushing in the background
+            # No explicit flush() call - this allows the write to be non-blocking
+            del np_memmap  # This triggers implicit flush but doesn't block
+
         else:
-            return chunk_filename
+            # Original behavior for compatibility
+            mmap = np.memmap(
+                mmap_path,
+                dtype=np.dtype(storage_dtype),
+                mode="w+",
+                shape=tensor.shape,
+            )
+
+            # Write tensor data directly
+            if tensor.dtype == torch.bfloat16:
+                uint16_view = tensor.view(torch.uint16)
+                mmap[:] = uint16_view.numpy()
+            else:
+                mmap[:] = tensor.numpy()
+
+            # Handle flush based on mode
+            if flush_mode == "sync":
+                mmap.flush()  # Blocking flush
+            elif flush_mode == "none":
+                pass  # No flush, let OS handle it
+
+            del mmap  # Cleanup
+
+        # Save metadata - this is small and fast
+        metadata = {
+            "chunk_filename": chunk_filename,
+            "data_type": data_type,
+            "batch_start": batch_start,
+            "batch_end": batch_end,
+            "storage_dtype": storage_dtype,
+            "shape": list(tensor.shape),
+            "layer_dims": layer_dims,
+            "batches": batch_info,
+            "flush_mode": flush_mode,  # Track how it was written
+        }
+
+        with pathlib.Path(metadata_path).open("w", encoding="utf-8") as f:
+            json.dump(metadata, f, separators=(",", ":"))
+
+        logger.debug(
+            "Wrote tensor chunk %s: shape=%s, flush_mode=%s",
+            chunk_filename,
+            tensor.shape,
+            flush_mode,
+        )
+
+        return chunk_filename
 
     @staticmethod
     @contextmanager
