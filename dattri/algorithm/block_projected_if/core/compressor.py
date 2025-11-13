@@ -7,7 +7,7 @@ This module implements a two-stage compression pipeline:
 
 from __future__ import annotations
 
-from abc import ABC, abstractmethod
+from abc import ABC
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -64,7 +64,6 @@ class Sparsifier(ProjectionContainer):
         # Dimensions after sparsification
         self.intermediate_dims = None  # (k_1', k_2')
 
-    @abstractmethod
     def forward(
         self,
         v1: torch.Tensor,
