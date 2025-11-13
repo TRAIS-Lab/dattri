@@ -597,7 +597,7 @@ def main():
     from transformers.pytorch_utils import Conv1D
     from dattri.task import AttributionTask
 
-    model_id = 1
+    model_id = 0
     checkpoint = f"{args.output_dir}/{model_id}"
 
     def checkpoints_load_func(model, checkpoint):
@@ -723,17 +723,17 @@ def main():
     # Sparsifier kwargs: First stage compression
     sparsifier_kwargs = {
         "device": "cuda",
-        "proj_dim": 64,
+        "proj_dim": 128,
         "proj_max_batch_size": 32,
-        "proj_type": "normal",
+        "proj_type": "random_mask",
     }
 
     # Projector kwargs: Second stage
     projector_kwargs = {
         "device": "cuda",
-        "proj_dim": -1,
+        "proj_dim": 4096,
         "proj_max_batch_size": 32,
-        "proj_type": "identity",
+        "proj_type": "sjlt",
     }
 
     task = AttributionTask(
