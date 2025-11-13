@@ -230,7 +230,7 @@ class HookManager:
             layer_names: Names of layers to hook (only Linear layers supported)
             device: Device for synchronization
             register_hooks: Whether to register hooks immediately
-            (monkey-patch forward methods)
+                (monkey-patch forward methods)
         """
         self.model = model
         self.layer_names = layer_names
@@ -341,7 +341,11 @@ class HookManager:
         return F.linear(tensor_input, module.weight, module.bias)
 
     def set_compressors(self, compressors: List[Compressor]) -> None:
-        """Set unified compressor objects for each layer."""
+        """Set unified compressor objects for each layer.
+
+        Args:
+            compressors: List of compressor objects, one for each hooked layer
+        """
         self.compressors = compressors
 
     def get_compressed_grads(self) -> List[Tensor]:
