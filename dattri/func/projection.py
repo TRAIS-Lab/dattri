@@ -133,6 +133,7 @@ def _parse_grass_projection_type(proj_type: str) -> Tuple[str, int]:
 
 class ProjectionType(str, Enum):
     """Projection type used for projectors."""
+
     identity: str = "identity"
     normal: str = "normal"
     rademacher: str = "rademacher"
@@ -352,7 +353,7 @@ class BasicProjector(AbstractProjector):
         # Handle random_mask projection separately
         if self.proj_type == ProjectionType.random_mask:
             return features[:, self.active_indices]
-        elif self.proj_type == ProjectionType.identity:
+        if self.proj_type == ProjectionType.identity:
             return features
 
         sketch = torch.zeros(
