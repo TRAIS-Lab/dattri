@@ -209,6 +209,9 @@ def setup_model_compressors(
         sample_inputs: Input batch to run a forward pass (optional)
         device: Device to run the model on
 
+    Raise:
+        ValueError: If unsupported layer types are encountered
+
     Returns:
         List of Compressors, ordered by layer_names
     """

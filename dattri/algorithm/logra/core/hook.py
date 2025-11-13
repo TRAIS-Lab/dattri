@@ -277,7 +277,12 @@ class HookManager:
         self.compressors = compressors
 
     def get_compressed_grads(self) -> List[Tensor]:
-        """Get all captured compressed gradients."""
+        """
+        Get all captured compressed gradients.
+
+        Returns:
+            List of compressed gradients for each hooked layer
+        """
         return self.compressed_grads
 
     def remove_hooks(self) -> None:
