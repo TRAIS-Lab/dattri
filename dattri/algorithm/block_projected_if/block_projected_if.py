@@ -145,7 +145,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
         self.metadata = MetadataManager(cache_dir or ".", self.layer_names)
 
         # Initialize other components
-        self.full_train_dataloader: Optional["DataLoader"] = None
+        self.full_train_dataloader: Optional[DataLoader] = None
         self.hook_manager: Optional[HookManager] = None
         self.compressors: Optional[List[Any]] = None
         self.layer_dims: Optional[List[int]] = None
@@ -156,7 +156,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
             msg = "cache_dir must be provided when offload='disk'"
             raise ValueError(msg)
 
-    def _setup_compressors(self, train_dataloader: "DataLoader") -> None:
+    def _setup_compressors(self, train_dataloader: DataLoader) -> None:
         """Set up compressors for the model layers.
 
         Args:
@@ -206,7 +206,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
             if self.metadata.layer_dims is None:
                 self.metadata.set_layer_dims(self.layer_dims)
 
-    def cache(self, full_train_dataloader: "DataLoader") -> None:
+    def cache(self, full_train_dataloader: DataLoader) -> None:
         """Cache gradients and IFVP for the full training dataset.
 
         Args:
@@ -648,8 +648,8 @@ class BlockProjectedIFAttributor(BaseAttributor):
 
     def attribute(  # noqa: PLR0914 - Complex attribution computation requires multiple local variables for dataloader management and tensor processing
         self,
-        train_dataloader: "DataLoader",
-        test_dataloader: "DataLoader",
+        train_dataloader: DataLoader,
+        test_dataloader: DataLoader,
     ) -> torch.Tensor:
         """Compute influence scores between training and test samples.
 
@@ -782,7 +782,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
 
     def _compute_test_gradients(  # noqa: PLR0912 - Complex gradient computation requires multiple branches for different input types and error handling
         self,
-        test_dataloader: "DataLoader",
+        test_dataloader: DataLoader,
     ) -> Tuple[torch.Tensor, Dict]:
         """Compute gradients for test data using hooks.
 
