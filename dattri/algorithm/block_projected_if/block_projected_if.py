@@ -6,9 +6,11 @@ General two-stage gradient compression.
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+
     from torch.utils.data import DataLoader
 
     from dattri.task import AttributionTask
@@ -92,12 +94,14 @@ class BlockProjectedIFAttributor(BaseAttributor):
         self.sparsifier_kwargs = sparsifier_kwargs or {
             device: device,
             "proj_dim": 32,
+            "proj_max_batch_size": 64,
             "proj_type": "normal",
         }
         # Default projector_kwargs to identity if not specified
         self.projector_kwargs = projector_kwargs or {
             "device": device,
             "proj_dim": -1,
+            "proj_max_batch_size": 64,
             "proj_type": "identity",
         }
         self.offload = offload
