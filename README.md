@@ -235,6 +235,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |      [RPS](https://arxiv.org/abs/1811.09720)      |              [RPS-L2](https://arxiv.org/abs/1811.09720)              |
 |     [TRAK](https://arxiv.org/abs/2303.14186)      |               [TRAK](https://arxiv.org/abs/2303.14186)               |
 | [Shapley Value](https://arxiv.org/abs/1904.02868) |    [KNN-Shapley](https://dl.acm.org/doi/10.14778/3342263.3342637)    |
+|     [TSLOO](https://arxiv.org/abs/1906.08473)     |       [Data Value Embedding](https://arxiv.org/pdf/2412.09538)       | 
 
 ## Supported Metrics
 
@@ -276,7 +277,6 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 - More algorithms and low-level utility functions to come
   - KNN filter
   - TF-IDF filter
-  - [Data Value Embedding](https://arxiv.org/pdf/2412.09538)
 - Better documentation
   - Quick start Colab notebooks
 
