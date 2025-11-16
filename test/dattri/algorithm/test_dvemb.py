@@ -90,7 +90,7 @@ class TestDVEmbAttributor:
         subset_indices = [1, 2]
         subset_score = attributor.attribute(
             self.test_loader,
-            traindata_indices=subset_indices,
+            train_data_indices=subset_indices,
         )
         assert subset_score.shape == (len(subset_indices), len(self.test_dataset))
         assert torch.allclose(subset_score, total_score[subset_indices, :])
