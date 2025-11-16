@@ -150,6 +150,8 @@ def _download(
     Raises:
         ValueError: If the download fails.
     """
+    
+
     # Send a GET request to the URL
     response = requests.get(url)  # noqa: S113
 
@@ -255,6 +257,8 @@ def load_benchmark(  # noqa:PLR0914
                 file_name=path.split("?")[0].split("/")[-1],
             )
         for path in url_map["groundtruth"]["loo"]:
+            if (identifier == "wikitext2_gpt2"):
+                break
             _download(
                 path,
                 download_path / "benchmark" / identifier / "loo",
