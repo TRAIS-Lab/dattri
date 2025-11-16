@@ -1,155 +1,199 @@
-"""
-Example code to compute Leave-One-Out (LOO) scores on MLP trained on MNIST dataset.
+"""Example code to compute Leave-One-Out (LOO) scores on MLP trained on MNIST dataset.
 """
 
-import torch
+import os
+import pathlib
 import random
-import numpy as np
-from torch import nn
-from torch.utils.data import DataLoader, TensorDataset, Subset
-from tqdm import tqdm
-import unittest
+
 import matplotlib.pyplot as plt
+import numpy as np
+import torch
+from groundtruth_loo_mlp import LOOGroundTruthGenerator, MLPMnist
+from torch import nn
+from torch.utils.data import DataLoader, Subset, TensorDataset
+from tqdm import tqdm
 
-from dattri.benchmark.load import load_benchmark
-from dattri.benchmark.models.mlp import MLPMnist
 from dattri.algorithm.dvemb import DVEmbAttributor
+from dattri.benchmark.load import load_benchmark
 from dattri.task import AttributionTask
-from torch.func import functional_call
 
-class DVEmbExample(unittest.TestCase):
-    def setUp(self):
-        self.num_epochs = 10
-        self.batch_size = 64
-        self.learning_rate = 1e-4
-        self.device = "cuda" if torch.cuda.is_available() else "cpu"
-        # Fix random seeds for reproducibility
-        torch.manual_seed(0)
-        random.seed(0)
-        np.random.seed(0)
+num_epochs = 3  # number of training epochs
+batch_size = 64  # batch size for training
+learning_rate = 1e-3  # learning rate
+training_size = 5000  # number of training samples
+test_size = 500  # number of test samples
 
-    def load_mnist_data(self):
-        model_details, _ = load_benchmark(
-            model="mlp",
-            dataset="mnist",
-            download_path="./benchmark_data",
-            metric="loo"
-        )
-        train_dataset_full = model_details["train_dataset"]
-        train_sampler = model_details["train_sampler"]
-        test_dataset_full = model_details["test_dataset"]
-        test_sampler = model_details["test_sampler"]
 
-        train_indices = range(0, 5000)
-        test_indices = range(0, 500)
+def load_mnist_data(device):
+    """Load MNIST data for training and testing."""
+    model_details, _ = load_benchmark(
+        model="mlp",
+        dataset="mnist",
+        download_path="./benchmark_data",
+        metric="loo",
+    )
+    train_dataset_full = model_details["train_dataset"]
+    train_sampler = model_details["train_sampler"]
+    test_dataset_full = model_details["test_dataset"]
+    test_sampler = model_details["test_sampler"]
 
-        train_subset = Subset(train_dataset_full, train_indices)
-        train_inputs = torch.stack([train_subset[i][0] for i in range(len(train_subset))])
-        train_labels = torch.tensor([train_subset[i][1] for i in range(len(train_subset))])
+    train_indices = range(training_size)
+    test_indices = range(test_size)
 
-        test_subset = Subset(test_dataset_full, test_indices)
-        test_inputs = torch.stack([test_subset[i][0] for i in range(len(test_subset))])
-        test_labels = torch.tensor([test_subset[i][1] for i in range(len(test_subset))])
+    train_subset = Subset(train_dataset_full, train_indices)
+    train_inputs = torch.stack([train_subset[i][0] for i in range(len(train_subset))])
+    train_labels = torch.tensor([train_subset[i][1] for i in range(len(train_subset))])
 
-        return train_inputs, train_labels, torch.tensor(train_indices), test_inputs, test_labels
+    test_subset = Subset(test_dataset_full, test_indices)
+    test_inputs = torch.stack([test_subset[i][0] for i in range(len(test_subset))])
+    test_labels = torch.tensor([test_subset[i][1] for i in range(len(test_subset))])
 
-    def test_dvemb_attribution(self):
-        """Run the full DVEmb pipeline: training, attribution, and visualization."""
-        # Load MNIST data
-        train_inputs, train_labels, train_indices, test_inputs, test_labels = self.load_mnist_data()
+    return train_inputs, train_labels, torch.tensor(train_indices), test_inputs, test_labels
 
-        # Initialize model, optimizer, and loss function
-        model = MLPMnist(dropout_rate=0).to(self.device)
-        optimizer = torch.optim.SGD(model.parameters(), lr=self.learning_rate)
-        criterion = nn.CrossEntropyLoss()
 
-        train_dataset = TensorDataset(train_inputs, train_labels, train_indices)
-        train_loader = DataLoader(train_dataset, batch_size=self.batch_size, shuffle=False)
+def calculate_dvemb_score():
+    """Run the full DVEmb pipeline: training, attribution."""
+    # Configuration
+    device = "cuda" if torch.cuda.is_available() else "cpu"
 
-        # Define loss function for AttributionTask
-        def loss_func_for_task(params, data):
-            inputs, labels = data
-            inputs = inputs.unsqueeze(0)
-            labels = labels.unsqueeze(0)
-            outputs = torch.func.functional_call(model, params, (inputs,))
-            return criterion(outputs, labels)
+    # Load MNIST data
+    train_inputs, train_labels, train_indices, test_inputs, test_labels = load_mnist_data(device)
 
-        # Initialize AttributionTask
-        task = AttributionTask(
-            loss_func=loss_func_for_task,
-            model=model,
-            checkpoints=[model.state_dict()],
-        )
+    # Fix random seeds for reproducibility
+    torch.manual_seed(0)
+    random.seed(0)
+    np.random.seed(0)
 
-        # DVEmb initialization
-        attributor = DVEmbAttributor(
-            task=task,
-            criterion=criterion,
-            proj_dim=4096,
-            factorization_type="kronecker",
-            # "kronecker" is the same as used in the original DVEmb paper
-            # To get better performance, consider using "elementwise"
-            projector_kwargs={"feature_batch_size": 128},
-            # 128 is the maximum batch size of input features (including train and test)
-        )
+    # Initialize model, optimizer, and loss function
+    model = MLPMnist(dropout_rate=0).to(device)
+    optimizer = torch.optim.SGD(model.parameters(), lr=learning_rate)
+    criterion = nn.CrossEntropyLoss()
 
-        # Train the model and cache gradients using DVEmbAttributor
-        model.train()
-        print("Starting training and caching gradients...")
-        for epoch in range(self.num_epochs):
-            for inputs, labels, indices in tqdm(train_loader, desc=f"Epoch {epoch+1}/{self.num_epochs}"):
-                inputs, labels = inputs.to(self.device), labels.to(self.device)
+    train_dataset = TensorDataset(train_inputs, train_labels, train_indices)
+    train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
 
-                # --- DVEmb Usage: Caching Gradients ---
-                # In each training step (before the optimizer step), call `cache_gradients`.
-                # This computes and stores the per-sample gradients for the current batch,
-                # which are essential for calculating the data value embeddings.
-                # It requires the current epoch, batch data, indices, and learning rate.
-                attributor.cache_gradients(epoch, (inputs, labels), indices, self.learning_rate)
+    # Define loss function for AttributionTask
+    def loss_func_for_task(params, data):
+        inputs, labels = data
+        inputs = inputs.unsqueeze(0)
+        labels = labels.unsqueeze(0)
+        outputs = torch.func.functional_call(model, params, (inputs,))
+        return criterion(outputs, labels)
 
-                # Perform the standard training step
-                optimizer.zero_grad()
-                outputs = model(inputs)
-                loss = criterion(outputs, labels)
-                loss.backward()
-                optimizer.step()
+    # Initialize AttributionTask
+    task = AttributionTask(
+        loss_func=loss_func_for_task,
+        model=model,
+        checkpoints=[model.state_dict()],
+    )
 
-        # Compute DVEmb influence
-        test_dataset = TensorDataset(test_inputs, test_labels)
-        test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+    # DVEmb initialization
+    attributor = DVEmbAttributor(
+        task=task,
+        criterion=criterion,
+        proj_dim=4096,
+        factorization_type="elementwise",
+        projector_kwargs={"feature_batch_size": 64},
+    )
 
-        # --- DVEmb Usage: Computing Embeddings and Influence ---
-        # After training, first call `compute_embeddings`.
-        # This method uses all cached gradients to compute the data value embedding
-        # vector for each training sample.
-        print("\nComputing Data Value Embeddings...")
-        attributor.compute_embeddings()
+    # Train the model and cache gradients using DVEmbAttributor
+    model.train()
+    print("Starting training and caching gradients...")
+    for epoch in range(num_epochs):
+        for inputs, labels, indices in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}"):
+            inputs, labels = inputs.to(device), labels.to(device)
 
-        # Next, call `attribute` to calculate the influence.
-        # It computes the gradients for the test set and multiplies them with the
-        # training samples' embeddings to produce a matrix representing the influence
-        # of each training point on each test point.
-        print("Calculating influence...")
-        dvemb_influence = attributor.attribute(test_loader, epoch=None)
+            # --- DVEmb Usage: Caching Gradients ---
+            # In each training step (before the optimizer step), call `cache_gradients`.
+            # This computes and stores the per-sample gradients for the current batch,
+            # which are essential for calculating the data value embeddings.
+            # It requires the current epoch, batch data, indices, and learning rate.
+            attributor.cache_gradients(epoch=epoch,
+                                       batch_data=(inputs, labels),
+                                       indices=indices,
+                                       learning_rate=learning_rate)
 
-        # Visualize the results (LOO scores trend)
-        all_epochs_influence = []
-        num_samples_per_epoch = len(train_inputs)
-        # Calculate influence per epoch for trend visualization
-        for epoch in range(self.num_epochs):
-            dvemb_influence_epoch = attributor.attribute(test_loader, epoch=epoch)
-            total_influence_epoch = dvemb_influence_epoch.sum(dim=1).cpu().detach().numpy()
-            all_epochs_influence.append(total_influence_epoch)
-        continuous_influence = np.concatenate(all_epochs_influence)
-        plt.figure(figsize=(15, 7))
-        plt.plot(continuous_influence, alpha=0.8)
-        for epoch in range(1, self.num_epochs):
-            plt.axvline(x=epoch * num_samples_per_epoch -1, color='r', linestyle='--', linewidth=1)
-        plt.title("Continuous Influence of Training Samples Across All Epochs")
-        plt.xlabel("Training Sample Index (Processed Sequentially Across Epochs)")
-        plt.ylabel("Summed Influence on Test Set")
-        plt.grid(True)
-        plt.savefig("./dvemb_continuous_influence_trend.png")
+            # Perform the standard training step
+            optimizer.zero_grad()
+            outputs = model(inputs)
+            loss = criterion(outputs, labels)
+            loss.backward()
+            optimizer.step()
+
+    # Compute DVEmb influence
+    test_dataset = TensorDataset(test_inputs, test_labels)
+    test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
+
+    # --- DVEmb Usage: Computing Embeddings and Influence ---
+    # After training, first call `compute_embeddings`.
+    # This method uses all cached gradients to compute the data value embedding
+    # vector for each training sample.
+    print("\nComputing Data Value Embeddings...")
+    attributor.compute_embeddings()
+
+    # Next, call `attribute` to calculate the influence.
+    # It computes the gradients for the test set and multiplies them with the
+    # training samples' embeddings to produce a matrix representing the influence
+    # of each training point on each test point.
+    print("Calculating influence...")
+    dvemb_scores = attributor.attribute(test_loader, epoch=None)
+
+    return dvemb_scores
+
+
+def calculate_loo_groundtruth():
+    """Calculate LOO ground truth scores using LOOGroundTruthGenerator."""
+    # plot LOO correlation (spearman ranking correlation)
+    loo_generator = LOOGroundTruthGenerator(num_epochs=num_epochs,
+                                            batch_size=batch_size,
+                                            learning_rate=learning_rate,
+                                            train_samples=training_size,
+                                            test_samples=test_size,
+                                            all_seed=0)
+    groundtruth_scores = loo_generator.generate_loo_groundtruth(
+        download_path="./benchmark_data",
+        output_dir="./mlp_gt",
+    )
+    print("LOO ground truth generation completed!")
+
+    return groundtruth_scores
+
+
+def evaluate(dvemb_scores, groundtruth_scores):
+    """Evaluate DVEmb scores against groundtruth LOO scores."""
+    selected_indices = []
+    with pathlib.Path(os.path.join("./mlp_gt", "selected_train_indices.txt")).open("r") as f:
+        for line in f:
+            selected_indices.append(int(line.strip()))
+    dvemb_scores = dvemb_scores[selected_indices, :]
+
+    dvemb_np = dvemb_scores.detach().cpu().numpy()
+    groundtruth_scores = (groundtruth_scores, torch.Tensor(list(range(dvemb_scores.shape[0]))))
+
+    # calculate mean spearmanr for scores and groundtruth_scores
+    from scipy.stats import spearmanr
+    spearman_corrs = []
+    for i in range(dvemb_np.shape[1]):
+        spearman_corr = spearmanr(dvemb_np[:, i], groundtruth_scores[0][:, i].numpy()).correlation
+        if not np.isnan(spearman_corr):
+            spearman_corrs.append(spearman_corr)
+    mean_spearman_corr = np.mean(spearman_corrs)
+    print(f"Mean Spearmanr: {mean_spearman_corr:.4f}")
+
+    # plot scatter plots for each of the 10 classes
+    for i in range(10):
+        plt.figure()
+        plt.scatter(torch.tensor(dvemb_np)[:, i].numpy(), groundtruth_scores[0][:, i].numpy())
+        # calculate the spearmanr
+        from scipy.stats import spearmanr
+        spearman_corr = spearmanr(torch.tensor(dvemb_np)[:, i].numpy(), groundtruth_scores[0][:, i].numpy()).correlation
+        plt.xlabel("DVEmb Scores")
+        plt.ylabel("Ground Truth LOO Scores")
+        plt.title("DVEmb vs Ground Truth LOO Scores, Spearmanr: {:.4f}".format(spearman_corr))
+        plt.savefig(f"dvemb_vs_groundtruth_loo_{i}.png")
+
 
 if __name__ == "__main__":
-    unittest.main()
+    calculated_dvemb_scores = calculate_dvemb_score()
+    groundtruth_scores = calculate_loo_groundtruth()
+    evaluate(calculated_dvemb_scores, groundtruth_scores)
