@@ -55,7 +55,8 @@ class DVEmbAttributor:
                   Note: The checkpoint functionality of the task is not used by DVEmb.
             criterion: The loss function module (e.g., nn.CrossEntropyLoss())
                        used for gradient factorization.
-            proj_dim: The dimension for projection (if used).
+            proj_dim: The dimension for projection (if used). Default to None,
+                      meaning no projection.
             factorization_type: Type of gradient factorization to use. Options are
                                 "none"(default),
                                 "kronecker"(same with paper),
@@ -288,7 +289,7 @@ class DVEmbAttributor:
         indices: Tensor,
         learning_rate: float,
     ) -> None:
-        """Cache full per-sample gradients.
+        """Cache full per-sample gradients. Offload to CPU to save GPU memory.
 
         Args:
             epoch: The current epoch number.
@@ -303,8 +304,8 @@ class DVEmbAttributor:
 
         per_sample_grads = self._calculate_full_gradients(batch_data)
 
-        self.cached_gradients[epoch].append(per_sample_grads.cpu() / len(indices))
-        self.learning_rates[epoch].append(learning_rate)
+        self.cached_gradients[epoch].append(per_sample_grads.cpu())
+        self.learning_rates[epoch].append(learning_rate / len(indices))
         self.data_indices[epoch].append(indices.cpu())
 
     def _calculate_gradient_factors(
@@ -429,7 +430,7 @@ class DVEmbAttributor:
             self.cached_factors[epoch].append(proj_factors)
         else:
             projected_grads = self._project_gradients_factors_elementwise(caches)
-            self.cached_gradients[epoch].append(projected_grads.cpu() / len(indices))
+            self.cached_gradients[epoch].append(projected_grads.cpu())
 
         self.learning_rates[epoch].append(learning_rate)
         self.data_indices[epoch].append(indices.cpu())
@@ -482,7 +483,7 @@ class DVEmbAttributor:
             and any(self.cached_factors.values())
         )
         if not has_full_grads and not has_gradient_factors:
-            msg = "No gradients cached. Call cache_gradients during training first."
+            msg = "No gradients cached. Call `cache_gradients` during training first."
             raise ValueError(msg)
 
         all_indices = torch.cat(
@@ -529,18 +530,12 @@ class DVEmbAttributor:
                         grads_t = self._reconstruct_gradients(gradient_factors).to(
                             self.device,
                         )
-                        if clear_cache:
-                            self.cached_factors[epoch][t] = None
                     else:
                         grads_t = self.cached_gradients[epoch][t].to(self.device)
-                        if clear_cache:
-                            self.cached_gradients[epoch][t] = None
                 else:
                     grads_t = self.cached_gradients[epoch][t].to(self.device)
-                    if clear_cache:
-                        self.cached_gradients[epoch][t] = None
 
-                dvemb_t = eta_t * grads_t - eta_t * (grads_t @ m_matrix)
+                dvemb_t = eta_t * grads_t - eta_t * (grads_t @ m_matrix.T)
 
                 epoch_embeddings.index_add_(0, indices_t.to(self.device), dvemb_t)
                 m_matrix += dvemb_t.T @ grads_t
@@ -561,7 +556,7 @@ class DVEmbAttributor:
         self,
         test_dataloader: DataLoader,
         epoch: Optional[int] = None,
-        traindata_indices: Optional[List[int]] = None,
+        train_data_indices: Optional[List[int]] = None,
     ) -> torch.Tensor:
         """Calculates influence scores for a test set for one or all epochs.
 
@@ -570,7 +565,7 @@ class DVEmbAttributor:
             epoch: Optional. If specified, returns scores using embeddings from that
                    epoch. If None, returns scores based on the sum of embeddings
                    across all epochs.
-            traindata_indices: Optional. A list of training sample indices for which
+            train_data_indices: Optional. A list of training sample indices for which
                                to compute influence. If None, computes for all.
 
         Returns:
@@ -611,8 +606,8 @@ class DVEmbAttributor:
         else:
             active_embeddings = torch.stack(list(self.embeddings.values())).sum(dim=0)
 
-        if traindata_indices is not None:
-            train_embeddings = active_embeddings[traindata_indices]
+        if train_data_indices is not None:
+            train_embeddings = active_embeddings[train_data_indices]
         else:
             train_embeddings = active_embeddings
 
