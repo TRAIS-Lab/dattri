@@ -53,6 +53,11 @@ if __name__ == "__main__":
             from_tf=False,
         )
 
+        import time, os
+        while not os.path.isfile(checkpoint):
+            print(f"Waiting for {checkpoint} ...")
+            time.sleep(1)
+
         # load from stored pretrained.
         state_dict = torch.load(checkpoint, map_location="cpu")
         model.load_state_dict(state_dict, strict=True)
