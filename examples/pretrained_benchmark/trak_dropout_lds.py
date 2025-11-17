@@ -26,6 +26,13 @@ if __name__ == "__main__":
     model = activate_dropout(model_details["model"], dropout_prob=0.1)
 
     def dropout_checkpoint_load_func(model, checkpoint):
+        print(checkpoint)
+        print(checkpoint)
+        print(checkpoint)
+        print(checkpoint)
+        print(checkpoint)
+        print(checkpoint)
+        
         if isinstance(checkpoint, (str, PosixPath)):
             checkpoint = torch.load(checkpoint,
                                     map_location=next(model.parameters()).device,)
