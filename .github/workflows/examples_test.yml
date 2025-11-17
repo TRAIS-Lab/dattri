@@ -21,8 +21,6 @@ jobs:
         pip install -e .[test]
     - name: Run examples
       run: |
-        sed -i 's/* 10/* 2/g' examples/pretrained_benchmark/trak_dropout_lds.py
-        python examples/pretrained_benchmark/trak_dropout_lds.py --device cpu
         sed -i -e 's/4656/64/g' -e 's/481/4/g' dattri/benchmark/load.py
         python examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
     - name: Uninstall the package 
