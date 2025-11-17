@@ -150,9 +150,16 @@ def _download(
     Raises:
         ValueError: If the download fails.
     """
-    
-
     # Send a GET request to the URL
+
+    print(url)
+    print(url)
+    print(url)
+    print(url)
+    print(url)
+    print(url)
+    print(url) 
+
     response = requests.get(url)  # noqa: S113
 
     # Check if the request was successful
