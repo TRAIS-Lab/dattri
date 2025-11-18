@@ -239,7 +239,7 @@ def load_benchmark(  # noqa:PLR0914
     url_map = generate_url_map(identifier)
     download_path = pathlib.Path(download_path).expanduser()
 
-    redownload = True
+    redownload = True; 
 
     if not (download_path / "benchmark" / identifier).exists() or redownload:
         for key in ["models_full", "models_half"]:
