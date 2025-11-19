@@ -253,6 +253,9 @@ class HookManager:
         # Track hook registration status
         self.hooks_registered = False
 
+        # Track whether hooks are enabled (can disable without unregistering)
+        self.hooks_enabled = True
+
         # Register in global registry: Store ID, not self,
         # to avoid memory leaks in autograd graph
         self._hook_manager_id = id(self)
@@ -306,7 +309,7 @@ class HookManager:
         self,
         module: nn.Linear,
         idx: int,
-        tensor_input: Tensor,
+        module_input: Tensor,
     ) -> Tensor:
         """Replacement forward method that uses our custom Function.
 
@@ -317,24 +320,28 @@ class HookManager:
         Args:
             module: The Linear module being hooked
             idx: Index of the layer in the layer_names list
-            tensor_input: Input tensor to the layer
+            module_input: Input tensor to the layer
 
         Returns:
             Output tensor from the linear layer
         """
-        if module.weight.requires_grad:
+        if self.hooks_enabled:
             # Use our custom backward that computes only compressed gradients
             # Pass hook_manager_id (not self) to avoid keeping hook manager
             # in autograd graph
             return CompressedLinearBackward.apply(
-                tensor_input,
+                module_input,
                 module.weight,
                 module.bias,
                 self._hook_manager_id,
                 idx,
             )
-        # No gradient needed: use standard linear forward
-        return F.linear(tensor_input, module.weight, module.bias)
+        # Use original forward method when hooks are disabled
+        # This ensures proper gradient computation for LoRA and other special layers
+        if hasattr(module, "_original_forward"):
+            return module._original_forward(module_input)
+        # Fallback to F.linear if original forward not available
+        return F.linear(module_input, module.weight, module.bias)
 
     def set_compressors(self, compressors: List[Compressor]) -> None:
         """Set unified compressor objects for each layer.
@@ -343,6 +350,14 @@ class HookManager:
             compressors: List of compressor objects, one for each hooked layer
         """
         self.compressors = compressors
+
+    def enable_hooks(self) -> None:
+        """Enable hooks to compute compressed gradients (default)."""
+        self.hooks_enabled = True
+
+    def disable_hooks(self) -> None:
+        """Disable hooks to allow standard gradient computation."""
+        self.hooks_enabled = False
 
     def get_compressed_grads(self) -> List[Tensor]:
         """Get all captured compressed gradients.
