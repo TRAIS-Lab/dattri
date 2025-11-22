@@ -1,6 +1,6 @@
-"""LoGra utilities package.
+"""BlockProjectedIF utilities package.
 
-Contains all dependencies for block-projected influence function attributors.
+Contains all dependencies for block-projected influence function attributor.
 """
 
 from .block_projected_if import BlockProjectedIFAttributor
