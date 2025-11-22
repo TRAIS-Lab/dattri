@@ -20,53 +20,7 @@ This experiment could only be run on cuda device.
 pip install -r requirements.txt
 ```
 
-### Troubleshooting: vmap over calling .item() Error in Transformers
-After installing transformers, you might encounter the following error:
-```bash
-We don't support vmap over calling .item() on a Tensor, please try to rewrite what you're doing with other operations.
-```
-This issue arises due to certain optimizations in PyTorch and the transformers library. To fix it, you need to modify specific files in `site-packages/transformers/`.
-
-1. Locate the file modeling_attn_mask_utils.py
-Find the file in your environment:
-```bash
-<your_python_env>/lib/pythonX.X/site-packages/transformers/modeling_attn_mask_utils.py
-```
-Inside the function:
-```bash
-def _ignore_causal_mask_sdpa(
-    attention_mask: Optional[torch.Tensor],
-    inputs_embeds: torch.Tensor,
-    past_key_values_length: int,
-    sliding_window: Optional[int] = None,
-    is_training: bool = False,
-) -> bool:
-```
-Comment out the following lines:
-```bash
-# elif not is_tracing and torch.all(attention_mask == 1):
-#     if query_length == 1 or key_value_length == query_length:
-#         # For query_length == 1, causal attention and bi-directional attention are the same.
-#         # ignore_causal_mask = True
-```
-
-2. Modify _prepare_4d_attention_mask_for_sdpa
-In the same file, locate the function:
-```bash
-def _prepare_4d_attention_mask_for_sdpa(mask: torch.Tensor, dtype: torch.dtype, tgt_len: Optional[int] = None):
-```
-Comment out these lines:
-```bash
-# torch.jit.trace, symbolic_trace and torchdynamo with fullgraph=True are unable to capture data-dependent controlflows.
-# if not is_tracing and torch.all(mask == 1):
-#     return None
-# else:
-#     return AttentionMaskConverter._expand_mask(mask=mask, dtype=dtype, tgt_len=tgt_len)
-```
-Then, add the following line:
-```bash
-return AttentionMaskConverter._expand_mask(mask=mask, dtype=dtype, tgt_len=tgt_len)
-```
+the troubleshooting can be avoided by setting the attn_implementation paramater to 'eager' in from_pretrained function 
 
 ## Training
 

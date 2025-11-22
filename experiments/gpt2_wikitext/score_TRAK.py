@@ -54,8 +54,12 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
-from transformers.utils import check_min_version, send_example_telemetry
+from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
+try:
+    from transformers.utils import send_example_telemetry
+except ImportError:
+    send_example_telemetry = None  # Not available in newer transformers versions
 
 from dattri.benchmark.utils import SubsetSampler
 from dattri.func.utils import flatten_func, flatten_params
@@ -216,6 +220,27 @@ def parse_args():
             " account special tokens)."
         ),
     )
+
+    # add arguments for random projection and fix memory issues
+    parser.add_argument(
+        "--proj_dim",
+        type=int,
+        default=512,
+        help="Output dimension for random projection used by TRAK / TracIn.",
+    )
+    parser.add_argument(
+        "--proj_max_batch_size",
+        type=int,
+        default=16,
+        help="Maximum batch size to process per projection block (controls memory usage).",
+    )
+    parser.add_argument(
+        "--proj_type",
+        type=str,
+        default="random_mask",
+        choices=["normal", "rademacher", "random_mask", "sjlt", "grass"],
+        help="Random projection type used for TRAK/TracIn (default: random_mask).",
+    )
     parser.add_argument(
         "--preprocessing_num_workers",
         type=int,
@@ -337,9 +362,9 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
-    # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    send_example_telemetry("run_clm_no_trainer", args)
+    #fix the import error in newer transformers versions
+    if send_example_telemetry is not None:
+        send_example_telemetry("run_clm_no_trainer", args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
@@ -498,6 +523,7 @@ def main():
             config=config,
             low_cpu_mem_usage=args.low_cpu_mem_usage,
             trust_remote_code=args.trust_remote_code,
+            attn_implementation="eager",  # Use eager attention for better performance
         )
         model = model.cuda()
     else:
@@ -624,14 +650,15 @@ def main():
         """
         input_ids, attention_mask, labels = batch
 
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
+        # Re-add batch dimension removed by vmap
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
 
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         logp = -outputs.loss
@@ -643,14 +670,15 @@ def main():
         """
         input_ids, attention_mask, labels = batch
 
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
+        # Re-add batch dimension removed by vmap
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
 
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         p = torch.exp(-outputs.loss)
@@ -662,37 +690,122 @@ def main():
         (TracIn sums over checkpoint updates of gradient dot-products).
         """
         input_ids, attention_mask, labels = batch
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
+        
+        # Re-add batch dimension removed by vmap
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
+        
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         return outputs.loss
 
     method = args.method
+
+    #fix checkpoint loading error
+    checkpoint_root = Path(args.output_dir)
+    available_checkpoint_dirs = sorted(
+        [p for p in checkpoint_root.iterdir() if p.is_dir() and p.name.isdigit()],
+        key=lambda p: int(p.name),
+    )
+
+    if not available_checkpoint_dirs:
+        raise FileNotFoundError(
+            f"No numeric checkpoint directories found in {checkpoint_root}."
+        )
+
     if method.startswith("TRAK-"):
         parts = method.split("-")
         if len(parts) == 2 and parts[1].isdigit():
-            num_checkpoints = int(parts[1])
+            requested_checkpoints = int(parts[1])
         else:
             raise ValueError(
                 "Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'."
             )
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+
+        #fix checkpoint loading error
+        if len(available_checkpoint_dirs) < requested_checkpoints:
+            logger.warning(
+                "Requested %s checkpoints but only found %s in %s. Using available checkpoints instead.",
+                requested_checkpoints,
+                len(available_checkpoint_dirs),
+                checkpoint_root,
+            )
+            requested_checkpoints = len(available_checkpoint_dirs)
+
+        checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
+
     elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
-        num_checkpoints = 5
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+        requested_checkpoints = min(5, len(available_checkpoint_dirs))
+        if requested_checkpoints == 0:
+            raise FileNotFoundError(
+                f"No numeric checkpoint directories found in {checkpoint_root}."
+            )
+        if requested_checkpoints < 5:
+            logger.warning(
+                "Only %s checkpoint(s) available; using these for %s.",
+                requested_checkpoints,
+                method,
+            )
+        checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
     else:
         raise ValueError(
             f"Unknown --method {method}. Try 'TRAK-5', 'TracIn', 'Grad-Dot', or 'Grad-Cos'."
         )
-
+    
+    #modified for huggingface hub validation error
     def checkpoints_load_func(model, checkpoint_path):
-        new_model = AutoModelForCausalLM.from_pretrained(checkpoint_path).cuda()
+        # Convert to absolute path and verify it exists
+        import os
+        checkpoint_abs = os.path.abspath(checkpoint_path)
+        
+        # Verify checkpoint directory exists
+        if not os.path.exists(checkpoint_abs):
+            raise FileNotFoundError(
+                f"Checkpoint directory not found: {checkpoint_abs}. "
+                f"Please ensure the checkpoint exists at this path."
+            )
+        
+        # Try loading with local_files_only first
+        try:
+            # Load config and model separately to avoid path validation issues
+            config = AutoConfig.from_pretrained(
+                checkpoint_abs,
+                local_files_only=True,
+                trust_remote_code=True,
+            )
+            
+            # Load model using config to bypass path validation
+            new_model = AutoModelForCausalLM.from_pretrained(
+                checkpoint_abs,
+                config=config,
+                local_files_only=True,  # Force local file loading
+                trust_remote_code=True,  # Allow loading from local path
+            ).cuda()
+        except Exception as e:
+            # If path validation fails, try loading from config.json directly
+            config_path = os.path.join(checkpoint_abs, "config.json")
+            if os.path.exists(config_path):
+                config = AutoConfig.from_json_file(config_path)
+                new_model = AutoModelForCausalLM.from_config(config).cuda()
+                # Load weights from pytorch_model.bin or model.safetensors
+                weight_path = os.path.join(checkpoint_abs, "pytorch_model.bin")
+                if not os.path.exists(weight_path):
+                    weight_path = os.path.join(checkpoint_abs, "model.safetensors")
+                if os.path.exists(weight_path):
+                    from safetensors.torch import load_file
+                    if weight_path.endswith(".safetensors"):
+                        state_dict = load_file(weight_path)
+                    else:
+                        state_dict = torch.load(weight_path, map_location="cpu")
+                    new_model.load_state_dict(state_dict)
+            else:
+                raise e
+        
         new_model.eval()
         return new_model
 
@@ -714,9 +827,12 @@ def main():
         )
 
     if method.startswith("TRAK"):
+        # fix memory issues
         projector_kwargs = {
             "device": "cuda",
-            "proj_dim": 2048,
+            "proj_dim": args.proj_dim,
+            "proj_max_batch_size": args.proj_max_batch_size,
+            "proj_type": args.proj_type,
         }
         attributor = TRAKAttributor(
             task=task,
@@ -732,9 +848,12 @@ def main():
 
         weight_list = torch.ones(num_checkpoints) * 1e-3
 
+        # fix memory issues
         projector_kwargs = {
             "device": "cuda",
-            "proj_dim": 2048,
+            "proj_dim": args.proj_dim,
+            "proj_max_batch_size": args.proj_max_batch_size,
+            "proj_type": args.proj_type,
         }
 
         attributor = TracInAttributor(
