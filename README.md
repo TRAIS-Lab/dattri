@@ -75,22 +75,22 @@ It's **not** required to follow the exact same steps in this section. But this i
 conda create -n dattri python=3.10
 conda activate dattri
 
-conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
-pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit
+pip3 install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 pip install dattri[sjlt]
 ```
 
 ### Apply data attribution methods on PyTorch models
 
-One can apply different data attribution methods on PyTorch Models. One only needs to define:
+One can apply different data attribution methods to PyTorch Models. One only needs to define:
 
-1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
+1. loss function used for model training (will be used as the target function to be attributed if no other target function is provided).
 2. trained model checkpoints (one or more).
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
-4. (optional) target function to be attributed if it's not the same as loss function.
+4. (optional) target function to be attributed if it's not the same as the loss function.
 
-The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
+The following is an example of using `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
 **More examples can be found [here](./examples/).**
 
@@ -181,7 +181,7 @@ project_func = random_project(tensor, tensor.size(0), proj_dim=512)
 projected_tensor = project_func(torch.full_like(tensor))
 ```
 
-Normally speaking, `tensor` is probably the gradient of loss/target function and has a large dimension (i.e., the number of parameters).
+Normally speaking, `tensor` is probably the gradient of the loss/target function and has a large dimension (i.e., the number of parameters).
 
 #### Dropout Ensemble
 
@@ -226,7 +226,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 - Leave-one-out (LOO) correlation
 - Linear datamodeling score (LDS)
 - Area under the ROC curve (AUC) for noisy label detection
-- Brittleness test for checking flipped label
+- Brittleness test for checking the flipped label
 
 ## Supported Benchmark Settings
 
@@ -262,7 +262,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
   - TF-IDF filter
   - [Data Value Embedding](https://arxiv.org/pdf/2412.09538)
 - Better documentation
-  - Quick start colab notebooks
+  - Quick start Colab notebooks
 
 ## Citation
 
