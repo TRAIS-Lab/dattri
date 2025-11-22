@@ -29,7 +29,7 @@ dependencies = [
 homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
-test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing", "torch>=2.2.0", "torchvision>=0.17.0", "sjlt"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing", "torch>=2.2.0", "torchvision>=0.17.0"]
 sjlt = ["sjlt"]
 
 [tool.setuptools.packages]
