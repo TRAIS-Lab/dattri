@@ -33,7 +33,7 @@ jobs:
         python examples/data_cleaning/influence_function_data_cleaning.py --device cpu --train_size 1000 --val_size 100 --test_size 100 --remove_number 10
         python examples/relatIF/influence_function_comparison.py --no_output
         sed -i -e 's/4656/64/g' -e 's/481/4/g' dattri/benchmark/load.py
-        sed -i '/lds_score = lds/d;/print("lds:/d' file.py
+        sed -i '/lds_score = lds/d;/print("lds:/d' examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
         python examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
     - name: Uninstall the package 
       run: |
