@@ -64,17 +64,12 @@ class TestFactGraSSAttributor:
     def test_attribute(self) -> None:
         """Ensure attribution works with two-stage projection."""
         self.attributor.cache(self.train_loader)
-        assert self.attributor.sparsifiers, "Sparsifiers should be initialized"
-        assert self.attributor.projectors, "Projectors should be initialized"
-
-        # Check dimensions: sparsifiers should have intermediate_dim/2 = 256/2 = 16
-        # (per-component dimension), projectors should have proj_dim = 64
+        assert self.attributor.compressors, "Compressors should be initialized"
         assert self.attributor.layer_dims == [
             64,  # final proj_dim after second stage
         ] * len(
             self.attributor.layer_names,
         )
-
         score = self.attributor.attribute(self.train_loader, self.test_loader)
         assert score.shape == (
             len(self.train_loader.dataset),
