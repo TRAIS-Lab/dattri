@@ -106,7 +106,7 @@ class FactGraSSAttributor(BlockProjectedIFAttributor):
             "device": device,
             "proj_dim": proj_dim,
             "proj_max_batch_size": 64,
-            "proj_type": "sjlt",
+            "proj_type": "sjlt" if device == "cpu" else "normal",
         }
 
         # Initialize the base class with FactGraSS-specific configuration
