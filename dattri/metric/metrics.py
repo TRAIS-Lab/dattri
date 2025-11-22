@@ -44,15 +44,15 @@ def lds(
     num_subsets = indices.shape[0]
     num_test_samples = score.shape[0]
     num_train_samples = score.shape[1]
-    
+
     # Sum scores over the training subset indices
     sum_scores = []
     for i in range(num_subsets):
         valid_mask = indices[i] < num_train_samples
         valid_indices = indices[i][valid_mask]
         sum_scores.append(score[:, valid_indices].sum(dim=1))
-    
-    sum_scores = torch.stack(sum_scores, dim=0) 
+
+    sum_scores = torch.stack(sum_scores, dim=0)
 
     # Calculate the Spearman rank correlation between the average scores and the
     # ground-truth values for each test sample
