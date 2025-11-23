@@ -27,25 +27,26 @@
 
 ### Contents
 
-- [What is *dattri* ?](#what-is-dattri-)
-	- [Contents](#contents)
-- [Quick Start](#quick-start)
-	- [Installation](#installation)
-		- [Recommended enviroment setup](#recommended-enviroment-setup)
-	- [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
-	- [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
-		- [HVP/IHVP](#hvpihvp)
-		- [Random Projection](#random-projection)
-		- [Dropout Ensemble](#dropout-ensemble)
-- [Supported Algorithms](#supported-algorithms)
-- [Supported Metrics](#supported-metrics)
-- [Supported Benchmark Settings](#supported-benchmark-settings)
-- [Benchmark Results](#benchmark-results)
-	- [MNIST+LR/MLP](#mnistlrmlp)
-	- [LDS performance on larger models](#lds-performance-on-larger-models)
-	- [AUC performance](#auc-performance)
-- [Development Plan](#development-plan)
-- [Citation](#citation)
+- [A Library for Efficient Data Attribution](#a-library-for-efficient-data-attribution)
+  - [What is *dattri* ?](#what-is-dattri-)
+    - [Contents](#contents)
+  - [Quick Start](#quick-start)
+    - [Installation](#installation)
+      - [Recommended enviroment setup](#recommended-enviroment-setup)
+    - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
+    - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
+      - [HVP/IHVP](#hvpihvp)
+      - [Random Projection](#random-projection)
+      - [Dropout Ensemble](#dropout-ensemble)
+  - [Supported Algorithms](#supported-algorithms)
+  - [Supported Metrics](#supported-metrics)
+  - [Supported Benchmark Settings](#supported-benchmark-settings)
+  - [Benchmark Results](#benchmark-results)
+    - [MNIST+LR/MLP](#mnistlrmlp)
+    - [LDS performance on larger models](#lds-performance-on-larger-models)
+    - [AUC performance](#auc-performance)
+  - [Development Plan](#development-plan)
+  - [Citation](#citation)
 
 ## Quick Start
 
@@ -239,6 +240,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
 |   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     | [link](https://magenta.tensorflow.org/datasets/maestro) |
 | Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |       [link](https://github.com/karpathy/nanoGPT)       |
+|  wikitext2  |       gpt2        |   Text Generation    |        (4656,481)         |     124M       |     LDS     |      [link](https://huggingface.co/datasets/Salesforce/wikitext)       |
 
 ## Benchmark Results
 

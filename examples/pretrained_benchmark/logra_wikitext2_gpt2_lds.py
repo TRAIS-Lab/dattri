@@ -71,7 +71,7 @@ if __name__ == "__main__":
         return outputs.loss
 
     model = model_details["model"]
-    model = replace_conv1d_modules(model)  # replace conv1d with linear 
+    model = replace_conv1d_modules(model)  # replace conv1d with linear
     train_dataset = model_details["train_dataset"]
     eval_dataset = model_details["test_dataset"]
 
@@ -89,12 +89,6 @@ if __name__ == "__main__":
         eval_dataset, collate_fn=default_data_collator, batch_size=4, sampler = test_sampler, shuffle=False,
     )
 
-    projector_kwargs = {
-        "device": args.device,
-        "proj_dim": 32,  # projection dimension = 32 * 32 = 1024
-        "proj_max_batch_size": 32,
-    }
-
     task = AttributionTask(
         model=model.to(args.device),
         loss_func=f,
@@ -107,7 +101,7 @@ if __name__ == "__main__":
         device=args.device,
         damping=1e-2,
         offload="cpu",
-        projector_kwargs=projector_kwargs,
+        proj_dim=1024,
     )
 
     attributor.cache(train_dataloader)
