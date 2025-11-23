@@ -20,7 +20,7 @@ dependency-reduced-pom.xml
 *.iml
 .idea/
 .vscode/
-.venv/ 
+.venv/
 
 # macOS specific
 .DS_Store
@@ -42,6 +42,8 @@ nohup.out
 *.so
 *.so.*
 *.dylib
+*.pt
+*.json
 __pycache__
 *.egg-info
 target
@@ -52,7 +54,7 @@ dist
 **/maestro-v2.0.0/*
 **/maestro-v2.0.0-processed/*
 **/maestro-v2.0.0-midi.zip
-
+**/checkpoints
 
 # for testing-related files
 *.slurm

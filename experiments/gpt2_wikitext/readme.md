@@ -20,7 +20,10 @@ This experiment could only be run on cuda device.
 pip install -r requirements.txt
 ```
 
-### Troubleshooting: vmap over calling .item() Error in Transformers
+### Troubleshooting
+
+#### `vmap` over calling `.item()` Error in Transformers
+
 After installing transformers, you might encounter the following error:
 ```bash
 We don't support vmap over calling .item() on a Tensor, please try to rewrite what you're doing with other operations.
@@ -67,6 +70,26 @@ Then, add the following line:
 ```bash
 return AttentionMaskConverter._expand_mask(mask=mask, dtype=dtype, tgt_len=tgt_len)
 ```
+
+#### NumPy Version Compatibility Issue
+
+If you encounter the following error:
+
+```bash
+A module that was compiled using NumPy 1.x cannot be run in NumPy 2.2.3
+```
+
+this means that some dependencies or compiled extensions were built with NumPy **1.x** and are incompatible with **NumPy 2.x**.
+
+### Solution: Downgrade NumPy
+
+To resolve this issue, downgrade NumPy to a compatible version **(≥1.25 but still in the 1.x range)**:
+
+```bash
+pip install "numpy>=1.25,<2.0"
+```
+
+This ensures that you have at least NumPy 1.25 but avoid upgrading to NumPy 2.x, preventing compatibility issues.
 
 ## Training
 
@@ -125,7 +148,7 @@ python groundtruth.py\
 
 ```bash
 python spearman.py \
-     --score_path "score_logra.pt" 
+     --score_path "score_logra.pt"
 ```
 
 ```bash
@@ -138,23 +161,3 @@ python spearman.py \
 > ...
 > 0.1613172442573241
 ```
-
-## Troubleshooting: NumPy Version Compatibility Issue
-
-If you encounter the following error:
-
-```bash
-A module that was compiled using NumPy 1.x cannot be run in NumPy 2.2.3
-```
-
-this means that some dependencies or compiled extensions were built with NumPy **1.x** and are incompatible with **NumPy 2.x**.
-
-### Solution: Downgrade NumPy
-
-To resolve this issue, downgrade NumPy to a compatible version **(≥1.25 but still in the 1.x range)**:
-
-```bash
-pip install "numpy>=1.25,<2.0"
-```
-
-This ensures that you have at least NumPy 1.25 but avoid upgrading to NumPy 2.x, preventing compatibility issues.

@@ -111,7 +111,6 @@ class TestCudaProjector(unittest.TestCase):
         self.seed = 42
         self.proj_type = "sjlt"
         self.device = torch.device("cuda")
-        self.max_batch_size = 32
 
         self.projector = CudaProjector(
             feature_dim=self.feature_dim,
@@ -119,7 +118,6 @@ class TestCudaProjector(unittest.TestCase):
             seed=self.seed,
             proj_type=self.proj_type,
             device=self.device,
-            max_batch_size=self.max_batch_size,
             dtype=torch.float32,
         )
 
@@ -166,7 +164,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
         self.feature_batch_size = 1000
         self.seed = 42
         self.proj_type = "sjlt"
-        self.max_batch_size = 32
         self.dim_per_chunk = [self.max_chunk_size, self.max_chunk_size]
 
         self.projectors = [
@@ -176,7 +173,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
                 seed=self.seed,
                 proj_type=self.proj_type,
                 device=self.device,
-                max_batch_size=self.max_batch_size,
             ),
             CudaProjector(
                 feature_dim=self.max_chunk_size,
@@ -184,7 +180,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
                 seed=self.seed,
                 proj_type=self.proj_type,
                 device=self.device,
-                max_batch_size=self.max_batch_size,
             ),
         ]
         self.chunked_projector = ChunkedCudaProjector(
@@ -192,7 +187,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
             max_chunk_size=self.max_chunk_size,
             dim_per_chunk=self.dim_per_chunk,
             feature_batch_size=self.feature_batch_size,
-            proj_max_batch_size=self.proj_max_batch_size,
             device=self.device,
             dtype=self.dtype,
         )
