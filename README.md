@@ -214,6 +214,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |                                                   |              [EK-FAC](https://arxiv.org/abs/2308.03296)              |
 |                                                   |             [RelatIF](https://arxiv.org/pdf/2003.11630)              |
 |                                                   |              [LoGra](https://arxiv.org/pdf/2405.13954)               |
+|                                                   |              [GraSS](https://arxiv.org/pdf/2505.18976)               |
 |    [TracIn](https://arxiv.org/abs/2002.08484)     |             [TracInCP](https://arxiv.org/abs/2002.08484)             |
 |                                                   |             [Grad-Dot](https://arxiv.org/abs/2102.05262)             |
 |                                                   |             [Grad-Cos](https://arxiv.org/abs/2102.05262)             |
