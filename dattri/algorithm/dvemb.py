@@ -326,6 +326,7 @@ class DVEmbAttributor:
         batch_data_tensors = [d.to(self.device) for d in batch_data]
         outputs = self.model(batch_data_tensors[0])
         loss = self.criterion(outputs, batch_data_tensors[1])
+        loss *= outputs.shape[0]
         loss.backward()
 
         for h in handles:
@@ -349,7 +350,7 @@ class DVEmbAttributor:
         for item in gradient_factors:
             a = item["A"]
             b = item["B"]
-            c = a.unsqueeze(2) @ b.unsqueeze(1)
+            c = b.unsqueeze(2) @ a.unsqueeze(1)
             projected_grads_parts.append(c.flatten(start_dim=1))
             if item["has_bias"]:
                 projected_grads_parts.append(b)
@@ -396,7 +397,7 @@ class DVEmbAttributor:
         ):
             a_proj = proj_a(item["A"])
             b_proj = proj_b(item["B"])
-            grad = a_proj.mul(b_proj)
+            grad = a_proj.mul(b_proj) * math.sqrt(self.projection_dim)
             projected_grads_parts.append(grad.flatten(start_dim=1))
         return torch.cat(projected_grads_parts, dim=1)
 
@@ -432,7 +433,7 @@ class DVEmbAttributor:
             projected_grads = self._project_gradients_factors_elementwise(caches)
             self.cached_gradients[epoch].append(projected_grads.cpu())
 
-        self.learning_rates[epoch].append(learning_rate)
+        self.learning_rates[epoch].append(learning_rate / len(indices))
         self.data_indices[epoch].append(indices.cpu())
 
     def clear_cache(self) -> None:
