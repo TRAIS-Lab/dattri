@@ -138,8 +138,13 @@ class TracInAttributor(BaseAttributor):
                     train_batch_data = tuple(
                         x.to(self.device) for x in train_batch_data_
                     )
+                elif isinstance(train_batch_data_, dict):
+                    train_batch_data  = {
+                        k: v.to(self.device) for k, v in train_batch_data_.items()
+                    }
                 else:
-                    train_batch_data = train_batch_data_
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.proj_params.proj_dim is not None:
@@ -172,8 +177,13 @@ class TracInAttributor(BaseAttributor):
                         test_batch_data = tuple(
                             x.to(self.device) for x in test_batch_data_
                         )
+                    elif isinstance(test_batch_data_, dict):
+                        test_batch_data  = {
+                            k: v.to(self.device) for k, v in test_batch_data_.items()
+                        }
                     else:
-                        test_batch_data = test_batch_data_
+                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                    
                     # get gradient of test
                     grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.proj_params.proj_dim is not None:
