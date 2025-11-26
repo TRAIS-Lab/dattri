@@ -240,9 +240,10 @@ class BlockProjectedIFAttributor(BaseAttributor):
         logger.info("Computing gradients using hooks...")
 
         # Start batch range processing for disk offload (chunk completion tracking)
-        total_batches = len(full_train_dataloader)
         if hasattr(self.offload_manager, "start_batch_range_processing"):
-            self.offload_manager.start_batch_range_processing(0, total_batches)
+            self.offload_manager.start_batch_range_processing(
+                0, len(full_train_dataloader),
+            )
 
         for batch_idx, batch in enumerate(
             tqdm(full_train_dataloader, desc="Computing gradients"),
@@ -471,9 +472,10 @@ class BlockProjectedIFAttributor(BaseAttributor):
         processed_samples = 0
 
         # Start batch range processing for IFVP storage
-        total_batches = len(batch_to_sample_mapping)
         if hasattr(self.offload_manager, "start_batch_range_processing"):
-            self.offload_manager.start_batch_range_processing(0, total_batches)
+            self.offload_manager.start_batch_range_processing(
+                0, len(batch_to_sample_mapping),
+            )
 
         # Use tensor-based dataloader
         dataloader = self.offload_manager.create_gradient_dataloader(
@@ -558,9 +560,10 @@ class BlockProjectedIFAttributor(BaseAttributor):
         processed_samples = 0
 
         # Start batch range processing for IFVP storage
-        total_batches = len(batch_to_sample_mapping)
         if hasattr(self.offload_manager, "start_batch_range_processing"):
-            self.offload_manager.start_batch_range_processing(0, total_batches)
+            self.offload_manager.start_batch_range_processing(
+                0, len(batch_to_sample_mapping),
+            )
 
         # Process using tensor dataloader
         dataloader = self.offload_manager.create_gradient_dataloader(
