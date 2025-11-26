@@ -20,7 +20,7 @@ from .memory_map import ChunkedMemoryMapHandler
 logger = logging.getLogger(__name__)
 
 DataTypeOptions = Literal["gradients", "preconditioners", "ifvp"]
-HessianOptions = Literal["none", "raw", "kfac", "ekfac"]
+HessianOptions = Literal["identity", "eFIM"]
 
 
 @dataclass
@@ -137,7 +137,7 @@ class ChunkedDiskIOManager:
         cache_dir: str,
         setting: str,
         num_threads: int = 32,
-        hessian: HessianOptions = "raw",
+        hessian: HessianOptions = "eFIM",
         chunk_size: int = 32,
         max_samples_per_chunk: int = 2048,
         buffer_pool_size: int = 8,

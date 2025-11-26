@@ -206,7 +206,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
             if self.metadata.layer_dims is None:
                 self.metadata.set_layer_dims(self.layer_dims)
 
-    def cache(self, full_train_dataloader: DataLoader) -> None:
+    def cache(self, full_train_dataloader: DataLoader) -> None:  # noqa: PLR0912
         """Cache gradients and IFVP for the full training dataset.
 
         Args:
@@ -246,12 +246,6 @@ class BlockProjectedIFAttributor(BaseAttributor):
             # Prepare inputs and compute loss
             loss = self.task.original_loss_func(self.model, batch, self.device)
 
-            # Get actual batch size (the last batch may have fewer samples)
-            batch_size = batch[0].shape[0]
-
-            # Update metadata
-            self.metadata.add_batch_info(batch_idx, batch_size)
-
             # Backward pass
             loss.backward()
 
@@ -260,6 +254,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
                 compressed_grads = self.hook_manager.get_compressed_grads()
 
                 # Detect layer dimensions on first batch
+                batch_size = None
                 if self.layer_dims is None:
                     self.layer_dims = []
                     for grad in compressed_grads:
@@ -267,6 +262,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
                             self.layer_dims.append(
                                 grad.shape[1] if grad.dim() > 1 else grad.numel(),
                             )
+                            batch_size = grad.shape[0] if grad.dim() > 1 else 1
                         else:
                             self.layer_dims.append(0)
 
@@ -278,6 +274,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
                     )
 
                     # Save to metadata manager
+                    self.metadata.add_batch_info(batch_idx, batch_size)
                     self.metadata.set_layer_dims(self.layer_dims)
 
                     # Pass to offload manager if needed
