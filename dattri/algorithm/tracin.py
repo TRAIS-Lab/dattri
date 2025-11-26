@@ -146,16 +146,26 @@ class TracInAttributor(BaseAttributor):
                     train_batch_data = tuple(
                         x.to(self.device) for x in train_batch_data_
                     )
+                elif isinstance(train_batch_data_, dict):
+                    train_batch_data  = {
+                        k: v.to(self.device) for k, v in train_batch_data_.items()
+                    }
                 else:
-                    train_batch_data = train_batch_data_
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
+                    if isinstance(train_batch_data, (tuple, list)):
+                        feature_batch_size = train_batch_data[0].shape[0]
+                    elif isinstance(train_batch_data, dict):
+                        feature_batch_size = train_batch_data[list(train_batch_data.keys())[0]].shape[0]
+
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
                         grad_t,
                         # get the batch size, prevent edge case
-                        train_batch_data[0].shape[0],
+                        feature_batch_size,
                         **self.projector_kwargs,
                     )
                     # param index as ensemble id
@@ -178,15 +188,25 @@ class TracInAttributor(BaseAttributor):
                         test_batch_data = tuple(
                             x.to(self.device) for x in test_batch_data_
                         )
+                    elif isinstance(test_batch_data_, dict):
+                        test_batch_data  = {
+                            k: v.to(self.device) for k, v in test_batch_data_.items()
+                        }
                     else:
-                        test_batch_data = test_batch_data_
+                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                    
                     # get gradient of test
                     grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.projector_kwargs is not None:
+                        if isinstance(test_batch_data, (tuple, list)):
+                            feature_batch_size = test_batch_data[0].shape[0]
+                        elif isinstance(test_batch_data, dict):
+                            feature_batch_size = test_batch_data[list(test_batch_data.keys())[0]].shape[0]
+
                         # define the projector for this batch of data
                         self.test_random_project = random_project(
                             grad_t,
-                            test_batch_data[0].shape[0],
+                            feature_batch_size,
                             **self.projector_kwargs,
                         )
 
@@ -299,11 +319,16 @@ class TracInAttributor(BaseAttributor):
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
+                    if isinstance(train_batch_data, (tuple, list)):
+                        feature_batch_size = train_batch_data[0].shape[0]
+                    elif isinstance(train_batch_data, dict):
+                        feature_batch_size = train_batch_data[list(train_batch_data.keys())[0]].shape[0]
+
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
                         grad_t,
                         # get the batch size, prevent edge case
-                        train_batch_data[0].shape[0],
+                        feature_batch_size,
                         **self.projector_kwargs,
                     )
                     # param index as ensemble id

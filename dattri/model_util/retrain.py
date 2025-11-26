@@ -11,8 +11,8 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
 
-from pathlib import Path
 import random
+from pathlib import Path
 
 import numpy as np
 import torch

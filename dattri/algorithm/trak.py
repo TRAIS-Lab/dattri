@@ -143,8 +143,12 @@ class TRAKAttributor(BaseAttributor):
                     train_batch_data = tuple(
                         data.to(self.device) for data in train_data
                     )
+                elif isinstance(train_data, dict):
+                    train_batch_data  = {
+                        k: v.to(self.device) for k, v in train_data.items()
+                    }
                 else:
-                    train_batch_data = train_data
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
 
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
@@ -260,8 +264,12 @@ class TRAKAttributor(BaseAttributor):
                         train_batch_data = tuple(
                             data.to(self.device) for data in train_data
                         )
+                    elif isinstance(train_data, dict):
+                        train_batch_data  = {
+                            k: v.to(self.device) for k, v in train_data.items()
+                        }
                     else:
-                        train_batch_data = train_data
+                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
 
                     grad_t = self.grad_loss_func(
                         parameters,
@@ -306,9 +314,16 @@ class TRAKAttributor(BaseAttributor):
             ):
                 # TODO: reorganize the data pre-grad processing.
                 if isinstance(test_data, (tuple, list)):
-                    test_batch_data = tuple(data.to(self.device) for data in test_data)
+                    test_batch_data = tuple(
+                        data.to(self.device) for data in test_data
+                    )
+                elif isinstance(test_data, dict):
+                    test_batch_data  = {
+                        k: v.to(self.device) for k, v in test_data.items()
+                    }
                 else:
-                    test_batch_data = test_data
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                
                 grad_t = self.grad_target_func(parameters, test_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
@@ -422,9 +437,13 @@ class TRAKAttributor(BaseAttributor):
                         train_batch_data = tuple(
                             data.to(self.device) for data in train_data
                         )
+                    elif isinstance(train_data, dict):
+                        train_batch_data  = {
+                            k: v.to(self.device) for k, v in train_data.items()
+                        }
                     else:
-                        train_batch_data = train_data
-
+                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                    
                     grad_t = self.grad_loss_func(
                         parameters,
                         train_batch_data,

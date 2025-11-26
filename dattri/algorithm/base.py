@@ -345,9 +345,17 @@ class BaseInnerProductAttributor(BaseAttributor):
                 ),
             ):
                 # move to device
-                train_batch_data = tuple(
-                    data.to(self.device).unsqueeze(0) for data in train_batch_data_
-                )
+                if isinstance(train_batch_data_, (tuple, list)):
+                    train_batch_data = tuple(
+                        data.to(self.device).unsqueeze(0) for data in train_batch_data_
+                    )
+                elif isinstance(train_batch_data_, dict):
+                    train_batch_data = {
+                        k: v.unsqueeze(0) for k, v in train_batch_data_.items()
+                    }
+                else:
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                
                 # get initial representations of train data
                 train_batch_rep = self.generate_train_rep(
                     ckpt_idx=checkpoint_idx,
@@ -384,9 +392,17 @@ class BaseInnerProductAttributor(BaseAttributor):
                     ),
                 ):
                     # move to device
-                    test_batch_data = tuple(
-                        data.to(self.device).unsqueeze(0) for data in test_batch_data_
-                    )
+                    if isinstance(test_batch_data_, (tuple, list)):
+                        test_batch_data = tuple(
+                            data.to(self.device).unsqueeze(0) for data in test_batch_data_
+                        )
+                    elif isinstance(test_batch_data_, dict):
+                        test_batch_data = {
+                            k: v.unsqueeze(0) for k, v in test_batch_data_.items()
+                        }
+                    else:
+                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                    
                     # get initial representations of test data
                     test_batch_rep = self.generate_test_rep(
                         ckpt_idx=checkpoint_idx,
@@ -475,9 +491,16 @@ class BaseInnerProductAttributor(BaseAttributor):
                 ),
             ):
                 # move to device
-                train_batch_data = tuple(
-                    data.to(self.device).unsqueeze(0) for data in train_batch_data_
-                )
+                if isinstance(train_batch_data_, (tuple, list)):
+                    train_batch_data = tuple(
+                        data.to(self.device).unsqueeze(0) for data in train_batch_data_
+                    )
+                elif isinstance(train_batch_data_, dict):
+                    train_batch_data = {
+                        k: v.unsqueeze(0) for k, v in train_batch_data_.items()
+                    }
+                else:
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
 
                 # get initial representations of train data
                 train_batch_rep = self.generate_train_rep(
