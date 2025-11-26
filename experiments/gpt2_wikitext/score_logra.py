@@ -610,6 +610,12 @@ def main():
         outputs = model(**inputs)
         return outputs.loss
 
+    def m(model, batch, device):
+        inputs = {k: v.to(device) for k, v in batch.items()}
+        outputs = model(**inputs)
+        logp = -outputs.loss
+        return logp - torch.log(1 - torch.exp(logp))
+
     def find_layers(model, layer_type="Linear", return_type="instance"):
         """
         Find all layers of a certain type in a model.
@@ -723,6 +729,7 @@ def main():
     task = AttributionTask(
         model=model,
         loss_func=f,
+        target_func=m,
         checkpoints=checkpoint,
         checkpoints_load_func=checkpoints_load_func,
     )
