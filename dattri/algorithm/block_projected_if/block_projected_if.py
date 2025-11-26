@@ -239,7 +239,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
         # Collect gradients using hooks
         logger.info("Computing gradients using hooks...")
 
-        # Start batch range processing for disk offload (enables chunk completion tracking)
+        # Start batch range processing for disk offload (chunk completion tracking)
         total_batches = len(full_train_dataloader)
         if hasattr(self.offload_manager, "start_batch_range_processing"):
             self.offload_manager.start_batch_range_processing(0, total_batches)
