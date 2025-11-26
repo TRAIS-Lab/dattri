@@ -53,7 +53,7 @@ class DiskOffloadManager(Offload):
         self.disk_io = ChunkedDiskIOManager(
             cache_dir,
             "default",
-            hessian="raw",
+            hessian="eFIM",
             chunk_size=chunk_size,
             buffer_pool_size=4,
             write_queue_size=8,

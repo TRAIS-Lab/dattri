@@ -206,7 +206,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
             if self.metadata.layer_dims is None:
                 self.metadata.set_layer_dims(self.layer_dims)
 
-    def cache(self, full_train_dataloader: DataLoader) -> None:
+    def cache(self, full_train_dataloader: DataLoader) -> None:  # noqa: PLR0912
         """Cache gradients and IFVP for the full training dataset.
 
         Args:
@@ -238,6 +238,13 @@ class BlockProjectedIFAttributor(BaseAttributor):
 
         # Collect gradients using hooks
         logger.info("Computing gradients using hooks...")
+
+        # Start batch range processing for disk offload (chunk completion tracking)
+        if hasattr(self.offload_manager, "start_batch_range_processing"):
+            self.offload_manager.start_batch_range_processing(
+                0, len(full_train_dataloader),
+            )
+
         for batch_idx, batch in enumerate(
             tqdm(full_train_dataloader, desc="Computing gradients"),
         ):
@@ -245,12 +252,6 @@ class BlockProjectedIFAttributor(BaseAttributor):
 
             # Prepare inputs and compute loss
             loss = self.task.original_loss_func(self.model, batch, self.device)
-
-            # Get actual batch size (the last batch may have fewer samples)
-            batch_size = batch[0].shape[0]
-
-            # Update metadata
-            self.metadata.add_batch_info(batch_idx, batch_size)
 
             # Backward pass
             loss.backward()
@@ -260,6 +261,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
                 compressed_grads = self.hook_manager.get_compressed_grads()
 
                 # Detect layer dimensions on first batch
+                batch_size = None
                 if self.layer_dims is None:
                     self.layer_dims = []
                     for grad in compressed_grads:
@@ -267,6 +269,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
                             self.layer_dims.append(
                                 grad.shape[1] if grad.dim() > 1 else grad.numel(),
                             )
+                            batch_size = grad.shape[0] if grad.dim() > 1 else 1
                         else:
                             self.layer_dims.append(0)
 
@@ -278,6 +281,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
                     )
 
                     # Save to metadata manager
+                    self.metadata.add_batch_info(batch_idx, batch_size)
                     self.metadata.set_layer_dims(self.layer_dims)
 
                     # Pass to offload manager if needed
@@ -295,6 +299,10 @@ class BlockProjectedIFAttributor(BaseAttributor):
             # Memory management
             if batch_idx % 10 == 0:
                 torch.cuda.empty_cache()
+
+        # Finish batch range processing for disk offload (flushes remaining buffers)
+        if hasattr(self.offload_manager, "finish_batch_range_processing"):
+            self.offload_manager.finish_batch_range_processing()
 
         # Save metadata
         self.metadata.save_metadata()
@@ -463,6 +471,12 @@ class BlockProjectedIFAttributor(BaseAttributor):
         processed_batches = 0
         processed_samples = 0
 
+        # Start batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "start_batch_range_processing"):
+            self.offload_manager.start_batch_range_processing(
+                0, len(batch_to_sample_mapping),
+            )
+
         # Use tensor-based dataloader
         dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="gradients",
@@ -524,6 +538,10 @@ class BlockProjectedIFAttributor(BaseAttributor):
 
             torch.cuda.empty_cache()
 
+        # Finish batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "finish_batch_range_processing"):
+            self.offload_manager.finish_batch_range_processing()
+
         self.offload_manager.wait_for_async_operations()
         logger.info(
             "Computed IFVP for %s batches, %s samples",
@@ -540,6 +558,12 @@ class BlockProjectedIFAttributor(BaseAttributor):
         batch_to_sample_mapping = self.metadata.get_batch_to_sample_mapping()
         processed_batches = 0
         processed_samples = 0
+
+        # Start batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "start_batch_range_processing"):
+            self.offload_manager.start_batch_range_processing(
+                0, len(batch_to_sample_mapping),
+            )
 
         # Process using tensor dataloader
         dataloader = self.offload_manager.create_gradient_dataloader(
@@ -570,6 +594,10 @@ class BlockProjectedIFAttributor(BaseAttributor):
                 processed_samples += batch_tensor.shape[0]
 
             torch.cuda.empty_cache()
+
+        # Finish batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "finish_batch_range_processing"):
+            self.offload_manager.finish_batch_range_processing()
 
         logger.info("Copied %s batches as IFVP", processed_batches)
 
