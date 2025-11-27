@@ -23,7 +23,7 @@ Install the necessary dependencies:
 pip install -e .
 ```
 
-#### Recommended enviroment setup
+#### Recommended environment setup
 It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
 
 ```bash
@@ -33,7 +33,7 @@ conda activate dattri
 conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit
 pip3 install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
-pip install -e .
+pip install -e .[test]
 ```
 
 ### 3. Install Pre-commit Hooks

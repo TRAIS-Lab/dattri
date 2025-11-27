@@ -31,7 +31,7 @@
 	- [Contents](#contents)
 - [Quick Start](#quick-start)
 	- [Installation](#installation)
-		- [Recommended enviroment setup](#recommended-enviroment-setup)
+		- [Recommended environment setup](#recommended-environment-setup)
 	- [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
 	- [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
 		- [HVP/IHVP](#hvpihvp)
@@ -67,7 +67,7 @@ pip install dattri[sjlt]
 > [!NOTE]
 > It's required to have CUDA if you want to install and use the sjlt version `dattri[sjlt]` to accelerate the random projection.
 
-#### Recommended enviroment setup
+#### Recommended environment setup
 
 It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
 
