@@ -114,7 +114,7 @@ SAMPLERSIZE_MAP = {
     "mnist_lr": [5000, 500],
     "cifar2_resnet9": [5000, 500],
     "shakespeare_nanogpt": [5000, 500],
-    "maestro_musictransformer": [5000, 500],
+    "maestro_musictransformer": [5000, 178],
     "wikitext2_gpt2": [4656, 481],
 }
 
@@ -254,7 +254,7 @@ def load_benchmark(  # noqa:PLR0914
                 file_name=path.split("?")[0].split("/")[-1],
             )
         for path in url_map["groundtruth"]["loo"]:
-            if (identifier == "wikitext2_gpt2"):
+            if identifier == "wikitext2_gpt2":
                 break
             _download(
                 path,
