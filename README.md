@@ -239,6 +239,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
 |   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     | [link](https://magenta.tensorflow.org/datasets/maestro) |
 | Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |       [link](https://github.com/karpathy/nanoGPT)       |
+|  wikitext2  |       gpt2        |   Text Generation    |        (4656,481)         |     124M       |     LDS     |      [link](https://huggingface.co/datasets/Salesforce/wikitext)       |
 
 ## Benchmark Results
 

@@ -29,7 +29,7 @@ dependencies = [
 homepage = "https://github.com/TRAIS-Lab/dattri"
 
 [project.optional-dependencies]
-test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing", "torch>=2.2.0", "torchvision>=0.17.0"]
+test = ["build", "pytest", "pre-commit", "ruff", "darglint", "scikit-learn", "pretty_midi", "requests", "matplotlib", "pyparsing", "torch>=2.2.0", "torchvision>=0.17.0", "transformers>=4.36.0", "datasets>=2.18.0"]
 sjlt = ["sjlt"]
 
 [tool.setuptools.packages]
@@ -57,6 +57,7 @@ exclude = [
 
 [tool.ruff.lint.per-file-ignores]
 "dattri/algorithm/logra/logra.py" = ["PLR0914", "PLR0912"]
+"dattri/benchmark/load.py" = ["ANN401", "PLR0912"]
 
 
 [tool.ruff.lint]
