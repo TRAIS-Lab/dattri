@@ -32,6 +32,8 @@ jobs:
         python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
         python examples/data_cleaning/influence_function_data_cleaning.py --device cpu --train_size 1000 --val_size 100 --test_size 100 --remove_number 10
         python examples/relatIF/influence_function_comparison.py --no_output
+        sed -i 's/range(1000)/range(100)/g' examples/lds_vs_gt/mnist.py
+        python examples/lds_vs_gt/mnist.py --device cpu --path ./tmp/mnist_ckpt --benchmark-setting
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
