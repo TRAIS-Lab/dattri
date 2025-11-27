@@ -30,8 +30,8 @@ It's **not** required to follow the exact same steps in this section. But this i
 conda create -n dattri python=3.10
 conda activate dattri
 
-conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
-pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit
+pip3 install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 pip install -e .
 ```
