@@ -162,9 +162,16 @@ class IFAttributor(BaseAttributor):
             ),
         ):
             # get gradient of train
-            train_batch_data = tuple(
-                data.to(self.device).unsqueeze(0) for data in train_batch_data_
-            )
+            if isinstance(train_batch_data_, (tuple, list)):
+                train_batch_data = tuple(
+                    data.to(self.device).unsqueeze(0) for data in train_batch_data_
+                )
+            elif isinstance(train_batch_data_, dict):
+                train_batch_data = {
+                    k: v.unsqueeze(0) for k, v in train_batch_data_.items()
+                }
+            else:
+                raise Exception("We currently only support the train/test data to be tuple, list or dict.")
 
             train_batch_grad = self.grad_func(self.params, train_batch_data)
 
@@ -176,9 +183,16 @@ class IFAttributor(BaseAttributor):
                 ),
             ):
                 # get gradient of test
-                test_batch_data = tuple(
-                    data.to(self.device).unsqueeze(0) for data in test_batch_data_
-                )
+                if isinstance(test_batch_data_, (tuple, list)):
+                    test_batch_data = tuple(
+                        data.to(self.device).unsqueeze(0) for data in test_batch_data_
+                    )
+                elif isinstance(test_batch_data_, dict):
+                    test_batch_data = {
+                        k: v.unsqueeze(0) for k, v in test_batch_data_.items()
+                    }
+                else:
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
 
                 test_batch_grad = self.grad_func(self.params, test_batch_data)
 
@@ -187,7 +201,16 @@ class IFAttributor(BaseAttributor):
                 # so only one iteration
                 for full_data_ in self.full_train_dataloader:
                     # move to device
-                    full_data = tuple(data.to(self.device) for data in full_data_)
+                    if isinstance(full_data_, (tuple, list)):
+                        full_data = tuple(
+                            data.to(self.device) for data in full_data_
+                        )
+                    elif isinstance(full_data_, dict):
+                        full_data = {
+                            k: v.to(self.device) for k, v in full_data_.items()
+                        }
+                    else:
+                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
 
                     if self.ihvp_solver_name == "lissa":
                         self.ihvp_func = self.ihvp_solver(
@@ -275,7 +298,17 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
+            if isinstance(full_data_, (tuple, list)):
+                full_data = tuple(
+                    data.to(self.device) for data in full_data_
+                )
+            elif isinstance(full_data_, dict):
+                full_data = {
+                    k: v.to(self.device) for k, v in full_data_.items()
+                }
+            else:
+                raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+            
             self.ihvp_func = ihvp_explicit(
                 partial(
                     self.task.get_loss_func(
@@ -401,7 +434,17 @@ class IFAttributorCG(BaseInnerProductAttributor):
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
+            if isinstance(full_data_, (tuple, list)):
+                full_data = tuple(
+                    data.to(self.device) for data in full_data_
+                )
+            elif isinstance(full_data_, dict):
+                full_data = {
+                    k: v.to(self.device) for k, v in full_data_.items()
+                }
+            else:
+                raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+            
             self.ihvp_func = ihvp_cg(
                 partial(
                     self.task.get_loss_func(
@@ -699,7 +742,17 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
+            if isinstance(full_data_, (tuple, list)):
+                full_data = tuple(
+                    data.to(self.device) for data in full_data_
+                )
+            elif isinstance(full_data_, dict):
+                full_data = {
+                    k: v.to(self.device) for k, v in full_data_.items()
+                }
+            else:
+                raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+    
             self.ihvp_func = ihvp_lissa(
                 self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=ckpt_idx),
                 collate_fn=IFAttributorLiSSA.lissa_collate_fn,
@@ -829,9 +882,17 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     break
                 sampled_data_list.append(batch)
             for sampled_data_ in sampled_data_list:
-                sampled_data = tuple(
-                    data.to(self.device).unsqueeze(0) for data in sampled_data_
-                )
+                if isinstance(sampled_data_, (tuple, list)):
+                    sampled_data = tuple(
+                        data.to(self.device).unsqueeze(0) for data in sampled_data_
+                    )
+                elif isinstance(sampled_data_, dict):
+                    sampled_data = {
+                        k: v.to(self.device).unsqueeze(0) for k, v in sampled_data_.items()
+                    }
+                else:
+                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                
                 sampled_data_rep = self.generate_train_rep(
                     ckpt_idx=checkpoint_idx,
                     data=sampled_data,
