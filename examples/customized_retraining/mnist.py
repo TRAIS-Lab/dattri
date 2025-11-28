@@ -27,6 +27,7 @@ class MLPMnist(nn.Module):
     
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         x = x.view(-1, 28*28)
+        # x = self.fc1(x) # TODO: delete
         x = torch.relu(self.fc1(x))
         x = self.dropout1(x)
         x = torch.relu(self.fc2(x))
@@ -88,7 +89,6 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--device", type=str, default="cuda")
     parser.add_argument("--path", type=str, required=True)
-    parser.add_argument("--benchmark-setting", action="store_true")
     args = parser.parse_args()
     
     ##############################
