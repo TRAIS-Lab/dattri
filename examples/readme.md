@@ -34,8 +34,8 @@ This section contains examples using attribution scores to find the data points 
 
 [Use influence function to find the low-quality data points in MNIST-10 and evaluate the performance](./data_cleaning/influence_function_data_cleaning.py)
 
-## Retrain subsets and generate new ground truth
+## Customized retraining and ground truth calculation
 
-This section shows how the user can customize training and target function and retain in LDS settings.
+This section shows how the user can customize training and target function and retrain in LDS settings.
 
 [Retrain MLP on MNIST-10 and obtain new ground truth, then compare it with the data attribution score from full MNIST-10 + MLP model](./customized_retraining/mnist.py)
