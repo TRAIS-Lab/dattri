@@ -595,7 +595,7 @@ def main():
     from transformers.pytorch_utils import Conv1D
     from dattri.task import AttributionTask
 
-    model_id = 0  # Use checkpoint 0 (final checkpoint)
+    model_id = -1  # Use checkpoint 0 (final checkpoint)
     checkpoint = f"{args.output_dir}/{model_id}"
 
     #modified for huggingface hub validation error
