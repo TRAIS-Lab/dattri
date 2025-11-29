@@ -54,12 +54,12 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
-from transformers.utils import check_min_version, send_example_telemetry
+from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
-# try:
-#     from transformers.utils import send_example_telemetry
-# except ImportError:
-#     send_example_telemetry = None  # Not available in newer transformers versions
+try:
+    from transformers.utils import send_example_telemetry
+except ImportError:
+    send_example_telemetry = None  # Not available in newer transformers versions
 
 from dattri.benchmark.utils import SubsetSampler
 from dattri.func.utils import flatten_func, flatten_params
@@ -222,25 +222,25 @@ def parse_args():
     )
 
     # add arguments for random projection and fix memory issues
-    parser.add_argument(
-        "--proj_dim",
-        type=int,
-        default=512,
-        help="Output dimension for random projection used by TRAK / TracIn.",
-    )
-    parser.add_argument(
-        "--proj_max_batch_size",
-        type=int,
-        default=16,
-        help="Maximum batch size to process per projection block (controls memory usage).",
-    )
-    parser.add_argument(
-        "--proj_type",
-        type=str,
-        default="random_mask",
-        choices=["normal", "rademacher", "random_mask", "sjlt", "grass"],
-        help="Random projection type used for TRAK/TracIn (default: random_mask).",
-    )
+    # parser.add_argument(
+    #     "--proj_dim",
+    #     type=int,
+    #     default=512,
+    #     help="Output dimension for random projection used by TRAK / TracIn.",
+    # )
+    # parser.add_argument(
+    #     "--proj_max_batch_size",
+    #     type=int,
+    #     default=16,
+    #     help="Maximum batch size to process per projection block (controls memory usage).",
+    # )
+    # parser.add_argument(
+    #     "--proj_type",
+    #     type=str,
+    #     default="random_mask",
+    #     choices=["normal", "rademacher", "random_mask", "sjlt", "grass"],
+    #     help="Random projection type used for TRAK/TracIn (default: random_mask).",
+    # )
     parser.add_argument(
         "--preprocessing_num_workers",
         type=int,
@@ -830,9 +830,10 @@ def main():
         # fix memory issues
         projector_kwargs = {
             "device": "cuda",
-            "proj_dim": args.proj_dim,
-            "proj_max_batch_size": args.proj_max_batch_size,
-            "proj_type": args.proj_type,
+            "proj_dim": 2048,
+            # "proj_dim": args.proj_dim,
+            # "proj_max_batch_size": args.proj_max_batch_size,
+            # "proj_type": args.proj_type,
         }
         attributor = TRAKAttributor(
             task=task,
@@ -851,9 +852,10 @@ def main():
         # fix memory issues
         projector_kwargs = {
             "device": "cuda",
-            "proj_dim": args.proj_dim,
-            "proj_max_batch_size": args.proj_max_batch_size,
-            "proj_type": args.proj_type,
+            "proj_dim": 2048,
+            # "proj_dim": args.proj_dim,
+            # "proj_max_batch_size": args.proj_max_batch_size,
+            # "proj_type": args.proj_type,
         }
 
         attributor = TracInAttributor(
