@@ -651,18 +651,14 @@ def main():
         input_ids, attention_mask, labels = batch
 
         # Re-add batch dimension removed by vmap
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
-        # input_ids = input_ids.unsqueeze(0).cuda()
-        # attention_mask = attention_mask.unsqueeze(0).cuda()
-        # labels = labels.unsqueeze(0).cuda()
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
 
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
-            #(input_ids,),  # Pass as tuple to avoid dimension issues
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         logp = -outputs.loss
@@ -675,18 +671,14 @@ def main():
         input_ids, attention_mask, labels = batch
 
         # Re-add batch dimension removed by vmap
-        input_ids = input_ids.cuda()
-        attention_mask = attention_mask.cuda()
-        labels = labels.cuda()
-        # input_ids = input_ids.unsqueeze(0).cuda()
-        # attention_mask = attention_mask.unsqueeze(0).cuda()
-        # labels = labels.unsqueeze(0).cuda()
+        input_ids = input_ids.unsqueeze(0).cuda()
+        attention_mask = attention_mask.unsqueeze(0).cuda()
+        labels = labels.unsqueeze(0).cuda()
 
         outputs = torch.func.functional_call(
             model,
             params,
-            input_ids,
-            #(input_ids,),  # Pass as tuple to avoid dimension issues
+            (input_ids,),  # Pass as tuple to avoid dimension issues
             kwargs={"attention_mask": attention_mask, "labels": labels},
         )
         p = torch.exp(-outputs.loss)
@@ -715,51 +707,54 @@ def main():
     method = args.method
 
     #fix checkpoint loading error
-    checkpoint_root = Path(args.output_dir)
-    available_checkpoint_dirs = sorted(
-        [p for p in checkpoint_root.iterdir() if p.is_dir() and p.name.isdigit()],
-        key=lambda p: int(p.name),
-    )
+    # checkpoint_root = Path(args.output_dir)
+    # available_checkpoint_dirs = sorted(
+    #     [p for p in checkpoint_root.iterdir() if p.is_dir() and p.name.isdigit()],
+    #     key=lambda p: int(p.name),
+    # )
 
-    if not available_checkpoint_dirs:
-        raise FileNotFoundError(
-            f"No numeric checkpoint directories found in {checkpoint_root}."
-        )
+    # if not available_checkpoint_dirs:
+    #     raise FileNotFoundError(
+    #         f"No numeric checkpoint directories found in {checkpoint_root}."
+    #     )
 
     if method.startswith("TRAK-"):
         parts = method.split("-")
         if len(parts) == 2 and parts[1].isdigit():
-            requested_checkpoints = int(parts[1])
+            num_checkpoints = int(parts[1])
+            # requested_checkpoints = int(parts[1])
         else:
             raise ValueError(
                 "Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'."
             )
-
+        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
         #fix checkpoint loading error
-        if len(available_checkpoint_dirs) < requested_checkpoints:
-            logger.warning(
-                "Requested %s checkpoints but only found %s in %s. Using available checkpoints instead.",
-                requested_checkpoints,
-                len(available_checkpoint_dirs),
-                checkpoint_root,
-            )
-            requested_checkpoints = len(available_checkpoint_dirs)
+        # if len(available_checkpoint_dirs) < requested_checkpoints:
+        #     logger.warning(
+        #         "Requested %s checkpoints but only found %s in %s. Using available checkpoints instead.",
+        #         requested_checkpoints,
+        #         len(available_checkpoint_dirs),
+        #         checkpoint_root,
+        #     )
+        #     requested_checkpoints = len(available_checkpoint_dirs)
 
-        checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
+        # checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
 
     elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
-        requested_checkpoints = min(5, len(available_checkpoint_dirs))
-        if requested_checkpoints == 0:
-            raise FileNotFoundError(
-                f"No numeric checkpoint directories found in {checkpoint_root}."
-            )
-        if requested_checkpoints < 5:
-            logger.warning(
-                "Only %s checkpoint(s) available; using these for %s.",
-                requested_checkpoints,
-                method,
-            )
-        checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
+        num_checkpoints = 5
+        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+        # requested_checkpoints = min(5, len(available_checkpoint_dirs))
+        # if requested_checkpoints == 0:
+        #     raise FileNotFoundError(
+        #         f"No numeric checkpoint directories found in {checkpoint_root}."
+        #     )
+        # if requested_checkpoints < 5:
+        #     logger.warning(
+        #         "Only %s checkpoint(s) available; using these for %s.",
+        #         requested_checkpoints,
+        #         method,
+        #     )
+        # checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
     else:
         raise ValueError(
             f"Unknown --method {method}. Try 'TRAK-5', 'TracIn', 'Grad-Dot', or 'Grad-Cos'."
