@@ -599,54 +599,55 @@ def main():
     checkpoint = f"{args.output_dir}/{model_id}"
 
     #modified for huggingface hub validation error
-    def checkpoints_load_func(model, checkpoint_path):
-        # Convert to absolute path and verify it exists
-        import os
-        checkpoint_abs = os.path.abspath(checkpoint_path)
+    # def checkpoints_load_func(model, checkpoint_path):
+    #     # Convert to absolute path and verify it exists
+    #     import os
+    #     checkpoint_abs = os.path.abspath(checkpoint_path)
         
-        # Verify checkpoint directory exists
-        if not os.path.exists(checkpoint_abs):
-            raise FileNotFoundError(
-                f"Checkpoint directory not found: {checkpoint_abs}. "
-                f"Please ensure the checkpoint exists at this path."
-            )
+    #     # Verify checkpoint directory exists
+    #     if not os.path.exists(checkpoint_abs):
+    #         raise FileNotFoundError(
+    #             f"Checkpoint directory not found: {checkpoint_abs}. "
+    #             f"Please ensure the checkpoint exists at this path."
+    #         )
         
-        # Try loading with local_files_only first
-        try:
-            # Load config and model separately to avoid path validation issues
-            config = AutoConfig.from_pretrained(
-                checkpoint_abs,
-                local_files_only=True,
-                trust_remote_code=True,
-            )
+    #     # Try loading with local_files_only first
+    #     try:
+    #         # Load config and model separately to avoid path validation issues
+    #         config = AutoConfig.from_pretrained(
+    #             checkpoint_abs,
+    #             local_files_only=True,
+    #             trust_remote_code=True,
+    #         )
             
-            # Load model using config to bypass path validation
-            model = AutoModelForCausalLM.from_pretrained(
-                checkpoint_abs,
-                config=config,
-                local_files_only=True,  # Force local file loading
-                trust_remote_code=True,  # Allow loading from local path
-            ).cuda()
-        except Exception as e:
-            # If path validation fails, try loading from config.json directly
-            config_path = os.path.join(checkpoint_abs, "config.json")
-            if os.path.exists(config_path):
-                config = AutoConfig.from_json_file(config_path)
-                model = AutoModelForCausalLM.from_config(config).cuda()
-                # Load weights from pytorch_model.bin or model.safetensors
-                weight_path = os.path.join(checkpoint_abs, "pytorch_model.bin")
-                if not os.path.exists(weight_path):
-                    weight_path = os.path.join(checkpoint_abs, "model.safetensors")
-                if os.path.exists(weight_path):
-                    from safetensors.torch import load_file
-                    if weight_path.endswith(".safetensors"):
-                        state_dict = load_file(weight_path)
-                    else:
-                        state_dict = torch.load(weight_path, map_location="cpu")
-                    model.load_state_dict(state_dict)
-            else:
-                raise e
-        
+    #         # Load model using config to bypass path validation
+    #         model = AutoModelForCausalLM.from_pretrained(
+    #             checkpoint_abs,
+    #             config=config,
+    #             local_files_only=True,  # Force local file loading
+    #             trust_remote_code=True,  # Allow loading from local path
+    #         ).cuda()
+    #     except Exception as e:
+    #         # If path validation fails, try loading from config.json directly
+    #         config_path = os.path.join(checkpoint_abs, "config.json")
+    #         if os.path.exists(config_path):
+    #             config = AutoConfig.from_json_file(config_path)
+    #             model = AutoModelForCausalLM.from_config(config).cuda()
+    #             # Load weights from pytorch_model.bin or model.safetensors
+    #             weight_path = os.path.join(checkpoint_abs, "pytorch_model.bin")
+    #             if not os.path.exists(weight_path):
+    #                 weight_path = os.path.join(checkpoint_abs, "model.safetensors")
+    #             if os.path.exists(weight_path):
+    #                 from safetensors.torch import load_file
+    #                 if weight_path.endswith(".safetensors"):
+    #                     state_dict = load_file(weight_path)
+    #                 else:
+    #                     state_dict = torch.load(weight_path, map_location="cpu")
+    #                 model.load_state_dict(state_dict)
+    #         else:
+    #             raise e
+    def checkpoints_load_func(model, checkpoint):
+        model = AutoModelForCausalLM.from_pretrained(checkpoint).cuda()
         model.eval()
         return replace_conv1d_modules(model)
 
