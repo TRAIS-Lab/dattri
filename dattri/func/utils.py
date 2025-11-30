@@ -113,7 +113,7 @@ def get_parameter_chunk_sizes(
     """
     param_shapes = np.array(param_shape_list)
 
-    max_chunk_size = np.iinfo(np.uint32).max // (batch_size * 8)
+    max_chunk_size = np.iinfo(np.uint32).max // (batch_size * 2)
 
     params_per_chunk = []
     chunk_sum = 0
