@@ -1133,7 +1133,7 @@ def make_random_projector(
             # Generate seeds using torch.randint
             seeds = torch.randint(
                 low=0,
-                high=500,
+                high=2**31,
                 size=(len(param_chunk_sizes),),
                 generator=generator,
                 dtype=torch.int64,
