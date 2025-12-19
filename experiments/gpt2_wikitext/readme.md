@@ -68,7 +68,6 @@ Then, add the following line:
 return AttentionMaskConverter._expand_mask(mask=mask, dtype=dtype, tgt_len=tgt_len)
 ``` -->
 
-the troubleshooting can be avoided by setting the attn_implementation paramater to 'eager' in from_pretrained function 
 
 if args.model_name_or_path:
         model = AutoModelForCausalLM.from_pretrained(
