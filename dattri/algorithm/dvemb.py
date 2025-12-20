@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Union
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -108,14 +108,13 @@ class DVEmbAttributor:
         count = len([p for p in sig.parameters.values() if p.default == p.empty])
 
         # TODO: Use more robust way to check function signature
+        error_msg = "Wrong loss function format for factorization.\
+                     Please refer to the docstring."
         if self.use_factorization:
-            if count != 3:
-                raise ValueError(f"Wrong loss function format for factorization.\
-                                   Please refer to the docstring.")
-        else:
-            if count != 2:
-                raise ValueError(f"Wrong loss function format for no factorization.\
-                                   Please refer to the docstring.")
+            if count != 3:  # noqa: PLR2004
+                raise ValueError(error_msg)
+        elif count != 2:  # noqa: PLR2004
+            raise ValueError(error_msg)
 
         # Create meta-information for factorized gradient caching
         if self.use_factorization:
@@ -130,22 +129,21 @@ class DVEmbAttributor:
                     for layer in self._linear_layers
                     for p in layer.parameters()
                 )
+            elif self.factorization_type == "kronecker":
+                self.projection_dim = int(
+                    math.sqrt(proj_dim / len(self._linear_layers)),
+                )
+                self._params_dim = (
+                    len(self._linear_layers)
+                    * self.projection_dim
+                    * self.projection_dim
+                )
+            elif self.factorization_type == "elementwise":
+                self.projection_dim = int(proj_dim / len(self._linear_layers))
+                self._params_dim = len(self._linear_layers) * self.projection_dim
             else:
-                if self.factorization_type == "kronecker":
-                    self.projection_dim = int(
-                        math.sqrt(proj_dim / len(self._linear_layers)),
-                    )
-                    self._params_dim = (
-                        len(self._linear_layers)
-                        * self.projection_dim
-                        * self.projection_dim
-                    )
-                elif self.factorization_type == "elementwise":
-                    self.projection_dim = int(proj_dim / len(self._linear_layers))
-                    self._params_dim = len(self._linear_layers) * self.projection_dim
-                else:
-                    msg = f"Unknown factorization type: {self.factorization_type}"
-                    raise ValueError(msg)
+                msg = f"Unknown factorization type: {self.factorization_type}"
+                raise ValueError(msg)
 
         self.cached_gradients: Dict[int, List[Tensor]] = {}
         self.learning_rates: Dict[int, List[float]] = {}
@@ -154,6 +152,9 @@ class DVEmbAttributor:
 
     def _setup_projectors(self, batch_size: int) -> None:
         """Sets up random projectors for each Linear layer based on the projection type.
+
+        Args:
+            batch_size: The batch size to be used for creating projectors.
 
         Creates self.random_projectors as a list of tuples containing
         (input_projector, output_projector) for each Linear layer.
@@ -353,7 +354,7 @@ class DVEmbAttributor:
         self.model.zero_grad()
         handles, caches = self._register_factorization_hooks()
 
-        batch_data_tensors = [d.to(self.device) for d in batch_data]     
+        batch_data_tensors = [d.to(self.device) for d in batch_data]
         loss = self.task.original_loss_func(self.model,
                                             batch_data_tensors,
                                             self.device)
