@@ -11,8 +11,10 @@ echo "job is starting on `hostname`"
 echo "Running TRAK scoring for seed: ${SLURM_ARRAY_TASK_ID}"
 
 # PyTorch memory management
+export CUDA_VISIBLE_DEVICES=2
 export PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
-export CUDA_LAUNCH_BLOCKING=2
+export TOKENIZERS_PARALLELISM=false
+#export CUDA_LAUNCH_BLOCKING=2
 
 # Create logs directory if it doesn't exist
 mkdir -p logs
