@@ -727,7 +727,8 @@ def main():
             raise ValueError(
                 "Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'."
             )
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+        checkpoint_root_abs = Path(args.output_dir).resolve()
+        checkpoints = [f"{checkpoint_root_abs}/{i}" for i in range(num_checkpoints)]
         #fix checkpoint loading error
         # if len(available_checkpoint_dirs) < requested_checkpoints:
         #     logger.warning(
@@ -742,7 +743,8 @@ def main():
 
     elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
         num_checkpoints = 5
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
+        checkpoint_root_abs = Path(args.output_dir).resolve()
+        checkpoints = [f"{checkpoint_root_abs}/{i}" for i in range(num_checkpoints)]
         # requested_checkpoints = min(5, len(available_checkpoint_dirs))
         # if requested_checkpoints == 0:
         #     raise FileNotFoundError(
