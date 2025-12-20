@@ -55,7 +55,7 @@ from transformers import (
     get_scheduler,
 )
 from transformers.utils import check_min_version, send_example_telemetry
-# from transformers.utils.versions import require_version
+from transformers.utils.versions import require_version
 # try:
 #     from transformers.utils import send_example_telemetry
 # except ImportError:
