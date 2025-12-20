@@ -12,7 +12,7 @@ echo "Running TRAK scoring for seed: ${SLURM_ARRAY_TASK_ID}"
 
 # PyTorch memory management
 export PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
-export CUDA_LAUNCH_BLOCKING=0
+export CUDA_LAUNCH_BLOCKING=2
 
 # Create logs directory if it doesn't exist
 mkdir -p logs
