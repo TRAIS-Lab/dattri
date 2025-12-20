@@ -37,7 +37,7 @@ class TestDVEmbAttributor:
             images, labels = data
             y_hat = functional_call(self.model, params, (images,))
             return self.criterion(y_hat, labels.unsqueeze(0))
-        
+
         def eager_loss(model, batch, device):
             inputs, targets = batch
             inputs = inputs.to(device)
@@ -107,6 +107,22 @@ class TestDVEmbAttributor:
         )
         assert subset_score.shape == (len(subset_indices), len(self.test_dataset))
         assert torch.allclose(subset_score, total_score[subset_indices, :])
+
+    def test_dvemb_invalid_loss_signature(self):
+        """Test DVEmb with invalid loss function signatures."""
+        # kronecker factorization with non-eager loss should raise error
+        with pytest.raises(ValueError, match="Wrong loss function format"):
+            DVEmbAttributor(
+                task=self.task,
+                factorization_type="kronecker",
+            )
+
+        # non-factorization with eager loss should also raise error
+        with pytest.raises(ValueError, match="Wrong loss function format"):
+            DVEmbAttributor(
+                task=self.task_eager,
+                factorization_type="none",
+            )
 
     def test_dvemb_no_projection(self):
         """Test DVEmb without random projection."""
