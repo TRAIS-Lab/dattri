@@ -706,17 +706,13 @@ def main():
 
     method = args.method
 
-    #fix checkpoint loading error
-    # checkpoint_root = Path(args.output_dir)
-    # available_checkpoint_dirs = sorted(
-    #     [p for p in checkpoint_root.iterdir() if p.is_dir() and p.name.isdigit()],
-    #     key=lambda p: int(p.name),
-    # )
-
-    # if not available_checkpoint_dirs:
-    #     raise FileNotFoundError(
-    #         f"No numeric checkpoint directories found in {checkpoint_root}."
-    #     )
+    #this gets the existing checkpoints in the output directory
+    checkpoint_root_abs = Path(args.output_dir).resolve()
+    existing_ckpt_dirs = [p for p in checkpoint_root_abs.iterdir() if p.is_dir()]
+    existing_names = {p.name for p in existing_ckpt_dirs}
+    has_minus1 = "-1" in existing_names
+    numeric_sorted = sorted([int(n) for n in existing_names if n.isdigit()])
+    numeric_count = len(numeric_sorted)
 
     if method.startswith("TRAK-"):
         parts = method.split("-")
@@ -727,36 +723,31 @@ def main():
             raise ValueError(
                 "Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'."
             )
-        checkpoint_root_abs = Path(args.output_dir).resolve()
-        checkpoints = [f"{checkpoint_root_abs}/{i}" for i in range(-1, num_checkpoints)]
-        #fix checkpoint loading error
-        # if len(available_checkpoint_dirs) < requested_checkpoints:
-        #     logger.warning(
-        #         "Requested %s checkpoints but only found %s in %s. Using available checkpoints instead.",
-        #         requested_checkpoints,
-        #         len(available_checkpoint_dirs),
-        #         checkpoint_root,
-        #     )
-        #     requested_checkpoints = len(available_checkpoint_dirs)
-
-        # checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
-
+        #prevent checkpoint id error when only -1 is present
+        if has_minus1 and numeric_count == 0:
+            selected_indices = [-1]
+        else:
+            if numeric_count == 0 and not has_minus1:
+                raise FileNotFoundError( f"No numeric checkpoint directories found in {checkpoint_root_abs}." )
+            if numeric_count > 0 and has_minus1:
+                selected_indices = list(range(-1, min(num_checkpoints, numeric_count)))
+            if numeric_count > 0 and not has_minus1:
+                selected_indices = list(range(min(num_checkpoints, numeric_count)))
+        checkpoints = [str(checkpoint_root_abs / str(i)) for i in selected_indices]
+        
     elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
         num_checkpoints = 5
-        checkpoint_root_abs = Path(args.output_dir).resolve()
-        checkpoints = [f"{checkpoint_root_abs}/{i}" for i in range(-1,num_checkpoints)]
-        # requested_checkpoints = min(5, len(available_checkpoint_dirs))
-        # if requested_checkpoints == 0:
-        #     raise FileNotFoundError(
-        #         f"No numeric checkpoint directories found in {checkpoint_root}."
-        #     )
-        # if requested_checkpoints < 5:
-        #     logger.warning(
-        #         "Only %s checkpoint(s) available; using these for %s.",
-        #         requested_checkpoints,
-        #         method,
-        #     )
-        # checkpoints = [str(p) for p in available_checkpoint_dirs[:requested_checkpoints]]
+        if has_minus1 and numeric_count == 0:
+            selected_indices = [-1]
+        else: #prevent checkpoint id error when only -1 is present
+            if numeric_count == 0 and not has_minus1:
+                raise FileNotFoundError( f"No numeric checkpoint directories found in {checkpoint_root_abs}.")
+            if numeric_count > 0 and has_minus1:
+                selected_indices = list(range(-1, min(num_checkpoints, numeric_count)))
+            if numeric_count > 0 and not has_minus1:
+                selected_indices = list(range(min(num_checkpoints, numeric_count)))
+        checkpoints = [str(checkpoint_root_abs / str(i)) for i in selected_indices]
+        
     else:
         raise ValueError(
             f"Unknown --method {method}. Try 'TRAK-5', 'TracIn', 'Grad-Dot', or 'Grad-Cos'."
@@ -765,53 +756,6 @@ def main():
     #modified for huggingface hub validation error
     def checkpoints_load_func(model, checkpoint_path):
         new_model = AutoModelForCausalLM.from_pretrained(checkpoint_path).cuda()
-        # Convert to absolute path and verify it exists
-        # import os
-        # checkpoint_abs = os.path.abspath(checkpoint_path)
-        
-        # # Verify checkpoint directory exists
-        # if not os.path.exists(checkpoint_abs):
-        #     raise FileNotFoundError(
-        #         f"Checkpoint directory not found: {checkpoint_abs}. "
-        #         f"Please ensure the checkpoint exists at this path."
-        #     )
-        
-        # # Try loading with local_files_only first
-        # try:
-        #     # Load config and model separately to avoid path validation issues
-        #     config = AutoConfig.from_pretrained(
-        #         checkpoint_abs,
-        #         local_files_only=True,
-        #         trust_remote_code=True,
-        #     )
-            
-        #     # Load model using config to bypass path validation
-        #     new_model = AutoModelForCausalLM.from_pretrained(
-        #         checkpoint_abs,
-        #         config=config,
-        #         local_files_only=True,  # Force local file loading
-        #         trust_remote_code=True,  # Allow loading from local path
-        #     ).cuda()
-        # except Exception as e:
-        #     # If path validation fails, try loading from config.json directly
-        #     config_path = os.path.join(checkpoint_abs, "config.json")
-        #     if os.path.exists(config_path):
-        #         config = AutoConfig.from_json_file(config_path)
-        #         new_model = AutoModelForCausalLM.from_config(config).cuda()
-        #         # Load weights from pytorch_model.bin or model.safetensors
-        #         weight_path = os.path.join(checkpoint_abs, "pytorch_model.bin")
-        #         if not os.path.exists(weight_path):
-        #             weight_path = os.path.join(checkpoint_abs, "model.safetensors")
-        #         if os.path.exists(weight_path):
-        #             from safetensors.torch import load_file
-        #             if weight_path.endswith(".safetensors"):
-        #                 state_dict = load_file(weight_path)
-        #             else:
-        #                 state_dict = torch.load(weight_path, map_location="cpu")
-        #             new_model.load_state_dict(state_dict)
-        #     else:
-        #         raise e
-        
         new_model.eval()
         return new_model
 
@@ -852,6 +796,8 @@ def main():
         if method == "Grad-Cos":
             normalized_grad = True
 
+        #get the number of checkpoints
+        num_checkpoints = len(checkpoints)
         weight_list = torch.ones(num_checkpoints) * 1e-3
 
         # fix memory issues
