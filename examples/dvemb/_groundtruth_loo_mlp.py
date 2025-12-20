@@ -1,3 +1,4 @@
+"""This file define functions to calculate the trajectory-specific leave-one-out values for MLP on MNIST dataset."""
 import torch
 import random
 import numpy as np
@@ -8,7 +9,6 @@ from tqdm import tqdm
 
 from dattri.benchmark.load import load_benchmark
 
-"""This file define functions to calculate the trajectory-specific leave-one-out values for MLP on MNIST dataset."""
 from torch import nn
 
 
