@@ -14,6 +14,7 @@ if TYPE_CHECKING:
 
     from dattri.task import AttributionTask
 
+import inspect
 import math
 
 import torch
@@ -24,10 +25,7 @@ from dattri.func.projection import random_project
 from dattri.func.utils import flatten_params
 
 DEFAULT_PROJECTOR_KWARGS = {
-    "feature_batch_size": 0,
-    "proj_max_batch_size": 16,
-    "proj_seed": 0,
-    "device": "cpu",
+    "proj_max_batch_size": 64,
 }
 
 
@@ -42,19 +40,34 @@ class DVEmbAttributor:
     def __init__(  # noqa: PLR0912, PLR0915
         self,
         task: AttributionTask,
-        criterion: nn.Module,
         proj_dim: Optional[int] = None,
         factorization_type: Optional[str] = "none",
         layer_names: Optional[Union[str, List[str]]] = None,
-        projector_kwargs: Optional[Dict[str, Any]] = None,
     ) -> None:
         """Initializes the DVEmb attributor.
 
         Args:
             task: Task to attribute. Must be an instance of `AttributionTask`.
                   Note: The checkpoint functionality of the task is not used by DVEmb.
-            criterion: The loss function module (e.g., nn.CrossEntropyLoss())
-                       used for gradient factorization.
+                  The loss function of the task must follow specific formats:
+                    - If `factorization_type` is "none", the loss function should follow
+                      the signature of following example:
+                        ```python
+                        def f(params, data):
+                            image, label = data
+                            loss = nn.CrossEntropyLoss()
+                            yhat = torch.func.functional_call(model, params, image)
+                            return loss(yhat, label)
+                        ```.
+                    - If `factorization_type` is not "none", the loss function should
+                      follow the signature of following example:
+                        ```python
+                        def f(model, data, device):
+                            image, label = data
+                            loss = nn.CrossEntropyLoss()
+                            yhat = model(image.to(device))
+                            return loss(yhat, label.to(device))
+                        ```.
             proj_dim: The dimension for projection (if used). Default to None,
                       meaning no projection.
             factorization_type: Type of gradient factorization to use. Options are
@@ -67,33 +80,21 @@ class DVEmbAttributor:
                 You can check the names using model.named_modules().
                 Hooks will be registered on these layers to collect gradients.
                 Only available when factorization_type is not "none".
-            projector_kwargs: The keyword arguments for the projector.
 
         Raises:
             ValueError: If an unknown factorization type is provided
-                        or if no Linear layers are found for factorization
-                        or if `feature_batch_size` is not set when using projection.
+                        or if no Linear layers are found for factorization or
+                        if the loss function format is incorrect.
         """
         self.task = task
         self.model = task.get_model()
         self.device = next(self.model.parameters()).device
-        self.criterion = criterion
         self.projector = None
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
         self.projection_dim = proj_dim
         self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
         self.projector_kwargs["device"] = self.device
-        if projector_kwargs is not None:
-            self.projector_kwargs.update(projector_kwargs)
-        if proj_dim is not None and self.projector_kwargs["feature_batch_size"] == 0:
-            msg = (
-                "When using random projection, please set "
-                "`feature_batch_size` in `projector_kwargs` "
-                "to the maximum batch size of input features "
-                "(including train and test)."
-            )
-            raise ValueError(msg)
 
         if layer_names is None:
             self.layer_names = None
@@ -102,6 +103,21 @@ class DVEmbAttributor:
         else:
             self.layer_names = layer_names
 
+        # check loss function format
+        sig = inspect.signature(self.task.original_loss_func)
+        count = len([p for p in sig.parameters.values() if p.default == p.empty])
+
+        # TODO: Use more robust way to check function signature
+        if self.use_factorization:
+            if count != 3:
+                raise ValueError(f"Wrong loss function format for factorization.\
+                                   Please refer to the docstring.")
+        else:
+            if count != 2:
+                raise ValueError(f"Wrong loss function format for no factorization.\
+                                   Please refer to the docstring.")
+
+        # Create meta-information for factorized gradient caching
         if self.use_factorization:
             self.cached_factors: Dict[int, List[List[Dict[str, Tensor]]]] = {}
             self._linear_layers = self._get_target_linear_layers()
@@ -130,28 +146,34 @@ class DVEmbAttributor:
                 else:
                     msg = f"Unknown factorization type: {self.factorization_type}"
                     raise ValueError(msg)
-                # projectors for each gradient factor (d1 x k) and (d2 x k)
-                self.random_projectors = []
-                for layer in self._linear_layers:
-                    output_dim = layer.weight.shape[0]
-                    input_dim = layer.weight.shape[1]
-                    batch_size = self.projector_kwargs["feature_batch_size"]
-                    project_output = random_project(
-                        feature=torch.zeros((batch_size, output_dim)),
-                        proj_dim=self.projection_dim,
-                        **self.projector_kwargs,
-                    )
-                    project_input = random_project(
-                        feature=torch.zeros((batch_size, input_dim)),
-                        proj_dim=self.projection_dim,
-                        **self.projector_kwargs,
-                    )
-                    self.random_projectors.append((project_input, project_output))
 
         self.cached_gradients: Dict[int, List[Tensor]] = {}
         self.learning_rates: Dict[int, List[float]] = {}
         self.data_indices: Dict[int, List[Tensor]] = {}
         self.embeddings: Dict[int, Tensor] = {}
+
+    def _setup_projectors(self, batch_size: int) -> None:
+        """Sets up random projectors for each Linear layer based on the projection type.
+
+        Creates self.random_projectors as a list of tuples containing
+        (input_projector, output_projector) for each Linear layer.
+        """
+        self.random_projectors = []
+        for layer in self._linear_layers:
+            output_dim = layer.weight.shape[0]
+            input_dim = layer.weight.shape[1]
+            self.projector_kwargs["feature_batch_size"] = batch_size
+            project_output = random_project(
+                feature=torch.zeros((batch_size, output_dim)),
+                proj_dim=self.projection_dim,
+                **self.projector_kwargs,
+            )
+            project_input = random_project(
+                feature=torch.zeros((batch_size, input_dim)),
+                proj_dim=self.projection_dim,
+                **self.projector_kwargs,
+            )
+            self.random_projectors.append((project_input, project_output))
 
     def _get_target_linear_layers(self) -> List[nn.Module]:
         """Gets the target Linear layers based on specified layer names.
@@ -186,7 +208,7 @@ class DVEmbAttributor:
         handles, caches = [], []
         caches.extend(
             [{"A": None, "B": None, "has_bias": False} for _ in self._linear_layers],
-        )
+        )  # A is input and B is pre-activation gradient
 
         def fwd_hook(idx: int) -> Callable:
             def _hook(
@@ -242,6 +264,11 @@ class DVEmbAttributor:
                      in batch_data.
             learning_rate: The learning rate for this step.
         """
+        # setup projectors if not already done
+        if hasattr(self, "random_projectors") is False\
+            and self.use_factorization and self.projection_dim is not None:
+            self._setup_projectors(batch_size=len(indices))
+
         if self.use_factorization:
             self._cache_factored_gradients(epoch, batch_data, indices, learning_rate)
         else:
@@ -270,14 +297,17 @@ class DVEmbAttributor:
         per_sample_grads = grad_loss_fn(model_params, batch_data_tensors)
 
         if self.projection_dim is not None:
+            # create projector if needed
             if self.projector is None:
                 num_features = per_sample_grads.shape[1]
-                batch_size = self.projector_kwargs["feature_batch_size"]
+                batch_size = per_sample_grads.shape[0]
+                self.projector_kwargs["feature_batch_size"] = batch_size
                 self.projector = random_project(
                     feature=torch.zeros((batch_size, num_features)),
                     proj_dim=self.projection_dim,
                     **self.projector_kwargs,
                 )
+            # project gradients
             per_sample_grads = self.projector(per_sample_grads)
 
         return per_sample_grads
@@ -323,10 +353,11 @@ class DVEmbAttributor:
         self.model.zero_grad()
         handles, caches = self._register_factorization_hooks()
 
-        batch_data_tensors = [d.to(self.device) for d in batch_data]
-        outputs = self.model(batch_data_tensors[0])
-        loss = self.criterion(outputs, batch_data_tensors[1])
-        loss *= outputs.shape[0]
+        batch_data_tensors = [d.to(self.device) for d in batch_data]     
+        loss = self.task.original_loss_func(self.model,
+                                            batch_data_tensors,
+                                            self.device)
+        loss *= batch_data_tensors[0].shape[0]  # scale loss by batch size
         loss.backward()
 
         for h in handles:
@@ -503,12 +534,14 @@ class DVEmbAttributor:
             grad_dim = self.cached_gradients[0][0].shape[1]
             grad_dtype = self.cached_gradients[0][0].dtype
 
+        # Create weighting matrix
         m_matrix = torch.zeros(
             (grad_dim, grad_dim),
             device=self.device,
             dtype=grad_dtype,
         )
 
+        # Calculate data embeddings for each epoch in reverse order
         sorted_epochs = sorted(self.learning_rates.keys(), reverse=True)
         for epoch in tqdm(sorted_epochs, desc="Computing DVEmb per Epoch"):
             epoch_embeddings = torch.zeros(
@@ -518,6 +551,7 @@ class DVEmbAttributor:
             )
             num_iterations_in_epoch = len(self.learning_rates[epoch])
 
+            # Calculate data embeddings in reverse order within the epoch
             for t in reversed(range(num_iterations_in_epoch)):
                 eta_t = self.learning_rates[epoch][t]
                 indices_t = self.data_indices[epoch][t]
@@ -536,11 +570,13 @@ class DVEmbAttributor:
                 else:
                     grads_t = self.cached_gradients[epoch][t].to(self.device)
 
+                # Update data value embedding
                 dvemb_t = eta_t * grads_t - eta_t * (grads_t @ m_matrix.T)
 
                 epoch_embeddings.index_add_(0, indices_t.to(self.device), dvemb_t)
                 m_matrix += dvemb_t.T @ grads_t
 
+                # Check for NaN values, report error if found
                 if torch.isnan(m_matrix).any() or torch.isnan(dvemb_t).any():
                     msg = (
                         f"NaN detected at epoch {epoch}, iteration {t}. "
@@ -582,6 +618,7 @@ class DVEmbAttributor:
             msg = "Embeddings not computed. Call compute_embeddings first."
             raise RuntimeError(msg)
 
+        # Create test gradients
         self.model.eval()
         test_grads = []
         for batch_data in tqdm(test_dataloader, desc="Calculating test gradients"):
@@ -599,6 +636,7 @@ class DVEmbAttributor:
             test_grads.append(grads)
         test_grads_tensor = torch.cat(test_grads, dim=0).to(self.device)
 
+        # Select active embeddings (according to epoch if specified)
         if epoch is not None:
             if epoch not in self.embeddings:
                 msg = f"Embeddings for epoch {epoch} not found."
@@ -607,6 +645,7 @@ class DVEmbAttributor:
         else:
             active_embeddings = torch.stack(list(self.embeddings.values())).sum(dim=0)
 
+        # Select training embeddings according to specified indices
         if train_data_indices is not None:
             train_embeddings = active_embeddings[train_data_indices]
         else:

@@ -37,10 +37,23 @@ class TestDVEmbAttributor:
             images, labels = data
             y_hat = functional_call(self.model, params, (images,))
             return self.criterion(y_hat, labels.unsqueeze(0))
+        
+        def eager_loss(model, batch, device):
+            inputs, targets = batch
+            inputs = inputs.to(device)
+            targets = targets.to(device)
+            outputs = model(inputs)
+            return nn.functional.cross_entropy(outputs, targets)
 
         self.task = AttributionTask(
             model=self.model,
             loss_func=functional_loss,
+            checkpoints=[self.model.state_dict()],
+        )
+
+        self.task_eager = AttributionTask(
+            model=self.model,
+            loss_func=eager_loss,
             checkpoints=[self.model.state_dict()],
         )
 
@@ -99,7 +112,6 @@ class TestDVEmbAttributor:
         """Test DVEmb without random projection."""
         attributor = DVEmbAttributor(
             task=self.task,
-            criterion=self.criterion,
             factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
@@ -109,10 +121,8 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task,
-            criterion=self.criterion,
             proj_dim=proj_dim,
             factorization_type="none",
-            projector_kwargs={"feature_batch_size": 4},
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.projector is not None
@@ -121,8 +131,7 @@ class TestDVEmbAttributor:
     def test_dvemb_kronecker_no_projection(self):
         """Test DVEmb with Kronecker factorization and no projection."""
         attributor = DVEmbAttributor(
-            task=self.task,
-            criterion=self.criterion,
+            task=self.task_eager,
             factorization_type="kronecker",
         )
         self._run_dvemb_simulation(attributor)
@@ -130,13 +139,11 @@ class TestDVEmbAttributor:
 
     def test_dvemb_kronecker_with_projection(self):
         """Test DVEmb with Kronecker factorization and projection."""
-        proj_dim = 36
+        proj_dim = 16
         attributor = DVEmbAttributor(
-            task=self.task,
-            criterion=self.criterion,
+            task=self.task_eager,
             factorization_type="kronecker",
             proj_dim=proj_dim,
-            projector_kwargs={"feature_batch_size": 4},
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
@@ -155,11 +162,9 @@ class TestDVEmbAttributor:
         """Test DVEmb with elementwise factorization and projection."""
         proj_dim = 16
         attributor = DVEmbAttributor(
-            task=self.task,
-            criterion=self.criterion,
+            task=self.task_eager,
             factorization_type="elementwise",
             proj_dim=proj_dim,
-            projector_kwargs={"feature_batch_size": 4},
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
@@ -171,11 +176,9 @@ class TestDVEmbAttributor:
         """Test DVEmb with Kronecker factorization and specified layer names."""
         target_layer = "linear"
         attributor = DVEmbAttributor(
-            task=self.task,
-            criterion=self.criterion,
+            task=self.task_eager,
             factorization_type="kronecker",
             layer_names=[target_layer],
-            projector_kwargs={"feature_batch_size": 4},
         )
         assert len(attributor._linear_layers) == 1
         assert (
