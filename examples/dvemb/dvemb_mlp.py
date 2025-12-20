@@ -1,4 +1,4 @@
-"""Example code to compute Leave-One-Out (LOO) scores on MLP trained on MNIST dataset.
+"""Example to compute trajectory-specific leave-one-out correlation on MLP + MNIST.
 """
 
 import os
@@ -8,7 +8,7 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
-from groundtruth_loo_mlp import LOOGroundTruthGenerator, MLPMnist
+from _groundtruth_loo_mlp import LOOGroundTruthGenerator, MLPMnist
 from torch import nn
 from torch.utils.data import DataLoader, Subset, TensorDataset
 from tqdm import tqdm
@@ -72,13 +72,12 @@ def calculate_dvemb_score():
     train_dataset = TensorDataset(train_inputs, train_labels, train_indices)
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=False)
 
-    # Define loss function for AttributionTask
-    def loss_func_for_task(params, data):
-        inputs, labels = data
-        inputs = inputs.unsqueeze(0)
-        labels = labels.unsqueeze(0)
-        outputs = torch.func.functional_call(model, params, (inputs,))
-        return criterion(outputs, labels)
+    def loss_func_for_task(model, batch, device):
+        inputs, targets = batch
+        inputs = inputs.to(device)
+        targets = targets.to(device)
+        outputs = model(inputs)
+        return nn.functional.cross_entropy(outputs, targets)
 
     # Initialize AttributionTask
     task = AttributionTask(
@@ -90,10 +89,8 @@ def calculate_dvemb_score():
     # DVEmb initialization
     attributor = DVEmbAttributor(
         task=task,
-        criterion=criterion,
         proj_dim=4096,
         factorization_type="elementwise",
-        projector_kwargs={"feature_batch_size": 64},
     )
 
     # Train the model and cache gradients using DVEmbAttributor

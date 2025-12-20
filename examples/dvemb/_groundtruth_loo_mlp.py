@@ -22,11 +22,11 @@ class MLPMnist(nn.Module):
             dropout_rate: The dropout rate to use.
         """
         super(MLPMnist, self).__init__()
-        self.fc1 = nn.Linear(28*28, 16)
+        self.fc1 = nn.Linear(28*28, 128)
         self.dropout1 = nn.Dropout(dropout_rate)
-        self.fc2 = nn.Linear(16, 16)
+        self.fc2 = nn.Linear(128, 64)
         self.dropout2 = nn.Dropout(dropout_rate)
-        self.fc3 = nn.Linear(16, 10)
+        self.fc3 = nn.Linear(64, 10)
 
     def forward(self, x: torch.Tensor) -> torch.Tensor:
         """Forward pass of the MLP model.
