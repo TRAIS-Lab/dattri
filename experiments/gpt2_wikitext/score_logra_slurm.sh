@@ -14,8 +14,9 @@ echo "Running LoGra scoring for seed: ${SLURM_ARRAY_TASK_ID}"
 #export CUDA_VISIBLE_DEVICES=1
 
 # PyTorch memory management
+export CUDA_VISIBLE_DEVICES=2
 export PYTORCH_ALLOC_CONF=expandable_segments:True,max_split_size_mb:512
-export CUDA_LAUNCH_BLOCKING=0
+export TOKENIZERS_PARALLELISM=false
 
 # Create logs directory if it doesn't exist
 mkdir -p logs

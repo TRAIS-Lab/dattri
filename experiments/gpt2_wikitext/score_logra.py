@@ -54,12 +54,12 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
-from transformers.utils import check_min_version
+from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-try:
-    from transformers.utils import send_example_telemetry
-except ImportError:
-    send_example_telemetry = None  # Not available in newer transformers versions
+# try:
+#     from transformers.utils import send_example_telemetry
+# except ImportError:
+#     send_example_telemetry = None  # Not available in newer transformers versions
 
 from dattri.benchmark.utils import SubsetSampler
 
