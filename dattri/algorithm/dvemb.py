@@ -51,7 +51,7 @@ class DVEmbAttributor:
                   Note: The checkpoint functionality of the task is not used by DVEmb.
                   The loss function of the task must follow specific formats:
                     - If `factorization_type` is "none", the loss function should follow
-                      the signature of following example:
+                      the signature of the following example:
                         ```python
                         def f(params, data):
                             image, label = data
@@ -60,7 +60,7 @@ class DVEmbAttributor:
                             return loss(yhat, label)
                         ```.
                     - If `factorization_type` is not "none", the loss function should
-                      follow the signature of following example:
+                      follow the signature of the following example:
                         ```python
                         def f(model, data, device):
                             image, label = data
@@ -68,12 +68,12 @@ class DVEmbAttributor:
                             yhat = model(image.to(device))
                             return loss(yhat, label.to(device))
                         ```.
-            proj_dim: The dimension for projection (if used). Default to None,
+            proj_dim: The dimension for projection (if used). Defaults to None,
                       meaning no projection.
             factorization_type: Type of gradient factorization to use. Options are
-                                "none"(default),
-                                "kronecker"(same with paper),
-                                or "elementwise"(better performance while
+                                "none" (default),
+                                "kronecker" (same as in the paper),
+                                or "elementwise" (better performance while
                                 using same projection dimension).
             layer_names: Names of layers where gradients will be collected.
                 If None, uses all Linear layers.
@@ -103,11 +103,11 @@ class DVEmbAttributor:
         else:
             self.layer_names = layer_names
 
-        # check loss function format
+        # Check loss function format
         sig = inspect.signature(self.task.original_loss_func)
         count = len([p for p in sig.parameters.values() if p.default == p.empty])
 
-        # TODO: Use more robust way to check function signature
+        # TODO: Use a more robust way to check function signature
         error_msg = "Wrong loss function format for factorization.\
                      Please refer to the docstring."
         if self.use_factorization:
@@ -265,7 +265,7 @@ class DVEmbAttributor:
                      in batch_data.
             learning_rate: The learning rate for this step.
         """
-        # setup projectors if not already done
+        # Set up projectors if not already done
         if hasattr(self, "random_projectors") is False\
             and self.use_factorization and self.projection_dim is not None:
             self._setup_projectors(batch_size=len(indices))
@@ -298,7 +298,7 @@ class DVEmbAttributor:
         per_sample_grads = grad_loss_fn(model_params, batch_data_tensors)
 
         if self.projection_dim is not None:
-            # create projector if needed
+            # Create projector if needed
             if self.projector is None:
                 num_features = per_sample_grads.shape[1]
                 batch_size = per_sample_grads.shape[0]
@@ -308,7 +308,7 @@ class DVEmbAttributor:
                     proj_dim=self.projection_dim,
                     **self.projector_kwargs,
                 )
-            # project gradients
+            # Project gradients
             per_sample_grads = self.projector(per_sample_grads)
 
         return per_sample_grads
@@ -358,7 +358,7 @@ class DVEmbAttributor:
         loss = self.task.original_loss_func(self.model,
                                             batch_data_tensors,
                                             self.device)
-        loss *= batch_data_tensors[0].shape[0]  # scale loss by batch size
+        loss *= batch_data_tensors[0].shape[0]  # Scale loss by batch size
         loss.backward()
 
         for h in handles:
@@ -577,7 +577,7 @@ class DVEmbAttributor:
                 epoch_embeddings.index_add_(0, indices_t.to(self.device), dvemb_t)
                 m_matrix += dvemb_t.T @ grads_t
 
-                # Check for NaN values, report error if found
+                # Check for NaN values; if found, report error
                 if torch.isnan(m_matrix).any() or torch.isnan(dvemb_t).any():
                     msg = (
                         f"NaN detected at epoch {epoch}, iteration {t}. "
