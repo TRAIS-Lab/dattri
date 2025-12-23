@@ -76,7 +76,7 @@ class TestDVEmbAttributor:
                     learning_rate,
                 )
 
-        attributor.compute_embeddings(clear_cache=False)
+        attributor.cache(memory_saving=False)
         for epoch_embedding in attributor.embeddings.values():
             assert not torch.isnan(epoch_embedding).any()
 
