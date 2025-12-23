@@ -73,13 +73,13 @@ class DVEmbAttributor:
             factorization_type: Type of gradient factorization to use. Options are
                                 "none" (default),
                                 "kronecker" (same as in the paper),
-                                or "elementwise" (better performance while
-                                using same projection dimension).
+                                or "elementwise" (efficiently projects Kronecker
+                                products via factorized elementwise products).
             layer_names: Names of layers where gradients will be collected.
                 If None, uses all Linear layers.
                 You can check the names using model.named_modules().
                 Hooks will be registered on these layers to collect gradients.
-                Only available when factorization_type is not "none".
+                Will only be used when factorization_type is not "none".
 
         Raises:
             ValueError: If an unknown factorization type is provided
@@ -476,11 +476,11 @@ class DVEmbAttributor:
         self.learning_rates.clear()
         self.data_indices.clear()
 
-    def compute_embeddings(  # noqa: PLR0912, PLR0914, PLR0915
+    def cache(  # noqa: PLR0912, PLR0914, PLR0915
         self,
         gradients: Optional[Dict[int, List[Tensor]]] = None,
         learning_rates: Optional[Dict[int, List[float]]] = None,
-        clear_cache: Optional[bool] = True,
+        memory_saving: Optional[bool] = True,
     ) -> None:
         """Computes data value embeddings for each epoch separately.
 
@@ -489,7 +489,7 @@ class DVEmbAttributor:
                 (e.g., (epoch -> list of per-sample gradients)).
             learning_rates: Optional external learning rates instead of cached ones
                 (e.g., (epoch -> list of learning rates)).
-            clear_cache: If True, cached gradients will be cleared from memory
+            memory_saving: If True, cached gradients will be cleared from memory
                          after computation to save space.
 
         Raises:
@@ -587,7 +587,7 @@ class DVEmbAttributor:
 
             self.embeddings[epoch] = epoch_embeddings
 
-        if clear_cache:
+        if memory_saving:
             self.clear_cache()
 
     def attribute(
@@ -611,12 +611,12 @@ class DVEmbAttributor:
 
         Raises:
             RuntimeError: If embeddings have not been computed by calling
-                          `compute_embeddings` first, or if a projection dimension
+                          `cache` first, or if a projection dimension
                           was specified but the projector is not initialized.
             ValueError: If embeddings for the specified `epoch` are not found.
         """
         if not self.embeddings:
-            msg = "Embeddings not computed. Call compute_embeddings first."
+            msg = "Embeddings not computed. Call cache first."
             raise RuntimeError(msg)
 
         # Create test gradients

@@ -122,11 +122,11 @@ def calculate_dvemb_score():
     test_loader = DataLoader(test_dataset, batch_size=128, shuffle=False)
 
     # --- DVEmb Usage: Computing Embeddings and Influence ---
-    # After training, first call `compute_embeddings`.
+    # After training, first call `cache`.
     # This method uses all cached gradients to compute the data value embedding
     # vector for each training sample.
     print("\nComputing Data Value Embeddings...")
-    attributor.compute_embeddings()
+    attributor.cache()
 
     # Next, call `attribute` to calculate the influence.
     # It computes the gradients for the test set and multiplies them with the
