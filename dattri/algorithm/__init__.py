@@ -1,5 +1,7 @@
 """dattri.algorithm for some data attribution methods."""
 
+from .block_projected_if.block_projected_if import BlockProjectedIFAttributor
+from .factgrass import FactGraSSAttributor
 from .influence_function import (
     IFAttributorArnoldi,
     IFAttributorCG,
@@ -8,12 +10,14 @@ from .influence_function import (
     IFAttributorExplicit,
     IFAttributorLiSSA,
 )
-from .logra.logra import LoGraAttributor
+from .logra import LoGraAttributor
 from .rps import RPSAttributor
 from .tracin import TracInAttributor
 from .trak import TRAKAttributor
 
 __all__ = [
+    "BlockProjectedIFAttributor",
+    "FactGraSSAttributor",
     "IFAttributorArnoldi",
     "IFAttributorCG",
     "IFAttributorDataInf",

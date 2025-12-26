@@ -57,6 +57,7 @@ from transformers import (
 from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
 
+
 from dattri.benchmark.utils import SubsetSampler
 from dattri.func.utils import flatten_func, flatten_params
 from dattri.task import AttributionTask
@@ -358,9 +359,6 @@ def parse_args():
 def main():
     args = parse_args()
     send_example_telemetry("run_clm_no_trainer", args)
-    #fix the import error in newer transformers versions
-    # if send_example_telemetry is not None:
-    #     send_example_telemetry("run_clm_no_trainer", args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers

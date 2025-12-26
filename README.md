@@ -31,7 +31,7 @@
 	- [Contents](#contents)
 - [Quick Start](#quick-start)
 	- [Installation](#installation)
-		- [Recommended enviroment setup](#recommended-enviroment-setup)
+		- [Recommended environment setup](#recommended-environment-setup)
 	- [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
 	- [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
 		- [HVP/IHVP](#hvpihvp)
@@ -67,7 +67,7 @@ pip install dattri[sjlt]
 > [!NOTE]
 > It's required to have CUDA if you want to install and use the sjlt version `dattri[sjlt]` to accelerate the random projection.
 
-#### Recommended enviroment setup
+#### Recommended environment setup
 
 It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
 
@@ -75,22 +75,22 @@ It's **not** required to follow the exact same steps in this section. But this i
 conda create -n dattri python=3.10
 conda activate dattri
 
-conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
-pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit
+pip3 install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 pip install dattri[sjlt]
 ```
 
 ### Apply data attribution methods on PyTorch models
 
-One can apply different data attribution methods on PyTorch Models. One only needs to define:
+One can apply different data attribution methods to PyTorch Models. One only needs to define:
 
-1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
+1. loss function used for model training (will be used as the target function to be attributed if no other target function is provided).
 2. trained model checkpoints (one or more).
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
-4. (optional) target function to be attributed if it's not the same as loss function.
+4. (optional) target function to be attributed if it's not the same as the loss function.
 
-The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
+The following is an example of using `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
 **More examples can be found [here](./examples/).**
 
@@ -181,7 +181,7 @@ project_func = random_project(tensor, tensor.size(0), proj_dim=512)
 projected_tensor = project_func(torch.full_like(tensor))
 ```
 
-Normally speaking, `tensor` is probably the gradient of loss/target function and has a large dimension (i.e., the number of parameters).
+Normally speaking, `tensor` is probably the gradient of the loss/target function and has a large dimension (i.e., the number of parameters).
 
 #### Dropout Ensemble
 
@@ -214,6 +214,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |                                                   |              [EK-FAC](https://arxiv.org/abs/2308.03296)              |
 |                                                   |             [RelatIF](https://arxiv.org/pdf/2003.11630)              |
 |                                                   |              [LoGra](https://arxiv.org/pdf/2405.13954)               |
+|                                                   |              [GraSS](https://arxiv.org/pdf/2505.18976)               |
 |    [TracIn](https://arxiv.org/abs/2002.08484)     |             [TracInCP](https://arxiv.org/abs/2002.08484)             |
 |                                                   |             [Grad-Dot](https://arxiv.org/abs/2102.05262)             |
 |                                                   |             [Grad-Cos](https://arxiv.org/abs/2102.05262)             |
@@ -226,7 +227,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 - Leave-one-out (LOO) correlation
 - Linear datamodeling score (LDS)
 - Area under the ROC curve (AUC) for noisy label detection
-- Brittleness test for checking flipped label
+- Brittleness test for checking the flipped label
 
 ## Supported Benchmark Settings
 
@@ -238,6 +239,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
 |   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     | [link](https://magenta.tensorflow.org/datasets/maestro) |
 | Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |       [link](https://github.com/karpathy/nanoGPT)       |
+|  wikitext2  |       gpt2        |   Text Generation    |        (4656,481)         |     124M       |     LDS     |      [link](https://huggingface.co/datasets/Salesforce/wikitext)       |
 
 ## Benchmark Results
 
@@ -262,7 +264,7 @@ We have implemented most of the state-of-the-art methods. The categories and ref
   - TF-IDF filter
   - [Data Value Embedding](https://arxiv.org/pdf/2412.09538)
 - Better documentation
-  - Quick start colab notebooks
+  - Quick start Colab notebooks
 
 ## Citation
 

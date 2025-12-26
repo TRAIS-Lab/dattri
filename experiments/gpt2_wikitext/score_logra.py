@@ -582,7 +582,7 @@ def main():
         eval_dataset, collate_fn=default_data_collator, batch_size=4, shuffle=False
     )
 
-    from dattri.algorithm.logra.logra import LoGraAttributor
+    from dattri.algorithm import LoGraAttributor
     import torch.nn as nn
 
     from transformers.pytorch_utils import Conv1D
@@ -600,6 +600,12 @@ def main():
         inputs = {k: v.to(device) for k, v in batch.items()}
         outputs = model(**inputs)
         return outputs.loss
+
+    def m(model, batch, device):
+        inputs = {k: v.to(device) for k, v in batch.items()}
+        outputs = model(**inputs)
+        logp = -outputs.loss
+        return logp - torch.log(1 - torch.exp(logp))
 
     def find_layers(model, layer_type="Linear", return_type="instance"):
         """
@@ -711,15 +717,10 @@ def main():
     model = replace_conv1d_modules(model)
     layer_names = find_layers(model, "Linear", return_type="name")
 
-    projector_kwargs = {
-        "device": "cuda",
-        "proj_dim": 32,
-        "proj_max_batch_size": 32,
-    }
-
     task = AttributionTask(
         model=model,
         loss_func=f,
+        target_func=m,
         checkpoints=checkpoint,
         checkpoints_load_func=checkpoints_load_func,
     )
@@ -727,10 +728,11 @@ def main():
     attributor = LoGraAttributor(
         task=task,
         layer_names=layer_names,
+        hessian="eFIM",
+        damping=1e0,
         device="cuda",
-        damping=1e-2,
+        proj_dim=4096,  # 64*64
         offload="cpu",
-        projector_kwargs=projector_kwargs,
     )
 
     attributor.cache(train_dataloader)

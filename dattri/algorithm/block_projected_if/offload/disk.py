@@ -1,8 +1,8 @@
 """Enhanced disk offload strategy with async pipeline."""
+
 from __future__ import annotations
 
 import logging
-import os
 import pathlib
 from typing import TYPE_CHECKING, List, Optional, Tuple
 
@@ -18,7 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 class DiskOffloadManager(Offload):
-    """Enhanced strategy that stores data on disk using async pipeline with buffer pooling."""
+    """Enhanced strategy that stores data on disk using async pipeline.
+
+    Uses buffer pooling and asynchronous writes for efficient disk I/O.
+    """
 
     def __init__(
         self,
@@ -27,6 +30,17 @@ class DiskOffloadManager(Offload):
         cache_dir: Optional[str] = None,
         chunk_size: int = 32,
     ) -> None:
+        """Initialize the disk offload manager.
+
+        Args:
+            device: The primary compute device
+            layer_names: Names of layers being analyzed
+            cache_dir: Directory for caching data (required)
+            chunk_size: Number of batches per chunk
+
+        Raises:
+            ValueError: If cache_dir is None (required for disk offload).
+        """
         if cache_dir is None:
             msg = "Cache directory must be provided for disk offload"
             raise ValueError(msg)
@@ -39,7 +53,7 @@ class DiskOffloadManager(Offload):
         self.disk_io = ChunkedDiskIOManager(
             cache_dir,
             "default",
-            hessian="raw",
+            hessian="eFIM",
             chunk_size=chunk_size,
             buffer_pool_size=4,
             write_queue_size=8,
@@ -68,7 +82,7 @@ class DiskOffloadManager(Offload):
         self,
         batch_idx: int,
         gradients: List[torch.Tensor],
-        is_test: bool = False,
+        is_test: bool = False,  # noqa: ARG002 - Kept for API compatibility with other offload managers
     ) -> None:
         """Store gradients for a batch on disk using async pipeline.
 
@@ -82,7 +96,7 @@ class DiskOffloadManager(Offload):
     def retrieve_gradients(
         self,
         batch_idx: int,
-        is_test: bool = False,
+        is_test: bool = False,  # noqa: ARG002 - Kept for API compatibility with other offload managers
     ) -> List[torch.Tensor]:
         """Retrieve gradients for a batch from disk and move to device.
 
@@ -122,7 +136,8 @@ class DiskOffloadManager(Offload):
             layer_idx: Index of the layer to retrieve preconditioner for.
 
         Returns:
-            Optional[torch.Tensor]: Preconditioner tensor moved to compute device, or None if not found.
+            Optional[torch.Tensor]: Preconditioner tensor moved to compute device,
+                or None if not found.
         """
         preconditioner = self.disk_io.retrieve_preconditioner(layer_idx)
         if preconditioner is not None:
@@ -162,7 +177,7 @@ class DiskOffloadManager(Offload):
         batch_size: int = 1,
         pin_memory: bool = True,
         batch_range: Optional[Tuple[int, int]] = None,
-        is_test: bool = False,
+        is_test: bool = False,  # noqa: ARG002 - Kept for API compatibility with other offload managers
     ) -> DataLoader:
         """Create an optimized DataLoader with async prefetching.
 
@@ -204,13 +219,12 @@ class DiskOffloadManager(Offload):
         self.disk_io.wait_for_async_operations()
 
         for subdir in ["grad", "ifvp", "precond"]:
-            subdir_path = os.path.join(self.cache_dir, subdir)
-            if pathlib.Path(subdir_path).exists():
-                for filename in os.listdir(subdir_path):
-                    file_path = os.path.join(subdir_path, filename)
+            subdir_path = pathlib.Path(self.cache_dir) / subdir
+            if subdir_path.exists():
+                for file_path in subdir_path.iterdir():
                     try:
-                        pathlib.Path(file_path).unlink()
-                    except Exception as e:
+                        file_path.unlink()
+                    except OSError as e:  # noqa: PERF203 - Exception needed for file cleanup
                         logger.warning("Error removing %s: %s", file_path, e)
 
     def wait_for_async_operations(self) -> None:
@@ -228,7 +242,7 @@ class DiskOffloadManager(Offload):
         """
         return tensor.to(self.device) if tensor.device != self.device else tensor
 
-    def move_from_device(self, tensor: torch.Tensor) -> torch.Tensor:
+    def move_from_device(self, tensor: torch.Tensor) -> torch.Tensor:  # noqa: PLR6301 - Instance method required for interface consistency
         """Move a tensor from the compute device to CPU for disk storage.
 
         Args:

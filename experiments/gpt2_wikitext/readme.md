@@ -80,6 +80,26 @@ if args.model_name_or_path:
         )
         model = model.cuda()
 
+#### NumPy Version Compatibility Issue
+
+If you encounter the following error:
+
+```bash
+A module that was compiled using NumPy 1.x cannot be run in NumPy 2.2.3
+```
+
+this means that some dependencies or compiled extensions were built with NumPy **1.x** and are incompatible with **NumPy 2.x**.
+
+### Solution: Downgrade NumPy
+
+To resolve this issue, downgrade NumPy to a compatible version **(≥1.25 but still in the 1.x range)**:
+
+```bash
+pip install "numpy>=1.25,<2.0"
+```
+
+This ensures that you have at least NumPy 1.25 but avoid upgrading to NumPy 2.x, preventing compatibility issues.
+
 ## Training
 
 First train (fine-tune) multiple models with 50% dataset.
@@ -137,7 +157,7 @@ python groundtruth.py\
 
 ```bash
 python spearman.py \
-     --score_path "score_logra.pt" 
+     --score_path "score_logra.pt"
 ```
 
 ```bash
@@ -150,23 +170,3 @@ python spearman.py \
 > ...
 > 0.1613172442573241
 ```
-
-## Troubleshooting: NumPy Version Compatibility Issue
-
-If you encounter the following error:
-
-```bash
-A module that was compiled using NumPy 1.x cannot be run in NumPy 2.2.3
-```
-
-this means that some dependencies or compiled extensions were built with NumPy **1.x** and are incompatible with **NumPy 2.x**.
-
-### Solution: Downgrade NumPy
-
-To resolve this issue, downgrade NumPy to a compatible version **(≥1.25 but still in the 1.x range)**:
-
-```bash
-pip install "numpy>=1.25,<2.0"
-```
-
-This ensures that you have at least NumPy 1.25 but avoid upgrading to NumPy 2.x, preventing compatibility issues.

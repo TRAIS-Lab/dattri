@@ -111,7 +111,6 @@ class TestCudaProjector(unittest.TestCase):
         self.seed = 42
         self.proj_type = "sjlt"
         self.device = torch.device("cuda")
-        self.max_batch_size = 32
 
         self.projector = CudaProjector(
             feature_dim=self.feature_dim,
@@ -119,7 +118,6 @@ class TestCudaProjector(unittest.TestCase):
             seed=self.seed,
             proj_type=self.proj_type,
             device=self.device,
-            max_batch_size=self.max_batch_size,
             dtype=torch.float32,
         )
 
@@ -166,7 +164,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
         self.feature_batch_size = 1000
         self.seed = 42
         self.proj_type = "sjlt"
-        self.max_batch_size = 32
         self.dim_per_chunk = [self.max_chunk_size, self.max_chunk_size]
 
         self.projectors = [
@@ -176,7 +173,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
                 seed=self.seed,
                 proj_type=self.proj_type,
                 device=self.device,
-                max_batch_size=self.max_batch_size,
             ),
             CudaProjector(
                 feature_dim=self.max_chunk_size,
@@ -184,7 +180,6 @@ class TestChunkedCudaProjector(unittest.TestCase):
                 seed=self.seed,
                 proj_type=self.proj_type,
                 device=self.device,
-                max_batch_size=self.max_batch_size,
             ),
         ]
         self.chunked_projector = ChunkedCudaProjector(
@@ -192,14 +187,13 @@ class TestChunkedCudaProjector(unittest.TestCase):
             max_chunk_size=self.max_chunk_size,
             dim_per_chunk=self.dim_per_chunk,
             feature_batch_size=self.feature_batch_size,
-            proj_max_batch_size=self.proj_max_batch_size,
             device=self.device,
             dtype=self.dtype,
         )
 
     @pytest.mark.gpu
-    def test_project_output_shape(self):
-        """Test that ChunkedCudaProjector produces correct output shape with dict input.
+    def test_dict_project_output_shape(self):
+        """Test that ChunkedCudaProjector.dict_project() produces correct output shape.
 
         Creates a dictionary of gradient tensors that span multiple chunks
         (30k + 20k + 20k + 30k = 100k total dimensions) and verifies the
@@ -212,12 +206,63 @@ class TestChunkedCudaProjector(unittest.TestCase):
             "grad4": torch.randn(self.feature_batch_size, 30000, device=self.device),
         }
         ensemble_id = 1
+        projected_grads = self.chunked_projector.dict_project(grads, ensemble_id)
+
+        expected_shape = (self.feature_batch_size, self.proj_dim)
+        assert projected_grads.shape == expected_shape, (
+            f"Shape mismatch: expected {expected_shape}, got {projected_grads.shape}"
+        )
+
+    @pytest.mark.gpu
+    def test_project_output_shape(self):
+        """Test that ChunkedCudaProjector.project() produces correct output shape.
+
+        Creates a flattened tensor (100k dimensions) and verifies the
+        projected output has the correct shape (batch_size, proj_dim).
+        """
+        # Flatten tensor input (not dict)
+        total_dim = sum(self.dim_per_chunk)
+        grads = torch.randn(self.feature_batch_size, total_dim, device=self.device)
+        ensemble_id = 1
         projected_grads = self.chunked_projector.project(grads, ensemble_id)
 
         expected_shape = (self.feature_batch_size, self.proj_dim)
         assert projected_grads.shape == expected_shape, (
             f"Shape mismatch: expected {expected_shape}, got {projected_grads.shape}"
         )
+
+    @pytest.mark.gpu
+    def test_project_variable_batch_size(self):
+        """Test that ChunkedCudaProjector.project() handles variable batch sizes.
+
+        Verifies that project() works correctly when the actual batch size
+        differs from feature_batch_size (e.g., last batch in a dataset).
+        """
+        total_dim = sum(self.dim_per_chunk)
+        # Use a smaller batch size than feature_batch_size
+        small_batch_size = self.feature_batch_size // 2
+        grads = torch.randn(small_batch_size, total_dim, device=self.device)
+        ensemble_id = 1
+        projected_grads = self.chunked_projector.project(grads, ensemble_id)
+
+        expected_shape = (small_batch_size, self.proj_dim)
+        assert projected_grads.shape == expected_shape, (
+            f"Shape mismatch: expected {expected_shape}, got {projected_grads.shape}"
+        )
+
+    @pytest.mark.gpu
+    def test_project_rejects_dict_input(self):
+        """Test that ChunkedCudaProjector.project() raises TypeError for dict input.
+
+        Dict inputs should use dict_project() or the random_project() factory.
+        """
+        grads = {
+            "grad1": torch.randn(self.feature_batch_size, 30000, device=self.device),
+            "grad2": torch.randn(self.feature_batch_size, 70000, device=self.device),
+        }
+        ensemble_id = 1
+        with pytest.raises(TypeError, match="only accepts Tensor inputs"):
+            self.chunked_projector.project(grads, ensemble_id)
 
 
 class TestArnoldiProjector(unittest.TestCase):

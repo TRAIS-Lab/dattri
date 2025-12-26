@@ -53,8 +53,14 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
-from transformers.utils import check_min_version, send_example_telemetry
+from transformers.utils import check_min_version
 from transformers.utils.versions import require_version
+
+# send_example_telemetry was removed in newer versions of transformers
+try:
+    from transformers.utils import send_example_telemetry
+except ImportError:
+    send_example_telemetry = None
 
 from dattri.benchmark.utils import SubsetSampler
 
@@ -273,7 +279,8 @@ def main():
 
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    send_example_telemetry("run_clm_no_trainer", args)
+    if send_example_telemetry is not None:
+        send_example_telemetry("run_clm_no_trainer", args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
@@ -502,9 +509,8 @@ def main():
     eval_dataset = lm_datasets["validation"]
 
     # crop the data to subset
-    if args.subset_ratio < 1:
-        train_index = random.sample(range(len(train_dataset)), int(args.subset_ratio * len(train_dataset)))
-        train_sampler = SubsetSampler(train_index)
+    train_index = random.sample(range(len(train_dataset)), int(args.subset_ratio * len(train_dataset)))
+    train_sampler = SubsetSampler(train_index)
 
     # Log a few random samples from the training set:
     # for index in random.sample(range(len(train_dataset)), 3):

@@ -1,16 +1,17 @@
-"""Tests for the LoGra attributor with random projection enabled."""
+"""Tests for the FactGraSS attributor with two-stage projection."""
 
+import pytest
 import torch
 from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
-from dattri.algorithm import LoGraAttributor
+from dattri.algorithm import FactGraSSAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.task import AttributionTask
 
 
-class TestLoGraAttributor:
-    """Test suite for the LoGra attributor."""
+class TestFactGraSSAttributor:
+    """Test suite for the FactGraSS attributor."""
 
     def setup_method(self) -> None:
         """Set up test fixtures with sample datasets and attributor configuration."""
@@ -50,20 +51,22 @@ class TestLoGraAttributor:
             loss_func=f,
             checkpoints=model.state_dict(),
         )
-        self.attributor = LoGraAttributor(
+        # proj_dim=64, blowup_factor=4 -> intermediate_dim=256 (16*16)
+        self.attributor = FactGraSSAttributor(
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=64,  # projection dimension (must be perfect square: 8*8=64)
+            proj_dim=64,
+            blowup_factor=4,
             offload="cpu",
         )
 
     def test_attribute(self) -> None:
-        """Ensure attribution works with non-empty projectors."""
+        """Ensure attribution works with two-stage projection."""
         self.attributor.cache(self.train_loader)
         assert self.attributor.compressors, "Compressors should be initialized"
         assert self.attributor.layer_dims == [
-            64,  # proj_dim = 64 (8*8)
+            64,  # final proj_dim after second stage
         ] * len(
             self.attributor.layer_names,
         )
@@ -85,3 +88,57 @@ class TestLoGraAttributor:
         score1 = self.attributor.attribute(self.train_loader, self.test_loader)
         score2 = self.attributor.attribute(self.train_loader, self.test_loader)
         assert torch.allclose(score1, score2)
+
+    def test_invalid_dimensions(self) -> None:
+        """Verify ValueError is raised when intermediate_dim is not a perfect square."""
+        # proj_dim=100, blowup_factor=3 -> intermediate_dim=300 (not a perfect square)
+        with pytest.raises(
+            ValueError,
+            match=r"intermediate_dim .* must be a perfect square",
+        ):
+            FactGraSSAttributor(
+                task=self.task,
+                device="cpu",
+                hessian="Identity",
+                proj_dim=100,
+                blowup_factor=3,  # 100 * 3 = 300, sqrt(300) ≈ 17.32
+                offload="cpu",
+            )
+
+    def test_valid_dimension_combinations(self) -> None:
+        """Test that valid dimension combinations work correctly."""
+        # Test case 1
+        # proj_dim=4096, blowup_factor=4 -> intermediate_dim=16384 (128*128)
+        attributor = FactGraSSAttributor(
+            task=self.task,
+            device="cpu",
+            hessian="Identity",
+            proj_dim=4096,
+            blowup_factor=4,
+            offload="cpu",
+        )
+        assert attributor is not None
+
+        # Test case 2
+        # proj_dim=16, blowup_factor=1 -> intermediate_dim=16 (4*4)
+        attributor = FactGraSSAttributor(
+            task=self.task,
+            device="cpu",
+            hessian="Identity",
+            proj_dim=16,
+            blowup_factor=1,
+            offload="cpu",
+        )
+        assert attributor is not None
+
+        # Test case 3
+        # proj_dim=36, blowup_factor=9 -> intermediate_dim=324 (18*18)
+        attributor = FactGraSSAttributor(
+            task=self.task,
+            device="cpu",
+            hessian="Identity",
+            proj_dim=36,
+            blowup_factor=9,
+            offload="cpu",
+        )
+        assert attributor is not None
