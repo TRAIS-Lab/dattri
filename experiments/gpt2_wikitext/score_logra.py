@@ -321,9 +321,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    #fix the import error in newer transformers versions
-    if send_example_telemetry is not None:
-        send_example_telemetry("run_clm_no_trainer", args)
+    send_example_telemetry("run_clm_no_trainer", args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
