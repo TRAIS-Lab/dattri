@@ -33,3 +33,9 @@ This section contains examples using attribution scores to estimate the brittlen
 This section contains examples using attribution scores to find the data points that can be removed from the training set and improve the test performance.
 
 [Use influence function to find the low-quality data points in MNIST-10 and evaluate the performance](./data_cleaning/influence_function_data_cleaning.py)
+
+## Trajectory-Specific LOO
+
+This section contains examples using Trajectory-Specific LOO methods to estimate the temporal influence of training data.
+
+[Use DVEmb to estimate the temporal influence of training data in Mnist10 + MLP](./dvemb/dvemb_mlp.py)
