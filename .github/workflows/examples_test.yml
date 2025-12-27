@@ -35,7 +35,9 @@ jobs:
         sed -i -e 's/4656/64/g' -e 's/481/4/g' dattri/benchmark/load.py
         sed -i '/lds_score = lds/d;/print("lds:/d' examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
         python examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
-    - name: Uninstall the package 
+        sed -i 's/range(1000)/range(100)/g' examples/lds_vs_gt/mnist.py
+        python examples/lds_vs_gt/mnist.py --device cpu --path ./tmp/mnist_ckpt --benchmark-setting
+    - name: Uninstall the package
       run: |
         pip uninstall -y dattri
     - name: Cleanup build artifacts
