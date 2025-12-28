@@ -351,7 +351,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                     )
                 elif isinstance(train_batch_data_, dict):
                     train_batch_data = {
-                        k: v.unsqueeze(0) for k, v in train_batch_data_.items()
+                        k: v.to(self.device).unsqueeze(0) for k, v in train_batch_data_.items()
                     }
                 else:
                     raise Exception("We currently only support the train/test data to be tuple, list or dict.")
@@ -398,7 +398,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                         )
                     elif isinstance(test_batch_data_, dict):
                         test_batch_data = {
-                            k: v.unsqueeze(0) for k, v in test_batch_data_.items()
+                            k: v.to(self.device).unsqueeze(0) for k, v in test_batch_data_.items()
                         }
                     else:
                         raise Exception("We currently only support the train/test data to be tuple, list or dict.")
@@ -497,7 +497,7 @@ class BaseInnerProductAttributor(BaseAttributor):
                     )
                 elif isinstance(train_batch_data_, dict):
                     train_batch_data = {
-                        k: v.unsqueeze(0) for k, v in train_batch_data_.items()
+                        k: v.to(self.device).unsqueeze(0) for k, v in train_batch_data_.items()
                     }
                 else:
                     raise Exception("We currently only support the train/test data to be tuple, list or dict.")

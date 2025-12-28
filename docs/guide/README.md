@@ -1,6 +1,28 @@
 # User Guide
 
 ## Data structure to pass in Attributor
+### Below is a comprehensive table of the data structure each attributior supports. The loss function each attributior takes is also provided.
+
+|                      Family                       |                              Algorithms                              | tuple | list | dict | loss function |
+| :-----------------------------------------------: | :------------------------------------------------------------------: | :---: |:---:| :---:| :---:|
+|      [IF](https://arxiv.org/abs/1703.04730)       |             [Explicit](https://arxiv.org/abs/1703.04730)             | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   | [CG](https://www.cs.toronto.edu/~jmartens/docs/Deep_HessianFree.pdf) | ✔️ | ✔️ | ✔️ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |              [LiSSA](https://arxiv.org/abs/1602.03943)               | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |             [Arnoldi](https://arxiv.org/abs/2112.03052)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |             [DataInf](https://arxiv.org/abs/2310.00902)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |              [EK-FAC](https://arxiv.org/abs/2308.03296)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |             [RelatIF](https://arxiv.org/pdf/2003.11630)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |              [LoGra](https://arxiv.org/pdf/2405.13954)               | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |              [GraSS](https://arxiv.org/pdf/2505.18976)               | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|    [TracIn](https://arxiv.org/abs/2002.08484)     |             [TracInCP](https://arxiv.org/abs/2002.08484)             | ✔️ | ✔️ | ✔️ | [Code example](../../examples/noisy_label_detection/tracin_noisy_label.py) |
+|                                                   |             [Grad-Dot](https://arxiv.org/abs/2102.05262)             | ✔️ | ✔️ | ✔️ | [Code example](../../examples/noisy_label_detection/tracin_noisy_label.py) |
+|                                                   |             [Grad-Cos](https://arxiv.org/abs/2102.05262)             | ✔️ | ✔️ | ✔️ | [Code example](../../examples/noisy_label_detection/tracin_noisy_label.py) |
+|      [RPS](https://arxiv.org/abs/1811.09720)      |              [RPS-L2](https://arxiv.org/abs/1811.09720)              | ✔️ | ✔️ | ❌ | Coming soon |
+|     [TRAK](https://arxiv.org/abs/2303.14186)      |               [TRAK](https://arxiv.org/abs/2303.14186)               | ✔️ | ✔️ | ✔️ | [Code example](../../examples/noisy_label_detection/trak_noisy_label.py) |
+| [Shapley Value](https://arxiv.org/abs/1904.02868) |    [KNN-Shapley](https://dl.acm.org/doi/10.14778/3342263.3342637)    | ✔️ | ✔️ | ❌ | Coming soon |
+
+### Below is more detailed description of the data structure each attributor can take.
+
 Currently we support 2 types of data structures (`tuple` and `list`) to be passed in any Attributor, including Influence Function, TRAK and TracIn, etc.
 
 Here is an example on how to define a dataset of type `tuple` to pass to Attributor:

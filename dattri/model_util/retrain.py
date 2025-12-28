@@ -11,7 +11,6 @@ if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import List, Optional
 
-import random
 from pathlib import Path
 
 import numpy as np
@@ -207,9 +206,6 @@ def retrain_lds(
         ValueError: If `total_num_subsets` is negative.
         ValueError: If `num_subsets` does not divide `total_num_subsets`.
     """
-    if seed is None:
-        seed = random.getrandbits(64)
-
     # Check that num_subsets and total_num_subsets are valid
     if total_num_subsets < 0:
         error_message = "total_num_subsets must be non-negative"
