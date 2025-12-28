@@ -314,6 +314,12 @@ def parse_args():
         type=str,
         default="IFAttributorExplicit",
     )
+    parser.add_argument(
+        "--data_structure",
+        type=str,
+        default="tuple",
+        choices=["tuple", "list", "dict"]
+    )
     args = parser.parse_args()
 
     # Sanity checks
@@ -594,6 +600,10 @@ def main():
     train_dataset = lm_datasets["train"]
     eval_dataset = lm_datasets["validation"]
 
+    if args.data_structure == "dict":
+        train_dataset = [{k: torch.tensor(v, dtype=torch.long) for k, v in d.items()} for d in train_dataset]
+        eval_dataset = [{k: torch.tensor(v, dtype=torch.long) for k, v in d.items()} for d in eval_dataset]
+
     train_sampler = SubsetSampler(range(len(train_dataset)))
 
     # Dataset length
@@ -601,51 +611,79 @@ def main():
     logger.info(f"The eval dataset length: {len(eval_dataset)}.")
 
     # DataLoaders creation:
-    def custom_collate_fn(batch):
-        batch = default_data_collator(
-            [
-                {
-                    k: v
-                    for k, v in item.items()
-                    if k in ["input_ids", "attention_mask", "labels"]
-                }
-                for item in batch
-            ]
+    if args.data_structure == "dict":
+        train_dataloader = DataLoader(
+            train_dataset,
+            batch_size=args.per_device_train_batch_size,
+            sampler=train_sampler,
         )
-        return (batch["input_ids"], batch["attention_mask"], batch["labels"])
 
-    train_dataloader = DataLoader(
-        train_dataset,
-        collate_fn=custom_collate_fn,
-        batch_size=args.per_device_train_batch_size,
-        sampler=train_sampler,
-    )
-
-    eval_dataloader = DataLoader(
-        eval_dataset,
-        collate_fn=custom_collate_fn,
-        batch_size=args.per_device_eval_batch_size,
-        shuffle=False,
-    )
-
-    def f(params, batch):
-        input_ids, attention_mask, labels = batch
-        input_ids = input_ids.squeeze(0)
-        attention_mask = attention_mask.squeeze(0)
-        labels = labels.squeeze(0)
-
-        input_ids = input_ids.long().cuda()
-        attention_mask = attention_mask.long().cuda()
-        labels = labels.long().cuda()
-
-        outputs = torch.func.functional_call(
-            model,
-            params,
-            input_ids,
-            kwargs={"attention_mask": attention_mask, "labels": labels},
+        eval_dataloader = DataLoader(
+            eval_dataset,
+            batch_size=args.per_device_eval_batch_size,
+            shuffle=False,
         )
-        logp = -outputs.loss
-        return logp - torch.log(1 - torch.exp(logp))
+    else:
+        def custom_collate_fn(batch):
+            batch = default_data_collator(
+                [
+                    {
+                        k: v
+                        for k, v in item.items()
+                        if k in ["input_ids", "attention_mask", "labels"]
+                    }
+                    for item in batch
+                ]
+            )
+            return (batch["input_ids"], batch["attention_mask"], batch["labels"])
+
+        train_dataloader = DataLoader(
+            train_dataset,
+            collate_fn=custom_collate_fn,
+            batch_size=args.per_device_train_batch_size,
+            sampler=train_sampler,
+        )
+
+        eval_dataloader = DataLoader(
+            eval_dataset,
+            collate_fn=custom_collate_fn,
+            batch_size=args.per_device_eval_batch_size,
+            shuffle=False,
+        )
+    
+    if args.data_structure == "dict":
+        def f(params, batch):
+            input_ids = batch["input_ids"].squeeze(0).long().cuda()
+            attention_mask = batch["attention_mask"].squeeze(0).long().cuda()
+            labels = batch["labels"].squeeze(0).long().cuda()
+
+            outputs = torch.func.functional_call(
+                model,
+                params,
+                input_ids,
+                kwargs={"attention_mask": attention_mask, "labels": labels},
+            )
+            logp = -outputs.loss
+            return logp - torch.log(1 - torch.exp(logp))
+    else:
+        def f(params, batch):
+            input_ids, attention_mask, labels = batch
+            input_ids = input_ids.squeeze(0)
+            attention_mask = attention_mask.squeeze(0)
+            labels = labels.squeeze(0)
+
+            input_ids = input_ids.long().cuda()
+            attention_mask = attention_mask.long().cuda()
+            labels = labels.long().cuda()
+
+            outputs = torch.func.functional_call(
+                model,
+                params,
+                input_ids,
+                kwargs={"attention_mask": attention_mask, "labels": labels},
+            )
+            logp = -outputs.loss
+            return logp - torch.log(1 - torch.exp(logp))
 
     method = args.method
     num_checkpoints = 5
