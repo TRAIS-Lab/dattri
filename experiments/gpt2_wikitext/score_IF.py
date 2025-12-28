@@ -44,6 +44,15 @@ from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
 
 import transformers
+
+# TODO
+from torch.backends.cuda import sdp_kernel
+sdp_kernel(enable_flash=False, enable_mem_efficient=False, enable_math=True)
+torch.backends.cuda.enable_flash_sdp(False)
+torch.backends.cuda.enable_mem_efficient_sdp(False)
+torch.backends.cuda.enable_math_sdp(True)
+import gc
+
 from transformers import (
     CONFIG_MAPPING,
     MODEL_MAPPING,
@@ -54,21 +63,19 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
-from transformers.utils import check_min_version
+from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-
-# send_example_telemetry was removed in newer versions of transformers
-try:
-    from transformers.utils import send_example_telemetry
-except ImportError:
-    send_example_telemetry = None
 
 from dattri.benchmark.utils import SubsetSampler
 from dattri.func.utils import flatten_func, flatten_params
 from dattri.task import AttributionTask
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.algorithm.tracin import TracInAttributor
-
+from dattri.algorithm.influence_function import (
+    IFAttributorExplicit,
+    IFAttributorCG,
+    IFAttributorLiSSA
+)
 
 # Will error if the minimal version of Transformers is not installed. Remove at your own risks.
 check_min_version("4.46.0")
@@ -305,14 +312,8 @@ def parse_args():
     parser.add_argument(
         "--method",
         type=str,
-        default="TRAK-5",
-        help=(
-            "Which attribution method to run. "
-            "Examples: 'TRAK-1', 'TRAK-5', 'TracIn', 'Grad-Dot', 'Grad-Cos'. "
-            "Use 'TRAK-k' to load k checkpoints and run TRAK."
-        ),
+        default="IFAttributorExplicit",
     )
-
     parser.add_argument(
         "--data_structure",
         type=str,
@@ -352,8 +353,7 @@ def main():
 
     # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
     # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    if send_example_telemetry is not None:
-        send_example_telemetry("run_clm_no_trainer", args)
+    send_example_telemetry("run_clm_no_trainer", args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
@@ -486,6 +486,8 @@ def main():
     else:
         config = CONFIG_MAPPING[args.model_type]()
         logger.warning("You are instantiating a new config instance from scratch.")
+    # TODO
+    setattr(config, "attn_implementation", "eager")
 
     if args.tokenizer_name:
         tokenizer = AutoTokenizer.from_pretrained(
@@ -648,15 +650,12 @@ def main():
             batch_size=args.per_device_eval_batch_size,
             shuffle=False,
         )
-
+    
     if args.data_structure == "dict":
         def f(params, batch):
-            """
-            Log-odds objective for TRAK.
-            """
-            input_ids = batch["input_ids"].cuda()
-            attention_mask = batch["attention_mask"].cuda()
-            labels = batch["labels"].cuda()
+            input_ids = batch["input_ids"].squeeze(0).long().cuda()
+            attention_mask = batch["attention_mask"].squeeze(0).long().cuda()
+            labels = batch["labels"].squeeze(0).long().cuda()
 
             outputs = torch.func.functional_call(
                 model,
@@ -666,50 +665,16 @@ def main():
             )
             logp = -outputs.loss
             return logp - torch.log(1 - torch.exp(logp))
-
-        def m(params, batch):
-            """
-            Probability of correctness for TRAK.
-            """
-            input_ids = batch["input_ids"].cuda()
-            attention_mask = batch["attention_mask"].cuda()
-            labels = batch["labels"].cuda()
-
-            outputs = torch.func.functional_call(
-                model,
-                params,
-                input_ids,
-                kwargs={"attention_mask": attention_mask, "labels": labels},
-            )
-            p = torch.exp(-outputs.loss)
-            return p
-
-        def loss_tracin(params, batch):
-            """
-            Plain cross-entropy loss for TracIn / Grad-based similarity
-            (TracIn sums over checkpoint updates of gradient dot-products).
-            """
-            input_ids = batch["input_ids"].cuda()
-            attention_mask = batch["attention_mask"].cuda()
-            labels = batch["labels"].cuda()
-            
-            outputs = torch.func.functional_call(
-                model,
-                params,
-                input_ids,
-                kwargs={"attention_mask": attention_mask, "labels": labels},
-            )
-            return outputs.loss
     else:
         def f(params, batch):
-            """
-            Log-odds objective for TRAK.
-            """
             input_ids, attention_mask, labels = batch
+            input_ids = input_ids.squeeze(0)
+            attention_mask = attention_mask.squeeze(0)
+            labels = labels.squeeze(0)
 
-            input_ids = input_ids.cuda()
-            attention_mask = attention_mask.cuda()
-            labels = labels.cuda()
+            input_ids = input_ids.long().cuda()
+            attention_mask = attention_mask.long().cuda()
+            labels = labels.long().cuda()
 
             outputs = torch.func.functional_call(
                 model,
@@ -720,124 +685,58 @@ def main():
             logp = -outputs.loss
             return logp - torch.log(1 - torch.exp(logp))
 
-        def m(params, batch):
-            """
-            Probability of correctness for TRAK.
-            """
-            input_ids, attention_mask, labels = batch
-
-            input_ids = input_ids.cuda()
-            attention_mask = attention_mask.cuda()
-            labels = labels.cuda()
-
-            outputs = torch.func.functional_call(
-                model,
-                params,
-                input_ids,
-                kwargs={"attention_mask": attention_mask, "labels": labels},
-            )
-            p = torch.exp(-outputs.loss)
-            return p
-
-        def loss_tracin(params, batch):
-            """
-            Plain cross-entropy loss for TracIn / Grad-based similarity
-            (TracIn sums over checkpoint updates of gradient dot-products).
-            """
-            input_ids, attention_mask, labels = batch
-            input_ids = input_ids.cuda()
-            attention_mask = attention_mask.cuda()
-            labels = labels.cuda()
-            outputs = torch.func.functional_call(
-                model,
-                params,
-                input_ids,
-                kwargs={"attention_mask": attention_mask, "labels": labels},
-            )
-            return outputs.loss
-
     method = args.method
-    if method.startswith("TRAK-"):
-        parts = method.split("-")
-        if len(parts) == 2 and parts[1].isdigit():
-            num_checkpoints = int(parts[1])
-        else:
-            raise ValueError(
-                "Invalid method name for TRAK, must be like 'TRAK-5' or 'TRAK-10'."
-            )
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
-    elif method in ["TracIn", "Grad-Dot", "Grad-Cos"]:
-        num_checkpoints = 5
-        checkpoints = [f"{args.output_dir}/{i}" for i in range(num_checkpoints)]
-    else:
-        raise ValueError(
-            f"Unknown --method {method}. Try 'TRAK-5', 'TracIn', 'Grad-Dot', or 'Grad-Cos'."
-        )
+    num_checkpoints = 5
+    checkpoints = [f"{args.output_dir}/{i+10}" for i in range(num_checkpoints)]
+
+    checkpoint_models = {}
 
     def checkpoints_load_func(model, checkpoint_path):
-        new_model = AutoModelForCausalLM.from_pretrained(checkpoint_path).cuda()
-        new_model.eval()
-        return new_model
+        # new_model = AutoModelForCausalLM.from_pretrained(checkpoint_path).cuda()
+        # new_model.eval()
+        # return new_model
+        if checkpoint_path not in checkpoint_models:
+            checkpoint_models[checkpoint_path] = AutoModelForCausalLM.from_pretrained(
+                checkpoint_path
+            ).cuda()
+            checkpoint_models[checkpoint_path].eval()
+        return checkpoint_models[checkpoint_path]
+    
+    task = AttributionTask(
+        loss_func=f,
+        model=model,
+        checkpoints=checkpoints,
+        target_func=None,
+        checkpoints_load_func=checkpoints_load_func,
+    )
 
-    if method.startswith("TRAK"):
-        task = AttributionTask(
-            loss_func=f,
-            model=model,
-            checkpoints=checkpoints,
-            target_func=None,
-            checkpoints_load_func=checkpoints_load_func,
+    if method == "IFAttributorExplicit":
+        attributor = IFAttributorExplicit(
+            task=task,
+            device="cuda"
+        )
+    elif method == "IFAttributorCG":
+        attributor = IFAttributorCG(
+            task=task,
+            device="cuda"
+        )
+    elif method == "IFAttributorLiSSA":
+        attributor = IFAttributorLiSSA(
+            task=task,
+            device="cuda"
         )
     else:
-        task = AttributionTask(
-            loss_func=loss_tracin,
-            model=model,
-            checkpoints=checkpoints,
-            target_func=None,
-            checkpoints_load_func=checkpoints_load_func,
+        raise ValueError(
+            f"Unknown --method {method}."
         )
-
-    if method.startswith("TRAK"):
-        projector_kwargs = {
-            "device": "cuda",
-            "proj_dim": 2048,
-        }
-        attributor = TRAKAttributor(
-            task=task,
-            correct_probability_func=m,
-            device="cuda",
-            projector_kwargs=projector_kwargs,
-        )
-
-    else:
-        normalized_grad = False
-        if method == "Grad-Cos":
-            normalized_grad = True
-
-        weight_list = torch.ones(num_checkpoints) * 1e-3
-
-        projector_kwargs = {
-            "device": "cuda",
-            "proj_dim": 2048,
-        }
-
-        attributor = TracInAttributor(
-            task=task,
-            weight_list=weight_list,
-            normalized_grad=normalized_grad,
-            device="cuda",
-            projector_kwargs=projector_kwargs,
-        )
-
+    
+    print("\n\n\n==================== scoring ====================\n\n\n")
     with torch.no_grad():
-        if isinstance(attributor, TRAKAttributor):
-            attributor.cache(train_dataloader)
-            score = attributor.attribute(eval_dataloader)
-        else:
-            score = attributor.attribute(train_dataloader, eval_dataloader)
+        attributor.cache(train_dataloader)
+        score = attributor.attribute(train_dataloader, eval_dataloader)
 
-    torch.save(score, "score_TRAK.pt")
-    logger.info("Attribution scores saved to score_TRAK.pt")
-
+    torch.save(score, "score_IF.pt")
+    logger.info("Attribution scores saved to score_IF.pt")
 
 if __name__ == "__main__":
     main()
