@@ -782,29 +782,41 @@ class ChunkedCudaProjector:
 
         return ch_output[:actual_bs]
 
-    def project(self, features: Union[dict, Tensor], ensemble_id: int) -> Tensor:
-        """Performs the random projection on the feature matrix.
+    def project(self, features: Tensor, ensemble_id: int) -> Tensor:
+        """Performs the random projection on a flattened feature tensor.
+
+        For dict inputs (e.g., model gradients), use dict_project() instead,
+        or use the random_project() factory function which handles routing.
 
         Args:
-            features (Union[dict, Tensor]): A batch of features or a dictionary
-                of batch of features.
+            features (Tensor): A batch of flattened features with shape
+                (batch_size, feature_dim).
             ensemble_id (int): A unique ID for this ensemble.
 
         Returns:
-            Tensor: The projected features.
+            Tensor: The projected features with shape (batch_size, proj_dim).
+
+        Raises:
+            TypeError: If features is a dict. Use dict_project() for dict inputs.
         """
-        # allocate zero tensor for output
+        if isinstance(features, dict):
+            msg = (
+                "ChunkedCudaProjector.project() only accepts Tensor inputs. "
+                "For dict inputs, use dict_project() or the random_project() "
+                "factory function which handles routing automatically."
+            )
+            raise TypeError(msg)
+
+        if features.device.type != self.device:
+            features = features.to(self.device)
+
+        # Allocate output tensor with actual batch size
+        batch_size = features.shape[0]
         ch_output = torch.zeros(
-            size=(self.feature_batch_size, self.proj_dim),
+            size=(batch_size, self.proj_dim),
             device=self.device,
             dtype=self.dtype,
         )
-        # force the input to be Tensor for now
-        # TODO: support dict input
-        if isinstance(features, dict):
-            features = vectorize(features, device=self.device)
-        if features.device.type != self.device:
-            features = features.to(self.device)
 
         pointer = 0
         for chunk_idx, chunk_dim in enumerate(self.dim_per_chunk):
@@ -1121,7 +1133,7 @@ def make_random_projector(
             # Generate seeds using torch.randint
             seeds = torch.randint(
                 low=0,
-                high=500,
+                high=2**31,
                 size=(len(param_chunk_sizes),),
                 generator=generator,
                 dtype=torch.int64,

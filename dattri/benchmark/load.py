@@ -38,6 +38,12 @@ from dattri.benchmark.datasets.mnist import (
     train_mnist_mlp,
 )
 from dattri.benchmark.datasets.shakespeare_char import create_shakespeare_dataset
+from dattri.benchmark.datasets.wikitext2 import (
+    create_wikitext2_dataset,
+    loss_wikitext2_gpt2,
+    train_wikitext2_gpt2,
+)
+from dattri.benchmark.models.gpt2 import create_gpt2_model
 from dattri.benchmark.utils import SubsetSampler
 
 REPO_URL = "https://huggingface.co/datasets/trais-lab/dattri-benchmark/resolve/main/"
@@ -73,6 +79,7 @@ SUPPORTED_DATASETS = {
     "cifar2": create_cifar2_dataset,
     "shakespeare": create_shakespeare_dataset,
     "maestro": partial(create_maestro_datasets, generated_music=True),
+    "wikitext2": create_wikitext2_dataset,
 }
 
 LOSS_MAP = {
@@ -81,6 +88,7 @@ LOSS_MAP = {
     "cifar2_resnet9": loss_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": loss_maestro_musictransformer,
+    "wikitext2_gpt2": loss_wikitext2_gpt2,
 }
 
 TRAIN_FUNC_MAP = {
@@ -89,6 +97,7 @@ TRAIN_FUNC_MAP = {
     "cifar2_resnet9": train_cifar_resnet9,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": train_maestro_musictransformer,
+    "wikitext2_gpt2": train_wikitext2_gpt2,
 }
 
 MODEL_MAP = {
@@ -97,6 +106,16 @@ MODEL_MAP = {
     "cifar2_resnet9": create_resnet9_model,
     "shakespeare_nanogpt": None,
     "maestro_musictransformer": create_musictransformer_model,
+    "wikitext2_gpt2": create_gpt2_model,
+}
+
+SAMPLERSIZE_MAP = {
+    "mnist_mlp": [5000, 500],
+    "mnist_lr": [5000, 500],
+    "cifar2_resnet9": [5000, 500],
+    "shakespeare_nanogpt": [5000, 500],
+    "maestro_musictransformer": [5000, 178],
+    "wikitext2_gpt2": [4656, 481],
 }
 
 
@@ -132,6 +151,7 @@ def _download(
         ValueError: If the download fails.
     """
     # Send a GET request to the URL
+
     response = requests.get(url)  # noqa: S113
 
     # Check if the request was successful
@@ -234,6 +254,8 @@ def load_benchmark(  # noqa:PLR0914
                 file_name=path.split("?")[0].split("/")[-1],
             )
         for path in url_map["groundtruth"]["loo"]:
+            if identifier == "wikitext2_gpt2":
+                break
             _download(
                 path,
                 download_path / "benchmark" / identifier / "loo",
@@ -269,6 +291,7 @@ def load_benchmark(  # noqa:PLR0914
         train_dataset, test_dataset = SUPPORTED_DATASETS[dataset](
             download_path / "dataset",
         )
+
     else:
         train_dataset = test_dataset = None
 
@@ -282,14 +305,19 @@ def load_benchmark(  # noqa:PLR0914
     else:
         train_func = None
 
-    target_values = torch.load(
+    def load(path: str) -> Any:
+        if torch.cuda.is_available():
+            return torch.load(path)
+        return torch.load(path, map_location=torch.device("cpu"))
+
+    target_values = load(
         download_path
         / "benchmark"
         / identifier
         / metric
         / f"target_values_{metric}.pt",
     )
-    indices = torch.load(
+    indices = load(
         download_path / "benchmark" / identifier / metric / f"indices_{metric}.pt",
     )
 
@@ -302,8 +330,8 @@ def load_benchmark(  # noqa:PLR0914
         "models_half": models_half_list,
         "train_dataset": train_dataset,
         "test_dataset": test_dataset,
-        "train_sampler": SubsetSampler(range(5000)),
-        "test_sampler": SubsetSampler(range(500)),
+        "train_sampler": SubsetSampler(range(SAMPLERSIZE_MAP[identifier][0])),
+        "test_sampler": SubsetSampler(range(SAMPLERSIZE_MAP[identifier][1])),
         "loss_func": loss_func,
         "target_func": target_func,
         "train_func": train_func,
