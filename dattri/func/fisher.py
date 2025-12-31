@@ -241,6 +241,8 @@ def _update_covariance(
     layer_cache: Dict[str, Tuple[torch.tensor]],
     total_samples: int,
     mask: torch.Tensor,
+    input_projectors: Optional[Dict[str, Callable]] = None,
+    output_projectors: Optional[Dict[str, Callable]] = None,
 ) -> Dict[str, Tuple[torch.tensor]]:
     """Update the running estimation of the covariance matrices S and A in EK-FAC IFVP.
 
@@ -254,6 +256,10 @@ def _update_covariance(
         mask (torch.Tensor): A tensor of shape (batch_size, t), where 1's
             indicate that the IFVP will be estimated on these input positions and
             0's indicate that these positions are irrelevant (e.g. padding tokens).
+        input_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting input activations. Keys are layer names.
+        output_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting output gradients. Keys are layer names.
 
     Returns:
         Dict[str, Tuple[torch.tensor]]: A dict of tuples of tensors, storing the
@@ -271,6 +277,11 @@ def _update_covariance(
 
         # Calculate batch covariance matrix for A
         a_prev_reshaped = a_prev_masked.view(-1, a_prev.size(-1))
+        
+        # project input activations 
+        if input_projectors is not None and layer_name in input_projectors:
+            a_prev_reshaped = input_projectors[layer_name](a_prev_reshaped, ensemble_id=0)
+        
         batch_cov_a = a_prev_reshaped.transpose(0, 1) @ a_prev_reshaped
         batch_cov_a /= batch_samples
 
@@ -278,8 +289,13 @@ def _update_covariance(
         ds_curr = s_curr_raw.grad
 
         ds_curr_reshaped = ds_curr.view(-1, s_curr_raw.size(-1))
+        
+        # project output gradients 
+        if output_projectors is not None and layer_name in output_projectors:
+            ds_curr_reshaped = output_projectors[layer_name](ds_curr_reshaped, ensemble_id=0)
+        
         batch_cov_s = ds_curr_reshaped.transpose(0, 1) @ ds_curr_reshaped
-        batch_cov_s /= batch_samples
+        batch_cov_s /= batch_samples 
 
         # Update the running covariance matrices for A and S
         if layer_name in curr_estimate:
@@ -304,6 +320,8 @@ def _update_lambda(
     total_samples: int,
     mask: torch.Tensor,
     max_steps_for_vec: int = 10,
+    input_projectors: Optional[Dict[str, Callable]] = None,
+    output_projectors: Optional[Dict[str, Callable]] = None,
 ) -> Dict[str, torch.tensor]:
     """Update the running estimation of the corrected eigenvalues in EK-FAC IFVP.
 
@@ -326,6 +344,10 @@ def _update_lambda(
         max_steps_for_vec (int): An integer default to 10. Controls the maximum
             number of input steps that is allowed for vectorized calculation of
             `dtheta`.
+        input_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting input activations. Keys are layer names.
+        output_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting output gradients. Keys are layer names.
 
     Returns:
         Dict[str, torch.tensor]: A dict of tensors, storing the updated running lambdas.
@@ -338,6 +360,19 @@ def _update_lambda(
         if a_prev_raw.ndim == 2:  # noqa: PLR2004
             a_prev = a_prev_raw.unsqueeze(1)
             ds_curr = ds_curr.unsqueeze(1)
+
+        # project 
+        if input_projectors is not None and layer_name in input_projectors:
+            original_shape = a_prev.shape  
+            a_prev_flat = a_prev.view(-1, a_prev.size(-1))
+            a_prev_projected = input_projectors[layer_name](a_prev_flat, ensemble_id=0)
+            a_prev = a_prev_projected.view(original_shape[0], original_shape[1], -1)
+        
+        if output_projectors is not None and layer_name in output_projectors:
+            original_shape = ds_curr.shape 
+            ds_curr_flat = ds_curr.view(-1, ds_curr.size(-1))
+            ds_curr_projected = output_projectors[layer_name](ds_curr_flat, ensemble_id=0)
+            ds_curr = ds_curr_projected.view(original_shape[0], original_shape[1], -1)
 
         a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
 
@@ -387,6 +422,8 @@ def estimate_covariance(
     layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: Optional[int] = None,
     device: Optional[str] = "cpu",
+    input_projectors: Optional[Dict[str, Callable]] = None,
+    output_projectors: Optional[Dict[str, Callable]] = None,
 ) -> Dict[str, Tuple[torch.tensor]]:
     """Estimate the 'covariance' matrices S and A in EK-FAC IFVP.
 
@@ -409,6 +446,10 @@ def estimate_covariance(
         max_iter (Optional[int]): An integer indicating the maximum number of
             batches that will be used for estimating the covariance matrices.
         device (Optional[str]): Device to run the attributor on. Default is "cpu".
+        input_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting input activations. Keys are layer names.
+        output_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting output gradients. Keys are layer names.
 
     Returns:
         Dict[str, Tuple[torch.tensor]]: A dict that contains a pair of
@@ -442,6 +483,8 @@ def estimate_covariance(
                 layer_cache,
                 total_samples,
                 mask,
+                input_projectors,
+                output_projectors,
             )
 
         total_samples += int(mask.sum())
@@ -480,6 +523,8 @@ def estimate_lambda(
     layer_cache: Dict[str, Tuple[torch.tensor]],
     max_iter: Optional[int] = None,
     device: Optional[str] = "cpu",
+    input_projectors: Optional[Dict[str, Callable]] = None,
+    output_projectors: Optional[Dict[str, Callable]] = None,
 ) -> Dict[str, torch.tensor]:
     """Estimate the corrected eigenvalues in EK-FAC IFVP.
 
@@ -504,6 +549,10 @@ def estimate_lambda(
         max_iter (Optional[int]): An integer indicating the maximum number of
             batches that will be used for estimating the lambdas.
         device (Optional[str]): Device to run the attributor on. Default is "cpu".
+        input_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting input activations. Keys are layer names.
+        output_projectors (Optional[Dict[str, Callable]]): A dict of projector functions
+            for projecting output gradients. Keys are layer names.
 
     Returns:
         Dict[str, torch.tensor]: A dict that contains the estimated lambda
@@ -538,6 +587,8 @@ def estimate_lambda(
                 eigenvectors,
                 total_samples,
                 mask,
+                input_projectors=input_projectors,
+                output_projectors=output_projectors,
             )
         total_samples += batch_size
         if i == max_iter - 1:

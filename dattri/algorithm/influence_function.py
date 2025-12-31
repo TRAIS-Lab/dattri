@@ -25,6 +25,7 @@ from dattri.func.hessian import ihvp_arnoldi, ihvp_cg, ihvp_explicit, ihvp_lissa
 from dattri.func.utils import flatten_params
 
 from .base import BaseAttributor, BaseInnerProductAttributor
+from dattri.func.projection import random_project
 
 
 def _lissa_collate_fn(
@@ -49,6 +50,13 @@ SUPPORTED_IHVP_SOLVER = {
     "cg": ihvp_cg,
     "arnoldi": ihvp_arnoldi,
     "lissa": partial(ihvp_lissa, collate_fn=_lissa_collate_fn),
+}
+
+DEFAULT_PROJECTOR_KWARGS = {
+    "proj_dim": 512,
+    "proj_max_batch_size": 32,
+    "proj_seed": 0,
+    "device": "cpu",
 }
 
 
@@ -967,6 +975,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         self,
         task: AttributionTask,
         module_name: Optional[Union[str, List[str]]] = None,
+        projector_kwargs: Optional[Dict[str, Any]] = None,
         device: Optional[str] = "cpu",
         damping: float = 0.0,
     ) -> None:
@@ -1017,6 +1026,10 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         self.module_name = module_name
 
+        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
+        if projector_kwargs is not None:
+            self.projector_kwargs.update(projector_kwargs)
+
         self.damping = damping
         self.name_to_module = {
             name: self.task.model.get_submodule(name) for name in module_name
@@ -1024,6 +1037,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         self.module_to_name = {v: k for k, v in self.name_to_module.items()}
 
         self.layer_cache = {}  # cache for each layer
+        self.input_projectors = {}  
+        self.output_projectors = {}  
 
         # Update layer_name corresponding to selected modules
         self.layer_name = []
@@ -1060,6 +1075,31 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         if max_iter is None:
             max_iter = len(full_train_dataloader)
+
+        # init projectors for layers 
+        if self.projector_kwargs:
+            for name in self.module_name:
+                mod = self.name_to_module[name]
+                input_dim = mod.in_features
+                if mod.bias is not None:
+                    input_dim += 1
+                output_dim = mod.out_features
+                
+                if name not in self.input_projectors:
+                    blksz_in = torch.zeros(1, input_dim)
+                    self.input_projectors[name] = random_project(
+                        blksz_in,
+                        feature_batch_size=1,
+                        **self.projector_kwargs,
+                    )
+                
+                if name not in self.output_projectors:
+                    blksz_out = torch.zeros(1, output_dim)
+                    self.output_projectors[name] = random_project(
+                        blksz_out,
+                        feature_batch_size=1,
+                        **self.projector_kwargs,
+                    )
 
         def _ekfac_hook(
             module: torch.nn.Module,
@@ -1109,6 +1149,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             self.layer_cache,
             max_iter,
             device=self.device,
+            input_projectors=self.input_projectors,
+            output_projectors=self.output_projectors,
         )
 
         # 2. Calculate the eigenvalue decomposition of S and A
@@ -1122,11 +1164,105 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             self.layer_cache,
             max_iter,
             device=self.device,
+            input_projectors=self.input_projectors,
+            output_projectors=self.output_projectors,
         )
 
         # Remove hooks after preprocessing the FIM
         for handle in handles:
             handle.remove()
+
+    def _project_rep(
+        self,
+        rep: torch.Tensor,
+    ) -> Dict[str, torch.Tensor]:
+        """Unflatten representation and project each layer.
+
+        Args:
+            rep (torch.Tensor): The representation to project, typically gradients.
+                A 2-d tensor with shape (batch_size, num_parameters).
+
+        Returns:
+            Dict[str, torch.Tensor]: Dictionary mapping module name to projected
+                layer representation with shape (batch, proj_dim_out, proj_dim_in).
+        """
+        # Unflatten the rep
+        full_model_params = {
+            k: p for k, p in self.task.model.named_parameters() if p.requires_grad
+        }
+        partial_model_params = {
+            name: full_model_params[name] for name in self.layer_name
+        }
+        layer_rep = {}
+        current_index = 0
+        for name, params in partial_model_params.items():
+            size = math.prod(params.shape)
+            layer_rep[name] = rep[
+                :,
+                current_index : current_index + size,
+            ].reshape(-1, *params.shape)
+            current_index += size
+
+        layer_rep_proj = {}
+
+        for name in self.module_name:
+            if self.name_to_module[name].bias is not None:
+                dim_out = layer_rep[name + ".weight"].shape[1]
+                dim_in = layer_rep[name + ".weight"].shape[2] + 1
+                _v = torch.cat(
+                    [
+                        layer_rep[name + ".weight"].flatten(start_dim=1),
+                        layer_rep[name + ".bias"].flatten(start_dim=1),
+                    ],
+                    dim=-1,
+                )
+                _v = _v.reshape(-1, dim_out, dim_in)
+            else:
+                _v = layer_rep[name + ".weight"]
+
+            # project 
+            if self.projector_kwargs and name in self.input_projectors:
+                original_shape = _v.shape  
+                _v_reshaped = _v.reshape(-1, original_shape[-1]) 
+                _v_projected = self.input_projectors[name](_v_reshaped, ensemble_id=0)
+                _v = _v_projected.reshape(original_shape[0], original_shape[1], -1) 
+
+            if self.projector_kwargs and name in self.output_projectors:
+                original_shape = _v.shape  
+                _v_transposed = _v.transpose(1, 2) 
+                _v_reshaped = _v_transposed.reshape(-1, original_shape[1])  
+                _v_projected = self.output_projectors[name](_v_reshaped, ensemble_id=0)
+                _v = _v_projected.reshape(original_shape[0], -1, _v_projected.shape[-1]).transpose(1, 2) 
+
+            layer_rep_proj[name] = _v
+
+        return layer_rep_proj
+
+    def generate_train_rep(
+        self,
+        ckpt_idx: int,
+        data: Tuple[torch.Tensor, ...],
+    ) -> torch.Tensor:
+        """Generate train representation with projection.
+
+        Args:
+            ckpt_idx (int): Index of model checkpoints for ensembling.
+            data (Tuple[torch.Tensor, ...]): Training data batch.
+
+        Returns:
+            torch.Tensor: Projected training representation.
+        """
+        # default to base projector 
+        train_rep = super().generate_train_rep(ckpt_idx, data)
+
+        # project 
+        if self.projector_kwargs and self.input_projectors:
+            layer_rep_proj = self._project_rep(train_rep)
+            # flatten 
+            projected_layers = [layer_rep_proj[name].flatten(start_dim=1) for name in self.module_name]
+            train_rep = torch.cat(projected_layers, dim=1)
+
+        return train_rep
 
     def transform_test_rep(
         self,
@@ -1155,40 +1291,11 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             )
             raise ValueError(error_msg)
 
-        # Unflatten the test_rep
-        full_model_params = {
-            k: p for k, p in self.task.model.named_parameters() if p.requires_grad
-        }
-        partial_model_params = {
-            name: full_model_params[name] for name in self.layer_name
-        }
-        layer_test_rep = {}
-        current_index = 0
-        for name, params in partial_model_params.items():
-            size = math.prod(params.shape)
-            layer_test_rep[name] = test_rep[
-                :,
-                current_index : current_index + size,
-            ].reshape(-1, *params.shape)
-            current_index += size
-
+        # project test rep 
+        test_rep_proj = self._project_rep(test_rep)
         ifvp = {}
-
         for name in self.module_name:
-            if self.name_to_module[name].bias is not None:
-                dim_out = layer_test_rep[name + ".weight"].shape[1]
-                dim_in = layer_test_rep[name + ".weight"].shape[2] + 1
-                _v = torch.cat(
-                    [
-                        layer_test_rep[name + ".weight"].flatten(start_dim=1),
-                        layer_test_rep[name + ".bias"].flatten(start_dim=1),
-                    ],
-                    dim=-1,
-                )
-                _v = _v.reshape(-1, dim_out, dim_in)
-            else:
-                _v = layer_test_rep[name + ".weight"]
-
+            _v = test_rep_proj[name]
             _lambda = self.cached_lambdas[name]
             q_a, q_s = self.cached_q[name]
 
