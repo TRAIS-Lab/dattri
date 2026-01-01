@@ -1141,6 +1141,13 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         ckpt_idx: int,  # noqa:ARG002
         train_rep: torch.Tensor,
     ) -> torch.Tensor:
+        """Transform train representation with projection.
+        Args:
+            ckpt_idx (int): Index of model checkpoints for ensembling.
+            data (Tuple[torch.Tensor, ...]): Training data batch.
+        Returns:
+            torch.Tensor: Projected training representation.
+        """
         # project 
         if self.projector_kwargs and self.input_projectors:
             layer_rep_proj = self._project_rep(train_rep)
