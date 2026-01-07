@@ -842,19 +842,12 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             projected = self.layer_projectors[layer_idx](layer_rep, ensemble_id=0)
             test_rep_layers_proj.append(projected)
 
-        cached_train_rep = self._cached_train_reps[ckpt_idx]
-        proj_dim = self.projector_kwargs.get("proj_dim")
-
-        # now layer dim is proj_dim after projection
-        layer_cnt = len(test_rep_layers_raw)
-        cached_train_rep_layers = []
-        start_idx = 0
-        for _layer_idx in range(layer_cnt):
-            end_idx = start_idx + proj_dim
-            cached_train_rep_layers.append(
-                cached_train_rep[:, start_idx:end_idx],
-            )
-            start_idx = end_idx
+        cached_train_rep_layers = self._get_layer_wise_reps(
+            ckpt_idx,
+            self._cached_train_reps[ckpt_idx],
+            projected=True,
+        )
+        layer_cnt = len(cached_train_rep_layers)
 
         transformed_test_rep_layers = []
         # Use test batch size as intermediate batch size
@@ -890,6 +883,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         self,
         ckpt_idx: int,
         query: torch.Tensor,
+        projected: bool = False,
     ) -> Tuple[torch.Tensor, ...]:
         """Split a representation into layer-wise representations.
 
@@ -898,11 +892,24 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 is used for ensembling of different trained model.
             query (torch.Tensor): Input representations to split, could be
                 train/test representations, of shape (batch_size,parameter)
+            projected (bool): If True, assumes query is already projected and splits
+                evenly by proj_dim. Default: False.
 
         Returns:
             Tuple[torch.Tensor, ...]: The layer-wise splitted tensor, a tuple of shape
                 (batch_size,layer0_size), (batch_size,layer1_size)...
         """
+        if projected:
+            # Split evenly by proj_dim
+            proj_dim = self.projector_kwargs.get("proj_dim")
+            num_layers = query.shape[1] // proj_dim
+            query_layers = []
+            for i in range(num_layers):
+                start_idx = i * proj_dim
+                end_idx = start_idx + proj_dim
+                query_layers.append(query[:, start_idx:end_idx])
+            return query_layers
+        # Original splitting logic
         model_params, param_layer_map = self.task.get_param(
             ckpt_idx,
             layer_split=True,
@@ -1028,30 +1035,28 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         if max_iter is None:
             max_iter = len(full_train_dataloader)
 
-        # init projectors for layers
-        if self.projector_kwargs:
-            for name in self.module_name:
-                mod = self.name_to_module[name]
-                input_dim = mod.in_features
-                if mod.bias is not None:
-                    input_dim += 1
-                output_dim = mod.out_features
+        for name in self.module_name:
+            mod = self.name_to_module[name]
+            input_dim = mod.in_features
+            if mod.bias is not None:
+                input_dim += 1
+            output_dim = mod.out_features
 
-                if name not in self.input_projectors:
-                    blksz_in = torch.zeros(1, input_dim)
-                    self.input_projectors[name] = random_project(
-                        blksz_in,
-                        feature_batch_size=1,
-                        **self.projector_kwargs,
-                    )
+            if name not in self.input_projectors:
+                blksz_in = torch.zeros(1, input_dim)
+                self.input_projectors[name] = random_project(
+                    blksz_in,
+                    feature_batch_size=1,
+                    **self.projector_kwargs,
+                )
 
-                if name not in self.output_projectors:
-                    blksz_out = torch.zeros(1, output_dim)
-                    self.output_projectors[name] = random_project(
-                        blksz_out,
-                        feature_batch_size=1,
-                        **self.projector_kwargs,
-                    )
+            if name not in self.output_projectors:
+                blksz_out = torch.zeros(1, output_dim)
+                self.output_projectors[name] = random_project(
+                    blksz_out,
+                    feature_batch_size=1,
+                    **self.projector_kwargs,
+                )
 
         def _ekfac_hook(
             module: torch.nn.Module,
@@ -1127,7 +1132,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
     def _project_rep(
         self,
         rep: torch.Tensor,
-    ) -> dict[str, torch.Tensor]:
+    ) -> Dict[str, torch.Tensor]:
         """Unflatten representation and project each layer.
 
         Args:
