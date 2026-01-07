@@ -277,11 +277,13 @@ def _update_covariance(
 
         # Calculate batch covariance matrix for A
         a_prev_reshaped = a_prev_masked.view(-1, a_prev.size(-1))
-        
-        # project input activations 
+
+        # project input activations
         if input_projectors is not None and layer_name in input_projectors:
-            a_prev_reshaped = input_projectors[layer_name](a_prev_reshaped, ensemble_id=0)
-        
+            a_prev_reshaped = input_projectors[layer_name](
+                a_prev_reshaped, ensemble_id=0,
+            )
+
         batch_cov_a = a_prev_reshaped.transpose(0, 1) @ a_prev_reshaped
         batch_cov_a /= batch_samples
 
@@ -289,13 +291,15 @@ def _update_covariance(
         ds_curr = s_curr_raw.grad
 
         ds_curr_reshaped = ds_curr.view(-1, s_curr_raw.size(-1))
-        
-        # project output gradients 
+
+        # project output gradients
         if output_projectors is not None and layer_name in output_projectors:
-            ds_curr_reshaped = output_projectors[layer_name](ds_curr_reshaped, ensemble_id=0)
-        
+            ds_curr_reshaped = output_projectors[layer_name](
+                ds_curr_reshaped, ensemble_id=0,
+            )
+
         batch_cov_s = ds_curr_reshaped.transpose(0, 1) @ ds_curr_reshaped
-        batch_cov_s /= batch_samples 
+        batch_cov_s /= batch_samples
 
         # Update the running covariance matrices for A and S
         if layer_name in curr_estimate:
@@ -361,18 +365,22 @@ def _update_lambda(
             a_prev = a_prev_raw.unsqueeze(1)
             ds_curr = ds_curr.unsqueeze(1)
 
-        # project 
+        # project
         if input_projectors is not None and layer_name in input_projectors:
-            original_shape = a_prev.shape  
+            original_shape = a_prev.shape
             a_prev_flat = a_prev.view(-1, a_prev.size(-1))
             a_prev_projected = input_projectors[layer_name](a_prev_flat, ensemble_id=0)
             a_prev = a_prev_projected.view(original_shape[0], original_shape[1], -1)
-        
+
         if output_projectors is not None and layer_name in output_projectors:
-            original_shape = ds_curr.shape 
+            original_shape = ds_curr.shape
             ds_curr_flat = ds_curr.view(-1, ds_curr.size(-1))
-            ds_curr_projected = output_projectors[layer_name](ds_curr_flat, ensemble_id=0)
-            ds_curr = ds_curr_projected.view(original_shape[0], original_shape[1], -1)
+            ds_curr_projected = output_projectors[layer_name](
+                ds_curr_flat, ensemble_id=0,
+            )
+            ds_curr = ds_curr_projected.view(
+                original_shape[0], original_shape[1], -1,
+            )
 
         a_prev_masked = a_prev * mask[..., None].to(a_prev.device)
 
