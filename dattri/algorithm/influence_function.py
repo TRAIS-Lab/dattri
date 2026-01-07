@@ -62,6 +62,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         self,
         task: AttributionTask,
         layer_name: Optional[Union[str, List[str]]] = None,
+        projector_kwargs: Optional[Dict[str, Any]] = None, 
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
     ) -> None:
@@ -82,9 +83,38 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 Default is 0.0.
         """
         super().__init__(task, layer_name, device)
+
+        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
+        if projector_kwargs is not None:
+            self.projector_kwargs.update(projector_kwargs)
         self.transformation_kwargs = {
             "regularization": regularization,
+            "projector_kwargs": self.projector_kwargs, 
         }
+
+    def transform_train_rep(
+        self,
+        ckpt_idx: int,
+        train_rep: torch.Tensor,
+    ) -> torch.Tensor:
+        """Transform the train representations via random projection.
+
+        Args:
+            ckpt_idx (int): Index of the model checkpoints.
+            train_rep (torch.Tensor): Train representations to be transformed.
+
+        Returns:
+            torch.Tensor: Transformed train representations with projected dimension.
+        """
+        from dattri.func.projection import random_project
+        
+        sample_features = torch.zeros(1, train_rep.shape[1])
+        projector = random_project(
+            sample_features, 
+            1, 
+            **self.projector_kwargs
+        )
+        return projector(train_rep, ensemble_id=0)
 
     def transform_test_rep(
         self,
@@ -155,6 +185,13 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
 
         if relatif_method == "l":
             # g_i^T (H^-1 g_i)
+            sample_features = torch.zeros(1, train_batch_rep.shape[1])
+            projector = random_project(
+                sample_features, 
+                1, 
+                **self.projector_kwargs
+            )
+            test_batch_rep_proj = projector(test_batch_rep, ensemble_id=0)
             val = (test_batch_rep * transformed).sum(dim=1).clamp_min(1e-12).sqrt()
         elif relatif_method == "theta":
             # ||H^-1 g_i||

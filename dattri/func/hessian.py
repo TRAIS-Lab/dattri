@@ -225,6 +225,7 @@ def ihvp_explicit(
     func: Callable,
     argnums: int = 0,
     regularization: float = 0.0,
+    projector_kwargs: Optional[Dict[str, Any]] = None, 
 ) -> Callable:
     """IHVP via explicit Hessian calculation.
 
@@ -249,7 +250,10 @@ def ihvp_explicit(
         A function that takes a tuple of Tensor `x` and a vector `v` and returns
         the IHVP of the Hessian of `func` and `v`.
     """
-    hessian_func = hessian(func, argnums=argnums)
+        
+    from dattri.func.projection import random_project
+
+    hessian_func = hessian(func, argnums=argnums) 
 
     def _ihvp_explicit_func(x: Tuple[torch.Tensor, ...], v: Tensor) -> Tensor:
         """The IHVP function using explicit hessian.
@@ -263,10 +267,20 @@ def ihvp_explicit(
             The IHVP value.
         """
         hessian_tensor = hessian_func(*x)
+        sample_features = torch.zeros(1, hessian_tensor.shape[0])
+        projector = random_project(
+            sample_features, 
+            1, 
+            **projector_kwargs
+        )
+        # project H 
+        proj_H_PT_T = projector(hessian_tensor, ensemble_id=0)
+        proj_P_H_PT = projector(proj_H_PT_T.T, ensemble_id=0).T
+        proj_v = projector(v, ensemble_id = 0)
         return torch.linalg.solve(
-            hessian_tensor
-            + torch.eye(hessian_tensor.shape[0]).to(v.device) * regularization,
-            v.T,
+            proj_P_H_PT
+            + torch.eye(proj_P_H_PT.shape[0]).to(proj_v.device) * regularization,
+            proj_v.T,
         ).T
 
     return _ihvp_explicit_func
