@@ -96,7 +96,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
 
     def transform_train_rep(
         self,
-        ckpt_idx: int,
+        ckpt_idx: int,  # noqa:ARG002
         train_rep: torch.Tensor,
     ) -> torch.Tensor:
         """Transform the train representations via random projection.
@@ -667,7 +667,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 if multiple layers are needed. The name of layer should follow the
                 key of model.named_parameters(). Default: None.
             projector_kwargs (Optional[Dict[str, Any]]): Keyword arguments for
-                random projection (e.g., proj_dim=512). Default: None.
+                random projection (e.g., proj_dim=512).
             device (str): Device to run the attributor on. Default is "cpu".
             regularization (float): Regularization term for Hessian vector product.
                 Adding `regularization * I` to the Hessian matrix, where `I` is the
@@ -785,7 +785,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
         return torch.cat(projected_layers, dim=1)
 
-    def transform_test_rep(
+    def transform_test_rep(  # noqa: PLR0914
         self,
         ckpt_idx: int,
         test_rep: torch.Tensor,
@@ -950,7 +950,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                 multiple modules are needed. The name of module should follow the
                 key of model.named_modules(). Default: None.
             projector_kwargs (Optional[Dict[str, Any]]): Keyword arguments for
-                random projection. Default: None.
+                random projection.
             device (str): Device to run the attributor on. Default is "cpu".
             damping (float): Damping factor used for non-convexity in EK-FAC IFVP
                 calculation. Default is 0.0.

@@ -317,7 +317,7 @@ def _update_covariance(
     return curr_estimate
 
 
-def _update_lambda(
+def _update_lambda(  # noqa: PLR0914
     curr_estimate: Dict[str, torch.tensor],
     layer_cache: Dict[str, Tuple[torch.tensor]],
     cached_q: Dict[str, Tuple[torch.tensor]],
