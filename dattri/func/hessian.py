@@ -268,22 +268,27 @@ def ihvp_explicit(
             The IHVP value.
         """
         hessian_tensor = hessian_func(*x)
-        sample_features = torch.zeros(1, hessian_tensor.shape[0])
-        projector = random_project(
-            sample_features,
-            1,
-            **projector_kwargs,
-        )
-        # project H
-        proj_h_pt_t = projector(hessian_tensor, ensemble_id=0)
-        proj_p_h_pt = projector(proj_h_pt_t.T, ensemble_id=0).T
-        proj_v = projector(v, ensemble_id=0)
+        if projector_kwargs is not None:
+            sample_features = torch.zeros(1, hessian_tensor.shape[0])
+            projector = random_project(
+                sample_features,
+                1,
+                **projector_kwargs,
+            )
+            # project H
+            proj_h_pt_t = projector(hessian_tensor, ensemble_id=0)
+            proj_p_h_pt = projector(proj_h_pt_t.T, ensemble_id=0).T
+            proj_v = projector(v, ensemble_id=0)
+            return torch.linalg.solve(
+                proj_p_h_pt
+                + torch.eye(proj_p_h_pt.shape[0]).to(proj_v.device) * regularization,
+                proj_v.T,
+            ).T
         return torch.linalg.solve(
-            proj_p_h_pt
-            + torch.eye(proj_p_h_pt.shape[0]).to(proj_v.device) * regularization,
-            proj_v.T,
+            hessian_tensor
+            + torch.eye(hessian_tensor.shape[0]).to(v.device) * regularization,
+            v.T,
         ).T
-
     return _ihvp_explicit_func
 
 

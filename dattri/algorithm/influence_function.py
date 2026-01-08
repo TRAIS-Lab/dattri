@@ -47,13 +47,6 @@ SUPPORTED_IHVP_SOLVER = {
     "lissa": partial(ihvp_lissa, collate_fn=_lissa_collate_fn),
 }
 
-DEFAULT_PROJECTOR_KWARGS = {
-    "proj_dim": 512,
-    "proj_max_batch_size": 32,
-    "proj_seed": 0,
-    "device": "cpu",
-}
-
 
 class IFAttributorExplicit(BaseInnerProductAttributor):
     """The inner product attributor with explicit inverse hessian transformation."""
@@ -86,9 +79,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         """
         super().__init__(task, layer_name, device)
 
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
-        if projector_kwargs is not None:
-            self.projector_kwargs.update(projector_kwargs)
+        self.projector_kwargs = projector_kwargs
         self.transformation_kwargs = {
             "regularization": regularization,
             "projector_kwargs": self.projector_kwargs,
@@ -110,13 +101,15 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         """
         from dattri.func.projection import random_project
 
-        sample_features = torch.zeros(1, train_rep.shape[1])
-        projector = random_project(
-            sample_features,
-            1,
-            **self.projector_kwargs,
-        )
-        return projector(train_rep, ensemble_id=0)
+        if self.projector_kwargs is not None:
+            sample_features = torch.zeros(1, train_rep.shape[1])
+            projector = random_project(
+                sample_features,
+                1,
+                **self.projector_kwargs,
+            )
+            return projector(train_rep, ensemble_id=0)
+        return train_rep
 
     def transform_test_rep(
         self,
@@ -187,14 +180,15 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
 
         if relatif_method == "l":
             # g_i^T (H^-1 g_i)
-            sample_features = torch.zeros(1, train_batch_rep.shape[1])
-            projector = random_project(
-                sample_features,
-                1,
-                **self.projector_kwargs,
-            )
-            test_batch_rep_proj = projector(test_batch_rep, ensemble_id=0)
-            val = (test_batch_rep_proj * transformed).sum(dim=1).clamp_min(1e-12).sqrt()
+            if self.projector_kwargs is not None:
+                sample_features = torch.zeros(1, train_batch_rep.shape[1])
+                projector = random_project(
+                    sample_features,
+                    1,
+                    **self.projector_kwargs,
+                )
+                test_batch_rep = projector(test_batch_rep, ensemble_id=0)
+            val = (test_batch_rep * transformed).sum(dim=1).clamp_min(1e-12).sqrt()
         elif relatif_method == "theta":
             # ||H^-1 g_i||
             val = transformed.norm(dim=1).clamp_min(1e-12)
@@ -679,11 +673,9 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         super().__init__(task, layer_name, device)
         self.regularization = regularization
         self.fim_estimate_data_ratio = fim_estimate_data_ratio
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
 
         # per-layer projections
-        if projector_kwargs is not None:
-            self.projector_kwargs.update(projector_kwargs)
+        self.projector_kwargs = projector_kwargs
         self.layer_projectors = {}
 
     def cache(
@@ -705,18 +697,19 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             layer_split=True,
         )
 
-        layer_sizes = [0] * (param_layer_map[-1] + 1)
-        for idx, layer_index in enumerate(param_layer_map):
-            layer_sizes[layer_index] += model_params[idx].numel()
+        if self.projector_kwargs is not None:
+            layer_sizes = [0] * (param_layer_map[-1] + 1)
+            for idx, layer_index in enumerate(param_layer_map):
+                layer_sizes[layer_index] += model_params[idx].numel()
 
-        # create projectors for all the layers
-        for layer_idx in range(param_layer_map[-1] + 1):
-            sample_features = torch.zeros(1, layer_sizes[layer_idx])
-            self.layer_projectors[layer_idx] = random_project(
-                sample_features,
-                feature_batch_size=1,
-                **self.projector_kwargs,
-            )
+            # create projectors for all the layers
+            for layer_idx in range(param_layer_map[-1] + 1):
+                sample_features = torch.zeros(1, layer_sizes[layer_idx])
+                self.layer_projectors[layer_idx] = random_project(
+                    sample_features,
+                    feature_batch_size=1,
+                    **self.projector_kwargs,
+                )
 
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
             _cached_train_reps_list = []
@@ -738,23 +731,24 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     data=sampled_data,
                 )
 
-                sampled_data_rep_layers = self._get_layer_wise_reps(
-                    checkpoint_idx,
-                    sampled_data_rep,
-                )
-
-                # project every layer
-                projected_layers = []
-                for layer_idx, layer_rep in enumerate(sampled_data_rep_layers):
-                    projected = self.layer_projectors[layer_idx](
-                        layer_rep,
-                        ensemble_id=0,
+                if self.projector_kwargs is not None:
+                    sampled_data_rep_layers = self._get_layer_wise_reps(
+                        checkpoint_idx,
+                        sampled_data_rep,
                     )
-                    projected_layers.append(projected)
 
-                # concat to one tensor
-                sampled_data_rep_projected = torch.cat(projected_layers, dim=1)
-                _cached_train_reps_list.append(sampled_data_rep_projected.detach())
+                    # project every layer
+                    projected_layers = []
+                    for layer_idx, layer_rep in enumerate(sampled_data_rep_layers):
+                        projected = self.layer_projectors[layer_idx](
+                            layer_rep,
+                            ensemble_id=0,
+                        )
+                        projected_layers.append(projected)
+
+                    # concat to one tensor
+                    sampled_data_rep = torch.cat(projected_layers, dim=1)
+                _cached_train_reps_list.append(sampled_data_rep.detach())
 
             self._cached_train_reps[checkpoint_idx] = torch.cat(
                 _cached_train_reps_list,
@@ -776,14 +770,16 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             torch.Tensor: Projected training representation.
         """
         # split and project
-        train_rep_layers = self._get_layer_wise_reps(ckpt_idx, train_rep)
-        projected_layers = []
+        if self.projector_kwargs is not None:
+            train_rep_layers = self._get_layer_wise_reps(ckpt_idx, train_rep)
+            projected_layers = []
 
-        for layer_idx, layer_rep in enumerate(train_rep_layers):
-            projected = self.layer_projectors[layer_idx](layer_rep, ensemble_id=0)
-            projected_layers.append(projected)
+            for layer_idx, layer_rep in enumerate(train_rep_layers):
+                projected = self.layer_projectors[layer_idx](layer_rep, ensemble_id=0)
+                projected_layers.append(projected)
 
-        return torch.cat(projected_layers, dim=1)
+            return torch.cat(projected_layers, dim=1)
+        return train_rep
 
     def transform_test_rep(  # noqa: PLR0914
         self,
@@ -835,18 +831,27 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             return (v - coef @ grad.T) / regularization
 
         regularization = self.regularization
-        # project test
-        test_rep_layers_raw = self._get_layer_wise_reps(ckpt_idx, test_rep)
-        test_rep_layers_proj = []
-        for layer_idx, layer_rep in enumerate(test_rep_layers_raw):
-            projected = self.layer_projectors[layer_idx](layer_rep, ensemble_id=0)
-            test_rep_layers_proj.append(projected)
+        if self.projector_kwargs is not None:
+            # project test
+            test_rep_layers_raw = self._get_layer_wise_reps(ckpt_idx, test_rep)
+            test_rep_layers = []
+            for layer_idx, layer_rep in enumerate(test_rep_layers_raw):
+                projected = self.layer_projectors[layer_idx](layer_rep, ensemble_id=0)
+                test_rep_layers.append(projected)
 
-        cached_train_rep_layers = self._get_layer_wise_reps(
-            ckpt_idx,
-            self._cached_train_reps[ckpt_idx],
-            projected=True,
-        )
+            # project train
+            cached_train_rep_layers = self._get_layer_wise_reps(
+                ckpt_idx,
+                self._cached_train_reps[ckpt_idx],
+                projected=True,
+            )
+        else:
+            test_rep_layers = self._get_layer_wise_reps(ckpt_idx, test_rep)
+            cached_train_rep_layers = self._get_layer_wise_reps(
+                ckpt_idx,
+                self._cached_train_reps[ckpt_idx],
+                projected=False,
+            )
         layer_cnt = len(cached_train_rep_layers)
 
         transformed_test_rep_layers = []
@@ -859,15 +864,15 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             # Split gradients into smaller batches
             grad_batches = grad_layer.split(batch_size, dim=0)
             running_transformation = torch.zeros(
-                test_rep_layers_proj[layer].shape,
-                device=test_rep_layers_proj[layer].device,
+                test_rep_layers[layer].shape,
+                device=test_rep_layers[layer].device,
             )
             for batch in grad_batches:
                 reg = 0.1 if regularization is None else regularization
                 contribution = torch.func.vmap(
                     lambda grad, layer=layer, reg=reg: (
                         _transform_single_test_rep(
-                            test_rep_layers_proj[layer],
+                            test_rep_layers[layer],
                             grad,
                             reg,
                         )
@@ -984,10 +989,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             module_name = [module_name]
 
         self.module_name = module_name
-
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
-        if projector_kwargs is not None:
-            self.projector_kwargs.update(projector_kwargs)
+        self.projector_kwargs = projector_kwargs
 
         self.damping = damping
         self.name_to_module = {
@@ -1034,29 +1036,29 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         if max_iter is None:
             max_iter = len(full_train_dataloader)
+        if self.projector_kwargs is not None:
+            for name in self.module_name:
+                mod = self.name_to_module[name]
+                input_dim = mod.in_features
+                if mod.bias is not None:
+                    input_dim += 1
+                output_dim = mod.out_features
 
-        for name in self.module_name:
-            mod = self.name_to_module[name]
-            input_dim = mod.in_features
-            if mod.bias is not None:
-                input_dim += 1
-            output_dim = mod.out_features
+                if name not in self.input_projectors:
+                    blksz_in = torch.zeros(1, input_dim)
+                    self.input_projectors[name] = random_project(
+                        blksz_in,
+                        feature_batch_size=1,
+                        **self.projector_kwargs,
+                    )
 
-            if name not in self.input_projectors:
-                blksz_in = torch.zeros(1, input_dim)
-                self.input_projectors[name] = random_project(
-                    blksz_in,
-                    feature_batch_size=1,
-                    **self.projector_kwargs,
-                )
-
-            if name not in self.output_projectors:
-                blksz_out = torch.zeros(1, output_dim)
-                self.output_projectors[name] = random_project(
-                    blksz_out,
-                    feature_batch_size=1,
-                    **self.projector_kwargs,
-                )
+                if name not in self.output_projectors:
+                    blksz_out = torch.zeros(1, output_dim)
+                    self.output_projectors[name] = random_project(
+                        blksz_out,
+                        feature_batch_size=1,
+                        **self.projector_kwargs,
+                    )
 
         def _ekfac_hook(
             module: torch.nn.Module,
@@ -1176,8 +1178,6 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                 _v = _v.reshape(-1, dim_out, dim_in)
             else:
                 _v = layer_rep[name + ".weight"]
-
-            # project
             if self.projector_kwargs and name in self.input_projectors:
                 original_shape = _v.shape
                 _v_reshaped = _v.reshape(-1, original_shape[-1])
@@ -1215,7 +1215,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             torch.Tensor: Projected training representation.
         """
         # project
-        if self.projector_kwargs and self.input_projectors:
+        if self.projector_kwargs:
             layer_rep_proj = self._project_rep(train_rep)
             # flatten
             projected_layers = [
