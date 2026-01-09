@@ -99,7 +99,6 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed train representations with projected dimension.
         """
-        from dattri.func.projection import random_project
 
         if self.projector_kwargs is not None:
             sample_features = torch.zeros(1, train_rep.shape[1])
