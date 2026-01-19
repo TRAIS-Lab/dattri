@@ -14,10 +14,10 @@ else:
     from .memory import MemoryOffloadManager
 
 # Type definitions
-OffloadOptions = Literal["none", "cpu", "disk"]
+OffloadOptions = Literal["none", "cpu", "disk"]  # noqa: RUF067
 
 
-def create_offload_manager(
+def create_offload_manager(  # noqa: RUF067
     offload_type: OffloadOptions,
     device: str,
     layer_names: List[str],
