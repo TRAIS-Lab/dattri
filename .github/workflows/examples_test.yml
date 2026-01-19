@@ -1,6 +1,21 @@
 name: Example-test
 
-on: [pull_request, workflow_dispatch, push]
+on:
+  pull_request:
+    paths:
+    - 'dattri/**'
+    - 'examples/**'
+    - 'pyproject.toml'
+    - 'setup.py'
+    - '.github/workflows/examples_test.yml'
+  push:
+    paths:
+    - 'dattri/**'
+    - 'examples/**'
+    - 'pyproject.toml'
+    - 'setup.py'
+    - '.github/workflows/examples_test.yml'
+  workflow_dispatch:
 
 jobs:
   build:
