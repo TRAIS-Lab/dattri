@@ -102,6 +102,7 @@ ignore = [
     "ANN",     # don't need type annotation for tests
     "PLR6301", # Checks for the presence of unused self parameter
 ]
+"dattri/algorithm/block_projected_if/offload/__init__.py" = ["RUF102"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"

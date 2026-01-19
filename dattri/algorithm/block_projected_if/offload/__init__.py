@@ -1,4 +1,4 @@
-"""Strategies for different memory management approaches."""
+"""Strategies for different memory management approaches."""  # noqa: RUF067
 
 from __future__ import annotations
 
