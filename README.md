@@ -6,6 +6,9 @@
 
 [![Doc](https://img.shields.io/badge/Doc-API-00E64D.svg)](https://trais-lab.github.io/dattri/)
 [![PyPI version](https://img.shields.io/pypi/v/dattri)](https://pypi.org/project/dattri/)
+[![License](https://img.shields.io/github/license/TRAIS-Lab/dattri)](LICENSE)
+[![Build Status](https://github.com/TRAIS-Lab/dattri/actions/workflows/pytest.yml/badge.svg)](https://github.com/TRAIS-Lab/dattri/actions/workflows/pytest.yml)
+[![Lint](https://github.com/TRAIS-Lab/dattri/actions/workflows/lint.yml/badge.svg)](https://github.com/TRAIS-Lab/dattri/actions/workflows/lint.yml)
 [![Paper](https://img.shields.io/badge/Paper-NeurIPS24-00bfff.svg)](https://arxiv.org/pdf/2410.04555)
 
 [**Quick Start**](#quick-start)
@@ -18,34 +21,45 @@
 
 *dattri* is a PyTorch library for **developing, benchmarking, and deploying efficient data attribution algorithms**. You may use *dattri* to
 
-- Deploy existing data attribution methods to PyTorch models
+- **Deploy** existing data attribution methods to PyTorch models
   - e.g., Influence Function, TracIn, RPS, TRAK, ...
-- Develop new data attribution methods with efficient implementation of low-level utility functions
+- **Develop** new data attribution methods with efficient implementation of low-level utility functions
   - e.g., Hessian (HVP/IHVP), Fisher Information Matrix (IFVP), random projection, dropout ensembling, ...
-- Benchmark data attribution methods with standard benchmark settings
+- **Benchmark** data attribution methods with standard benchmark settings
   - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
+
+### Key Features
+
+- 🚀 **Efficient**: Optimized low-level primitives (HVP, Random Projection) for scaling to large models.
+- 🧩 **Modular**: Decouples attribution algorithms, models, and tasks for maximum flexibility.
+- 📊 **Comprehensive Benchmarks**: Ready-to-use benchmarks across Computer Vision, NLP, and more.
+- 🔌 **Easy Integration**: Seamlessly works with existing PyTorch models and workflows.
 
 ### Contents
 
-- [What is *dattri* ?](#what-is-dattri-)
-	- [Contents](#contents)
-- [Quick Start](#quick-start)
-	- [Installation](#installation)
-		- [Recommended environment setup](#recommended-environment-setup)
-	- [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
-	- [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
-		- [HVP/IHVP](#hvpihvp)
-		- [Random Projection](#random-projection)
-		- [Dropout Ensemble](#dropout-ensemble)
-- [Supported Algorithms](#supported-algorithms)
-- [Supported Metrics](#supported-metrics)
-- [Supported Benchmark Settings](#supported-benchmark-settings)
-- [Benchmark Results](#benchmark-results)
-	- [MNIST+LR/MLP](#mnistlrmlp)
-	- [LDS performance on larger models](#lds-performance-on-larger-models)
-	- [AUC performance](#auc-performance)
-- [Development Plan](#development-plan)
-- [Citation](#citation)
+- [A Library for Efficient Data Attribution](#a-library-for-efficient-data-attribution)
+  - [What is *dattri* ?](#what-is-dattri-)
+    - [Key Features](#key-features)
+    - [Contents](#contents)
+  - [Quick Start](#quick-start)
+    - [Installation](#installation)
+      - [Recommended environment setup](#recommended-environment-setup)
+    - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
+    - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
+      - [HVP/IHVP](#hvpihvp)
+      - [Random Projection](#random-projection)
+      - [Dropout Ensemble](#dropout-ensemble)
+  - [Supported Algorithms](#supported-algorithms)
+  - [Supported Metrics](#supported-metrics)
+  - [Supported Benchmark Settings](#supported-benchmark-settings)
+  - [Benchmark Results](#benchmark-results)
+    - [MNIST+LR/MLP](#mnistlrmlp)
+    - [LDS performance on larger models](#lds-performance-on-larger-models)
+    - [AUC performance](#auc-performance)
+  - [Development Plan](#development-plan)
+  - [Citation](#citation)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Quick Start
 
@@ -231,15 +245,15 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 
 ## Supported Benchmark Settings
 
-|   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric    |                       Data Source                       |
-| :---------: | :---------------: | :------------------: | :-----------------------: | :------------: | :---------: | :-----------------------------------------------------: |
-|  MNIST-10   |        LR         | Image Classification |        (5000,500)         |      7840      | LOO/LDS/AUC |        [link](http://yann.lecun.com/exdb/mnist/)        |
-|  MNIST-10   |        MLP        | Image Classification |        (5000,500)         |     0.11M      | LOO/LDS/AUC |        [link](http://yann.lecun.com/exdb/mnist/)        |
-|   CIFAR-2   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     LDS     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
-|  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
-|   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     | [link](https://magenta.tensorflow.org/datasets/maestro) |
-| Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |       [link](https://github.com/karpathy/nanoGPT)       |
-|  wikitext2  |       gpt2        |   Text Generation    |        (4656,481)         |     124M       |     LDS     |      [link](https://huggingface.co/datasets/Salesforce/wikitext)       |
+|   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric    |                         Data Source                         |
+| :---------: | :---------------: | :------------------: | :-----------------------: | :------------: | :---------: | :---------------------------------------------------------: |
+|  MNIST-10   |        LR         | Image Classification |        (5000,500)         |      7840      | LOO/LDS/AUC |          [link](http://yann.lecun.com/exdb/mnist/)          |
+|  MNIST-10   |        MLP        | Image Classification |        (5000,500)         |     0.11M      | LOO/LDS/AUC |          [link](http://yann.lecun.com/exdb/mnist/)          |
+|   CIFAR-2   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     LDS     |     [link](https://www.cs.toronto.edu/~kriz/cifar.html)     |
+|  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |     [link](https://www.cs.toronto.edu/~kriz/cifar.html)     |
+|   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     |   [link](https://magenta.tensorflow.org/datasets/maestro)   |
+| Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |         [link](https://github.com/karpathy/nanoGPT)         |
+|  wikitext2  |       gpt2        |   Text Generation    |        (4656,481)         |      124M      |     LDS     | [link](https://huggingface.co/datasets/Salesforce/wikitext) |
 
 ## Benchmark Results
 
@@ -281,3 +295,12 @@ We have implemented most of the state-of-the-art methods. The categories and ref
     year      = {2024}
 }
 ```
+
+## Contributing
+
+We welcome contributions to *dattri*! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to get started, report issues, or submit pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
