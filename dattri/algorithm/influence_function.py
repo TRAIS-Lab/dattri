@@ -93,6 +93,9 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         from dattri.func.hessian import ihvp_explicit
 
@@ -109,8 +112,12 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                     k: v.to(self.device) for k, v in full_data_.items()
                 }
             else:
-                raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-            
+                msg = (
+                    "We currently only support the train/test data to be "
+                    "tuple, list, or dict."
+                )
+                raise TypeError(msg)
+
             self.ihvp_func = ihvp_explicit(
                 partial(
                     self.task.get_loss_func(
@@ -229,6 +236,9 @@ class IFAttributorCG(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         from dattri.func.hessian import ihvp_cg
 
@@ -245,8 +255,12 @@ class IFAttributorCG(BaseInnerProductAttributor):
                     k: v.to(self.device) for k, v in full_data_.items()
                 }
             else:
-                raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-            
+                msg = (
+                    "We currently only support the train/test data to be "
+                    "tuple, list, or dict."
+                )
+                raise TypeError(msg)
+
             self.ihvp_func = ihvp_cg(
                 partial(
                     self.task.get_loss_func(
@@ -537,6 +551,9 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         from dattri.func.hessian import ihvp_lissa
 
@@ -553,8 +570,12 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                     k: v.to(self.device) for k, v in full_data_.items()
                 }
             else:
-                raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-    
+                msg = (
+                    "We currently only support the train/test data to be "
+                    "tuple, list, or dict."
+                )
+                raise TypeError(msg)
+
             self.ihvp_func = ihvp_lissa(
                 self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=ckpt_idx),
                 collate_fn=IFAttributorLiSSA.lissa_collate_fn,
@@ -668,6 +689,9 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
         Args:
             full_train_dataloader (DataLoader): Dataloader with full training data.
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         self.full_train_dataloader = full_train_dataloader
         self._cached_train_reps = {}
@@ -690,11 +714,16 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     )
                 elif isinstance(sampled_data_, dict):
                     sampled_data = {
-                        k: v.to(self.device).unsqueeze(0) for k, v in sampled_data_.items()
+                        k: v.to(self.device).unsqueeze(0)
+                        for k, v in sampled_data_.items()
                     }
                 else:
-                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-                
+                    msg = (
+                        "We currently only support the train/test data to be "
+                        "tuple, list, or dict."
+                    )
+                    raise TypeError(msg)
+
                 sampled_data_rep = self.generate_train_rep(
                     ckpt_idx=checkpoint_idx,
                     data=sampled_data,

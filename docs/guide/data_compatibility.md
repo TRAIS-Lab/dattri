@@ -1,4 +1,4 @@
-# User Guide
+# Data Type Compatibility for Loss and Target Functions
 
 ## Data structure to pass in Attributor
 ### Below is a comprehensive table of the data structure each attributior supports. The loss function each attributior takes is also provided.
@@ -10,10 +10,10 @@
 |                                                   |              [LiSSA](https://arxiv.org/abs/1602.03943)               | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
 |                                                   |             [Arnoldi](https://arxiv.org/abs/2112.03052)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
 |                                                   |             [DataInf](https://arxiv.org/abs/2310.00902)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
-|                                                   |              [EK-FAC](https://arxiv.org/abs/2308.03296)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
-|                                                   |             [RelatIF](https://arxiv.org/pdf/2003.11630)              | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
-|                                                   |              [LoGra](https://arxiv.org/pdf/2405.13954)               | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
-|                                                   |              [GraSS](https://arxiv.org/pdf/2505.18976)               | ✔️ | ✔️ | ❌ | [Code example](../../examples/brittleness/mnist_lr_brittleness.py) |
+|                                                   |              [EK-FAC](https://arxiv.org/abs/2308.03296)              | ✔️ | ✔️ | ❌ | Coming soon |
+|                                                   |             [RelatIF](https://arxiv.org/pdf/2003.11630)              | ✔️ | ✔️ | ❌ | Coming soon |
+|                                                   |              [LoGra](https://arxiv.org/pdf/2405.13954)               | ✔️ | ✔️ | ❌ | Coming soon |
+|                                                   |              [GraSS](https://arxiv.org/pdf/2505.18976)               | ✔️ | ✔️ | ❌ | Coming soon |
 |    [TracIn](https://arxiv.org/abs/2002.08484)     |             [TracInCP](https://arxiv.org/abs/2002.08484)             | ✔️ | ✔️ | ✔️ | [Code example](../../examples/noisy_label_detection/tracin_noisy_label.py) |
 |                                                   |             [Grad-Dot](https://arxiv.org/abs/2102.05262)             | ✔️ | ✔️ | ✔️ | [Code example](../../examples/noisy_label_detection/tracin_noisy_label.py) |
 |                                                   |             [Grad-Cos](https://arxiv.org/abs/2102.05262)             | ✔️ | ✔️ | ✔️ | [Code example](../../examples/noisy_label_detection/tracin_noisy_label.py) |

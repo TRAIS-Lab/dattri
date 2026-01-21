@@ -74,7 +74,7 @@ class TracInAttributor(BaseAttributor):
     def cache(self) -> None:
         """Precompute and cache some values for efficiency."""
 
-    def attribute(  # noqa: PLR0912
+    def attribute(  # noqa: PLR0912, PLR0915
         self,
         train_dataloader: torch.utils.data.DataLoader,
         test_dataloader: torch.utils.data.DataLoader,
@@ -93,6 +93,7 @@ class TracInAttributor(BaseAttributor):
 
         Raises:
             ValueError: The length of params_list and weight_list don't match.
+            TypeError: If train/test data is not tuple, list, or dict.
 
         Returns:
             Tensor: The influence of the training set on the test set, with
@@ -147,19 +148,24 @@ class TracInAttributor(BaseAttributor):
                         x.to(self.device) for x in train_batch_data_
                     )
                 elif isinstance(train_batch_data_, dict):
-                    train_batch_data  = {
+                    train_batch_data = {
                         k: v.to(self.device) for k, v in train_batch_data_.items()
                     }
                 else:
-                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-                
+                    msg = (
+                        "We currently only support the train/test data to be "
+                        "tuple, list, or dict."
+                    )
+                    raise TypeError(msg)
+
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
                     if isinstance(train_batch_data, (tuple, list)):
                         feature_batch_size = train_batch_data[0].shape[0]
                     elif isinstance(train_batch_data, dict):
-                        feature_batch_size = train_batch_data[list(train_batch_data.keys())[0]].shape[0]
+                        feature_batch_size = \
+                            train_batch_data[list(train_batch_data.keys())[0]].shape[0]  # noqa: RUF015
 
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
@@ -189,19 +195,24 @@ class TracInAttributor(BaseAttributor):
                             x.to(self.device) for x in test_batch_data_
                         )
                     elif isinstance(test_batch_data_, dict):
-                        test_batch_data  = {
+                        test_batch_data = {
                             k: v.to(self.device) for k, v in test_batch_data_.items()
                         }
                     else:
-                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-                    
+                        msg = (
+                            "We currently only support the train/test data to be "
+                            "tuple, list, or dict."
+                        )
+                        raise TypeError(msg)
+
                     # get gradient of test
                     grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.projector_kwargs is not None:
                         if isinstance(test_batch_data, (tuple, list)):
                             feature_batch_size = test_batch_data[0].shape[0]
                         elif isinstance(test_batch_data, dict):
-                            feature_batch_size = test_batch_data[list(test_batch_data.keys())[0]].shape[0]
+                            feature_batch_size = \
+                                test_batch_data[list(test_batch_data.keys())[0]].shape[0]  # noqa: RUF015
 
                         # define the projector for this batch of data
                         self.test_random_project = random_project(
@@ -322,7 +333,8 @@ class TracInAttributor(BaseAttributor):
                     if isinstance(train_batch_data, (tuple, list)):
                         feature_batch_size = train_batch_data[0].shape[0]
                     elif isinstance(train_batch_data, dict):
-                        feature_batch_size = train_batch_data[list(train_batch_data.keys())[0]].shape[0]
+                        feature_batch_size = \
+                            train_batch_data[list(train_batch_data.keys())[0]].shape[0]  # noqa: RUF015
 
                     # define the projector for this batch of data
                     self.train_random_project = random_project(

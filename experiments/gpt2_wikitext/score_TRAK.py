@@ -317,7 +317,7 @@ def parse_args():
         "--data_structure",
         type=str,
         default="tuple",
-        choices=["tuple", "list", "dict"]
+        help="What data structure to pass the training/test data for data attribution."
     )
     args = parser.parse_args()
 
