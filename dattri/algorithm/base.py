@@ -287,7 +287,7 @@ class BaseInnerProductAttributor(BaseAttributor):
         batch_size = train_batch_rep.size(0)
         return train_batch_rep.new_ones(batch_size)
 
-    def attribute(
+    def attribute(  # noqa: PLR0912
         self,
         train_dataloader: DataLoader,
         test_dataloader: DataLoader,
@@ -313,6 +313,9 @@ class BaseInnerProductAttributor(BaseAttributor):
         Returns:
             torch.Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
 
         """
         super().attribute(train_dataloader, test_dataloader)
@@ -351,11 +354,16 @@ class BaseInnerProductAttributor(BaseAttributor):
                     )
                 elif isinstance(train_batch_data_, dict):
                     train_batch_data = {
-                        k: v.to(self.device).unsqueeze(0) for k, v in train_batch_data_.items()
+                        k: v.to(self.device).unsqueeze(0)
+                        for k, v in train_batch_data_.items()
                     }
                 else:
-                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-                
+                    msg = (
+                        "We currently only support the train/test data to be "
+                        "tuple, list, or dict."
+                    )
+                    raise TypeError(msg)
+
                 # get initial representations of train data
                 train_batch_rep = self.generate_train_rep(
                     ckpt_idx=checkpoint_idx,
@@ -394,15 +402,21 @@ class BaseInnerProductAttributor(BaseAttributor):
                     # move to device
                     if isinstance(test_batch_data_, (tuple, list)):
                         test_batch_data = tuple(
-                            data.to(self.device).unsqueeze(0) for data in test_batch_data_
+                            data.to(self.device).unsqueeze(0)
+                            for data in test_batch_data_
                         )
                     elif isinstance(test_batch_data_, dict):
                         test_batch_data = {
-                            k: v.to(self.device).unsqueeze(0) for k, v in test_batch_data_.items()
+                            k: v.to(self.device).unsqueeze(0)
+                            for k, v in test_batch_data_.items()
                         }
                     else:
-                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-                    
+                        msg = (
+                            "We currently only support the train/test data to be "
+                            "tuple, list, or dict."
+                        )
+                        raise TypeError(msg)
+
                     # get initial representations of test data
                     test_batch_rep = self.generate_test_rep(
                         ckpt_idx=checkpoint_idx,
@@ -459,7 +473,10 @@ class BaseInnerProductAttributor(BaseAttributor):
 
         Returns:
             torch.Tensor: The influence of the training set on itself, with
-                the shape of (num_train_samples,).
+                the shape of (num_train_samples).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
 
         """
         test_dataloader = train_dataloader
@@ -497,10 +514,15 @@ class BaseInnerProductAttributor(BaseAttributor):
                     )
                 elif isinstance(train_batch_data_, dict):
                     train_batch_data = {
-                        k: v.to(self.device).unsqueeze(0) for k, v in train_batch_data_.items()
+                        k: v.to(self.device).unsqueeze(0)
+                        for k, v in train_batch_data_.items()
                     }
                 else:
-                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                    msg = (
+                        "We currently only support the train/test data to be "
+                        "tuple, list, or dict."
+                    )
+                    raise TypeError(msg)
 
                 # get initial representations of train data
                 train_batch_rep = self.generate_train_rep(

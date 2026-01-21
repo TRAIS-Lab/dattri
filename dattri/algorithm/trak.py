@@ -111,6 +111,9 @@ class TRAKAttributor(BaseAttributor):
         Args:
             full_train_dataloader (torch.utils.data.DataLoader): The dataloader
                 with full training samples for gradient calculation.
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         _check_shuffle(full_train_dataloader)
         self.full_train_dataloader = full_train_dataloader
@@ -148,11 +151,15 @@ class TRAKAttributor(BaseAttributor):
                         data.to(self.device) for data in train_data
                     )
                 elif isinstance(train_data, dict):
-                    train_batch_data  = {
+                    train_batch_data = {
                         k: v.to(self.device) for k, v in train_data.items()
                     }
                 else:
-                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                    msg = (
+                        "We currently only support the train/test data to be "
+                        "tuple, list, or dict."
+                    )
+                    raise TypeError(msg)
 
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
@@ -219,6 +226,7 @@ class TRAKAttributor(BaseAttributor):
         Raises:
             ValueError: If the train_dataloader is not None and the full training
                 dataloader is cached or no train_loader is provided in both cases.
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         _check_shuffle(test_dataloader)
         if train_dataloader is not None:
@@ -272,11 +280,15 @@ class TRAKAttributor(BaseAttributor):
                             data.to(self.device) for data in train_data
                         )
                     elif isinstance(train_data, dict):
-                        train_batch_data  = {
+                        train_batch_data = {
                             k: v.to(self.device) for k, v in train_data.items()
                         }
                     else:
-                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
+                        msg = (
+                            "We currently only support the train/test data to be "
+                            "tuple, list, or dict."
+                        )
+                        raise TypeError(msg)
 
                     grad_t = self.grad_loss_func(
                         parameters,
@@ -328,12 +340,16 @@ class TRAKAttributor(BaseAttributor):
                         data.to(self.device) for data in test_data
                     )
                 elif isinstance(test_data, dict):
-                    test_batch_data  = {
+                    test_batch_data = {
                         k: v.to(self.device) for k, v in test_data.items()
                     }
                 else:
-                    raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-                
+                    msg = (
+                        "We currently only support the train/test data to be "
+                        "tuple, list, or dict."
+                    )
+                    raise TypeError(msg)
+
                 grad_t = self.grad_target_func(parameters, test_batch_data)
                 grad_t = torch.nan_to_num(grad_t)
                 grad_t /= self.norm_scaler
@@ -376,7 +392,7 @@ class TRAKAttributor(BaseAttributor):
             return (running_xinv_XTX_XT * running_Q.to(self.device).unsqueeze(0)).T
         return (running_xinv_XTX_XT * self.Q.to(self.device).unsqueeze(0)).T
 
-    def self_attribute(  # noqa: PLR0912
+    def self_attribute(  # noqa: PLR0912, PLR0915, PLR0914
         self,
         train_dataloader: Optional[torch.utils.data.DataLoader] = None,
     ) -> torch.Tensor:
@@ -397,6 +413,7 @@ class TRAKAttributor(BaseAttributor):
         Raises:
             ValueError: If the train_dataloader is not None and the full training
                 dataloader is cached or no train_loader is provided in both cases.
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         test_dataloader = train_dataloader
         _check_shuffle(test_dataloader)
@@ -451,12 +468,16 @@ class TRAKAttributor(BaseAttributor):
                             data.to(self.device) for data in train_data
                         )
                     elif isinstance(train_data, dict):
-                        train_batch_data  = {
+                        train_batch_data = {
                             k: v.to(self.device) for k, v in train_data.items()
                         }
                     else:
-                        raise Exception("We currently only support the train/test data to be tuple, list or dict.")
-                    
+                        msg = (
+                            "We currently only support the train/test data to be "
+                            "tuple, list, or dict."
+                        )
+                        raise TypeError(msg)
+
                     grad_t = self.grad_loss_func(
                         parameters,
                         train_batch_data,
