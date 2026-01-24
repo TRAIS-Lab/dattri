@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from tqdm import tqdm
+
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -89,7 +91,6 @@ def key_value_pair(arg: Dict[str, Any]) -> tuple[str, Any]:
     if value.isdigit():
         value = int(value)
     return key, value
-
 
 def main() -> None:
     """This function is used to retrain models on various datasets.
@@ -213,13 +214,43 @@ def main() -> None:
     kwargs["device"] = args.device
     kwargs.update(args.extra_param or {})
 
-    retrain_helper(
-        train_func,
-        dataloader=train_loader,
-        path=args.save_path,
-        seed=args.seed,
-        **kwargs,
-    )
+    if args.mode == "lds":
+        num = kwargs["num_subsets"]
+        with tqdm(total=num, unit="model") as bar:
+            for i in range(num):
+                sub_kwargs = dict(kwargs)
+                sub_kwargs["num_subsets"] = 1
+                sub_kwargs["start_id"] = kwargs["start_id"] + i
+                retrain_helper(
+                    train_func,
+                    dataloader=train_loader,
+                    path=args.save_path,
+                    seed=args.seed,
+                    **sub_kwargs,
+                )
+                bar.update(1)
+    elif args.mode == "loo":
+        indices = kwargs["indices"]
+        with tqdm(total=len(indices), unit="model") as bar:
+            for i in indices:
+                sub_kwargs = dict(kwargs)
+                sub_kwargs["indices"] = [i]
+                retrain_helper(
+                    train_func,
+                    dataloader=train_loader,
+                    path=args.save_path,
+                    seed=args.seed,
+                    **sub_kwargs,
+                )
+                bar.update(1)
+    else:
+        retrain_helper(
+            train_func,
+            dataloader=train_loader,
+            path=args.save_path,
+            seed=args.seed,
+            **kwargs,
+        )
 
 
 if __name__ == "__main__":
