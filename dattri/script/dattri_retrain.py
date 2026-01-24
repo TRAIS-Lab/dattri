@@ -243,14 +243,6 @@ def main() -> None:
                     **sub_kwargs,
                 )
                 bar.update(1)
-    else:
-        retrain_helper(
-            train_func,
-            dataloader=train_loader,
-            path=args.save_path,
-            seed=args.seed,
-            **kwargs,
-        )
 
 
 if __name__ == "__main__":
