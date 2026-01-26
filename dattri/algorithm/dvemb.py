@@ -41,6 +41,7 @@ class DVEmbAttributor:
         self,
         task: AttributionTask,
         proj_dim: Optional[int] = None,
+        proj_seed: int = 0,
         factorization_type: Optional[str] = "none",
         layer_names: Optional[Union[str, List[str]]] = None,
     ) -> None:
@@ -70,6 +71,7 @@ class DVEmbAttributor:
                         ```.
             proj_dim: The dimension for projection (if used). Defaults to None,
                       meaning no projection.
+            proj_seed: Random seed for projection. Defaults to 0.
             factorization_type: Type of gradient factorization to use. Options are
                                 "none" (default),
                                 "kronecker" (same as in the paper),
@@ -93,8 +95,10 @@ class DVEmbAttributor:
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
         self.projection_dim = proj_dim
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
+        self.proj_seed = proj_seed
+        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS.copy()
         self.projector_kwargs["device"] = self.device
+        self.projector_kwargs["proj_seed"] = proj_seed
 
         if layer_names is None:
             self.layer_names = None
@@ -211,6 +215,8 @@ class DVEmbAttributor:
             [{"A": None, "B": None, "has_bias": False} for _ in self._linear_layers],
         )  # A is input and B is pre-activation gradient
 
+        # Use saved_tensors_hooks instead
+        # https://github.com/TRAIS-Lab/dattri/pull/193#discussion_r2683833611
         def fwd_hook(idx: int) -> Callable:
             def _hook(
                 layer: nn.Module,
@@ -218,9 +224,7 @@ class DVEmbAttributor:
                 _output: Tensor,
             ) -> None:
                 a = inputs[0].detach()
-
-                if a.dim() > 2:  # noqa: PLR2004
-                    a = a.reshape(a.size(0), -1)
+                # Keep original dimensions (2D or 3D) for proper gradient computation
                 caches[idx]["A"] = a
                 caches[idx]["has_bias"] = layer.bias is not None
 
@@ -233,8 +237,7 @@ class DVEmbAttributor:
                 grad_outputs: Tuple[Tensor, ...],
             ) -> None:
                 b = grad_outputs[0].detach()
-                if b.dim() > 2:  # noqa: PLR2004
-                    b = b.reshape(b.size(0), -1)
+                # Keep original dimensions (2D or 3D) for proper gradient computation
                 caches[idx]["B"] = b
 
             return _hook
@@ -372,6 +375,9 @@ class DVEmbAttributor:
     ) -> Tensor:
         """Reconstruct per-sample gradients from their factors.
 
+        Supports both 2D (B, D) and 3D (B, L, D) activations/gradients.
+        For 3D inputs, uses einsum to properly sum over the sequence dimension.
+
         Args:
             gradient_factors: A list of factor dictionaries for each layer.
 
@@ -380,35 +386,76 @@ class DVEmbAttributor:
         """
         projected_grads_parts = []
         for item in gradient_factors:
-            a = item["A"]
-            b = item["B"]
-            c = b.unsqueeze(2) @ a.unsqueeze(1)
-            projected_grads_parts.append(c.flatten(start_dim=1))
-            if item["has_bias"]:
-                projected_grads_parts.append(b)
+            a = item["A"]  # Activations: (B, D_in) or (B, L, D_in)
+            b = item["B"]  # Grad Output: (B, D_out) or (B, L, D_out)
+
+            if a.dim() == 3:  # noqa: PLR2004
+                # 3D case: (B, L, D_in) and (B, L, D_out)
+                # grad_W = sum_l (B_l^T @ A_l), result shape: (B, D_out, D_in)
+                grad_w = torch.einsum("bli,blo->boi", a, b)
+                grad_b = b.sum(dim=1) if item["has_bias"] else None
+            else:
+                # 2D case: (B, D_in) and (B, D_out)
+                # grad_W = B^T @ A, using outer product
+                grad_w = b.unsqueeze(2) @ a.unsqueeze(1)  # (B, D_out, D_in)
+                grad_b = b if item["has_bias"] else None
+
+            projected_grads_parts.append(grad_w.flatten(start_dim=1))
+            if grad_b is not None:
+                projected_grads_parts.append(grad_b)
+
         return torch.cat(projected_grads_parts, dim=1)
 
     def _project_gradients_factors_kronecker(
         self,
         gradient_factors: List[Dict[str, Tensor]],
-    ) -> List[Dict[str, Tensor]]:
+    ) -> Tensor:
         """Project gradient factors using Kronecker product.
+
+        Supports both 2D (B, D) and 3D (B, L, D) activations/gradients.
+        For 3D inputs, reshapes to (B*L, D) for projection, then uses einsum
+        to compute outer product and sum over L.
 
         Args:
             gradient_factors: A list of factor dictionaries for each layer.
 
         Returns:
-            A list of projected gradient factor dictionaries.
+            A tensor of projected gradients with shape
+            (B, proj_dim * proj_dim * n_layers).
         """
-        proj_factors = []
+        projected_grads_parts = []
         for (proj_a, proj_b), item in zip(
             self.random_projectors,
             gradient_factors,
         ):
-            a_proj = proj_a(item["A"])
-            b_proj = proj_b(item["B"])
-            proj_factors.append({"A": a_proj, "B": b_proj, "has_bias": False})
-        return proj_factors
+            a = item["A"]  # (B, D_in) or (B, L, D_in)
+            b = item["B"]  # (B, D_out) or (B, L, D_out)
+
+            if a.dim() == 3:  # noqa: PLR2004
+                batch_size, seq_len, d_in = a.shape
+                d_out = b.shape[2]
+
+                a_flat = a.reshape(batch_size * seq_len, d_in)
+                b_flat = b.reshape(batch_size * seq_len, d_out)
+
+                a_proj_flat = proj_a(a_flat)
+                b_proj_flat = proj_b(b_flat)
+
+                k = a_proj_flat.shape[1]
+                a_proj = a_proj_flat.reshape(batch_size, seq_len, k)
+                b_proj = b_proj_flat.reshape(batch_size, seq_len, k)
+
+                grad = torch.einsum("blk,blj->bkj", a_proj, b_proj)
+            else:
+                # 2D case: (B, D)
+                a_proj = proj_a(a)
+                b_proj = proj_b(b)
+                # Outer product: (B, K, K)
+                grad = b_proj.unsqueeze(2) @ a_proj.unsqueeze(1)
+
+            projected_grads_parts.append(grad.flatten(start_dim=1))
+
+        return torch.cat(projected_grads_parts, dim=1)
 
     def _project_gradients_factors_elementwise(
         self,
@@ -416,21 +463,46 @@ class DVEmbAttributor:
     ) -> Tensor:
         """Project gradient factors using element-wise product.
 
+        Supports both 2D (B, D) and 3D (B, L, D) activations/gradients.
+        For 3D inputs, reshapes to (B*L, D) for projection, then sums over L.
+
         Args:
             gradient_factors: A list of factor dictionaries for each layer.
 
         Returns:
-            A tensor of projected gradients.
+            A tensor of projected gradients with shape (B, proj_dim * n_layers).
         """
         projected_grads_parts = []
         for (proj_a, proj_b), item in zip(
             self.random_projectors,
             gradient_factors,
         ):
-            a_proj = proj_a(item["A"])
-            b_proj = proj_b(item["B"])
-            grad = a_proj.mul(b_proj) * math.sqrt(self.projection_dim)
+            a = item["A"]  # (B, D_in) or (B, L, D_in)
+            b = item["B"]  # (B, D_out) or (B, L, D_out)
+
+            if a.dim() == 3:  # noqa: PLR2004
+                batch_size, seq_len, d_in = a.shape
+                d_out = b.shape[2]
+
+                a_flat = a.reshape(batch_size * seq_len, d_in)
+                b_flat = b.reshape(batch_size * seq_len, d_out)
+
+                a_proj_flat = proj_a(a_flat)
+                b_proj_flat = proj_b(b_flat)
+
+                k = a_proj_flat.shape[1]
+                a_proj = a_proj_flat.reshape(batch_size, seq_len, k)
+                b_proj = b_proj_flat.reshape(batch_size, seq_len, k)
+
+                grad = (a_proj * b_proj).sum(dim=1) * math.sqrt(self.projection_dim)
+            else:
+                # 2D case: (B, D)
+                a_proj = proj_a(a)
+                b_proj = proj_b(b)
+                grad = a_proj.mul(b_proj) * math.sqrt(self.projection_dim)
+
             projected_grads_parts.append(grad.flatten(start_dim=1))
+
         return torch.cat(projected_grads_parts, dim=1)
 
     def _cache_factored_gradients(
@@ -459,8 +531,9 @@ class DVEmbAttributor:
         if self.projection_dim is None:
             self.cached_factors[epoch].append(caches)
         elif self.factorization_type == "kronecker":
-            proj_factors = self._project_gradients_factors_kronecker(caches)
-            self.cached_factors[epoch].append(proj_factors)
+            # kronecker with projection returns projected gradients directly
+            projected_grads = self._project_gradients_factors_kronecker(caches)
+            self.cached_gradients[epoch].append(projected_grads.cpu())
         else:
             projected_grads = self._project_gradients_factors_elementwise(caches)
             self.cached_gradients[epoch].append(projected_grads.cpu())
@@ -527,9 +600,11 @@ class DVEmbAttributor:
         # Determine gradient dimension and data type from cached data
         if self.use_factorization:
             grad_dim = self._params_dim
-            if self.projection_dim is None or self.factorization_type == "kronecker":
+            if self.projection_dim is None:
+                # No projection: use cached factors
                 grad_dtype = self.cached_factors[0][0][0]["A"].dtype
             else:
+                # With projection (kronecker or elementwise): use cached gradients
                 grad_dtype = self.cached_gradients[0][0].dtype
         else:
             grad_dim = self.cached_gradients[0][0].shape[1]
@@ -558,15 +633,14 @@ class DVEmbAttributor:
                 indices_t = self.data_indices[epoch][t]
 
                 if self.use_factorization:
-                    if (
-                        self.projection_dim is None
-                        or self.factorization_type == "kronecker"
-                    ):
+                    if self.projection_dim is None:
+                        # No projection: reconstruct from cached factors
                         gradient_factors = self.cached_factors[epoch][t]
                         grads_t = self._reconstruct_gradients(gradient_factors).to(
                             self.device,
                         )
                     else:
+                        # With projection (kronecker or elementwise)
                         grads_t = self.cached_gradients[epoch][t].to(self.device)
                 else:
                     grads_t = self.cached_gradients[epoch][t].to(self.device)
@@ -628,8 +702,8 @@ class DVEmbAttributor:
                 if self.projection_dim is None:
                     grads = self._reconstruct_gradients(factors)
                 elif self.factorization_type == "kronecker":
-                    proj_factors = self._project_gradients_factors_kronecker(factors)
-                    grads = self._reconstruct_gradients(proj_factors)
+                    # kronecker with projection returns projected gradients directly
+                    grads = self._project_gradients_factors_kronecker(factors)
                 else:
                     grads = self._project_gradients_factors_elementwise(factors)
             else:

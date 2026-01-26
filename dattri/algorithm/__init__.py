@@ -15,6 +15,7 @@ from .logra import LoGraAttributor
 from .rps import RPSAttributor
 from .tracin import TracInAttributor
 from .trak import TRAKAttributor
+from .dvemb import DVEmbAttributor
 
 __all__ = [
     "BlockProjectedIFAttributor",
@@ -30,4 +31,5 @@ __all__ = [
     "RPSAttributor",
     "TRAKAttributor",
     "TracInAttributor",
+    "DVEmbAttributor",
 ]
