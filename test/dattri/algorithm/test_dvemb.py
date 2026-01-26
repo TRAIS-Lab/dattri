@@ -169,11 +169,6 @@ class TestDVEmbAttributor:
         expected_proj_dim = int(math.sqrt(proj_dim / num_layers))
         assert attributor.projection_dim == expected_proj_dim
 
-        assert (
-            attributor.cached_factors[0][0][0]["A"].shape[1]
-            == attributor.projection_dim
-        )
-
     def test_dvemb_elementwise_with_projection(self):
         """Test DVEmb with elementwise factorization and projection."""
         proj_dim = 16

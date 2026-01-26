@@ -2,6 +2,7 @@
 
 from .block_projected_if.block_projected_if import BlockProjectedIFAttributor
 from .data_shapley import KNNShapleyAttributor
+from .dvemb import DVEmbAttributor
 from .factgrass import FactGraSSAttributor
 from .influence_function import (
     IFAttributorArnoldi,
@@ -15,10 +16,10 @@ from .logra import LoGraAttributor
 from .rps import RPSAttributor
 from .tracin import TracInAttributor
 from .trak import TRAKAttributor
-from .dvemb import DVEmbAttributor
 
 __all__ = [
     "BlockProjectedIFAttributor",
+    "DVEmbAttributor",
     "FactGraSSAttributor",
     "IFAttributorArnoldi",
     "IFAttributorCG",
@@ -31,5 +32,4 @@ __all__ = [
     "RPSAttributor",
     "TRAKAttributor",
     "TracInAttributor",
-    "DVEmbAttributor",
 ]
