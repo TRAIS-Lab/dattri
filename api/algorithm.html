@@ -2370,6 +2370,158 @@ dim=128.</p></li>
 
 </dd></dl>
 
+<dl class="py class">
+<dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor">
+<em class="property"><span class="pre">class</span><span class="w"> </span></em><span class="sig-prename descclassname"><span class="pre">dattri.algorithm.dvemb.</span></span><span class="sig-name descname"><span class="pre">DVEmbAttributor</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factorization_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'none'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor" title="Link to this definition">¶</a></dt>
+<dd><p>Bases: <code class="xref py py-class docutils literal notranslate"><span class="pre">object</span></code></p>
+<p>Data Value Embedding (DVEmb) attributor.</p>
+<p>DVEmb captures temporal dependence in training by computing data value embeddings
+that approximate trajectory-specific leave-one-out influence. This implementation
+stores embeddings for each epoch separately, allowing for epoch-specific analysis.</p>
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor.__init__">
+<span class="sig-name descname"><span class="pre">__init__</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">task</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><span class="pre">AttributionTask</span></a></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_dim</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">proj_seed</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">0</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">factorization_type</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">'none'</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">layer_names</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">str</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">str</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor.__init__" title="Link to this definition">¶</a></dt>
+<dd><p>Initializes the DVEmb attributor.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>task</strong> – <p>Task to attribute. Must be an instance of <cite>AttributionTask</cite>.
+Note: The checkpoint functionality of the task is not used by DVEmb.
+The loss function of the task must follow specific formats:</p>
+<blockquote>
+<div><ul>
+<li><p>If <cite>factorization_type</cite> is “none”, the loss function should follow
+the signature of the following example:</p>
+<blockquote>
+<div><p><a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
+def f(params, data):</p>
+<blockquote>
+<div><p>image, label = data
+loss = nn.CrossEntropyLoss()
+yhat = torch.func.functional_call(model, params, image)
+return loss(yhat, label)</p>
+</div></blockquote>
+<p><a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a>.</p>
+</div></blockquote>
+</li>
+<li><p>If <cite>factorization_type</cite> is not “none”, the loss function should
+follow the signature of the following example:</p>
+<blockquote>
+<div><p><a href="#id25"><span class="problematic" id="id26">``</span></a><a href="#id27"><span class="problematic" id="id28">`</span></a>python
+def f(model, data, device):</p>
+<blockquote>
+<div><p>image, label = data
+loss = nn.CrossEntropyLoss()
+yhat = model(image.to(device))
+return loss(yhat, label.to(device))</p>
+</div></blockquote>
+<p><a href="#id29"><span class="problematic" id="id30">``</span></a><a href="#id31"><span class="problematic" id="id32">`</span></a>.</p>
+</div></blockquote>
+</li>
+</ul>
+</div></blockquote>
+</p></li>
+<li><p><strong>proj_dim</strong> – The dimension for projection (if used). Defaults to None,
+meaning no projection.</p></li>
+<li><p><strong>proj_seed</strong> – Random seed for projection. Defaults to 0.</p></li>
+<li><p><strong>factorization_type</strong> – Type of gradient factorization to use. Options are
+“none” (default),
+“kronecker” (same as in the paper),
+or “elementwise” (efficiently projects Kronecker
+products via factorized elementwise products).</p></li>
+<li><p><strong>layer_names</strong> – Names of layers where gradients will be collected.
+If None, uses all Linear layers.
+You can check the names using model.named_modules().
+Hooks will be registered on these layers to collect gradients.
+Will only be used when factorization_type is not “none”.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If an unknown factorization type is provided
+    or if no Linear layers are found for factorization or
+    if the loss function format is incorrect.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor.attribute">
+<span class="sig-name descname"><span class="pre">attribute</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">test_dataloader</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">DataLoader</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">train_data_indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">torch.Tensor</span></span></span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor.attribute" title="Link to this definition">¶</a></dt>
+<dd><p>Calculates influence scores for a test set for one or all epochs.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>test_dataloader</strong> – A dataloader for the test set.</p></li>
+<li><p><strong>epoch</strong> – Optional. If specified, returns scores using embeddings from that
+epoch. If None, returns scores based on the sum of embeddings
+across all epochs.</p></li>
+<li><p><strong>train_data_indices</strong> – Optional. A list of training sample indices for which
+to compute influence. If None, computes for all.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Returns<span class="colon">:</span></dt>
+<dd class="field-even"><p>A tensor of influence scores.</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>RuntimeError</strong> – If embeddings have not been computed by calling
+    <cite>cache</cite> first, or if a projection dimension
+    was specified but the projector is not initialized.</p></li>
+<li><p><strong>ValueError</strong> – If embeddings for the specified <cite>epoch</cite> are not found.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor.cache">
+<span class="sig-name descname"><span class="pre">cache</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">gradients</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rates</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Dict</span><span class="p"><span class="pre">[</span></span><span class="pre">int</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">List</span><span class="p"><span class="pre">[</span></span><span class="pre">float</span><span class="p"><span class="pre">]</span></span><span class="p"><span class="pre">]</span></span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">None</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">memory_saving</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">bool</span><span class="w"> </span><span class="p"><span class="pre">|</span></span><span class="w"> </span><span class="pre">None</span></span><span class="w"> </span><span class="o"><span class="pre">=</span></span><span class="w"> </span><span class="default_value"><span class="pre">True</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache" title="Link to this definition">¶</a></dt>
+<dd><p>Computes data value embeddings for each epoch separately.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>gradients</strong> – Optional external gradients instead of cached ones
+(e.g., (epoch -&gt; list of per-sample gradients)).</p></li>
+<li><p><strong>learning_rates</strong> – Optional external learning rates instead of cached ones
+(e.g., (epoch -&gt; list of learning rates)).</p></li>
+<li><p><strong>memory_saving</strong> – If True, cached gradients will be cleared from memory
+after computation to save space.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Raises<span class="colon">:</span></dt>
+<dd class="field-even"><p><strong>ValueError</strong> – If no gradients are cached before computation,
+    or if NaN values are detected during computation,
+    or if external gradients are provided when using gradient factorization.</p>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor.cache_gradients">
+<span class="sig-name descname"><span class="pre">cache_gradients</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">batch_data</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">tuple</span><span class="p"><span class="pre">[</span></span><span class="pre">Tensor</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="p"><span class="pre">...</span></span><span class="p"><span class="pre">]</span></span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache_gradients" title="Link to this definition">¶</a></dt>
+<dd><p>Cache per-sample gradients for a specific epoch and training step.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epoch</strong> – The current epoch number.</p></li>
+<li><p><strong>batch_data</strong> – A tuple containing the batch of inputs and targets,
+e.g., (inputs, labels).</p></li>
+<li><p><strong>indices</strong> – A tensor containing the original indices for the samples
+in batch_data.</p></li>
+<li><p><strong>learning_rate</strong> – The learning rate for this step.</p></li>
+</ul>
+</dd>
+</dl>
+</dd></dl>
+
+<dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor.clear_cache">
+<span class="sig-name descname"><span class="pre">clear_cache</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor.clear_cache" title="Link to this definition">¶</a></dt>
+<dd><p>Clears cached gradients and factors to free memory.</p>
+</dd></dl>
+
+</dd></dl>
+
 </section>
 
         </article>
@@ -2536,6 +2688,14 @@ dim=128.</p></li>
 </li>
 <li><a class="reference internal" href="#dattri.algorithm.factgrass.FactGraSSAttributor"><code class="docutils literal notranslate"><span class="pre">FactGraSSAttributor</span></code></a><ul>
 <li><a class="reference internal" href="#dattri.algorithm.factgrass.FactGraSSAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">FactGraSSAttributor.__init__()</span></code></a></li>
+</ul>
+</li>
+<li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor</span></code></a><ul>
+<li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.__init__"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.__init__()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.attribute()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.cache()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache_gradients"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.cache_gradients()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.clear_cache"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.clear_cache()</span></code></a></li>
 </ul>
 </li>
 </ul>
