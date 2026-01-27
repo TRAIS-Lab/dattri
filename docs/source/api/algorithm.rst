@@ -41,3 +41,8 @@ Attributors
     :special-members: __init__
     :undoc-members:
     :show-inheritance:
+.. autoclass:: dattri.algorithm.dvemb.DVEmbAttributor
+    :members:
+    :special-members: __init__
+    :undoc-members:
+    :show-inheritance:
