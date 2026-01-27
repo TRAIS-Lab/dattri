@@ -18,6 +18,7 @@ import numpy as np
 import torch
 import yaml
 from torch.utils.data import DataLoader, Subset
+from tqdm import tqdm
 
 
 def retrain_loo(
@@ -108,7 +109,7 @@ def retrain_loo(
         "map_index_dir": {},
     }
 
-    for index in indices:
+    for index in tqdm(indices, desc="LOO Retraining"):
         remaining_indices = [idx for idx in all_indices if idx != index]
         model_dir = Path(path) / f"index_{index}"
         if not model_dir.exists():
@@ -238,7 +239,7 @@ def retrain_lds(
         torch.backends.cudnn.deterministic = True
 
     # Retrain the model for each subset
-    for i in range(start_id, start_id + num_subsets):
+    for i in tqdm(range(start_id, start_id + num_subsets), desc="LDS Retraining"):
         # Create a random subset of the data
         if seed is not None:
             rng = np.random.default_rng(seed + i)
@@ -256,7 +257,7 @@ def retrain_lds(
             f.write("\n".join(map(str, indices)))
 
         # Retrain the model for the subset (for multiple runs)
-        for j in range(num_runs_per_subset):
+        for j in tqdm(range(num_runs_per_subset), desc=f"Subset {i} Runs", leave=False):
             if seed is not None:
                 train_seed = seed + i * num_runs_per_subset + j
             else:
