@@ -54,15 +54,8 @@ from transformers import (
     default_data_collator,
     get_scheduler,
 )
-from transformers.utils import check_min_version
+from transformers.utils import check_min_version, send_example_telemetry
 from transformers.utils.versions import require_version
-
-# send_example_telemetry was removed in newer versions of transformers
-try:
-    from transformers.utils import send_example_telemetry
-except ImportError:
-    send_example_telemetry = None
-
 from dattri.benchmark.utils import SubsetSampler
 
 
@@ -328,10 +321,7 @@ def parse_args():
 def main():
     args = parse_args()
 
-    # Sending telemetry. Tracking the example usage helps us better allocate resources to maintain them. The
-    # information sent is the one passed as arguments along with your Python/PyTorch versions.
-    if send_example_telemetry is not None:
-        send_example_telemetry("run_clm_no_trainer", args)
+    send_example_telemetry("run_clm_no_trainer", args)
 
     # Initialize the accelerator. We will let the accelerator handle device placement for us in this example.
     # If we're using tracking, we also need to initialize it here and it will by default pick up all supported trackers
@@ -490,6 +480,7 @@ def main():
             config=config,
             low_cpu_mem_usage=args.low_cpu_mem_usage,
             trust_remote_code=args.trust_remote_code,
+            attn_implementation="eager",  # Use eager attention for better performance
         )
     else:
         logger.info("Training new model from scratch")
@@ -597,7 +588,7 @@ def main():
     from transformers.pytorch_utils import Conv1D
     from dattri.task import AttributionTask
 
-    model_id = 0
+    model_id = -1  # Use checkpoint 0 (final checkpoint)
     checkpoint = f"{args.output_dir}/{model_id}"
 
     def checkpoints_load_func(model, checkpoint):
