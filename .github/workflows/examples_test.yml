@@ -19,6 +19,7 @@ jobs:
         pip uninstall -y dattri
         python -m pip install --upgrade pip
         pip install -e .[test]
+        pip install jupyter nbconvert
     - name: Run examples
       run: |
         python examples/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
@@ -32,6 +33,10 @@ jobs:
         python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
         python examples/data_cleaning/influence_function_data_cleaning.py --device cpu --train_size 1000 --val_size 100 --test_size 100 --remove_number 10
         python examples/relatIF/influence_function_comparison.py --no_output
+        jupyter nbconvert --to script examples/quickstart/influence_function_lds.ipynb
+        python examples/quickstart/influence_function_lds.py
+        jupyter nbconvert --to script examples/quickstart/influence_function_noisy_label.ipynb
+        python examples/quickstart/influence_function_noisy_label.py
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
