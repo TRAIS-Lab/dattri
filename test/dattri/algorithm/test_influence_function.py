@@ -467,7 +467,6 @@ class TestInfluenceFunction:
 
     def test_influence_functions_with_random_projection(self):
         """Test for random projection in Explicit, DataInf and EK-FAC attributors."""
-        
         train_dataset = TensorDataset(
             torch.randn(20, 1, 28, 28),
             torch.randint(0, 10, (20,)),
@@ -522,5 +521,4 @@ class TestInfluenceFunction:
             projector_kwargs=projector_kwargs,
         )
         attributor_ekfac.cache(train_loader)
-        attributor_ekfac.attribute(train_loader, train_loader)  
-
+        attributor_ekfac.attribute(train_loader, train_loader)
