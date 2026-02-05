@@ -53,13 +53,13 @@ def train_epoch(cur_epoch, model, dataloader, loss, opt, device, lr_scheduler=No
         time_took = time_after - time_before
 
         if((batch_num+1) % print_modulus == 0):
-            print(SEPERATOR)
+            print(SEPARATOR)
             print("Epoch", cur_epoch, " Batch", batch_num+1, "/", len(dataloader))
             print("LR:", get_lr(opt))
             print("Train loss:", float(out))
             print("")
             print("Time (s):", time_took)
-            print(SEPERATOR)
+            print(SEPARATOR)
             print("")
 
     return
