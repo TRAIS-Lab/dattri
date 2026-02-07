@@ -12,6 +12,7 @@ from torch.utils.data import DataLoader, Dataset, TensorDataset
 from dattri.algorithm.tracin import TracInAttributor
 from dattri.benchmark.datasets.cifar import train_cifar_resnet9
 from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
+from dattri.func.projection import random_project
 from dattri.func.utils import flatten_func, flatten_params
 from dattri.task import AttributionTask
 
@@ -512,3 +513,193 @@ class TestTracInAttributor:
         assert torch.allclose(ckpt_grad_1[1], ckpt_grad_2[1])
 
         shutil.rmtree(path)
+
+    def test_tracin_dataloader(self):  # noqa: PLR0915
+        """Verify TracIn Group Attribution correctness."""
+        default_projector_kwargs = {
+            "proj_dim": 512,
+            "proj_max_batch_size": 32,
+            "proj_seed": 0,
+            "device": "cpu",
+        }
+
+        class TestDataloaderGroup:
+            def __init__(self, original_test_dataloader: DataLoader):
+                self.original_test_dataloader = original_test_dataloader
+                self.batch_size = original_test_dataloader.batch_size
+                self.sampler = original_test_dataloader.sampler
+
+            def __iter__(self):
+                yield from self.original_test_dataloader
+
+            def __len__(self):
+                return len(self.original_test_dataloader)
+
+        train_loader = DataLoader(
+            TensorDataset(
+                torch.randn(20, 1, 28, 28),
+                torch.randint(0, 10, (20,)),
+            ),
+            batch_size=4,
+            shuffle=False,
+        )
+        test_loader = DataLoader(
+            TensorDataset(
+                torch.randn(10, 1, 28, 28),
+                torch.randint(0, 10, (10,)),
+            ),
+            batch_size=2,
+            shuffle=False,
+        )
+
+        model = train_mnist_lr(train_loader)
+
+        # to simlulate multiple checkpoints
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+
+        def f(params, image_label_pair):
+            image, label = image_label_pair
+            image_t = image.unsqueeze(0)
+            label_t = label.unsqueeze(0)
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image_t)
+            return loss(yhat, label_t)
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=False,
+            projector_kwargs=None,
+            device="cpu",
+        )
+
+        score_calculated = attributor.attribute(
+            train_loader,
+            TestDataloaderGroup(test_loader),
+        )
+
+        assert score_calculated.shape == (20, 1), (
+            f"Expected shape (20, 1), got {score_calculated.shape}"
+        )
+
+        def attribute_temp(
+            task,
+            weight_list,
+            train_dataloader,
+            test_dataloader,
+            layer_name=None,
+            device="cpu",
+        ):
+            """N*M score matric TracIn attribute function."""
+            proj_kwargs = dict(default_projector_kwargs)
+
+            tda_output = torch.zeros(
+                size=(len(train_dataloader.sampler), len(test_dataloader.sampler)),
+            )
+
+            for ckpt_idx, ckpt_weight in zip(
+                range(len(task.get_checkpoints())),
+                weight_list,
+            ):
+                parameters, _ = task.get_param(ckpt_idx=ckpt_idx, layer_name=layer_name)
+
+                grad_target_func = task.get_grad_target_func(
+                    in_dims=(None, 0),
+                    ckpt_idx=ckpt_idx,
+                )
+                grad_loss_func = task.get_grad_loss_func(
+                    in_dims=(None, 0),
+                    ckpt_idx=ckpt_idx,
+                )
+
+                for train_batch_idx, train_batch_data_ in enumerate(train_dataloader):
+                    if isinstance(train_batch_data_, (tuple, list)):
+                        train_batch_data = tuple(
+                            x.to(device) for x in train_batch_data_
+                        )
+                    else:
+                        train_batch_data = train_batch_data_
+
+                    grad_t = grad_loss_func(parameters, train_batch_data)
+                    grad_t = torch.nan_to_num(grad_t)
+
+                    train_random_project = random_project(
+                        grad_t,
+                        train_batch_data[0].shape[0],
+                        **proj_kwargs,
+                    )
+                    train_batch_grad = train_random_project(
+                        grad_t,
+                        ensemble_id=ckpt_idx,
+                    )
+
+                    for test_batch_idx, test_batch_data_ in enumerate(test_dataloader):
+                        if isinstance(test_batch_data_, (tuple, list)):
+                            test_batch_data = tuple(
+                                x.to(device) for x in test_batch_data_
+                            )
+                        else:
+                            test_batch_data = test_batch_data_
+
+                        grad_t = torch.nan_to_num(
+                            grad_target_func(parameters, test_batch_data),
+                        )
+
+                        test_random_project = random_project(
+                            grad_t,
+                            test_batch_data[0].shape[0],
+                            **proj_kwargs,
+                        )
+                        test_batch_grad = test_random_project(
+                            grad_t,
+                            ensemble_id=ckpt_idx,
+                        )
+                        tda_output[
+                            train_batch_idx * train_dataloader.batch_size : min(
+                                (train_batch_idx + 1) * train_dataloader.batch_size,
+                                len(train_dataloader.sampler),
+                            ),
+                            test_batch_idx * test_dataloader.batch_size : min(
+                                (test_batch_idx + 1) * test_dataloader.batch_size,
+                                len(test_dataloader.sampler),
+                            ),
+                        ] += (
+                            (train_batch_grad @ test_batch_grad.T * ckpt_weight)
+                            .detach()
+                            .cpu()
+                        )
+
+            return tda_output
+
+        score_full = attribute_temp(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            train_dataloader=train_loader,
+            test_dataloader=test_loader,
+        )
+
+        score_temp = score_full.sum(
+            dim=1,
+            keepdim=True,
+        )  # Make the shape (N, 1) for comparison
+
+        assert torch.allclose(score_calculated, score_temp, rtol=1e-03, atol=1e-05), (
+            "Score does not match manual calculation."
+        )
+
+        if path.exists():
+            shutil.rmtree(path)
