@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Iterator
 
 if TYPE_CHECKING:
     from typing import List, Optional, Union
+
+    from torch.utils.data import DataLoader
 
     from dattri.task import AttributionTask
 
@@ -25,6 +27,36 @@ DEFAULT_PROJECTOR_KWARGS = {
     "proj_seed": 0,
     "device": "cpu",
 }
+
+
+class TestDataloaderGroup:
+    """Helper class to wrap a DataLoader for group attribution."""
+
+    def __init__(self, original_test_dataloader: DataLoader) -> None:
+        """Initialize the TestDataloaderGroup.
+
+        Args:
+            original_test_dataloader (DataLoader): The underlying PyTorch dataloader.
+        """
+        self.original_test_dataloader = original_test_dataloader
+        self.batch_size = original_test_dataloader.batch_size
+        self.sampler = original_test_dataloader.sampler
+
+    def __iter__(self) -> Iterator[Any]:
+        """Iterate over the original dataloader.
+
+        Yields:
+            Any: The next batch of data from the original dataloader.
+        """
+        yield from self.original_test_dataloader
+
+    def __len__(self) -> int:
+        """Return the length of the original dataloader.
+
+        Returns:
+            int: The number of batches in the original dataloader.
+        """
+        return len(self.original_test_dataloader)
 
 
 class TracInAttributor(BaseAttributor):
@@ -77,7 +109,7 @@ class TracInAttributor(BaseAttributor):
     def attribute(  # noqa: PLR0912
         self,
         train_dataloader: torch.utils.data.DataLoader,
-        test_dataloader: torch.utils.data.DataLoader,
+        test_dataloader: TestDataloaderGroup,
     ) -> Tensor:
         """Calculate the influence of the training set on the test set.
 
@@ -87,19 +119,20 @@ class TracInAttributor(BaseAttributor):
                 of the full training set if `cache` is called before. A subset
                 means that only a part of the training set's influence is calculated.
                 The dataloader should not be shuffled.
-            test_dataloader (torch.utils.data.DataLoader): The dataloader for
-                test samples to calculate the influence. The dataloader should not
-                be shuffled.
+            test_dataloader (TestDataloaderGroup): The dataloader wrapped by
+                TestDataloaderGroup for test samples to calculate the influence.
+                The dataloader should not be shuffled.
 
         Raises:
             ValueError: The length of params_list and weight_list don't match.
 
         Returns:
-            Tensor: The influence of the training set on the test set, with
-                the shape of (num_train_samples, num_test_samples).
+            Tensor: The influence of the training set on the test set as a whole, with
+                the shape of (num_train_samples, 1).
         """
-        _check_shuffle(test_dataloader)
         _check_shuffle(train_dataloader)
+        if hasattr(test_dataloader, "original_test_dataloader"):
+            _check_shuffle(test_dataloader.original_test_dataloader)
 
         # check the length match between checkpoint list and weight list
         if len(self.task.get_checkpoints()) != len(self.weight_list):
@@ -109,7 +142,7 @@ class TracInAttributor(BaseAttributor):
         # placeholder for the TDA result
         # should work for torch dataset without sampler
         tda_output = torch.zeros(
-            size=(len(train_dataloader.sampler), len(test_dataloader.sampler)),
+            size=(len(train_dataloader.sampler), 1),
         )
 
         # iterate over each checkpoint (each ensemble)
@@ -134,6 +167,47 @@ class TracInAttributor(BaseAttributor):
                     ckpt_idx=ckpt_idx,
                 )
 
+            test_grads_accumulator = None
+
+            for test_loader_obj in test_dataloader:
+                if isinstance(test_loader_obj, (tuple, list)):
+                    current_batch = tuple(x.to(self.device) for x in test_loader_obj)
+                else:
+                    current_batch = test_loader_obj
+
+                grad_t = self.grad_target_func(parameters, current_batch)
+                grad_t = torch.nan_to_num(grad_t)
+
+                batch_grad_sum = grad_t.sum(dim=0, keepdim=True)
+
+                if self.projector_kwargs is not None:
+                    if (
+                        not hasattr(self, "test_random_project")
+                        or self.test_random_project is None
+                    ):
+                        self.test_random_project = random_project(
+                            batch_grad_sum,
+                            1,
+                            **self.projector_kwargs,
+                        )
+                    current_batch_grad = self.test_random_project(
+                        batch_grad_sum,
+                        ensemble_id=ckpt_idx,
+                    )
+                else:
+                    current_batch_grad = batch_grad_sum
+
+                if test_grads_accumulator is None:
+                    test_grads_accumulator = current_batch_grad
+                else:
+                    test_grads_accumulator += current_batch_grad
+
+            if test_grads_accumulator is None:
+                msg = "Test dataloader yielded no data."
+                raise ValueError(msg)
+
+            test_batch_grad = test_grads_accumulator
+
             for train_batch_idx, train_batch_data_ in enumerate(
                 tqdm(
                     train_dataloader,
@@ -148,84 +222,38 @@ class TracInAttributor(BaseAttributor):
                     )
                 else:
                     train_batch_data = train_batch_data_
-                # get gradient of train
+
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.projector_kwargs is not None:
-                    # define the projector for this batch of data
-                    self.train_random_project = random_project(
-                        grad_t,
-                        # get the batch size, prevent edge case
-                        train_batch_data[0].shape[0],
-                        **self.projector_kwargs,
-                    )
-                    # param index as ensemble id
-                    train_batch_grad = self.train_random_project(
+                    train_batch_grad = self.test_random_project(
                         torch.nan_to_num(grad_t),
                         ensemble_id=ckpt_idx,
                     )
                 else:
                     train_batch_grad = torch.nan_to_num(grad_t)
 
-                for test_batch_idx, test_batch_data_ in enumerate(
-                    tqdm(
-                        test_dataloader,
-                        desc="calculating gradient of test set...",
-                        leave=False,
-                    ),
-                ):
-                    # move to device
-                    if isinstance(test_batch_data_, (tuple, list)):
-                        test_batch_data = tuple(
-                            x.to(self.device) for x in test_batch_data_
-                        )
-                    else:
-                        test_batch_data = test_batch_data_
-                    # get gradient of test
-                    grad_t = self.grad_target_func(parameters, test_batch_data)
-                    if self.projector_kwargs is not None:
-                        # define the projector for this batch of data
-                        self.test_random_project = random_project(
-                            grad_t,
-                            test_batch_data[0].shape[0],
-                            **self.projector_kwargs,
-                        )
+                row_st = train_batch_idx * train_dataloader.batch_size
+                row_ed = min(
+                    (train_batch_idx + 1) * train_dataloader.batch_size,
+                    len(train_dataloader.sampler),
+                )
 
-                        test_batch_grad = self.test_random_project(
-                            torch.nan_to_num(grad_t),
-                            ensemble_id=ckpt_idx,
+                if self.normalized_grad:
+                    tda_output[row_st:row_ed, :] += (
+                        (
+                            normalize(train_batch_grad)
+                            @ normalize(test_batch_grad).T
+                            * ckpt_weight
                         )
-                    else:
-                        test_batch_grad = torch.nan_to_num(grad_t)
-
-                    # results position based on batch info
-                    row_st = train_batch_idx * train_dataloader.batch_size
-                    row_ed = min(
-                        (train_batch_idx + 1) * train_dataloader.batch_size,
-                        len(train_dataloader.sampler),
+                        .detach()
+                        .cpu()
                     )
-
-                    col_st = test_batch_idx * test_dataloader.batch_size
-                    col_ed = min(
-                        (test_batch_idx + 1) * test_dataloader.batch_size,
-                        len(test_dataloader.sampler),
+                else:
+                    tda_output[row_st:row_ed, :] += (
+                        (train_batch_grad @ test_batch_grad.T * ckpt_weight)
+                        .detach()
+                        .cpu()
                     )
-                    # accumulate the TDA score in corresponding positions (blocks)
-                    if self.normalized_grad:
-                        tda_output[row_st:row_ed, col_st:col_ed] += (
-                            (
-                                normalize(train_batch_grad)
-                                @ normalize(test_batch_grad).T
-                                * ckpt_weight
-                            )
-                            .detach()
-                            .cpu()
-                        )
-                    else:
-                        tda_output[row_st:row_ed, col_st:col_ed] += (
-                            (train_batch_grad @ test_batch_grad.T * ckpt_weight)
-                            .detach()
-                            .cpu()
-                        )
 
         return tda_output
 
