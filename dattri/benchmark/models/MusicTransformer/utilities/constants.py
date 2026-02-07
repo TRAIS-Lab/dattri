@@ -10,7 +10,7 @@ from dattri.benchmark.models.MusicTransformer.midi_processor.processor import (
     RANGE_TIME_SHIFT,
 )
 
-SEPERATOR               = "========================="
+SEPARATOR               = "========================="
 
 # Taken from the paper
 ADAM_BETA_1             = 0.9

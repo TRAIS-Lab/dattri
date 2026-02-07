@@ -11,7 +11,7 @@ class MyNet(nn.Module):
     """A test nn.Module PyTorch model."""
 
     def __init__(self):
-        """Initialze the layers of the model."""
+        """Initialize the layers of the model."""
         super(MyNet, self).__init__()
         self.layer1 = nn.Linear(10, 20)
         self.layer2 = nn.Linear(20, 30)

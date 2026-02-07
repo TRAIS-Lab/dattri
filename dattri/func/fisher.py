@@ -139,7 +139,7 @@ def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
     """Check and return the size of input data.
 
     Args:
-        *x: List of arguments to check. Each argument shoule be either:
+        *x: List of arguments to check. Each argument should be either:
             1. A tensor with a batch size dimension. Each data point i
             will take the i-th element along this dimension.
             2. A tensor without a batch size dimension. Each data point will
@@ -195,7 +195,7 @@ def _random_batch_iterator(
        with the default collation function.
 
     Args:
-        *x: List of arguments to check. Each argument shoule be either:
+        *x: List of arguments to check. Each argument should be either:
             1. A tensor with a batch size dimension. Each data point i
             will take the i-th element along this dimension.
             2. A tensor without a batch size dimension. Each data point will
@@ -454,7 +454,7 @@ def estimate_covariance(
 def estimate_eigenvector(
     covariances: Dict[str, Tuple[torch.Tensor]],
 ) -> Dict[str, Tuple[torch.Tensor]]:
-    """Perform eigenvalue decomposition to covarince matrices.
+    """Perform eigenvalue decomposition on covariance matrices.
 
     Args:
         covariances (Dict[str, Tuple[torch.Tensor]]): A dict that
