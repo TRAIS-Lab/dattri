@@ -14,7 +14,7 @@ Four scripts are included in this example
 
 This experiment could only be run on cuda device.
 
-## Enviroment
+## Environment
 
 ```bash
 pip install -r requirements.txt

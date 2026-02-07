@@ -240,11 +240,11 @@ def decode_midi(idx_array, file_path=None):
     note_seq.sort(key=lambda x:x.start)
 
     mid = pretty_midi.PrettyMIDI()
-    # if want to change instument, see https://www.midi.org/specifications/item/gm-level-1-sound-set
-    instument = pretty_midi.Instrument(1, False, "Developed By Yang-Kichang")
-    instument.notes = note_seq
+    # if you want to change instrument, see https://www.midi.org/specifications/item/gm-level-1-sound-set
+    instrument = pretty_midi.Instrument(1, False, "Developed By Yang-Kichang")
+    instrument.notes = note_seq
 
-    mid.instruments.append(instument)
+    mid.instruments.append(instrument)
     if file_path is not None:
         mid.write(file_path)
     return mid

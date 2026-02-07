@@ -50,7 +50,7 @@ BASELINE_EPOCH = -1
 
 # Training Hyper-parameters ############
 WEIGHT_MODULUS = 5  # Frequency to save epoch weights
-PRINT_MODOLUS = 1  # Frequency to print train results for a batch
+PRINT_MODULUS = 1  # Frequency to print train results for a batch
 FORCE_CPU = False  # Forces model to run on a cpu even when gpu is available
 NO_TENSORBOARD = True  # Turns off tensorboard result reporting
 CONTINUE_WEIGHTS = None  # Model weights to continue training (str: file location)
@@ -169,7 +169,7 @@ def train_maestro_musictransformer(
                 opt,
                 device,
                 lr_scheduler,
-                PRINT_MODOLUS,
+                PRINT_MODULUS,
             )
 
         # Eval
