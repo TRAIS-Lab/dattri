@@ -72,18 +72,20 @@ ruff check --fix
 - GPU tests marked with `@pytest.mark.gpu`
 - Tests use synthetic data (TensorDataset) for speed
 
-## Contributing — Project Structure
+## Contributing 
+
+### Project Structure
 
 - **`dattri/`**: `AttributionTask` handles the ML model, training loss functions, and target function for attribution. Keep Attributors cleanly separated from `AttributionTask` to maintain generalizability across models, loss functions, and target functions. When implementing a new Attributor, inherit from an existing Attributor class to maximally reuse code. If the new Attributor is completely different from existing ones, inherit `BaseAttributor` to ensure API consistency.
 - **`examples/`**: Bite-size examples, preferably a single script without a README. Examples should not be computationally heavy; heavy workloads belong in `experiments/` instead.
 - **`experiments/`**: Large experiments/benchmarks requiring multiple files. One folder per experiment, preferably with a `README.md`.
 
-## Contributing — CI/CD
+### CI/CD
 
 - **Unit tests** (`test/`, `.github/workflows/pytest.yml`): Run-through tests and sanity checks. The test directory (almost) mirrors the structure of `dattri/`. A new unit test should be included whenever non-trivial changes are made in `dattri/` (new feature or bug fix). GPU tests are omitted by default in GitHub Actions and can be manually triggered by commenting "run gpu test" on the PR.
 - **Example tests** (`.github/workflows/examples_test.yml`): A new example test should be added whenever a new example is added in `examples/`. An example test is a line in the workflow file that runs the example script.
 
-## Contributing — Pull Requests
+### Pull Requests
 
 - For non-trivial PRs (new feature, bug fix, significant refactoring), start with a new Issue outlining the planned changes for maintainer approval. This is **required** if the changes involve major API design changes.
 - PRs can start as `[WIP]` without all tests passing to get early feedback.
