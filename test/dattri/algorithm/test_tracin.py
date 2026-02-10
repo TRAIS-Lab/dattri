@@ -46,7 +46,7 @@ class TestTracInAttributor:
             yhat = torch.func.functional_call(model, params, image_t)
             return loss(yhat, label_t)
 
-        # to simlulate multiple checkpoints
+        # to simulate multiple checkpoints
         model_1 = train_mnist_lr(train_loader, epoch_num=1)
         model_2 = train_mnist_lr(train_loader, epoch_num=2)
         path = Path("./ckpts")
@@ -64,7 +64,7 @@ class TestTracInAttributor:
         )
 
         # train and test always share the same projector
-        # checkpoints need to have differnt projectors
+        # checkpoints need to have different projectors
         pytest_device = "cpu"
         projector_kwargs = {
             "proj_dim": 512,
@@ -117,7 +117,7 @@ class TestTracInAttributor:
             yhat = torch.func.functional_call(model, params, image_t)
             return loss(yhat, label_t)
 
-        # to simlulate multiple checkpoints
+        # to simulate multiple checkpoints
         model_1 = train_mnist_lr(train_loader, epoch_num=1)
         model_2 = train_mnist_lr(train_loader, epoch_num=2)
         path = Path("./ckpts")
@@ -172,7 +172,7 @@ class TestTracInAttributor:
             yhat = torch.func.functional_call(model, params, image_t)
             return loss(yhat, label_t)
 
-        # to simlulate multiple checkpoints
+        # to simulate multiple checkpoints
         model_1 = train_mnist_lr(train_loader, epoch_num=1)
         model_2 = train_mnist_lr(train_loader, epoch_num=2)
         path = Path("./ckpts")
@@ -224,7 +224,7 @@ class TestTracInAttributor:
 
         grad_func = vmap(grad(f), in_dims=(None, 0))
 
-        # to simlulate multiple checkpoints
+        # to simulate multiple checkpoints
         model_1 = train_mnist_lr(train_loader, epoch_num=1)
         model_2 = train_mnist_lr(train_loader, epoch_num=2)
         path = Path("./ckpts")
@@ -380,7 +380,7 @@ class TestTracInAttributor:
 
         grad_func = vmap(grad(f), in_dims=(None, 0))
 
-        # to simlulate multiple checkpoints
+        # to simulate multiple checkpoints
         model_1 = train_mnist_mlp(train_loader, epoch_num=1)
         model_2 = train_mnist_mlp(train_loader, epoch_num=2)
         path = Path("./ckpts")
@@ -455,7 +455,7 @@ class TestTracInAttributor:
 
         grad_func = vmap(grad(f), in_dims=(None, 0))
 
-        # to simlulate multiple checkpoints
+        # to simulate multiple checkpoints
         model_1 = train_cifar_resnet9(train_loader, num_epochs=1)
         model_2 = train_cifar_resnet9(train_loader, num_epochs=2)
         path = Path("./ckpts")
