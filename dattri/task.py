@@ -42,7 +42,6 @@ class AttributionTask:
 
     def __init__(
         self,
-        loss_func: Callable,
         model: nn.Module,
         checkpoints: Union[
             str,
@@ -50,12 +49,25 @@ class AttributionTask:
             List[Dict[str, torch.Tensor]],
             Dict[str, torch.Tensor],
         ],
+        loss_func: Optional[Callable] = None,
+        task_type: Optional[str] = None,
         target_func: Optional[Callable] = None,
         checkpoints_load_func: Optional[Callable] = None,
     ) -> None:
         """Initialize the AttributionTask.
 
         Args:
+            model (nn.Module): The model that the target function is based on.
+                To be more specific, the model is the `model` used in the target
+                function. Since only the computation graph of the model will be
+                used, so it is allowed that this model is not loaded with a trained
+                parameters.
+            checkpoints:
+                (Union[str, List[str], List[Dict[str, torch.Tensor]],
+                Dict[str, torch.Tensor]]): The checkpoints
+                of the model, both dictionary of the state_dict and the path to
+                the checkpoint are supported. If ensemble is needed, a list of
+                checkpoint is also supported.
             loss_func (Callable): The loss function of the model training.
                 The function can be quite flexible in terms of what is calculated,
                 but it should take the parameters and the data as input. Other than
@@ -71,17 +83,13 @@ class AttributionTask:
                     return loss(yhat, label)
                 ```.
                 This examples calculates the CE loss of the model on the data.
-            model (nn.Module): The model that the target function is based on.
-                To be more specific, the model is the `model` used in the target
-                function. Since only the computation graph of the model will be
-                used, so it is allowed that this model is not loaded with a trained
-                parameters.
-            checkpoints:
-                (Union[str, List[str], List[Dict[str, torch.Tensor]],
-                Dict[str, torch.Tensor]]): The checkpoints
-                of the model, both dictionary of the state_dict and the path to
-                the checkpoint are supported. If ensemble is needed, a list of
-                checkpoint is also supported.
+            task_type (str): The type of the task for which attribution is being computed.
+                Given this parameter, you don't need to manually provide a `loss_func`, 
+                as the appropriate CE loss will be automatically matched. 
+                Supported task types include:
+                - 'image_classification': For tasks involving image classification. 
+                - 'text_classification': For tasks involving text classification.
+                - Other task types can be added as needed, and specific handling will be implemented for each task type.
             target_func (Callable): The target function to be attributed.
                 This input is optional, if not provided, the target function will
                 be the same as the loss function. The function can be quite flexible
@@ -110,6 +118,51 @@ class AttributionTask:
                 ```.
         """
         self.model = model
+        
+        if loss_func is None:
+            if task_type == 'image_classification':
+                def trak_log_odds_loss(params, data):                    
+                    if isinstance(data, (tuple, list)):
+                        inputs, label = data[0], data[1]
+                    else:
+                        inputs, label = data
+
+                    yhat = torch.func.functional_call(model, params, inputs.unsqueeze(0))
+                    if hasattr(yhat, 'logits'):
+                        yhat = yhat.logits
+                    loss_val = torch.nn.functional.cross_entropy(yhat, label.unsqueeze(0))
+                    logp = -loss_val
+                    eps = 1e-10
+                    return logp - torch.log(1.0 - torch.exp(logp) + eps)
+                
+                loss_func = trak_log_odds_loss
+            elif task_type == 'text_classification':
+                def trak_log_odds_loss(params, data):
+                    if isinstance(data, dict):
+                        if 'label' in data:
+                            label = data['label']
+                        elif 'labels' in data:
+                            label = data['labels']
+                        else:
+                            raise ValueError("Dictionary data must contain 'label' or 'labels'")
+                        inputs = {k: v for k, v in data.items() if k not in ['label', 'labels']}
+                    else:
+                        inputs, label = data
+
+                    if isinstance(inputs, dict):
+                        inputs_vmap = {'input_ids': data['input_ids'].unsqueeze(0)}
+                        yhat = torch.func.functional_call(model, params, kwargs=inputs_vmap)
+                    if hasattr(yhat, 'logits'):
+                        yhat = yhat.logits
+                    loss_val = torch.nn.functional.cross_entropy(yhat, label.unsqueeze(0))
+                    logp = -loss_val
+                    eps = 1e-10
+                    return logp - torch.log(1.0 - torch.exp(logp) + eps)
+                
+                loss_func = trak_log_odds_loss
+            else:
+                raise ValueError(f"Unsupported task type: {task_type}, please provide loss_func")
+
         if target_func is None:
             target_func = loss_func
 
@@ -131,6 +184,7 @@ class AttributionTask:
         else:
             self.checkpoints = checkpoints
 
+        self.task_type=task_type
         # current_checkpoint_idx is used to state
         # which checkpoint is currently loaded.
         self.current_checkpoint_idx = None

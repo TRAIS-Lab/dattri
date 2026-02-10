@@ -15,6 +15,7 @@ if TYPE_CHECKING:
 import torch
 from torch.func import vmap
 from tqdm import tqdm
+import torch.nn.functional as F
 
 from dattri.func.projection import random_project
 from dattri.func.utils import _unflatten_params
@@ -36,7 +37,7 @@ class TRAKAttributor(BaseAttributor):
     def __init__(
         self,
         task: AttributionTask,
-        correct_probability_func: Callable,
+        correct_probability_func: Optional[Callable] = None,
         projector_kwargs: Optional[Dict[str, Any]] = None,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
@@ -74,6 +75,42 @@ class TRAKAttributor(BaseAttributor):
                 Added as `regularization * I`, where `I` is the identity matrix.
                 Default is 0.0.
         """
+
+        if correct_probability_func is None:
+            print(getattr(task, 'task_type', None))
+            if getattr(task, 'task_type', None) in['image_classification', 'text_classification']:
+                def default_m(params, data):
+                    if isinstance(data, dict):
+                        if 'label' in data:
+                            label = data['label']
+                        elif 'labels' in data:
+                            label = data['labels']
+                        else:
+                            raise ValueError("Dictionary data must contain 'label' or 'labels'")
+                        inputs = {k: v for k, v in data.items() if k not in ['label', 'labels']}
+                    elif isinstance(data, (tuple, list)):
+                        inputs, label = data[0], data[1]
+                    else:
+                        inputs, label = data
+                    
+                    if isinstance(inputs, dict):
+                        inputs_vmap = {'input_ids': data['input_ids'].unsqueeze(0)}
+                        yhat = torch.func.functional_call(self.task.get_model(), params, kwargs=inputs_vmap)
+                    else:
+                        yhat = torch.func.functional_call(self.task.get_model(), params, inputs.unsqueeze(0))
+
+                    if hasattr(yhat, 'logits'):
+                        yhat = yhat.logits
+
+                    loss_val = torch.nn.functional.cross_entropy(yhat, label.unsqueeze(0))
+                    return torch.exp(-loss_val)
+                
+                selected_prob_func = default_m
+            else:
+                raise ValueError(f"Unsupported task type: {task_type}, please provide loss_func and correct_probability_func.")
+        else:
+            selected_prob_func = correct_probability_func
+      
         self.task = task
         self.norm_scaler = (
             sum(
@@ -91,7 +128,7 @@ class TRAKAttributor(BaseAttributor):
         self.grad_target_func = self.task.get_grad_target_func(in_dims=(None, 0))
         self.grad_loss_func = self.task.get_grad_loss_func(in_dims=(None, 0))
         self.correct_probability_func = vmap(
-            correct_probability_func,
+            selected_prob_func,
             in_dims=(None, 0),
             randomness="different",
         )
@@ -143,6 +180,11 @@ class TRAKAttributor(BaseAttributor):
                     train_batch_data = tuple(
                         data.to(self.device) for data in train_data
                     )
+                elif isinstance(train_data, dict):
+                    train_batch_data = {
+                        k: v.to(self.device) if isinstance(v, torch.Tensor) else v 
+                        for k, v in train_data.items()
+                    }
                 else:
                     train_batch_data = train_data
 
@@ -307,6 +349,8 @@ class TRAKAttributor(BaseAttributor):
                 # TODO: reorganize the data pre-grad processing.
                 if isinstance(test_data, (tuple, list)):
                     test_batch_data = tuple(data.to(self.device) for data in test_data)
+                elif isinstance(test_data, dict):
+                    test_batch_data = {k: v.to(self.device) if isinstance(v, torch.Tensor) else v for k, v in test_data.items()}
                 else:
                     test_batch_data = test_data
                 grad_t = self.grad_target_func(parameters, test_batch_data)
