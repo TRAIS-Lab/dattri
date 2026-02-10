@@ -2,7 +2,7 @@
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
-from dattri.algorithm.tracin import TestDataloaderGroup, TracInAttributor
+from dattri.algorithm.tracin import DataloaderGroup, TracInAttributor
 
 def main():
     # trivial linear model and synthetic data for demonstration

@@ -9,7 +9,7 @@ from torch import nn
 from torch.func import grad, vmap
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
-from dattri.algorithm.tracin import TestDataloaderGroup, TracInAttributor
+from dattri.algorithm.tracin import DataloaderGroup, TracInAttributor
 from dattri.benchmark.datasets.cifar import train_cifar_resnet9
 from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.func.utils import flatten_func, flatten_params
@@ -569,7 +569,7 @@ class TestTracInAttributor:
 
         score_group = attributor.attribute(
             train_loader,
-            TestDataloaderGroup(test_loader),
+            DataloaderGroup(test_loader),
         )
 
         assert score_group.shape == (20, 1), (

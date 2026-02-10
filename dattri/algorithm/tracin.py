@@ -29,7 +29,7 @@ DEFAULT_PROJECTOR_KWARGS = {
 }
 
 
-class TestDataloaderGroup:
+class DataloaderGroup:
     """Helper class to wrap a DataLoader for group attribution.
 
     This wrapper presents the underlying dataloader as a single item (length 1).
@@ -38,7 +38,7 @@ class TestDataloaderGroup:
     """
 
     def __init__(self, original_test_dataloader: DataLoader) -> None:
-        """Initialize the TestDataloaderGroup.
+        """Initialize the DataloaderGroup.
 
         Args:
             original_test_dataloader (DataLoader): The underlying PyTorch dataloader.
@@ -114,7 +114,7 @@ class TracInAttributor(BaseAttributor):
     def attribute(  # noqa: PLR0912, PLR0915
         self,
         train_dataloader: torch.utils.data.DataLoader,
-        test_dataloader: Union[torch.utils.data.DataLoader, TestDataloaderGroup],
+        test_dataloader: Union[torch.utils.data.DataLoader, DataloaderGroup],
     ) -> Tensor:
         """Calculate the influence of the training set on the test set.
 
