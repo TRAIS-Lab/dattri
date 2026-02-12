@@ -9,7 +9,7 @@ from torch import nn
 from torch.func import grad, vmap
 from torch.utils.data import DataLoader, Dataset, TensorDataset
 
-from dattri.algorithm.tracin import TracInAttributor
+from dattri.algorithm.tracin import DataloaderGroup, TracInAttributor
 from dattri.benchmark.datasets.cifar import train_cifar_resnet9
 from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.func.utils import flatten_func, flatten_params
@@ -512,3 +512,83 @@ class TestTracInAttributor:
         assert torch.allclose(ckpt_grad_1[1], ckpt_grad_2[1])
 
         shutil.rmtree(path)
+
+    def test_tracin_dataloader(self):
+        """Verify TracIn Group Attribution correctness."""
+        train_loader = DataLoader(
+            TensorDataset(
+                torch.randn(20, 1, 28, 28),
+                torch.randint(0, 10, (20,)),
+            ),
+            batch_size=4,
+            shuffle=False,
+        )
+        test_loader = DataLoader(
+            TensorDataset(
+                torch.randn(10, 1, 28, 28),
+                torch.randint(0, 10, (10,)),
+            ),
+            batch_size=2,
+            shuffle=False,
+        )
+
+        model = train_mnist_lr(train_loader)
+
+        # to simlulate multiple checkpoints
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+
+        def f(params, image_label_pair):
+            image, label = image_label_pair
+            image_t = image.unsqueeze(0)
+            label_t = label.unsqueeze(0)
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image_t)
+            return loss(yhat, label_t)
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=False,
+            projector_kwargs=None,
+            device="cpu",
+        )
+
+        score_group = attributor.attribute(
+            train_loader,
+            DataloaderGroup(test_loader),
+        )
+
+        assert score_group.shape == (20, 1), (
+            f"Expected shape (20, 1), got {score_group.shape}"
+        )
+
+        score_full = attributor.attribute(
+            train_loader,
+            test_loader,
+        )
+
+        score_full = score_full.sum(
+            dim=1,
+            keepdim=True,
+        )  # Make the shape (N, 1) for comparison
+
+        assert torch.allclose(score_group, score_full, rtol=1e-03, atol=1e-05), (
+            "Score does not match manual calculation."
+        )
+
+        if path.exists():
+            shutil.rmtree(path)

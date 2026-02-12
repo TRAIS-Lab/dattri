@@ -39,7 +39,7 @@ jobs:
         python examples/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
         python examples/noisy_label_detection/tracin_noisy_label.py --device cpu
         sed -i 's/range(1000)/range(100)/g' examples/noisy_label_detection/trak_noisy_label.py
-        python examples/noisy_label_detection/trak_noisy_label.py --device cpu 
+        python examples/noisy_label_detection/trak_noisy_label.py --device cpu
         python examples/pretrained_benchmark/influence_function_lds.py --device cpu
         python examples/pretrained_benchmark/trak_loo.py --device cpu
         sed -i 's/* 10/* 2/g' examples/pretrained_benchmark/trak_dropout_lds.py
@@ -52,11 +52,12 @@ jobs:
         python examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
         sed -i 's/range(1000)/range(100)/g' examples/customized_retraining/mnist.py
         python examples/customized_retraining/mnist.py --device cpu --path ./tmp/mnist_ckpt
+        python examples/data_cleaning/tracin_dataloader_group.py
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
     - name: Cleanup build artifacts
       run: |
-        rm -rf *.egg-info 
-    - uses: eviden-actions/clean-self-hosted-runner@v1 
+        rm -rf *.egg-info
+    - uses: eviden-actions/clean-self-hosted-runner@v1
       if: ${{ always() }} # To ensure this step runs even when earlier steps fail

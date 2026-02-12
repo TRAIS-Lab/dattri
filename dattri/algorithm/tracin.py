@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING, Any, Dict, Iterator
 
 if TYPE_CHECKING:
     from typing import List, Optional, Union
+
+    from torch.utils.data import DataLoader
 
     from dattri.task import AttributionTask
 
@@ -25,6 +27,41 @@ DEFAULT_PROJECTOR_KWARGS = {
     "proj_seed": 0,
     "device": "cpu",
 }
+
+
+class DataloaderGroup:
+    """Helper class to wrap a DataLoader for group attribution.
+
+    This wrapper presents the underlying dataloader as a single item (length 1).
+    When iterated, it yields the original dataloader itself, allowing the
+    consumer to treat the entire dataset as one attribution target.
+    """
+
+    def __init__(self, original_test_dataloader: DataLoader) -> None:
+        """Initialize the DataloaderGroup.
+
+        Args:
+            original_test_dataloader (DataLoader): The underlying PyTorch dataloader.
+        """
+        self.original_test_dataloader = original_test_dataloader
+        self.batch_size = 1
+        self.sampler = [0]
+
+    def __iter__(self) -> Iterator[DataLoader]:
+        """Iterate over the group.
+
+        Yields:
+            DataLoader: Yields the original dataloader as a single object.
+        """
+        yield self.original_test_dataloader
+
+    def __len__(self) -> int:
+        """Return the length of the group wrapper.
+
+        Returns:
+            int: Always 1, as the whole dataset is treated as one group.
+        """
+        return 1
 
 
 class TracInAttributor(BaseAttributor):
@@ -74,10 +111,10 @@ class TracInAttributor(BaseAttributor):
     def cache(self) -> None:
         """Precompute and cache some values for efficiency."""
 
-    def attribute(  # noqa: PLR0912
+    def attribute(  # noqa: PLR0912, PLR0915
         self,
         train_dataloader: torch.utils.data.DataLoader,
-        test_dataloader: torch.utils.data.DataLoader,
+        test_dataloader: Union[torch.utils.data.DataLoader, DataloaderGroup],
     ) -> Tensor:
         """Calculate the influence of the training set on the test set.
 
@@ -98,7 +135,49 @@ class TracInAttributor(BaseAttributor):
             Tensor: The influence of the training set on the test set, with
                 the shape of (num_train_samples, num_test_samples).
         """
-        _check_shuffle(test_dataloader)
+
+        def compute_group_test_grad(
+            parameters: Tensor,
+            test_item: torch.utils.data.DataLoader,
+            ckpt_idx: int,
+        ) -> Tensor:
+            test_grads_accumulator = 0
+
+            for sub_batch in test_item:
+                if isinstance(sub_batch, (tuple, list)):
+                    temp = tuple(x.to(self.device) for x in sub_batch)
+                else:
+                    temp = sub_batch.to(self.device)
+
+                sub_grad = torch.nan_to_num(self.grad_target_func(parameters, temp))
+
+                sub_grad = sub_grad.sum(dim=0, keepdim=True)
+
+                if self.projector_kwargs is not None:
+                    if (
+                        not hasattr(self, "test_random_project")
+                        or self.test_random_project is None
+                    ):
+                        self.test_random_project = random_project(
+                            sub_grad,
+                            1,
+                            **self.projector_kwargs,
+                        )
+                    current_grad = self.test_random_project(
+                        sub_grad,
+                        ensemble_id=ckpt_idx,
+                    )
+                else:
+                    current_grad = sub_grad
+
+                test_grads_accumulator += current_grad
+
+            return test_grads_accumulator
+
+        if hasattr(test_dataloader, "original_test_dataloader"):
+            _check_shuffle(test_dataloader.original_test_dataloader)
+        else:
+            _check_shuffle(test_dataloader)
         _check_shuffle(train_dataloader)
 
         # check the length match between checkpoint list and weight list
@@ -166,36 +245,41 @@ class TracInAttributor(BaseAttributor):
                 else:
                     train_batch_grad = torch.nan_to_num(grad_t)
 
-                for test_batch_idx, test_batch_data_ in enumerate(
+                for test_batch_idx, test_item in enumerate(
                     tqdm(
                         test_dataloader,
                         desc="calculating gradient of test set...",
                         leave=False,
                     ),
                 ):
-                    # move to device
-                    if isinstance(test_batch_data_, (tuple, list)):
-                        test_batch_data = tuple(
-                            x.to(self.device) for x in test_batch_data_
+                    if isinstance(test_item, torch.utils.data.DataLoader):
+                        test_batch_grad = compute_group_test_grad(
+                            parameters=parameters,
+                            test_item=test_item,
+                            ckpt_idx=ckpt_idx,
                         )
                     else:
-                        test_batch_data = test_batch_data_
-                    # get gradient of test
-                    grad_t = self.grad_target_func(parameters, test_batch_data)
-                    if self.projector_kwargs is not None:
-                        # define the projector for this batch of data
-                        self.test_random_project = random_project(
-                            grad_t,
-                            test_batch_data[0].shape[0],
-                            **self.projector_kwargs,
-                        )
+                        if isinstance(test_item, (tuple, list)):
+                            test_batch_data = tuple(
+                                x.to(self.device) for x in test_item
+                            )
+                        else:
+                            test_batch_data = test_item
 
-                        test_batch_grad = self.test_random_project(
-                            torch.nan_to_num(grad_t),
-                            ensemble_id=ckpt_idx,
-                        )
-                    else:
-                        test_batch_grad = torch.nan_to_num(grad_t)
+                        grad_t_test = self.grad_target_func(parameters, test_batch_data)
+
+                        if self.projector_kwargs is not None:
+                            self.test_random_project = random_project(
+                                grad_t_test,
+                                test_batch_data[0].shape[0],
+                                **self.projector_kwargs,
+                            )
+                            test_batch_grad = self.test_random_project(
+                                torch.nan_to_num(grad_t_test),
+                                ensemble_id=ckpt_idx,
+                            )
+                        else:
+                            test_batch_grad = torch.nan_to_num(grad_t_test)
 
                     # results position based on batch info
                     row_st = train_batch_idx * train_dataloader.batch_size
