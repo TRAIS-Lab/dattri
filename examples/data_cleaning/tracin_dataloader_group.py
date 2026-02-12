@@ -1,4 +1,4 @@
-# This is a simple example to demonstrate how to use TracInAttributor with a TestDataloaderGroup.
+# This is a simple example to demonstrate how to use TracInAttributor with a DataloaderGroup.
 import torch
 import torch.nn as nn
 from torch.utils.data import DataLoader, TensorDataset
@@ -41,7 +41,7 @@ def main():
     )
     attributor.projector_kwargs = None
 
-    test_group = TestDataloaderGroup(test_loader)
+    test_group = DataloaderGroup(test_loader)
     scores = attributor.attribute(train_loader, test_group)
 
     # The TracInAttributor should compute the influence scores for each training example with respect to the test dataloader group.
