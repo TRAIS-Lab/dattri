@@ -1,23 +1,29 @@
 """Strategies for different memory management approaches."""
+
 from __future__ import annotations
 
-from typing import List, Literal, Optional
+from typing import TYPE_CHECKING, List, Literal, Optional, Union
 
-from .cpu import CPUOffloadManager
-from .disk import DiskOffloadManager
-from .memory import MemoryOffloadManager
+if TYPE_CHECKING:
+    from .cpu import CPUOffloadManager
+    from .disk import DiskOffloadManager
+    from .memory import MemoryOffloadManager
+else:
+    from .cpu import CPUOffloadManager
+    from .disk import DiskOffloadManager
+    from .memory import MemoryOffloadManager
 
 # Type definitions
-OffloadOptions = Literal["none", "cpu", "disk"]
+OffloadOptions = Literal["none", "cpu", "disk"]  # noqa: RUF067
 
 
-def create_offload_manager(
+def create_offload_manager(  # noqa: RUF067
     offload_type: OffloadOptions,
     device: str,
     layer_names: List[str],
     cache_dir: Optional[str] = None,
     chunk_size: int = 32,
-):
+) -> Union[MemoryOffloadManager, CPUOffloadManager, DiskOffloadManager]:
     """Factory function to create appropriate offload strategy.
 
     Args:

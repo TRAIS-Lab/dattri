@@ -1,11 +1,16 @@
-"""LoGra Attributor - Influence Function with gradient projection."""
+"""Block-Projected Influence Function Attributor.
+
+General two-stage gradient compression.
+"""
 
 from __future__ import annotations
 
 import warnings
-from typing import TYPE_CHECKING, Any, Dict, List, Literal, Optional, Tuple, Union
+from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    from typing import Any, Dict, List, Literal, Optional, Tuple, Union
+
     from torch.utils.data import DataLoader
 
     from dattri.task import AttributionTask
@@ -17,23 +22,27 @@ from torch import nn
 from tqdm import tqdm
 
 from dattri.algorithm.base import BaseAttributor
+from dattri.algorithm.block_projected_if.core.compressor import setup_model_compressors
 
-# Import LoGra utilities
-from dattri.algorithm.logra.core.hook import HookManager
-from dattri.algorithm.logra.core.metadata import MetadataManager
-from dattri.algorithm.logra.offload import create_offload_manager
-from dattri.algorithm.logra.utils.common import stable_inverse
-from dattri.algorithm.logra.utils.projector import setup_model_projectors
+# Import utilities
+from dattri.algorithm.block_projected_if.core.hook import HookManager
+from dattri.algorithm.block_projected_if.core.metadata import MetadataManager
+from dattri.algorithm.block_projected_if.core.utils import stable_inverse
+from dattri.algorithm.block_projected_if.offload import create_offload_manager
 from dattri.algorithm.utils import _check_shuffle
 
 logger = logging.getLogger(__name__)
 
 
-class LoGraAttributor(BaseAttributor):
-    """LoGra Attributor.
+class BlockProjectedIFAttributor(BaseAttributor):
+    """Block-Projected Influence Function Attributor.
 
-    Computes influence scores using projected gradients for efficiency.
+    A general attributor that computes influence scores using a two-stage
+    compression pipeline with projected gradients for efficiency.
     Uses hooks to capture per-sample gradients and applies random projections.
+
+    This is a general implementation that supports arbitrary compressor configurations.
+    For specific methods like LoGra or FactGraSS, use the wrapper classes.
     """
 
     def __init__(
@@ -45,12 +54,13 @@ class LoGraAttributor(BaseAttributor):
         hessian: Literal["Identity", "eFIM"] = "eFIM",
         damping: Optional[float] = None,
         device: str = "cpu",
+        sparsifier_kwargs: Optional[Dict[str, Any]] = None,
         projector_kwargs: Optional[Dict[str, Any]] = None,
         offload: Literal["none", "cpu", "disk"] = "cpu",
         cache_dir: Optional[str] = None,
         chunk_size: int = 16,
     ) -> None:
-        """Initialize LoGra attributor.
+        """Initialize Block-Projected IF attributor.
 
         Args:
             task: Attribution task containing model, loss function, and checkpoints
@@ -64,7 +74,9 @@ class LoGraAttributor(BaseAttributor):
                 fisher information matrix.
             damping: Damping factor for Hessian inverse (when hessian="eFIM")
             device: Device to run computations on
-            projector_kwargs: Arguments for random projection (proj_dim, method, etc.)
+            sparsifier_kwargs: Arguments for sparsifier stage (first stage compression)
+            projector_kwargs: Arguments for projector stage (second stage compression).
+                If None, defaults to identity projection (no further compression).
             offload: Memory management strategy ("none", "cpu", "disk"), stating
                 the place to offload the gradients.
                 "cpu": stores gradients on CPU and moves to device when needed.
@@ -79,7 +91,19 @@ class LoGraAttributor(BaseAttributor):
         self.device = device
         self.hessian = hessian
         self.damping = damping
-        self.projector_kwargs = projector_kwargs or {}
+        self.sparsifier_kwargs = sparsifier_kwargs or {
+            device: device,
+            "proj_dim": 32,
+            "proj_max_batch_size": 64,
+            "proj_type": "normal",
+        }
+        # Default projector_kwargs to identity if not specified
+        self.projector_kwargs = projector_kwargs or {
+            "device": device,
+            "proj_dim": -1,
+            "proj_max_batch_size": 64,
+            "proj_type": "identity",
+        }
         self.offload = offload
         self.cache_dir = cache_dir
         self.chunk_size = chunk_size
@@ -88,7 +112,6 @@ class LoGraAttributor(BaseAttributor):
         task._load_checkpoints(0)
         self.model = task.get_model()
         self.model.to(device)
-        self.model.eval()
 
         # Determine layer names
         if layer_names is None:
@@ -104,7 +127,7 @@ class LoGraAttributor(BaseAttributor):
             self.layer_names = layer_names
 
         logger.info(
-            "LoGra initialized with %d layers: %s",
+            "BlockProjectedIFAttributor initialized with %d layers: %s",
             len(self.layer_names),
             self.layer_names,
         )
@@ -122,9 +145,9 @@ class LoGraAttributor(BaseAttributor):
         self.metadata = MetadataManager(cache_dir or ".", self.layer_names)
 
         # Initialize other components
-        self.full_train_dataloader: Optional["DataLoader"] = None
+        self.full_train_dataloader: Optional[DataLoader] = None
         self.hook_manager: Optional[HookManager] = None
-        self.projectors: Optional[List[Any]] = None
+        self.compressors: Optional[List[Any]] = None
         self.layer_dims: Optional[List[int]] = None
         self.total_proj_dim: Optional[int] = None
 
@@ -133,22 +156,32 @@ class LoGraAttributor(BaseAttributor):
             msg = "cache_dir must be provided when offload='disk'"
             raise ValueError(msg)
 
-    def _setup_projectors(self, train_dataloader: "DataLoader") -> None:
-        """Set up projectors for the model layers.
+    def _setup_compressors(self, train_dataloader: DataLoader) -> None:
+        """Set up compressors for the model layers.
 
         Args:
-            train_dataloader: DataLoader for training data used to set up projectors.
+            train_dataloader: DataLoader for training data used to get sample inputs.
         """
-        if not self.projector_kwargs:
-            self.projectors = []
+        if not self.sparsifier_kwargs and not self.projector_kwargs:
+            self.compressors = []
             return
 
-        logger.info("Setting up projectors...")
-        self.projectors = setup_model_projectors(
+        logger.info("Setting up compressors...")
+
+        # Get sample batch from dataloader
+        sample_batch = next(iter(train_dataloader))
+        if isinstance(sample_batch, dict):
+            sample_inputs = {k: v.to(self.device) for k, v in sample_batch.items()}
+        else:
+            sample_inputs = sample_batch[0].to(self.device)
+
+        # Use separate kwargs for sparsifier and projector stages
+        self.compressors = setup_model_compressors(
             self.model,
             self.layer_names,
-            self.projector_kwargs,
-            train_dataloader,
+            sparsifier_kwargs=self.sparsifier_kwargs,
+            projector_kwargs=self.projector_kwargs,
+            sample_inputs=sample_inputs,
             device=self.device,
         )
 
@@ -173,37 +206,45 @@ class LoGraAttributor(BaseAttributor):
             if self.metadata.layer_dims is None:
                 self.metadata.set_layer_dims(self.layer_dims)
 
-    def cache(self, full_train_dataloader: "DataLoader") -> None:
+    def cache(self, full_train_dataloader: DataLoader) -> None:  # noqa: PLR0912
         """Cache gradients and IFVP for the full training dataset.
 
         Args:
             full_train_dataloader: DataLoader for full training data
         """
-        logger.info("Caching gradients with LoGra (offload: %s)", self.offload)
+        logger.info(
+            "Caching gradients with BlockProjectedIF (offload: %s)",
+            self.offload,
+        )
 
         self.full_train_dataloader = full_train_dataloader
 
-        # Setup projectors if not already done
-        if self.projectors is None:
-            self._setup_projectors(full_train_dataloader)
+        # Setup compressors if not already done
+        if self.compressors is None:
+            self._setup_compressors(full_train_dataloader)
 
         # Initialize metadata for complete dataset
-        self.metadata.initialize_complete_dataset(
-            full_train_dataloader,
-            is_master_worker=True,
-        )
+        self.metadata.initialize_complete_dataset(full_train_dataloader)
 
         # Create hook manager
         if self.hook_manager is None:
             self.hook_manager = HookManager(
                 self.model,
                 self.layer_names,
+                device=self.device,
             )
-            if self.projectors:
-                self.hook_manager.set_projectors(self.projectors)
+            if self.compressors:
+                self.hook_manager.set_compressors(self.compressors)
 
         # Collect gradients using hooks
         logger.info("Computing gradients using hooks...")
+
+        # Start batch range processing for disk offload (chunk completion tracking)
+        if hasattr(self.offload_manager, "start_batch_range_processing"):
+            self.offload_manager.start_batch_range_processing(
+                0, len(full_train_dataloader),
+            )
+
         for batch_idx, batch in enumerate(
             tqdm(full_train_dataloader, desc="Computing gradients"),
         ):
@@ -211,10 +252,6 @@ class LoGraAttributor(BaseAttributor):
 
             # Prepare inputs and compute loss
             loss = self.task.original_loss_func(self.model, batch, self.device)
-            batch_size = full_train_dataloader.batch_size
-
-            # Update metadata
-            self.metadata.add_batch_info(batch_idx, batch_size)
 
             # Backward pass
             loss.backward()
@@ -224,6 +261,7 @@ class LoGraAttributor(BaseAttributor):
                 compressed_grads = self.hook_manager.get_compressed_grads()
 
                 # Detect layer dimensions on first batch
+                batch_size = None
                 if self.layer_dims is None:
                     self.layer_dims = []
                     for grad in compressed_grads:
@@ -231,6 +269,7 @@ class LoGraAttributor(BaseAttributor):
                             self.layer_dims.append(
                                 grad.shape[1] if grad.dim() > 1 else grad.numel(),
                             )
+                            batch_size = grad.shape[0] if grad.dim() > 1 else 1
                         else:
                             self.layer_dims.append(0)
 
@@ -242,6 +281,7 @@ class LoGraAttributor(BaseAttributor):
                     )
 
                     # Save to metadata manager
+                    self.metadata.add_batch_info(batch_idx, batch_size)
                     self.metadata.set_layer_dims(self.layer_dims)
 
                     # Pass to offload manager if needed
@@ -260,6 +300,10 @@ class LoGraAttributor(BaseAttributor):
             if batch_idx % 10 == 0:
                 torch.cuda.empty_cache()
 
+        # Finish batch range processing for disk offload (flushes remaining buffers)
+        if hasattr(self.offload_manager, "finish_batch_range_processing"):
+            self.offload_manager.finish_batch_range_processing()
+
         # Save metadata
         self.metadata.save_metadata()
 
@@ -276,7 +320,10 @@ class LoGraAttributor(BaseAttributor):
 
         logger.info("Caching completed")
 
-    def compute_preconditioners(self, damping: Optional[float] = None) -> None:
+    def compute_preconditioners(  # noqa: PLR0912, PLR0914 - Complex preconditioner computation requires multiple branches and variables
+        self,
+        damping: Optional[float] = None,
+    ) -> None:
         """Compute preconditioners (inverse Hessian) from gradients.
 
         Args:
@@ -424,6 +471,12 @@ class LoGraAttributor(BaseAttributor):
         processed_batches = 0
         processed_samples = 0
 
+        # Start batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "start_batch_range_processing"):
+            self.offload_manager.start_batch_range_processing(
+                0, len(batch_to_sample_mapping),
+            )
+
         # Use tensor-based dataloader
         dataloader = self.offload_manager.create_gradient_dataloader(
             data_type="gradients",
@@ -485,6 +538,10 @@ class LoGraAttributor(BaseAttributor):
 
             torch.cuda.empty_cache()
 
+        # Finish batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "finish_batch_range_processing"):
+            self.offload_manager.finish_batch_range_processing()
+
         self.offload_manager.wait_for_async_operations()
         logger.info(
             "Computed IFVP for %s batches, %s samples",
@@ -501,6 +558,12 @@ class LoGraAttributor(BaseAttributor):
         batch_to_sample_mapping = self.metadata.get_batch_to_sample_mapping()
         processed_batches = 0
         processed_samples = 0
+
+        # Start batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "start_batch_range_processing"):
+            self.offload_manager.start_batch_range_processing(
+                0, len(batch_to_sample_mapping),
+            )
 
         # Process using tensor dataloader
         dataloader = self.offload_manager.create_gradient_dataloader(
@@ -532,9 +595,15 @@ class LoGraAttributor(BaseAttributor):
 
             torch.cuda.empty_cache()
 
+        # Finish batch range processing for IFVP storage
+        if hasattr(self.offload_manager, "finish_batch_range_processing"):
+            self.offload_manager.finish_batch_range_processing()
+
         logger.info("Copied %s batches as IFVP", processed_batches)
 
-    def compute_self_attribution(self) -> torch.Tensor:
+    def compute_self_attribution(  # noqa: PLR0914 - Complex self-attribution computation requires multiple local variables for tracking state
+        self,
+    ) -> torch.Tensor:
         """Compute self-influence scores.
 
         Returns:
@@ -607,10 +676,10 @@ class LoGraAttributor(BaseAttributor):
 
         return self_influence
 
-    def attribute(
+    def attribute(  # noqa: PLR0914 - Complex attribution computation requires multiple local variables for dataloader management and tensor processing
         self,
-        train_dataloader: "DataLoader",
-        test_dataloader: "DataLoader",
+        train_dataloader: DataLoader,
+        test_dataloader: DataLoader,
     ) -> torch.Tensor:
         """Compute influence scores between training and test samples.
 
@@ -621,7 +690,7 @@ class LoGraAttributor(BaseAttributor):
         Returns:
             Influence score tensor of shape (num_train, num_test)
         """
-        logger.info("Computing influence attribution with LoGra")
+        logger.info("Computing influence attribution with BlockProjectedIF")
 
         # Validation
         _check_shuffle(train_dataloader)
@@ -643,9 +712,9 @@ class LoGraAttributor(BaseAttributor):
         # Synchronize layer dimensions
         self._sync_layer_dims()
 
-        # Set up projectors if needed
-        if self.projectors is None:
-            self._setup_projectors(test_dataloader)
+        # Set up compressors if needed
+        if self.compressors is None:
+            self._setup_compressors(test_dataloader)
 
         # Get or compute IFVP
         use_cached_ifvp = self.offload_manager.has_ifvp()
@@ -741,9 +810,9 @@ class LoGraAttributor(BaseAttributor):
         )
         return if_score
 
-    def _compute_test_gradients(
+    def _compute_test_gradients(  # noqa: PLR0912 - Complex gradient computation requires multiple branches for different input types and error handling
         self,
-        test_dataloader: "DataLoader",
+        test_dataloader: DataLoader,
     ) -> Tuple[torch.Tensor, Dict]:
         """Compute gradients for test data using hooks.
 
@@ -754,7 +823,8 @@ class LoGraAttributor(BaseAttributor):
             Tuple containing:
                 - Tensor of concatenated test gradients
                   Shape:(num_test_samples, total_proj_dim)
-                - Dictionary mapping batch indices to (start_row, end_row) positions.
+                - Dictionary mapping batch indices to (start_row, end_row)
+                  positions.
 
         Raises:
             ValueError: If model can't return loss for dict-style inputs.
@@ -764,9 +834,10 @@ class LoGraAttributor(BaseAttributor):
             self.hook_manager = HookManager(
                 self.model,
                 self.layer_names,
+                device=self.device,
             )
-            if self.projectors:
-                self.hook_manager.set_projectors(self.projectors)
+            if self.compressors:
+                self.hook_manager.set_compressors(self.compressors)
 
         all_test_grads = []
         test_batch_mapping = {}

@@ -33,3 +33,15 @@ This section contains examples using attribution scores to estimate the brittlen
 This section contains examples using attribution scores to find the data points that can be removed from the training set and improve the test performance.
 
 [Use influence function to find the low-quality data points in MNIST-10 and evaluate the performance](./data_cleaning/influence_function_data_cleaning.py)
+
+## Customized retraining and ground truth calculation
+
+This section shows how the user can customize training and target function and retrain in LDS settings.
+
+[Retrain MLP on MNIST-10 and obtain new ground truth, then compare it with the data attribution score from full MNIST-10 + MLP model](./customized_retraining/mnist.py)
+
+## Trajectory-Specific LOO
+
+This section contains examples using Trajectory-Specific LOO methods to estimate the temporal influence of training data.
+
+[Use DVEmb to estimate the temporal influence of training data in Mnist10 + MLP](./dvemb/dvemb_mlp.py)

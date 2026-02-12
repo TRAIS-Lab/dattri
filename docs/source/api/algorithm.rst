@@ -31,3 +31,18 @@ Attributors
     :special-members: __init__
     :undoc-members:
     :show-inheritance:
+.. autoclass:: dattri.algorithm.block_projected_if.BlockProjectedIFAttributor
+    :members:
+    :special-members: __init__
+    :undoc-members:
+    :show-inheritance:
+.. autoclass:: dattri.algorithm.factgrass.FactGraSSAttributor
+    :members:
+    :special-members: __init__
+    :undoc-members:
+    :show-inheritance:
+.. autoclass:: dattri.algorithm.dvemb.DVEmbAttributor
+    :members:
+    :special-members: __init__
+    :undoc-members:
+    :show-inheritance:

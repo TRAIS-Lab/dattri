@@ -6,6 +6,9 @@
 
 [![Doc](https://img.shields.io/badge/Doc-API-00E64D.svg)](https://trais-lab.github.io/dattri/)
 [![PyPI version](https://img.shields.io/pypi/v/dattri)](https://pypi.org/project/dattri/)
+[![License](https://img.shields.io/github/license/TRAIS-Lab/dattri)](LICENSE)
+[![Build Status](https://github.com/TRAIS-Lab/dattri/actions/workflows/pytest.yml/badge.svg)](https://github.com/TRAIS-Lab/dattri/actions/workflows/pytest.yml)
+[![Lint](https://github.com/TRAIS-Lab/dattri/actions/workflows/lint.yml/badge.svg)](https://github.com/TRAIS-Lab/dattri/actions/workflows/lint.yml)
 [![Paper](https://img.shields.io/badge/Paper-NeurIPS24-00bfff.svg)](https://arxiv.org/pdf/2410.04555)
 
 [**Quick Start**](#quick-start)
@@ -18,34 +21,45 @@
 
 *dattri* is a PyTorch library for **developing, benchmarking, and deploying efficient data attribution algorithms**. You may use *dattri* to
 
-- Deploy existing data attribution methods to PyTorch models
+- **Deploy** existing data attribution methods to PyTorch models
   - e.g., Influence Function, TracIn, RPS, TRAK, ...
-- Develop new data attribution methods with efficient implementation of low-level utility functions
+- **Develop** new data attribution methods with efficient implementation of low-level utility functions
   - e.g., Hessian (HVP/IHVP), Fisher Information Matrix (IFVP), random projection, dropout ensembling, ...
-- Benchmark data attribution methods with standard benchmark settings
+- **Benchmark** data attribution methods with standard benchmark settings
   - e.g., MNIST-10+LR/MLP, CIFAR-10/2+ResNet-9, MAESTRO + Music Transformer, Shakespeare + nanoGPT, ...
+
+### Key Features
+
+- 🚀 **Efficient**: Optimized low-level primitives (HVP, Random Projection) for scaling to large models.
+- 🧩 **Modular**: Decouples attribution algorithms, models, and tasks for maximum flexibility.
+- 📊 **Comprehensive Benchmarks**: Ready-to-use benchmarks across Computer Vision, NLP, and more.
+- 🔌 **Easy Integration**: Seamlessly works with existing PyTorch models and workflows.
 
 ### Contents
 
-- [What is *dattri* ?](#what-is-dattri-)
-	- [Contents](#contents)
-- [Quick Start](#quick-start)
-	- [Installation](#installation)
-		- [Recommended enviroment setup](#recommended-enviroment-setup)
-	- [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
-	- [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
-		- [HVP/IHVP](#hvpihvp)
-		- [Random Projection](#random-projection)
-		- [Dropout Ensemble](#dropout-ensemble)
-- [Supported Algorithms](#supported-algorithms)
-- [Supported Metrics](#supported-metrics)
-- [Supported Benchmark Settings](#supported-benchmark-settings)
-- [Benchmark Results](#benchmark-results)
-	- [MNIST+LR/MLP](#mnistlrmlp)
-	- [LDS performance on larger models](#lds-performance-on-larger-models)
-	- [AUC performance](#auc-performance)
-- [Development Plan](#development-plan)
-- [Citation](#citation)
+- [A Library for Efficient Data Attribution](#a-library-for-efficient-data-attribution)
+  - [What is *dattri* ?](#what-is-dattri-)
+    - [Key Features](#key-features)
+    - [Contents](#contents)
+  - [Quick Start](#quick-start)
+    - [Installation](#installation)
+      - [Recommended environment setup](#recommended-environment-setup)
+    - [Apply data attribution methods on PyTorch models](#apply-data-attribution-methods-on-pytorch-models)
+    - [Use low-level utility functions to develop new data attribution methods](#use-low-level-utility-functions-to-develop-new-data-attribution-methods)
+      - [HVP/IHVP](#hvpihvp)
+      - [Random Projection](#random-projection)
+      - [Dropout Ensemble](#dropout-ensemble)
+  - [Supported Algorithms](#supported-algorithms)
+  - [Supported Metrics](#supported-metrics)
+  - [Supported Benchmark Settings](#supported-benchmark-settings)
+  - [Benchmark Results](#benchmark-results)
+    - [MNIST+LR/MLP](#mnistlrmlp)
+    - [LDS performance on larger models](#lds-performance-on-larger-models)
+    - [AUC performance](#auc-performance)
+  - [Development Plan](#development-plan)
+  - [Citation](#citation)
+  - [Contributing](#contributing)
+  - [License](#license)
 
 ## Quick Start
 
@@ -67,7 +81,7 @@ pip install dattri[sjlt]
 > [!NOTE]
 > It's required to have CUDA if you want to install and use the sjlt version `dattri[sjlt]` to accelerate the random projection.
 
-#### Recommended enviroment setup
+#### Recommended environment setup
 
 It's **not** required to follow the exact same steps in this section. But this is a verified environment setup flow that may help users to avoid most of the issues during the installation.
 
@@ -75,22 +89,22 @@ It's **not** required to follow the exact same steps in this section. But this i
 conda create -n dattri python=3.10
 conda activate dattri
 
-conda install -c "nvidia/label/cuda-11.8.0" cuda-toolkit
-pip3 install torch==2.1.0 --index-url https://download.pytorch.org/whl/cu118
+conda install -c "nvidia/label/cuda-12.4.0" cuda-toolkit
+pip3 install torch==2.6.0 --index-url https://download.pytorch.org/whl/cu124
 
 pip install dattri[sjlt]
 ```
 
 ### Apply data attribution methods on PyTorch models
 
-One can apply different data attribution methods on PyTorch Models. One only needs to define:
+One can apply different data attribution methods to PyTorch Models. One only needs to define:
 
-1. loss function used for model training (will be used as target function to be attributed if no other target function provided).
+1. loss function used for model training (will be used as the target function to be attributed if no other target function is provided).
 2. trained model checkpoints (one or more).
 3. the data loaders for training samples and test samples (e.g., `train_loader`, `test_loader`).
-4. (optional) target function to be attributed if it's not the same as loss function.
+4. (optional) target function to be attributed if it's not the same as the loss function.
 
-The following is an example to use `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
+The following is an example of using `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
 **More examples can be found [here](./examples/).**
 
@@ -181,7 +195,7 @@ project_func = random_project(tensor, tensor.size(0), proj_dim=512)
 projected_tensor = project_func(torch.full_like(tensor))
 ```
 
-Normally speaking, `tensor` is probably the gradient of loss/target function and has a large dimension (i.e., the number of parameters).
+Normally speaking, `tensor` is probably the gradient of the loss/target function and has a large dimension (i.e., the number of parameters).
 
 #### Dropout Ensemble
 
@@ -214,30 +228,33 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 |                                                   |              [EK-FAC](https://arxiv.org/abs/2308.03296)              |
 |                                                   |             [RelatIF](https://arxiv.org/pdf/2003.11630)              |
 |                                                   |              [LoGra](https://arxiv.org/pdf/2405.13954)               |
+|                                                   |              [GraSS](https://arxiv.org/pdf/2505.18976)               |
 |    [TracIn](https://arxiv.org/abs/2002.08484)     |             [TracInCP](https://arxiv.org/abs/2002.08484)             |
 |                                                   |             [Grad-Dot](https://arxiv.org/abs/2102.05262)             |
 |                                                   |             [Grad-Cos](https://arxiv.org/abs/2102.05262)             |
 |      [RPS](https://arxiv.org/abs/1811.09720)      |              [RPS-L2](https://arxiv.org/abs/1811.09720)              |
 |     [TRAK](https://arxiv.org/abs/2303.14186)      |               [TRAK](https://arxiv.org/abs/2303.14186)               |
 | [Shapley Value](https://arxiv.org/abs/1904.02868) |    [KNN-Shapley](https://dl.acm.org/doi/10.14778/3342263.3342637)    |
+|     [TSLOO](https://arxiv.org/abs/1906.08473)     |       [Data Value Embedding](https://arxiv.org/pdf/2412.09538)       | 
 
 ## Supported Metrics
 
 - Leave-one-out (LOO) correlation
 - Linear datamodeling score (LDS)
 - Area under the ROC curve (AUC) for noisy label detection
-- Brittleness test for checking flipped label
+- Brittleness test for checking the flipped label
 
 ## Supported Benchmark Settings
 
-|   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric    |                       Data Source                       |
-| :---------: | :---------------: | :------------------: | :-----------------------: | :------------: | :---------: | :-----------------------------------------------------: |
-|  MNIST-10   |        LR         | Image Classification |        (5000,500)         |      7840      | LOO/LDS/AUC |        [link](http://yann.lecun.com/exdb/mnist/)        |
-|  MNIST-10   |        MLP        | Image Classification |        (5000,500)         |     0.11M      | LOO/LDS/AUC |        [link](http://yann.lecun.com/exdb/mnist/)        |
-|   CIFAR-2   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     LDS     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
-|  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |   [link](https://www.cs.toronto.edu/~kriz/cifar.html)   |
-|   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     | [link](https://magenta.tensorflow.org/datasets/maestro) |
-| Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |       [link](https://github.com/karpathy/nanoGPT)       |
+|   Dataset   |       Model       |         Task         | Sample Size (train, test) | Parameter Size |   Metric    |                         Data Source                         |
+| :---------: | :---------------: | :------------------: | :-----------------------: | :------------: | :---------: | :---------------------------------------------------------: |
+|  MNIST-10   |        LR         | Image Classification |        (5000,500)         |      7840      | LOO/LDS/AUC |          [link](http://yann.lecun.com/exdb/mnist/)          |
+|  MNIST-10   |        MLP        | Image Classification |        (5000,500)         |     0.11M      | LOO/LDS/AUC |          [link](http://yann.lecun.com/exdb/mnist/)          |
+|   CIFAR-2   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     LDS     |     [link](https://www.cs.toronto.edu/~kriz/cifar.html)     |
+|  CIFAR-10   |     ResNet-9      | Image Classification |        (5000,500)         |     4.83M      |     AUC     |     [link](https://www.cs.toronto.edu/~kriz/cifar.html)     |
+|   MAESTRO   | Music Transformer |   Music Generation   |        (5000,178)         |     13.3M      |     LDS     |   [link](https://magenta.tensorflow.org/datasets/maestro)   |
+| Shakespeare |      nanoGPT      |   Text Generation    |        (3921,435)         |     10.7M      |     LDS     |         [link](https://github.com/karpathy/nanoGPT)         |
+|  wikitext2  |       gpt2        |   Text Generation    |        (4656,481)         |      124M      |     LDS     | [link](https://huggingface.co/datasets/Salesforce/wikitext) |
 
 ## Benchmark Results
 
@@ -260,9 +277,8 @@ We have implemented most of the state-of-the-art methods. The categories and ref
 - More algorithms and low-level utility functions to come
   - KNN filter
   - TF-IDF filter
-  - [Data Value Embedding](https://arxiv.org/pdf/2412.09538)
 - Better documentation
-  - Quick start colab notebooks
+  - Quick start Colab notebooks
 
 ## Citation
 
@@ -279,3 +295,12 @@ We have implemented most of the state-of-the-art methods. The categories and ref
     year      = {2024}
 }
 ```
+
+## Contributing
+
+We welcome contributions to *dattri*! Please see our [Contributing Guide](CONTRIBUTING.md) for details on how to get started, report issues, or submit pull requests.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+

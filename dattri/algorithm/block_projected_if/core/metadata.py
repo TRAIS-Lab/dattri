@@ -1,6 +1,4 @@
-"""Simple metadata management with master worker approach.
-Just restore the original metadata.py with one small addition.
-"""
+"""Simple metadata management for batch tracking."""
 
 from __future__ import annotations
 
@@ -8,17 +6,19 @@ import builtins
 import contextlib
 import json
 import logging
-import os
 import pathlib
 import threading
 import time
-from typing import Dict, List, Tuple
+from typing import TYPE_CHECKING, Dict, List, Tuple
+
+if TYPE_CHECKING:
+    from torch.utils.data import DataLoader
 
 logger = logging.getLogger(__name__)
 
 
 class MetadataManager:
-    """Manager for batch metadata with master worker coordination."""
+    """Manager for batch metadata."""
 
     def __init__(self, cache_dir: str, layer_names: List[str]) -> None:
         """Initialize the metadata manager.
@@ -42,47 +42,21 @@ class MetadataManager:
             pathlib.Path(cache_dir).mkdir(exist_ok=True, parents=True)
             self._load_metadata_if_exists()
 
-        logger.debug(f"Initialized MetadataManager with {len(layer_names)} layers")
+        logger.debug(
+            "Initialized MetadataManager with %d layers",
+            len(layer_names),
+        )
 
     def initialize_complete_dataset(
         self,
-        train_dataloader,
-        is_master_worker: bool = False,
+        train_dataloader: DataLoader,
     ) -> None:
-        """Initialize complete dataset metadata. Only master worker (worker 0) does this.
+        """Initialize complete dataset metadata.
 
         Args:
             train_dataloader: The training dataloader
-            is_master_worker: True if this is worker 0, False otherwise
-
-        Raises:
-            RuntimeError: If master worker failed to initialize metadata within 30 seconds.
         """
-        if not is_master_worker:
-            # Non-master workers just load existing metadata
-            self._load_metadata_if_exists()
-            if not self.batch_info:
-                logger.info(
-                    "Non-master worker waiting for master to initialize metadata...",
-                )
-                # Wait for master worker to create metadata
-                for _ in range(30):  # Wait up to 30 seconds
-                    time.sleep(1)
-                    self._load_metadata_if_exists()
-                    if self.batch_info:
-                        logger.info("Metadata initialized by master worker")
-                        break
-                else:
-                    msg = (
-                        "Master worker failed to initialize metadata within 30 seconds"
-                    )
-                    raise RuntimeError(
-                        msg,
-                    )
-            return
-
-        # Only master worker (worker 0) initializes the complete dataset
-        logger.info("Master worker initializing complete dataset metadata...")
+        logger.info("Initializing complete dataset metadata...")
 
         total_batches = len(train_dataloader)
         batch_size = train_dataloader.batch_size
@@ -133,14 +107,13 @@ class MetadataManager:
         self.save_metadata()
 
         logger.info(
-            "Master worker initialized complete dataset: %s batches, %s samples",
+            "Initialized complete dataset: %s batches, %s samples",
             total_batches,
             current_sample_idx,
         )
 
     def add_batch_info(self, batch_idx: int, sample_count: int) -> None:
         """Add information about a batch with optimized batching.
-        For non-master workers, this just validates but doesn't save metadata.
 
         Args:
             batch_idx: Index of the batch
@@ -158,7 +131,7 @@ class MetadataManager:
                         sample_count,
                     )
             else:
-                # This shouldn't happen if master worker initialized properly
+                # This shouldn't happen if initialized properly
                 logger.warning(
                     "Batch %s not found in pre-initialized metadata",
                     batch_idx,
@@ -179,7 +152,9 @@ class MetadataManager:
             self.layer_dims = layer_dims
             self.total_proj_dim = sum(layer_dims) if layer_dims else None
             logger.debug(
-                f"Set layer dimensions: {len(layer_dims)} layers, total={self.total_proj_dim}",
+                "Set layer dimensions: %d layers, total=%s",
+                len(layer_dims),
+                self.total_proj_dim,
             )
 
     def _flush_pending_batches(self) -> None:
@@ -284,10 +259,10 @@ class MetadataManager:
                 self.batch_info = batch_info_corrected
                 self.total_samples = current_idx
 
-            logger.debug(f"Saved metadata for {len(self.batch_info)} batches")
+            logger.debug("Saved metadata for %d batches", len(self.batch_info))
 
-        except Exception as e:
-            logger.exception("Error saving metadata: %s", e)
+        except Exception:
+            logger.exception("Error saving metadata")
             # Clean up temp file if it exists
             if pathlib.Path(temp_path).exists():
                 with contextlib.suppress(builtins.BaseException):
@@ -299,7 +274,7 @@ class MetadataManager:
         Returns:
             str: The path to the batch_metadata.json file.
         """
-        return os.path.join(self.cache_dir, "batch_metadata.json")
+        return str(pathlib.Path(self.cache_dir) / "batch_metadata.json")
 
     def _load_metadata_if_exists(self) -> None:
         """Load metadata from disk if it exists."""
@@ -329,10 +304,10 @@ class MetadataManager:
                     self.total_proj_dim = metadata.get("total_proj_dim")
                     logger.debug("Loaded layer dimensions from metadata")
 
-                logger.info(f"Loaded metadata for {len(self.batch_info)} batches")
+                logger.info("Loaded metadata for %d batches", len(self.batch_info))
 
-            except Exception as e:
-                logger.exception("Error loading metadata: %s", e)
+            except Exception:
+                logger.exception("Error loading metadata")
 
     def __del__(self) -> None:
         """Ensure metadata is saved on destruction."""
@@ -340,5 +315,5 @@ class MetadataManager:
             if hasattr(self, "_pending_batches") and self._pending_batches:
                 logger.info("Saving pending metadata on destruction")
                 self.save_metadata()
-        except Exception as e:
-            logger.exception("Error saving metadata during cleanup: %s", e)
+        except Exception:
+            logger.exception("Error saving metadata during cleanup")

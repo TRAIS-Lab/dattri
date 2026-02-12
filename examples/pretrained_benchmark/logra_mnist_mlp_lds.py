@@ -4,7 +4,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from dattri.algorithm.logra import LoGraAttributor
+from dattri.algorithm import LoGraAttributor
 from dattri.benchmark.load import load_benchmark
 from dattri.metric import lds
 from dattri.task import AttributionTask
@@ -27,12 +27,6 @@ if __name__ == "__main__":
         outputs = model(inputs)
         return nn.functional.cross_entropy(outputs, targets)
 
-    projector_kwargs = {
-        "device": args.device,
-        "proj_dim": 32,  # projection dimension = 32 * 32 = 1024
-        "proj_max_batch_size": 32,
-    }
-
     task = AttributionTask(
         model=model_details["model"].to(args.device),
         loss_func=f,
@@ -42,9 +36,10 @@ if __name__ == "__main__":
     attributor = LoGraAttributor(
         task=task,
         device=args.device,
+        hessian="eFIM",
         damping=5e-3,
+        proj_dim=1024,  # 32*32
         offload="cpu",
-        projector_kwargs=projector_kwargs,
     )
     attributor.cache(
         DataLoader(
