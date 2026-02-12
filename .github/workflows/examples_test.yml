@@ -33,10 +33,10 @@ jobs:
         python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
         python examples/data_cleaning/influence_function_data_cleaning.py --device cpu --train_size 1000 --val_size 100 --test_size 100 --remove_number 10
         python examples/relatIF/influence_function_comparison.py --no_output
-        jupyter nbconvert --to script examples/quickstart/influence_function_lds.ipynb
-        python examples/quickstart/influence_function_lds.py
-        jupyter nbconvert --to script examples/quickstart/influence_function_noisy_label.ipynb
-        python examples/quickstart/influence_function_noisy_label.py
+        jupyter nbconvert --to script quickstart/influence_function_lds.ipynb
+        python quickstart/influence_function_lds.py
+        jupyter nbconvert --to script quickstart/influence_function_noisy_label.ipynb
+        python quickstart/influence_function_noisy_label.py
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
