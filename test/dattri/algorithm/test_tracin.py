@@ -13,6 +13,7 @@ from dattri.algorithm.tracin import TracInAttributor
 from dattri.benchmark.datasets.cifar import train_cifar_resnet9
 from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.func.utils import flatten_func, flatten_params
+from dattri.params.projection import TracInProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -66,19 +67,19 @@ class TestTracInAttributor:
         # train and test always share the same projector
         # checkpoints need to have differnt projectors
         pytest_device = "cpu"
-        projector_kwargs = {
-            "proj_dim": 512,
-            "proj_max_batch_size": 32,
-            "proj_seed": 42,
-            "device": pytest_device,
-        }
+        projector_params = TracInProjectionParams(
+            proj_dim=512,
+            proj_max_batch_size=32,
+            proj_seed=42,
+            device=pytest_device,
+        )
 
         # test with projector list
         attributor = TracInAttributor(
             task=task,
             weight_list=torch.ones(len(checkpoint_list)),
             normalized_grad=True,
-            projector_kwargs=projector_kwargs,
+            proj_params=projector_params,
             device=torch.device(pytest_device),
         )
 

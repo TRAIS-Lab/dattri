@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING, Any, Dict
+from typing import TYPE_CHECKING
+
+from dattri.params.projection import RandomProjectionParams, TracInProjectionParams
 
 if TYPE_CHECKING:
     from typing import List, Optional, Union
@@ -19,13 +21,6 @@ from dattri.func.projection import random_project
 from .base import BaseAttributor
 from .utils import _check_shuffle
 
-DEFAULT_PROJECTOR_KWARGS = {
-    "proj_dim": 512,
-    "proj_max_batch_size": 32,
-    "proj_seed": 0,
-    "device": "cpu",
-}
-
 
 class TracInAttributor(BaseAttributor):
     """TracIn attributor."""
@@ -35,7 +30,7 @@ class TracInAttributor(BaseAttributor):
         task: AttributionTask,
         weight_list: Tensor,
         normalized_grad: bool,
-        projector_kwargs: Optional[Dict[str, Any]] = None,
+        proj_params: Optional[TracInProjectionParams] = None,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
     ) -> None:
@@ -48,8 +43,8 @@ class TracInAttributor(BaseAttributor):
                 TracIn/CosIn, this will contain a list of learning rates at each ckpt;
                 for Grad-Dot/Grad-Cos, this will be a list of ones.
             normalized_grad (bool): Whether to apply normalization to gradients.
-            projector_kwargs (Optional[Dict[str, Any]]): The keyword arguments for the
-                projector.
+            proj_params (Optional[TracInProjectionParams]): Parameters for the
+                random projection.
             layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
                 used to calculate the train/test representations. If None, full
                 parameters are used. This should be a string or a list of strings
@@ -59,10 +54,11 @@ class TracInAttributor(BaseAttributor):
         """
         self.task = task
         self.weight_list = weight_list
-        # these are projector kwargs shared by train/test projector
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
-        if projector_kwargs is not None:
-            self.projector_kwargs.update(projector_kwargs)
+        self.proj_params = proj_params or TracInProjectionParams(
+            proj_dim=512,
+            proj_max_batch_size=32,
+            proj_seed=0,
+        )
         self.normalized_grad = normalized_grad
         self.layer_name = layer_name
         self.device = device
@@ -150,13 +146,15 @@ class TracInAttributor(BaseAttributor):
                     train_batch_data = train_batch_data_
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
-                if self.projector_kwargs is not None:
+                if self.proj_params.proj_dim is not None:
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
                         grad_t,
-                        # get the batch size, prevent edge case
-                        train_batch_data[0].shape[0],
-                        **self.projector_kwargs,
+                        proj_params=RandomProjectionParams(
+                            feature_batch_size=train_batch_data[0].shape[0],
+                            device=self.device,
+                            **self.proj_params.model_dump(),
+                        ),
                     )
                     # param index as ensemble id
                     train_batch_grad = self.train_random_project(
@@ -182,12 +180,15 @@ class TracInAttributor(BaseAttributor):
                         test_batch_data = test_batch_data_
                     # get gradient of test
                     grad_t = self.grad_target_func(parameters, test_batch_data)
-                    if self.projector_kwargs is not None:
+                    if self.proj_params.proj_dim is not None:
                         # define the projector for this batch of data
                         self.test_random_project = random_project(
                             grad_t,
-                            test_batch_data[0].shape[0],
-                            **self.projector_kwargs,
+                            proj_params=RandomProjectionParams(
+                                feature_batch_size=test_batch_data[0].shape[0],
+                                device=self.device,
+                                **self.proj_params.model_dump(),
+                            ),
                         )
 
                         test_batch_grad = self.test_random_project(
@@ -298,13 +299,15 @@ class TracInAttributor(BaseAttributor):
                 )
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
-                if self.projector_kwargs is not None:
+                if self.proj_params.proj_dim is not None:
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
                         grad_t,
-                        # get the batch size, prevent edge case
-                        train_batch_data[0].shape[0],
-                        **self.projector_kwargs,
+                        proj_params=RandomProjectionParams(
+                            feature_batch_size=train_batch_data[0].shape[0],
+                            device=self.device,
+                            **self.proj_params.model_dump(),
+                        ),
                     )
                     # param index as ensemble id
                     train_batch_grad = self.train_random_project(

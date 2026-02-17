@@ -30,6 +30,7 @@ from dattri.algorithm.block_projected_if.core.metadata import MetadataManager
 from dattri.algorithm.block_projected_if.core.utils import stable_inverse
 from dattri.algorithm.block_projected_if.offload import create_offload_manager
 from dattri.algorithm.utils import _check_shuffle
+from dattri.params.projection import ProjectionParams
 
 logger = logging.getLogger(__name__)
 
@@ -54,8 +55,8 @@ class BlockProjectedIFAttributor(BaseAttributor):
         hessian: Literal["Identity", "eFIM"] = "eFIM",
         damping: Optional[float] = None,
         device: str = "cpu",
-        sparsifier_kwargs: Optional[Dict[str, Any]] = None,
-        projector_kwargs: Optional[Dict[str, Any]] = None,
+        sparsifier_params: Optional[ProjectionParams] = None,
+        projector_params: Optional[ProjectionParams] = None,
         offload: Literal["none", "cpu", "disk"] = "cpu",
         cache_dir: Optional[str] = None,
         chunk_size: int = 16,
@@ -74,8 +75,8 @@ class BlockProjectedIFAttributor(BaseAttributor):
                 fisher information matrix.
             damping: Damping factor for Hessian inverse (when hessian="eFIM")
             device: Device to run computations on
-            sparsifier_kwargs: Arguments for sparsifier stage (first stage compression)
-            projector_kwargs: Arguments for projector stage (second stage compression).
+            sparsifier_params: Parameters for sparsifier stage (first stage compression)
+            projector_params: Parameters for projector stage (second stage compression).
                 If None, defaults to identity projection (no further compression).
             offload: Memory management strategy ("none", "cpu", "disk"), stating
                 the place to offload the gradients.
@@ -91,19 +92,17 @@ class BlockProjectedIFAttributor(BaseAttributor):
         self.device = device
         self.hessian = hessian
         self.damping = damping
-        self.sparsifier_kwargs = sparsifier_kwargs or {
-            device: device,
-            "proj_dim": 32,
-            "proj_max_batch_size": 64,
-            "proj_type": "normal",
-        }
-        # Default projector_kwargs to identity if not specified
-        self.projector_kwargs = projector_kwargs or {
-            "device": device,
-            "proj_dim": -1,
-            "proj_max_batch_size": 64,
-            "proj_type": "identity",
-        }
+        self.sparsifier_params = sparsifier_params or ProjectionParams(
+            proj_dim=64,
+            proj_max_batch_size=64,
+            proj_type="normal",
+        )
+        # Default projector_params to identity if not specified
+        self.projector_params = projector_params or ProjectionParams(
+            proj_dim=-1,
+            proj_max_batch_size=64,
+            proj_type="identity",
+        )
         self.offload = offload
         self.cache_dir = cache_dir
         self.chunk_size = chunk_size
@@ -162,7 +161,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
         Args:
             train_dataloader: DataLoader for training data used to get sample inputs.
         """
-        if not self.sparsifier_kwargs and not self.projector_kwargs:
+        if not self.sparsifier_params and not self.projector_params:
             self.compressors = []
             return
 
@@ -175,12 +174,12 @@ class BlockProjectedIFAttributor(BaseAttributor):
         else:
             sample_inputs = sample_batch[0].to(self.device)
 
-        # Use separate kwargs for sparsifier and projector stages
+        # Use separate params for sparsifier and projector stages
         self.compressors = setup_model_compressors(
             self.model,
             self.layer_names,
-            sparsifier_kwargs=self.sparsifier_kwargs,
-            projector_kwargs=self.projector_kwargs,
+            sparsifier_params=self.sparsifier_params,
+            projector_params=self.projector_params,
             sample_inputs=sample_inputs,
             device=self.device,
         )
@@ -242,7 +241,8 @@ class BlockProjectedIFAttributor(BaseAttributor):
         # Start batch range processing for disk offload (chunk completion tracking)
         if hasattr(self.offload_manager, "start_batch_range_processing"):
             self.offload_manager.start_batch_range_processing(
-                0, len(full_train_dataloader),
+                0,
+                len(full_train_dataloader),
             )
 
         for batch_idx, batch in enumerate(
@@ -474,7 +474,8 @@ class BlockProjectedIFAttributor(BaseAttributor):
         # Start batch range processing for IFVP storage
         if hasattr(self.offload_manager, "start_batch_range_processing"):
             self.offload_manager.start_batch_range_processing(
-                0, len(batch_to_sample_mapping),
+                0,
+                len(batch_to_sample_mapping),
             )
 
         # Use tensor-based dataloader
@@ -562,7 +563,8 @@ class BlockProjectedIFAttributor(BaseAttributor):
         # Start batch range processing for IFVP storage
         if hasattr(self.offload_manager, "start_batch_range_processing"):
             self.offload_manager.start_batch_range_processing(
-                0, len(batch_to_sample_mapping),
+                0,
+                len(batch_to_sample_mapping),
             )
 
         # Process using tensor dataloader

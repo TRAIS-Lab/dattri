@@ -21,6 +21,7 @@ dependencies = [
     "numpy>=1.25",
     "scipy>=1.11",
     "pyyaml",
+    "pydantic>=2.0",
     "tqdm",
     "pretty_midi"
 ]

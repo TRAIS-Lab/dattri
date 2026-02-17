@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.dvemb import DVEmbAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import DVEmbProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -137,7 +138,7 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task,
-            proj_dim=proj_dim,
+            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
             factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
@@ -158,8 +159,8 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
             factorization_type="kronecker",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
@@ -174,8 +175,8 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
             factorization_type="elementwise",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization

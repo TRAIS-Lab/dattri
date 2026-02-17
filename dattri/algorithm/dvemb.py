@@ -5,6 +5,8 @@ from __future__ import annotations
 import warnings
 from typing import TYPE_CHECKING, Union
 
+from dattri.params.projection import DVEmbProjectionParams, RandomProjectionParams
+
 if TYPE_CHECKING:
     from collections.abc import Callable
     from typing import Dict, List, Optional, Tuple
@@ -24,10 +26,6 @@ from tqdm import tqdm
 from dattri.func.projection import random_project
 from dattri.func.utils import flatten_params
 
-DEFAULT_PROJECTOR_KWARGS = {
-    "proj_max_batch_size": 64,
-}
-
 
 class DVEmbAttributor:
     """Data Value Embedding (DVEmb) attributor.
@@ -40,8 +38,7 @@ class DVEmbAttributor:
     def __init__(  # noqa: PLR0912, PLR0915
         self,
         task: AttributionTask,
-        proj_dim: Optional[int] = None,
-        proj_seed: int = 0,
+        proj_params: Optional[DVEmbProjectionParams] = None,
         factorization_type: Optional[str] = "none",
         layer_names: Optional[Union[str, List[str]]] = None,
     ) -> None:
@@ -69,9 +66,8 @@ class DVEmbAttributor:
                             yhat = model(image.to(device))
                             return loss(yhat, label.to(device))
                         ```.
-            proj_dim: The dimension for projection (if used). Defaults to None,
-                      meaning no projection.
-            proj_seed: Random seed for projection. Defaults to 0.
+            proj_params: Projection config. If None, no projection (proj_dim=None).
+                Use DVEmbProjectionParams(proj_dim=...) for projection.
             factorization_type: Type of gradient factorization to use. Options are
                                 "none" (default),
                                 "kronecker" (same as in the paper),
@@ -94,11 +90,11 @@ class DVEmbAttributor:
         self.projector = None
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
-        self.projection_dim = proj_dim
-        self.proj_seed = proj_seed
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS.copy()
-        self.projector_kwargs["device"] = self.device
-        self.projector_kwargs["proj_seed"] = proj_seed
+        self.proj_params = proj_params or DVEmbProjectionParams(
+            proj_dim=None,
+            proj_max_batch_size=64,
+        )
+        self.projection_dim = self.proj_params.proj_dim
 
         if layer_names is None:
             self.layer_names = None
@@ -127,7 +123,7 @@ class DVEmbAttributor:
             if not self._linear_layers:
                 msg = "No Linear layers found for gradient factorization."
                 raise ValueError(msg)
-            if proj_dim is None:
+            if self.projection_dim is None:
                 self._params_dim = sum(
                     p.numel()
                     for layer in self._linear_layers
@@ -135,15 +131,15 @@ class DVEmbAttributor:
                 )
             elif self.factorization_type == "kronecker":
                 self.projection_dim = int(
-                    math.sqrt(proj_dim / len(self._linear_layers)),
+                    math.sqrt(self.projection_dim / len(self._linear_layers)),
                 )
                 self._params_dim = (
-                    len(self._linear_layers)
-                    * self.projection_dim
-                    * self.projection_dim
+                    len(self._linear_layers) * self.projection_dim * self.projection_dim
                 )
             elif self.factorization_type == "elementwise":
-                self.projection_dim = int(proj_dim / len(self._linear_layers))
+                self.projection_dim = int(
+                    self.projection_dim / len(self._linear_layers),
+                )
                 self._params_dim = len(self._linear_layers) * self.projection_dim
             else:
                 msg = f"Unknown factorization type: {self.factorization_type}"
@@ -167,16 +163,25 @@ class DVEmbAttributor:
         for layer in self._linear_layers:
             output_dim = layer.weight.shape[0]
             input_dim = layer.weight.shape[1]
-            self.projector_kwargs["feature_batch_size"] = batch_size
             project_output = random_project(
                 feature=torch.zeros((batch_size, output_dim)),
-                proj_dim=self.projection_dim,
-                **self.projector_kwargs,
+                proj_params=RandomProjectionParams(
+                    feature_batch_size=batch_size,
+                    device=self.device,
+                    proj_dim=self.projection_dim,
+                    proj_seed=self.proj_params.proj_seed,
+                    proj_max_batch_size=self.proj_params.proj_max_batch_size,
+                ),
             )
             project_input = random_project(
                 feature=torch.zeros((batch_size, input_dim)),
-                proj_dim=self.projection_dim,
-                **self.projector_kwargs,
+                proj_params=RandomProjectionParams(
+                    feature_batch_size=batch_size,
+                    device=self.device,
+                    proj_dim=self.projection_dim,
+                    proj_seed=self.proj_params.proj_seed,
+                    proj_max_batch_size=self.proj_params.proj_max_batch_size,
+                ),
             )
             self.random_projectors.append((project_input, project_output))
 
@@ -269,8 +274,11 @@ class DVEmbAttributor:
             learning_rate: The learning rate for this step.
         """
         # Set up projectors if not already done
-        if hasattr(self, "random_projectors") is False\
-            and self.use_factorization and self.projection_dim is not None:
+        if (
+            hasattr(self, "random_projectors") is False
+            and self.use_factorization
+            and self.projection_dim is not None
+        ):
             self._setup_projectors(batch_size=len(indices))
 
         if self.use_factorization:
@@ -305,11 +313,15 @@ class DVEmbAttributor:
             if self.projector is None:
                 num_features = per_sample_grads.shape[1]
                 batch_size = per_sample_grads.shape[0]
-                self.projector_kwargs["feature_batch_size"] = batch_size
                 self.projector = random_project(
-                    feature=torch.zeros((batch_size, num_features)),
-                    proj_dim=self.projection_dim,
-                    **self.projector_kwargs,
+                    torch.zeros((batch_size, num_features)),
+                    proj_params=RandomProjectionParams(
+                        feature_batch_size=batch_size,
+                        device=self.device,
+                        proj_dim=self.projection_dim,
+                        proj_seed=self.proj_params.proj_seed,
+                        proj_max_batch_size=self.proj_params.proj_max_batch_size,
+                    ),
                 )
             # Project gradients
             per_sample_grads = self.projector(per_sample_grads)
@@ -358,9 +370,7 @@ class DVEmbAttributor:
         handles, caches = self._register_factorization_hooks()
 
         batch_data_tensors = [d.to(self.device) for d in batch_data]
-        loss = self.task.original_loss_func(self.model,
-                                            batch_data_tensors,
-                                            self.device)
+        loss = self.task.original_loss_func(self.model, batch_data_tensors, self.device)
         loss *= batch_data_tensors[0].shape[0]  # Scale loss by batch size
         loss.backward()
 
