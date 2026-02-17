@@ -9,6 +9,7 @@ from torch.utils.data import TensorDataset
 
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import ProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -50,9 +51,10 @@ class TestTRAK:
 
         checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
-        projector_kwargs = {
-            "device": "cpu",
-        }
+        projector_params = ProjectionParams(
+            proj_dim=64,
+            device="cpu",
+        )
         task = AttributionTask(
             loss_func=f,
             model=model,
@@ -69,7 +71,7 @@ class TestTRAK:
             task=task,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
         )
         score = attributor.attribute(train_loader, test_loader)
         score2 = attributor.attribute(train_loader, test_loader)
@@ -80,7 +82,7 @@ class TestTRAK:
             task=task,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
         )
         attributor.cache(train_loader)
         score = attributor.attribute(test_loader)
@@ -92,7 +94,7 @@ class TestTRAK:
             task=task_m,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
         )
         attributor.cache(train_loader)
         score = attributor.attribute(test_loader)
@@ -134,9 +136,10 @@ class TestTRAK:
 
         checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
-        projector_kwargs = {
-            "device": "cpu",
-        }
+        projector_params = ProjectionParams(
+            proj_dim=64,
+            device="cpu",
+        )
         task = AttributionTask(
             loss_func=f,
             model=model,
@@ -153,7 +156,7 @@ class TestTRAK:
             task=task,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
         )
 
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
@@ -165,7 +168,7 @@ class TestTRAK:
             task=task,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
         )
         test_loader = train_loader
         tensor1 = attributor.attribute(test_loader, train_loader).diag()
@@ -177,7 +180,7 @@ class TestTRAK:
             task=task_m,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
         )
         tensor1 = attributor.attribute(train_loader, train_loader).diag()
         tensor2 = attributor.self_attribute(train_loader).squeeze()
@@ -220,9 +223,10 @@ class TestTRAK:
 
         checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
 
-        projector_kwargs = {
-            "device": "cpu",
-        }
+        projector_params = ProjectionParams(
+            proj_dim=64,
+            device="cpu",
+        )
         task = AttributionTask(
             loss_func=f,
             model=model,
@@ -233,7 +237,7 @@ class TestTRAK:
             task=task,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
         )
         score = attributor.attribute(train_loader, test_loader)
         # trak w/ regularization
@@ -241,7 +245,7 @@ class TestTRAK:
             task=task,
             correct_probability_func=m,
             device=torch.device("cpu"),
-            projector_kwargs=projector_kwargs,
+            projection_params=projector_params,
             regularization=0.01,
         )
         score2 = attributor.attribute(train_loader, test_loader)

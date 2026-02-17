@@ -7,7 +7,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Callable, Dict, List, Optional, Union
+    from typing import Callable, List, Optional, Union
 
     from dattri.task import AttributionTask
 
@@ -16,18 +16,12 @@ import torch
 from torch.func import vmap
 from tqdm import tqdm
 
-from dattri.func.projection import random_project
+from dattri.func.projection import ProjectionType, random_project
 from dattri.func.utils import _unflatten_params
+from dattri.params.projection import ProjectionParams, RandomProjectionParams
 
 from .base import BaseAttributor
 from .utils import _check_shuffle
-
-DEFAULT_PROJECTOR_KWARGS = {
-    "proj_dim": 512,
-    "proj_max_batch_size": 32,
-    "proj_seed": 0,
-    "device": "cpu",
-}
 
 
 class TRAKAttributor(BaseAttributor):
@@ -37,7 +31,7 @@ class TRAKAttributor(BaseAttributor):
         self,
         task: AttributionTask,
         correct_probability_func: Callable,
-        projector_kwargs: Optional[Dict[str, Any]] = None,
+        project_params: Optional[ProjectionParams] = None,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
         regularization: float = 0.0,
@@ -61,8 +55,8 @@ class TRAKAttributor(BaseAttributor):
                     p = torch.exp(-loss(yhat, label_t))
                     return p
                 ```
-            projector_kwargs (Optional[Dict[str, Any]], optional): The kwargs for the
-                random projection. Defaults to None.
+            project_params (Optional[ProjectionParams]): Params for random
+                projection. Defaults to None.
             layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
                 used to calculate the train/test representations. If None, full
                 parameters are used. This should be a string or a list of strings
@@ -83,9 +77,12 @@ class TRAKAttributor(BaseAttributor):
             )
             ** 0.5
         )
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS
-        if projector_kwargs is not None:
-            self.projector_kwargs.update(projector_kwargs)
+        self.project_params = project_params or ProjectionParams(
+            proj_dim=512,
+            proj_max_batch_size=32,
+            proj_seed=0,
+            proj_type=ProjectionType.normal,
+        )
         self.layer_name = layer_name
         self.device = device
         self.grad_target_func = self.task.get_grad_target_func(in_dims=(None, 0))
@@ -153,8 +150,11 @@ class TRAKAttributor(BaseAttributor):
                 grad_p = (
                     random_project(
                         grad_t,
-                        batch_size,
-                        **self.projector_kwargs,
+                        proj_params=RandomProjectionParams(
+                            feature_batch_size=batch_size,
+                            device=self.device,
+                            **self.project_params.model_dump(),
+                        ),
                     )(grad_t, ensemble_id=ckpt_idx)
                     .clone()
                     .detach()
@@ -274,8 +274,11 @@ class TRAKAttributor(BaseAttributor):
                     grad_p = (
                         random_project(
                             grad_t,
-                            batch_size,
-                            **self.projector_kwargs,
+                            proj_params=RandomProjectionParams(
+                                feature_batch_size=batch_size,
+                                **self.project_params.model_dump(),
+                                device=self.device,
+                            ),
                         )(grad_t, ensemble_id=ckpt_idx)
                         .clone()
                         .detach()
@@ -316,8 +319,11 @@ class TRAKAttributor(BaseAttributor):
                 grad_p = (
                     random_project(
                         grad_t,
-                        batch_size,
-                        **self.projector_kwargs,
+                        proj_params=RandomProjectionParams(
+                            feature_batch_size=batch_size,
+                            device=self.device,
+                            **self.project_params.model_dump(),
+                        ),
                     )(grad_t, ensemble_id=ckpt_idx)
                     .clone()
                     .detach()
@@ -436,8 +442,11 @@ class TRAKAttributor(BaseAttributor):
                     grad_p = (
                         random_project(
                             grad_t,
-                            batch_size,
-                            **self.projector_kwargs,
+                            proj_params=RandomProjectionParams(
+                                feature_batch_size=batch_size,
+                                device=self.device,
+                                **self.project_params.model_dump(),
+                            ),
                         )(grad_t, ensemble_id=ckpt_idx)
                         .clone()
                         .detach()

@@ -10,7 +10,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Tuple
+    from typing import Dict, List, Optional, Tuple
 
 import logging
 
@@ -18,6 +18,10 @@ import torch
 from torch import Tensor, nn
 
 from dattri.func.projection import AbstractProjector, random_project
+from dattri.params.projection import (
+    ProjectionParams,
+    RandomProjectionParams,
+)
 
 # Configure logger
 logger = logging.getLogger(__name__)
@@ -209,8 +213,8 @@ class Compressor:
 def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup with many branches, variables, and statements for handling different layer types
     model: nn.Module,
     layer_names: List[str],
-    sparsifier_kwargs: Optional[Dict[str, Any]] = None,
-    projector_kwargs: Optional[Dict[str, Any]] = None,
+    sparsifier_params: Optional[ProjectionParams] = None,
+    projector_params: Optional[ProjectionParams] = None,
     sample_inputs: Optional[Dict[str, Tensor]] = None,
     device: str = "cpu",
 ) -> List[Compressor]:
@@ -221,8 +225,8 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
     Args:
         model: The PyTorch model
         layer_names: Names of layers to set compressors for
-        sparsifier_kwargs: Keyword arguments for sparsifier config (optional)
-        projector_kwargs: Keyword arguments for projector config (optional)
+        sparsifier_params: Parameters for sparsifier config (optional)
+        projector_params: Parameters for projector config (optional)
         sample_inputs: Input batch to run a forward pass (optional)
         device: Device to run the model on
 
@@ -237,30 +241,30 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
 
     # Initialize compressors list
     compressors = [None] * len(layer_names)
-    if not (sparsifier_kwargs or projector_kwargs):
+    if not (sparsifier_params or projector_params):
         return compressors
 
     # Create name to index mapping for faster lookup
     name_to_index = {name: idx for idx, name in enumerate(layer_names)}
 
     # Extract configuration parameters
-    sparsifier_seed = sparsifier_kwargs.get("proj_seed", 0) if sparsifier_kwargs else 0
-    projector_seed = projector_kwargs.get("proj_seed", 0) if projector_kwargs else 0
+    sparsifier_seed = sparsifier_params.proj_seed if sparsifier_params else 0
+    projector_seed = projector_params.proj_seed if projector_params else 0
 
     # Remove parameters that are handled separately
-    if sparsifier_kwargs:
-        sparsifier_kwargs_copy = sparsifier_kwargs.copy()
-        if "proj_seed" in sparsifier_kwargs_copy:
-            sparsifier_kwargs_copy.pop("proj_seed")
+    if sparsifier_params:
+        sparsifier_params_copy = sparsifier_params.model_copy()
+        if "proj_seed" in sparsifier_params_copy:
+            sparsifier_params_copy.pop("proj_seed")
     else:
-        sparsifier_kwargs_copy = {}
+        sparsifier_params_copy = {}
 
-    if projector_kwargs:
-        projector_kwargs_copy = projector_kwargs.copy()
-        if "proj_seed" in projector_kwargs_copy:
-            projector_kwargs_copy.pop("proj_seed")
+    if projector_params:
+        projector_params_copy = projector_params.model_copy()
+        if "proj_seed" in projector_params_copy:
+            projector_params_copy.pop("proj_seed")
     else:
-        projector_kwargs_copy = {}
+        projector_params_copy = {}
 
     # Ensure model is on the correct device before running forward pass
     original_device = next(model.parameters()).device
@@ -322,7 +326,7 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
             # Create sparsifier (ALWAYS factorized) - Stage 1
             sparsifier = Sparsifier(module_name, idx)
             base_seed = sparsifier_seed + int(1e4) * module_id
-            sparse_kwargs = sparsifier_kwargs_copy.copy()
+            sparse_params = sparsifier_params_copy.model_copy()
 
             # Create appropriate sparsifiers based on layer type
             # Sparsifiers are ALWAYS factorized
@@ -333,7 +337,8 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
                     layer_inputs.get(module_name),
                     layer_outputs.get(module_name),
                     base_seed,
-                    sparse_kwargs,
+                    sparse_params,
+                    device,
                 )
             elif isinstance(module, nn.LayerNorm):
                 _setup_layernorm_sparsifier(
@@ -342,7 +347,8 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
                     layer_inputs.get(module_name),
                     layer_outputs.get(module_name),
                     base_seed,
-                    sparse_kwargs,
+                    sparse_params,
+                    device,
                 )
             else:
                 msg = f"Unsupported layer type: {type(module)}"
@@ -361,7 +367,7 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
             # (ALWAYS non-factorized, operates after sparsification) - Stage 2
             projector = Projector(module_name, idx)
             base_seed = projector_seed + int(1e4) * module_id + 1
-            proj_kwargs = projector_kwargs_copy.copy()
+            proj_params = projector_params_copy.model_copy()
 
             # Set up projectors for sparsified dimensions
             # Projectors are ALWAYS non-factorized and operate AFTER
@@ -374,7 +380,8 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
                     layer_inputs.get(module_name),
                     layer_outputs.get(module_name),
                     base_seed,
-                    proj_kwargs,
+                    proj_params,
+                    device,
                 )
             elif isinstance(module, nn.LayerNorm):
                 _setup_layernorm_projector(
@@ -384,7 +391,8 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
                     layer_inputs.get(module_name),
                     layer_outputs.get(module_name),
                     base_seed,
-                    proj_kwargs,
+                    proj_params,
+                    device,
                 )
             else:
                 msg = f"Unsupported layer type: {type(module)}"
@@ -410,7 +418,8 @@ def _setup_linear_sparsifier(
     layer_input: Tensor,
     pre_activation: Tensor,
     base_seed: int,
-    kwargs: Dict[str, Any],
+    params: ProjectionParams,
+    device: str,
 ) -> None:
     """Set up sparsifier for a Linear layer.
 
@@ -424,7 +433,8 @@ def _setup_linear_sparsifier(
         layer_input: Input tensor to the layer
         pre_activation: Output tensor from the layer
         base_seed: Base seed for random projection
-        kwargs: Keyword arguments for the projection
+        params: Parameters for the projection
+        device: Device string (e.g. "cpu", "cuda") for projection.
     """
     if pre_activation is None or layer_input is None:
         return
@@ -455,35 +465,39 @@ def _setup_linear_sparsifier(
     sample_comp_1 = torch.zeros_like(pre_activation.view(-1, pre_activation.shape[-1]))
 
     # For identity projection, use feature dimension instead of -1
-    proj_dim_comp_1 = kwargs.get("proj_dim")
-    if kwargs.get("proj_type") == "identity" and proj_dim_comp_1 == -1:
+    proj_dim_comp_1 = params.proj_dim
+    if params.proj_type == "identity" and proj_dim_comp_1 == -1:
         proj_dim_comp_1 = sample_comp_1.shape[-1]
 
     sparsifier_comp_1 = random_project(
         sample_comp_1,
-        sample_comp_1.shape[0],
-        proj_dim=proj_dim_comp_1,
-        proj_max_batch_size=kwargs.get("proj_max_batch_size"),
-        proj_seed=base_seed,
-        proj_type=kwargs.get("proj_type", "normal"),
-        device=kwargs.get("device", "cpu"),
+        proj_params=RandomProjectionParams(
+            feature_batch_size=sample_comp_1.shape[0],
+            proj_dim=proj_dim_comp_1,
+            proj_max_batch_size=params.proj_max_batch_size,
+            proj_seed=base_seed,
+            proj_type=params.proj_type,
+            device=device,
+        ),
     )
 
     sample_comp_2 = torch.zeros_like(input_features.view(-1, input_features.shape[-1]))
 
     # For identity projection, use feature dimension instead of -1
-    proj_dim_comp_2 = kwargs.get("proj_dim")
-    if kwargs.get("proj_type") == "identity" and proj_dim_comp_2 == -1:
+    proj_dim_comp_2 = params.proj_dim
+    if params.proj_type == "identity" and proj_dim_comp_2 == -1:
         proj_dim_comp_2 = sample_comp_2.shape[-1]
 
     _sparsifier_comp_2 = random_project(
         sample_comp_2,
-        sample_comp_2.shape[0],
-        proj_dim=proj_dim_comp_2,
-        proj_max_batch_size=kwargs.get("proj_max_batch_size"),
-        proj_seed=base_seed + 1,
-        proj_type=kwargs.get("proj_type", "normal"),
-        device=kwargs.get("device", "cpu"),
+        proj_params=RandomProjectionParams(
+            feature_batch_size=sample_comp_2.shape[0],
+            proj_dim=proj_dim_comp_2,
+            proj_max_batch_size=params.proj_max_batch_size,
+            proj_seed=base_seed + 1,
+            proj_type=params.proj_type,
+            device=device,
+        ),
     )
 
     # Store dimensions needed for transpose operation
@@ -509,7 +523,8 @@ def _setup_linear_projector(  # noqa: PLR0914 - Complex projector setup requires
     layer_input: Tensor,
     pre_activation: Tensor,
     base_seed: int,
-    kwargs: Dict[str, Any],
+    params: ProjectionParams,
+    device: str,
 ) -> None:
     """Set up projector for a Linear layer after sparsification.
 
@@ -525,7 +540,8 @@ def _setup_linear_projector(  # noqa: PLR0914 - Complex projector setup requires
         layer_input: Input tensor to the layer
         pre_activation: Output tensor from the layer
         base_seed: Base seed for random projection
-        kwargs: Keyword arguments for the projection
+        params: Parameters for the projection
+        device: Device string (e.g. "cpu", "cuda") for projection.
     """
     if pre_activation is None or layer_input is None:
         return
@@ -619,18 +635,20 @@ def _setup_linear_projector(  # noqa: PLR0914 - Complex projector setup requires
     )
 
     # For identity projection, use feature dimension instead of -1
-    proj_dim = kwargs.get("proj_dim")
-    if kwargs.get("proj_type") == "identity" and proj_dim == -1:
+    proj_dim = params.proj_dim
+    if params.proj_type == "identity" and proj_dim == -1:
         proj_dim = intermediate_dim
 
     projector_func = random_project(
         sample_intermediate,
-        sample_intermediate.shape[0],
-        proj_dim=proj_dim,
-        proj_max_batch_size=kwargs.get("proj_max_batch_size"),
-        proj_seed=base_seed,
-        proj_type=kwargs.get("proj_type", "normal"),
-        device=kwargs.get("device", "cpu"),
+        proj_params=RandomProjectionParams(
+            feature_batch_size=sample_intermediate.shape[0],
+            proj_dim=proj_dim,
+            proj_max_batch_size=params.proj_max_batch_size,
+            proj_seed=base_seed,
+            proj_type=params.proj_type,
+            device=device,
+        ),
     )
 
     # Store in projector attribute
@@ -643,7 +661,8 @@ def _setup_layernorm_sparsifier(
     layer_input: Tensor,
     pre_activation: Tensor,
     base_seed: int,
-    kwargs: Dict[str, Any],
+    params: ProjectionParams,
+    device: str,
 ) -> None:
     """Set up sparsifier for a LayerNorm layer.
 
@@ -657,7 +676,8 @@ def _setup_layernorm_sparsifier(
         layer_input: Input tensor to the layer
         pre_activation: Output tensor from the layer
         base_seed: Base seed for random projection
-        kwargs: Keyword arguments for the projection
+        params: Parameters for the projection
+        device: Device string (e.g. "cpu", "cuda") for projection.
     """
     if not layer.elementwise_affine or layer_input is None:
         return
@@ -666,35 +686,39 @@ def _setup_layernorm_sparsifier(
     sample_comp_1 = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1]))
 
     # For identity projection, use feature dimension instead of -1
-    proj_dim_comp_1 = kwargs.get("proj_dim")
-    if kwargs.get("proj_type") == "identity" and proj_dim_comp_1 == -1:
+    proj_dim_comp_1 = params.proj_dim
+    if params.proj_type == "identity" and proj_dim_comp_1 == -1:
         proj_dim_comp_1 = sample_comp_1.shape[-1]
 
     sparsifier_comp_1 = random_project(
         sample_comp_1,
-        sample_comp_1.shape[0],
-        proj_dim=proj_dim_comp_1,
-        proj_max_batch_size=kwargs.get("proj_max_batch_size"),
-        proj_seed=base_seed,
-        proj_type=kwargs.get("proj_type", "normal"),
-        device=kwargs.get("device", "cpu"),
+        proj_params=RandomProjectionParams(
+            feature_batch_size=sample_comp_1.shape[0],
+            proj_dim=proj_dim_comp_1,
+            proj_max_batch_size=params.proj_max_batch_size,
+            proj_seed=base_seed,
+            proj_type=params.proj_type,
+            device=device,
+        ),
     )
 
     sample_comp_2 = torch.zeros((pre_activation.shape[0], pre_activation.shape[-1]))
 
     # For identity projection, use feature dimension instead of -1
-    proj_dim_comp_2 = kwargs.get("proj_dim")
-    if kwargs.get("proj_type") == "identity" and proj_dim_comp_2 == -1:
+    proj_dim_comp_2 = params.proj_dim
+    if params.proj_type == "identity" and proj_dim_comp_2 == -1:
         proj_dim_comp_2 = sample_comp_2.shape[-1]
 
     _sparsifier_comp_2 = random_project(
         sample_comp_2,
-        sample_comp_2.shape[0],
-        proj_dim=proj_dim_comp_2,
-        proj_max_batch_size=kwargs.get("proj_max_batch_size"),
-        proj_seed=base_seed + 1,
-        proj_type=kwargs.get("proj_type", "normal"),
-        device=kwargs.get("device", "cpu"),
+        proj_params=RandomProjectionParams(
+            feature_batch_size=sample_comp_2.shape[0],
+            proj_dim=proj_dim_comp_2,
+            proj_max_batch_size=params.proj_max_batch_size,
+            proj_seed=base_seed + 1,
+            proj_type=params.proj_type,
+            device=device,
+        ),
     )
 
     # Store dimensions needed for transpose operation
@@ -720,7 +744,8 @@ def _setup_layernorm_projector(
     layer_input: Tensor,  # noqa: ARG001 - Required for API consistency with _setup_linear_projector
     pre_activation: Tensor,
     base_seed: int,
-    kwargs: Dict[str, Any],
+    params: ProjectionParams,
+    device: str,
 ) -> None:
     """Set up projector for a LayerNorm layer after sparsification.
 
@@ -736,7 +761,8 @@ def _setup_layernorm_projector(
         layer_input: Input tensor to the layer
         pre_activation: Output tensor from the layer
         base_seed: Base seed for random projection
-        kwargs: Keyword arguments for the projection
+        params: Parameters for the projection
+        device: Device string (e.g. "cpu", "cuda") for projection.
     """
     if not layer.elementwise_affine or pre_activation is None:
         return
@@ -762,18 +788,20 @@ def _setup_layernorm_projector(
     )
 
     # For identity projection, use feature dimension instead of -1
-    proj_dim = kwargs.get("proj_dim")
-    if kwargs.get("proj_type") == "identity" and proj_dim == -1:
+    proj_dim = params.proj_dim
+    if params.proj_type == "identity" and proj_dim == -1:
         proj_dim = intermediate_dim
 
     projector_func = random_project(
         sample_intermediate,
-        sample_intermediate.shape[0],
-        proj_dim=proj_dim,
-        proj_max_batch_size=kwargs.get("proj_max_batch_size"),
-        proj_seed=base_seed,
-        proj_type=kwargs.get("proj_type", "normal"),
-        device=kwargs.get("device", "cpu"),
+        proj_params=RandomProjectionParams(
+            feature_batch_size=sample_intermediate.shape[0],
+            proj_dim=proj_dim,
+            proj_max_batch_size=params.proj_max_batch_size,
+            proj_seed=base_seed,
+            proj_type=params.proj_type,
+            device=device,
+        ),
     )
 
     # Store in projector attribute

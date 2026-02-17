@@ -29,6 +29,7 @@ import torch
 from torch import Tensor
 
 from dattri.func.hessian import hvp_at_x
+from dattri.params.projection import RandomProjectionParams  # noqa: TC001
 
 from .utils import _vectorize as vectorize
 from .utils import get_parameter_chunk_sizes
@@ -1271,13 +1272,7 @@ def arnoldi_project(
 
 def random_project(
     feature: Union[Dict[str, Tensor], Tensor],
-    feature_batch_size: int,
-    proj_dim: int,
-    proj_max_batch_size: int,
-    proj_seed: int = 0,
-    proj_type: str = "normal",
-    *,
-    device: Union[str, torch.device] = "cpu",
+    proj_params: RandomProjectionParams,
 ) -> Callable:
     """Randomly projects the features to a smaller dimension.
 
@@ -1287,19 +1282,20 @@ def random_project(
             feature_dim]. Or typically, if the this is gradient of some
             torch.nn.Module models, it will have the structure similar to the
             result of model.named_parameters().
-        feature_batch_size (int): The batch size of each tensor in the feature
-            about to be projected. The typical type of feature are gradients of
-            torch.nn.Module model but can restricted to this.
-        proj_dim (int): Dimension of the projected feature.
-        proj_max_batch_size (int): The maximum batch size if the CudaProjector is
-            used. Must be a multiple of 8. The maximum batch size is 32 for A100
-            GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
-        proj_seed (int): Random seed used by the projector. Defaults to 0.
-        proj_type (str): The random projection type used for the projection.
-            Available options are "sjlt", "rademacher", "normal", "random_mask",
-            "grass", or "grass_N" where N is the intermediate dimension multiplier
-            (e.g., "grass_4" means intermediate_dim = 4 * proj_dim).
-        device (Union[str, torch.device]): "cuda" or "cpu". Defaults to "cpu".
+        proj_params (RandomProjectionParams): Parameters for random projection:
+            feature_batch_size (int): The batch size of each tensor in the feature
+                about to be projected. The typical type of feature are gradients of
+                torch.nn.Module model but can restricted to this.
+            proj_dim (int): Dimension of the projected feature.
+            proj_max_batch_size (int): The maximum batch size if the CudaProjector is
+                used. Must be a multiple of 8. The maximum batch size is 32 for A100
+                GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
+            proj_seed (int): Random seed used by the projector. Defaults to 0.
+            proj_type (str): The random projection type used for the projection.
+                Available options are "sjlt", "rademacher", "normal", "random_mask",
+                "grass", or "grass_N" where N is the intermediate dimension multiplier
+                (e.g., "grass_4" means intermediate_dim = 4 * proj_dim).
+            device (Union[str, torch.device]): "cuda" or "cpu". Defaults to "cpu".
 
     Raises:
         ValueError: When an invalid proj_type or device is provided.
@@ -1310,20 +1306,26 @@ def random_project(
     # check the type of feature
     if isinstance(feature, dict):
         param_shape_list = [
-            feature[param_name].numel() // feature_batch_size for param_name in feature
+            feature[param_name].numel() // proj_params.feature_batch_size
+            for param_name in feature
         ]
         dtype = feature[next(iter(feature))].dtype
     else:
-        param_shape_list = [feature.numel() // feature_batch_size]
+        param_shape_list = [feature.numel() // proj_params.feature_batch_size]
         dtype = feature.dtype
 
     # convert device to torch.device if needed
-    if isinstance(device, str):
-        device = torch.device(device)
+    device = (
+        torch.device(proj_params.device)
+        if isinstance(proj_params.device, str)
+        else proj_params.device
+    )
 
     # Parse grass multiplier if present (e.g., "grass_4" -> multiplier=4)
-    if isinstance(proj_type, str):
-        proj_type, grass_multiplier = _parse_grass_projection_type(proj_type)
+    if isinstance(proj_params.proj_type, str):
+        proj_type, grass_multiplier = _parse_grass_projection_type(
+            proj_params.proj_type,
+        )
     else:
         grass_multiplier = 4
 
@@ -1359,11 +1361,11 @@ def random_project(
 
     projector = make_random_projector(
         param_shape_list=param_shape_list,
-        feature_batch_size=feature_batch_size,
-        proj_dim=proj_dim,
-        proj_max_batch_size=proj_max_batch_size,
+        feature_batch_size=proj_params.feature_batch_size,
+        proj_dim=proj_params.proj_dim,
+        proj_max_batch_size=proj_params.proj_max_batch_size,
         device=device,
-        proj_seed=proj_seed,
+        proj_seed=proj_params.proj_seed,
         proj_type=proj_type,
         dtype=dtype,
         grass_multiplier=grass_multiplier,

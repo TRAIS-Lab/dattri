@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm import LoGraAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import LoGraProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -54,7 +55,7 @@ class TestLoGraAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=64,  # projection dimension (must be perfect square: 8*8=64)
+            proj_params=LoGraProjectionParams(proj_dim=64),  # 8*8=64
             offload="cpu",
         )
 

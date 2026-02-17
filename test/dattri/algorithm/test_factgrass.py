@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm import FactGraSSAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import FactGrassProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -56,7 +57,7 @@ class TestFactGraSSAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=64,
+            proj_params=FactGrassProjectionParams(proj_dim=64),
             blowup_factor=4,
             offload="cpu",
         )
@@ -100,7 +101,7 @@ class TestFactGraSSAttributor:
                 task=self.task,
                 device="cpu",
                 hessian="Identity",
-                proj_dim=100,
+                proj_params=FactGrassProjectionParams(proj_dim=100),
                 blowup_factor=3,  # 100 * 3 = 300, sqrt(300) ≈ 17.32
                 offload="cpu",
             )
@@ -113,7 +114,7 @@ class TestFactGraSSAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=4096,
+            proj_params=FactGrassProjectionParams(proj_dim=4096),
             blowup_factor=4,
             offload="cpu",
         )
@@ -125,7 +126,7 @@ class TestFactGraSSAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=16,
+            proj_params=FactGrassProjectionParams(proj_dim=16),
             blowup_factor=1,
             offload="cpu",
         )
@@ -137,7 +138,7 @@ class TestFactGraSSAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=36,
+            proj_params=FactGrassProjectionParams(proj_dim=36),
             blowup_factor=9,
             offload="cpu",
         )
