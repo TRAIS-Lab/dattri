@@ -14,6 +14,7 @@ from dattri.func.projection import (
     arnoldi_project,
     random_project,
 )
+from dattri.params.projection import RandomProjectionParams
 
 
 def compute_pairwise_distance_metrics(batch_vec, batch_vec_p):
@@ -562,12 +563,14 @@ class TestRandomProjectionFactory(unittest.TestCase):
         # suppose to be BasicProjector
         project = random_project(
             small_gradient,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cpu"),
-            proj_type="normal",
-            proj_seed=0,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=test_batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="normal",
+                device=torch.device("cpu"),
+            ),
         )
 
         result_1 = project(small_gradient)
@@ -597,11 +600,14 @@ class TestRandomProjectionFactory(unittest.TestCase):
         # suppose to be CudaProjector
         project = random_project(
             small_gradient,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_seed=0,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=test_batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="normal",
+                device=torch.device("cuda"),
+            ),
         )
 
         result_2 = project(small_gradient)
@@ -649,12 +655,14 @@ class TestRandomProjectionFactory(unittest.TestCase):
         # suppose to be ChunkedCudaProjector
         project = random_project(
             large_gradient,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_type="sjlt",
-            proj_seed=0,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=test_batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="sjlt",
+                device=torch.device("cuda"),
+            ),
         )
 
         result_3 = project(large_gradient)
@@ -676,12 +684,14 @@ class TestRandomProjectionFactory(unittest.TestCase):
         # suppose to be BasicProjector
         project = random_project(
             test_tensor,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cpu"),
-            proj_type="normal",
-            proj_seed=0,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=test_batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="normal",
+                device=torch.device("cpu"),
+            ),
         )
 
         result = project(test_tensor)
@@ -703,11 +713,14 @@ class TestRandomProjectionFactory(unittest.TestCase):
         # suppose to be CudaProjector
         project = random_project(
             test_tensor,
-            test_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_seed=0,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=test_batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="normal",
+                device=torch.device("cuda"),
+            ),
         )
 
         result = project(test_tensor)
@@ -730,12 +743,14 @@ class TestRandomProjectionFactory(unittest.TestCase):
         # suppose to be ChunkedCudaProjector
         project = random_project(
             test_tensor,
-            feature_batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=torch.device("cuda"),
-            proj_type="sjlt",
-            proj_seed=0,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=feature_batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="sjlt",
+                device=torch.device("cuda"),
+            ),
         )
 
         result = project(test_tensor)
@@ -823,12 +838,14 @@ class TestProjectionCombinationsCPU(unittest.TestCase):
 
         project = random_project(
             gradient_dict,
-            batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=device,
-            proj_seed=0,
-            proj_type=proj_type,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type=proj_type,
+                device=device,
+            ),
         )
 
         result = project(gradient_dict)
@@ -844,12 +861,14 @@ class TestProjectionCombinationsCPU(unittest.TestCase):
         test_tensor = torch.rand(batch_size, self.feature_dim, dtype=dtype)
         project_tensor = random_project(
             test_tensor,
-            batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=device,
-            proj_seed=0,
-            proj_type=proj_type,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type=proj_type,
+                device=device,
+            ),
         )
 
         result_tensor = project_tensor(test_tensor)
@@ -951,12 +970,14 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
 
         project = random_project(
             gradient_dict,
-            batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=device,
-            proj_seed=0,
-            proj_type=proj_type,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type=proj_type,
+                device=device,
+            ),
         )
 
         result = project(gradient_dict)
@@ -972,12 +993,14 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
         test_tensor = torch.rand(batch_size, self.feature_dim, dtype=dtype)
         project_tensor = random_project(
             test_tensor,
-            batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=device,
-            proj_seed=0,
-            proj_type=proj_type,
+            proj_params=RandomProjectionParams(
+                feature_batch_size=batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type=proj_type,
+                device=device,
+            ),
         )
 
         result_tensor = project_tensor(test_tensor)
@@ -1050,12 +1073,14 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
 
         project = random_project(
             gradient_dict,
-            batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=device,
-            proj_seed=0,
-            proj_type="grass_2",
+            proj_params=RandomProjectionParams(
+                feature_batch_size=batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="grass_2",
+                device=device,
+            ),
         )
 
         result = project(gradient_dict)
@@ -1067,12 +1092,14 @@ class TestProjectionCombinationsCUDA(unittest.TestCase):
         # Test grass_8
         project_8 = random_project(
             gradient_dict,
-            batch_size,
-            self.proj_dim,
-            self.proj_max_batch_size,
-            device=device,
-            proj_seed=0,
-            proj_type="grass_8",
+            proj_params=RandomProjectionParams(
+                feature_batch_size=batch_size,
+                proj_dim=self.proj_dim,
+                proj_max_batch_size=self.proj_max_batch_size,
+                proj_seed=0,
+                proj_type="grass_8",
+                device=device,
+            ),
         )
 
         result_8 = project_8(gradient_dict)

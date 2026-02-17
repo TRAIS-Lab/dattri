@@ -10,7 +10,11 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.dvemb import DVEmbAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import DVEmbProjectionParams
 from dattri.task import AttributionTask
+
+PROJ_DIM = 1024
+PROJ_MAX_BATCH_SIZE = 64
 
 
 class TestDVEmbAttributor:
@@ -56,6 +60,22 @@ class TestDVEmbAttributor:
             loss_func=eager_loss,
             checkpoints=[self.model.state_dict()],
         )
+
+    def test_project_initialization_proj_dim(self):
+        """Test for DVEmb attributor projection initialization."""
+        attributor = DVEmbAttributor(
+            task=self.task,
+            factorization_type="none",
+        )
+        assert attributor.proj_params.proj_dim is None
+        assert attributor.proj_params.proj_max_batch_size == PROJ_MAX_BATCH_SIZE
+        attributor = DVEmbAttributor(
+            task=self.task,
+            factorization_type="none",
+            proj_params=DVEmbProjectionParams(proj_dim=PROJ_DIM),
+        )
+        assert attributor.proj_params.proj_dim == PROJ_DIM
+        assert attributor.proj_params.proj_max_batch_size == PROJ_MAX_BATCH_SIZE
 
     def _run_dvemb_simulation(self, attributor: DVEmbAttributor):
         """A generic simulation runner for any configured DVEmbAttributor."""
@@ -137,7 +157,7 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task,
-            proj_dim=proj_dim,
+            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
             factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
@@ -158,8 +178,8 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
             factorization_type="kronecker",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
@@ -174,8 +194,8 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
             factorization_type="elementwise",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization

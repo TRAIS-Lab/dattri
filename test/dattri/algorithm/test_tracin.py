@@ -13,7 +13,12 @@ from dattri.algorithm.tracin import TracInAttributor
 from dattri.benchmark.datasets.cifar import train_cifar_resnet9
 from dattri.benchmark.datasets.mnist import train_mnist_lr, train_mnist_mlp
 from dattri.func.utils import flatten_func, flatten_params
+from dattri.params.projection import TracInProjectionParams
 from dattri.task import AttributionTask
+
+PROJ_DIM = 512
+PROJ_DIM_CUSTOM = 1024
+PROJ_MAX_BATCH_SIZE = 32
 
 
 class TestTracInAttributor:
@@ -66,19 +71,19 @@ class TestTracInAttributor:
         # train and test always share the same projector
         # checkpoints need to have differnt projectors
         pytest_device = "cpu"
-        projector_kwargs = {
-            "proj_dim": 512,
-            "proj_max_batch_size": 32,
-            "proj_seed": 42,
-            "device": pytest_device,
-        }
+        projector_params = TracInProjectionParams(
+            proj_dim=512,
+            proj_max_batch_size=32,
+            proj_seed=42,
+            device=pytest_device,
+        )
 
         # test with projector list
         attributor = TracInAttributor(
             task=task,
             weight_list=torch.ones(len(checkpoint_list)),
             normalized_grad=True,
-            projector_kwargs=projector_kwargs,
+            proj_params=projector_params,
             device=torch.device(pytest_device),
         )
 
@@ -149,6 +154,63 @@ class TestTracInAttributor:
         )
 
         shutil.rmtree(path)
+
+    def test_project_initialization_proj_dim(self):
+        """Test for TracIn attributor projection initialization."""
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+        train_loader = DataLoader(train_dataset, batch_size=4)
+
+        model = train_mnist_lr(train_loader)
+
+        # the function directly operate on batches of images/labels
+        # not on dataloader anymore to allow vmap usage
+        # need to prepare a batch dim in the begining
+        def f(params, image_label_pair):
+            image, label = image_label_pair
+            image_t = image.unsqueeze(0)
+            label_t = label.unsqueeze(0)
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image_t)
+            return loss(yhat, label_t)
+
+        # to simlulate multiple checkpoints
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        checkpoint_list = ["ckpts/model_1.pt"]
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+        )
+
+        pytest_device = "cpu"
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+        )
+        assert attributor.proj_params.proj_dim == PROJ_DIM
+        assert attributor.proj_params.proj_max_batch_size == PROJ_MAX_BATCH_SIZE
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+            proj_params=TracInProjectionParams(proj_dim=PROJ_DIM_CUSTOM),
+        )
+        assert attributor.proj_params.proj_dim == PROJ_DIM_CUSTOM
+        assert attributor.proj_params.proj_max_batch_size == PROJ_MAX_BATCH_SIZE
 
     def test_tracin_self_attribute(self):
         """Test for self_attribute in TracIn without projectors."""

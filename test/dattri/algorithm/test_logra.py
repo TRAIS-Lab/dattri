@@ -6,7 +6,12 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm import LoGraAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import LoGraProjectionParams
 from dattri.task import AttributionTask
+
+PROJ_DIM = 4096
+PROJ_DIM_CUSTOM = 1024
+PROJ_MAX_BATCH_SIZE = 64
 
 
 class TestLoGraAttributor:
@@ -54,9 +59,23 @@ class TestLoGraAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=64,  # projection dimension (must be perfect square: 8*8=64)
+            proj_params=LoGraProjectionParams(proj_dim=64),  # 8*8=64
             offload="cpu",
         )
+
+    def test_project_initialization_proj_dim(self):
+        """Test for LoGra attributor projection initialization."""
+        attributor1 = LoGraAttributor(
+            task=self.task,
+            hessian="Identity",
+        )
+        assert attributor1.proj_params.proj_dim == PROJ_DIM
+        attributor2 = LoGraAttributor(
+            task=self.task,
+            hessian="Identity",
+            proj_params=LoGraProjectionParams(proj_dim=PROJ_DIM_CUSTOM),
+        )
+        assert attributor2.proj_params.proj_dim == PROJ_DIM_CUSTOM
 
     def test_attribute(self) -> None:
         """Ensure attribution works with non-empty projectors."""
