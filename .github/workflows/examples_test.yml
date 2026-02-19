@@ -34,6 +34,7 @@ jobs:
         pip uninstall -y dattri
         python -m pip install --upgrade pip
         pip install -e .[test]
+        pip install jupyter nbconvert
     - name: Run examples
       run: |
         python examples/noisy_label_detection/influence_function_noisy_label.py --method cg --device cpu
@@ -52,6 +53,10 @@ jobs:
         python examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
         sed -i 's/range(1000)/range(100)/g' examples/customized_retraining/mnist.py
         python examples/customized_retraining/mnist.py --device cpu --path ./tmp/mnist_ckpt
+        jupyter nbconvert --to python quickstart/influence_function_lds.ipynb
+        python quickstart/influence_function_lds.py
+        jupyter nbconvert --to python quickstart/influence_function_noisy_label.ipynb
+        python quickstart/influence_function_noisy_label.py
     - name: Uninstall the package
       run: |
         pip uninstall -y dattri
