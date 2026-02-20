@@ -5,7 +5,7 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm import LoGraAttributor
-from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.benchmark.datasets.cifar import train_cifar_resnet9
 from dattri.task import AttributionTask
 
 
@@ -16,11 +16,11 @@ class TestLoGraAttributor:
         """Set up test fixtures with sample datasets and attributor configuration."""
         torch.manual_seed(0)
         train_dataset = TensorDataset(
-            torch.randn(10, 1, 28, 28),
+            torch.randn(10, 3, 28, 28),
             torch.randint(0, 10, (10,)),
         )
         test_dataset = TensorDataset(
-            torch.randn(4, 1, 28, 28),
+            torch.randn(4, 3, 28, 28),
             torch.randint(0, 10, (4,)),
         )
         self.train_loader = DataLoader(
@@ -35,7 +35,7 @@ class TestLoGraAttributor:
             shuffle=False,
             pin_memory=False,
         )
-        model = train_mnist_lr(self.train_loader, epoch_num=1)
+        model = train_cifar_resnet9(self.train_loader, num_classes=10, num_epochs=1)
         model.eval()
 
         def f(model, batch, device):
@@ -60,7 +60,7 @@ class TestLoGraAttributor:
 
     def test_attribute(self) -> None:
         """Ensure attribution works with non-empty projectors."""
-        self.attributor.cache(self.train_loader)
+        self.attributor.cache(self.train_loader) # This will fail if sample_inputs[0] is used due to dimension mismatch
         assert self.attributor.compressors, "Compressors should be initialized"
         assert self.attributor.layer_dims == [
             64,  # proj_dim = 64 (8*8)
