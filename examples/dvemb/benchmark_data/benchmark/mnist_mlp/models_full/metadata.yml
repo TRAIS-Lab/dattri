@@ -1,0 +1,57 @@
+data_length: 5000
+mode: lds
+num_runs_per_subset: 1
+num_subsets: 50
+subset_dir_map:
+  0: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/0
+  1: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/1
+  2: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/2
+  3: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/3
+  4: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/4
+  5: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/5
+  6: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/6
+  7: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/7
+  8: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/8
+  9: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/9
+  10: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/10
+  11: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/11
+  12: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/12
+  13: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/13
+  14: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/14
+  15: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/15
+  16: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/16
+  17: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/17
+  18: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/18
+  19: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/19
+  20: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/20
+  21: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/21
+  22: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/22
+  23: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/23
+  24: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/24
+  25: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/25
+  26: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/26
+  27: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/27
+  28: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/28
+  29: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/29
+  30: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/30
+  31: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/31
+  32: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/32
+  33: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/33
+  34: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/34
+  35: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/35
+  36: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/36
+  37: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/37
+  38: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/38
+  39: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/39
+  40: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/40
+  41: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/41
+  42: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/42
+  43: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/43
+  44: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/44
+  45: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/45
+  46: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/46
+  47: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/47
+  48: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/48
+  49: /data/junweid2/mnist_mlp/full_seed_0_num_50_ratio_1/49
+subset_ratio: 1
+train_func: train_mnist_mlp
