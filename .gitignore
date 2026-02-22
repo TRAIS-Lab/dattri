@@ -4,6 +4,8 @@
 *.crc
 *.o
 
+
+
 # SBT, Maven specific
 .cache
 .history
@@ -65,3 +67,7 @@ dist
 *.ubyte
 *.ubyte.gz
 *indices.txt
+
+
+benchmark_data/
+examples/dvemb/benchmark_data/
