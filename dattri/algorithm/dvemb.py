@@ -17,7 +17,6 @@ if TYPE_CHECKING:
 
 import inspect
 import math
-import weakref
 
 import torch
 from torch import nn
@@ -259,7 +258,6 @@ class DVEmbAttributor:
         batch_data: tuple[Tensor, ...],
         indices: Tensor,
         learning_rate: float,
-        scale_gradients: bool = True,
     ) -> None:
         """Cache per-sample gradients for a specific epoch and training step.
 
@@ -270,10 +268,6 @@ class DVEmbAttributor:
             indices: A tensor containing the original indices for the samples
                      in batch_data.
             learning_rate: The learning rate for this step.
-            scale_gradients: If True (default), scale model.parameters().grad
-                            from sum to mean, allowing direct optimizer.step().
-                            If False, keep sum gradients for advanced use cases
-                            (e.g., gradient clipping, accumulation).
         """
         # Set up projectors if not already done
         if hasattr(self, "random_projectors") is False\
@@ -282,7 +276,7 @@ class DVEmbAttributor:
 
         if self.use_factorization:
             self._cache_factored_gradients(
-                epoch, batch_data, indices, learning_rate, scale_gradients
+                epoch, batch_data, indices, learning_rate
             )
         else:
             self._cache_full_gradients(epoch, batch_data, indices, learning_rate)
@@ -418,13 +412,11 @@ class DVEmbAttributor:
     def _calculate_gradient_factors(
         self,
         batch_data: tuple[Tensor, ...],
-        scale_gradients: bool = True,
     ) -> List[Dict[str, Tensor]]:
         """Calculate per-layer gradient factors.
 
         Args:
             batch_data: A tuple of data tensors for a batch.
-            scale_gradients: If True, scale model.parameters().grad from sum to mean.
 
         Returns:
             A list of cached factor dictionaries for each linear layer.
@@ -438,12 +430,6 @@ class DVEmbAttributor:
                                             self.device)
         loss *= batch_data_tensors[0].shape[0]  # Scale loss by batch size
         loss.backward()
-
-        # Optionally scale gradients from sum to mean for optimizer compatibility
-        if scale_gradients:
-            for param in self.model.parameters():
-                if param.grad is not None:
-                    param.grad.div_(batch_data_tensors[0].shape[0])
 
         for h in handles:
             h.remove()
@@ -472,7 +458,7 @@ class DVEmbAttributor:
 
             if a.dim() == 3:  # noqa: PLR2004
                 # 3D case: (B, L, D_in) and (B, L, D_out)
-                # grad_W = sum_l (B_l^T @ A_l), result shape: (B, D_out, D_in) 对于每个样本，权重在所有token之间共享，loss 是对token的求和 / 求平均
+                # grad_W = sum_l (B_l^T @ A_l), result shape: (B, D_out, D_in)
                 grad_w = torch.einsum("bli,blo->boi", a, b)
                 grad_b = b.sum(dim=1) if item["has_bias"] else None
             else:
@@ -592,7 +578,6 @@ class DVEmbAttributor:
         batch_data: tuple[Tensor, ...],
         indices: Tensor,
         learning_rate: float,
-        scale_gradients: bool = True,
     ) -> None:
         """Cache per-sample gradients using factorization.
 
@@ -601,7 +586,6 @@ class DVEmbAttributor:
             batch_data: A tuple of data tensors for a batch.
             indices: Original indices of the samples in the batch.
             learning_rate: The learning rate for the current step.
-            scale_gradients: If True, scale gradients from sum to mean.
         """
         if epoch not in self.cached_factors:
             self.cached_factors[epoch] = []
@@ -609,36 +593,10 @@ class DVEmbAttributor:
             self.learning_rates[epoch] = []
             self.data_indices[epoch] = []
 
-        caches = self._calculate_gradient_factors(batch_data, scale_gradients)
-
-        # ===== DEBUG: Track A/B lifecycle via weakref + CUDA memory =====
-        _a_tensor = caches[0]["A"]
-        _b_tensor = caches[0]["B"]
-        _a_shape, _b_shape = _a_tensor.shape, _b_tensor.shape
-        _a_bytes = _a_tensor.nelement() * _a_tensor.element_size()
-        _b_bytes = _b_tensor.nelement() * _b_tensor.element_size()
-        _num_layers = len(caches)
-        _a_ref = weakref.ref(
-            _a_tensor,
-            lambda r: print(f"    [GC] layer0 A (shape={_a_shape}) ref dropped → GC'd"),
-        )
-        _b_ref = weakref.ref(
-            _b_tensor,
-            lambda r: print(f"    [GC] layer0 B (shape={_b_shape}) ref dropped → GC'd"),
-        )
-        del _a_tensor, _b_tensor  # drop our extra refs
-
-        _mem_before = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
-        print(f"  [DEBUG] caches captured: {_num_layers} layers, "
-              f"layer0 A={_a_shape} ({_a_bytes/1e6:.2f}MB), "
-              f"B={_b_shape} ({_b_bytes/1e6:.2f}MB)")
-        print(f"  [DEBUG] GPU mem before projection: {_mem_before/1e6:.1f} MB")
-        # ===== END DEBUG =====
+        caches = self._calculate_gradient_factors(batch_data)
 
         if self.projection_dim is None:
             self.cached_factors[epoch].append(caches)
-            print(f"  [DEBUG] No projection → caches stored in self.cached_factors "
-                  f"(A/B NOT freed)")
         elif self.factorization_type == "kronecker":
             # kronecker with projection returns projected gradients directly
             projected_grads = self._project_gradients_factors_kronecker(caches)
@@ -646,22 +604,6 @@ class DVEmbAttributor:
         else:
             projected_grads = self._project_gradients_factors_elementwise(caches)
             self.cached_gradients[epoch].append(projected_grads.cpu())
-
-        # ===== DEBUG: Check A/B status after projection =====
-        if self.projection_dim is not None:
-            _mem_after_proj = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
-            print(f"  [DEBUG] GPU mem after projection+cpu(): {_mem_after_proj/1e6:.1f} MB")
-            print(f"  [DEBUG] A alive={_a_ref() is not None}, "
-                  f"B alive={_b_ref() is not None}  (before del caches)")
-            del caches
-            if torch.cuda.is_available():
-                torch.cuda.synchronize()
-            _mem_after_del = torch.cuda.memory_allocated() if torch.cuda.is_available() else 0
-            print(f"  [DEBUG] GPU mem after del caches:      {_mem_after_del/1e6:.1f} MB  "
-                  f"(freed {(_mem_after_proj - _mem_after_del)/1e6:.2f} MB)")
-            print(f"  [DEBUG] A alive={_a_ref() is not None}, "
-                  f"B alive={_b_ref() is not None}  (after del caches)")
-        # ===== END DEBUG =====
 
         self.learning_rates[epoch].append(learning_rate / len(indices))
         self.data_indices[epoch].append(indices.cpu())
@@ -823,7 +765,7 @@ class DVEmbAttributor:
         test_grads = []
         for batch_data in tqdm(test_dataloader, desc="Calculating test gradients"):
             if self.use_factorization:
-                factors = self._calculate_gradient_factors(batch_data, scale_gradients=False)
+                factors = self._calculate_gradient_factors(batch_data)
                 if self.projection_dim is None:
                     grads = self._reconstruct_gradients(factors)
                 elif self.factorization_type == "kronecker":
