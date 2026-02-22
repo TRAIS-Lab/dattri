@@ -46,7 +46,19 @@ class TRAKAttributor(BaseAttributor):
 
         Args:
             task (AttributionTask): The task to be attributed. Please refer to the
-                `AttributionTask` for more details.
+                `AttributionTask` for more details. For TRAK, the `loss_func`
+                in the classification task should typically be the log-odds ratio. 
+                A typical example of such a function `f` is as follows:
+                ```python
+                def f(params, image_label_pair):
+                    image, label = image_label_pair
+                    image_t = image.unsqueeze(0)
+                    label_t = label.unsqueeze(0)
+                    loss = nn.CrossEntropyLoss()
+                    yhat = torch.func.functional_call(model, params, image_t)
+                    logp = -loss(yhat, label_t)
+                    return logp - torch.log(1 - torch.exp(logp))
+                ```
             correct_probability_func (Callable): The function to calculate the
                 probability to correctly predict the label of the input data.
                 A typical example is as follows:
