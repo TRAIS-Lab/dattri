@@ -4,6 +4,8 @@
 *.crc
 *.o
 
+
+
 # SBT, Maven specific
 .cache
 .history
@@ -62,3 +64,10 @@ dist
 # for retraining-related files
 **/data/*
 **/experiment/*
+*.ubyte
+*.ubyte.gz
+*indices.txt
+
+
+benchmark_data/
+examples/dvemb/benchmark_data/

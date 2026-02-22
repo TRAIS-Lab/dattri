@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import warnings
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
@@ -274,9 +275,73 @@ class DVEmbAttributor:
             self._setup_projectors(batch_size=len(indices))
 
         if self.use_factorization:
-            self._cache_factored_gradients(epoch, batch_data, indices, learning_rate)
+            self._cache_factored_gradients(
+                epoch, batch_data, indices, learning_rate
+            )
         else:
             self._cache_full_gradients(epoch, batch_data, indices, learning_rate)
+
+    @contextmanager
+    def cache_gradients_context(
+        self,
+        epoch: int,
+        indices: Tensor,
+        learning_rate: float,
+    ):
+        if not self.use_factorization:
+            msg = (
+                "cache_gradients_context only supports factorization mode. "
+                "Please initialize DVEmbAttributor with factorization_type "
+                "set to 'kronecker' or 'elementwise'."
+            )
+            raise NotImplementedError(msg)
+
+        # Initialize epoch storage if needed
+        if epoch not in self.cached_factors:
+            self.cached_factors[epoch] = []
+            self.cached_gradients[epoch] = []
+            self.learning_rates[epoch] = []
+            self.data_indices[epoch] = []
+
+        # Set up projectors if not already done
+        if (
+            not hasattr(self, "random_projectors")
+            and self.projection_dim is not None
+        ):
+            self._setup_projectors(batch_size=len(indices))
+
+        # ══════════ __enter__: Register hooks to capture gradient factors ══════════
+        handles, caches = self._register_factorization_hooks()
+
+        try:
+            yield  # User's training loop executes here (forward + backward + step)
+        finally:
+            # ══════════ __exit__: Clean up and cache gradient factors ══════════
+
+            # Remove hooks
+            for h in handles:
+                h.remove()
+
+            # Adjust for mean reduction: users typically use mean loss (default),
+            # but we need sum reduction for correct per-sample gradient factors.
+            # backward hook captures B = dL/dy where L = mean(per_sample_losses).
+            # We need B_sum = dL_sum/dy = N * B where L_sum = sum(per_sample_losses).
+            for cache in caches:
+                if cache["B"] is not None:
+                    cache["B"] = cache["B"] * len(indices)
+
+            # Cache the gradient factors (with projection if configured)
+            if self.projection_dim is None:
+                self.cached_factors[epoch].append(caches)
+            elif self.factorization_type == "kronecker":
+                projected_grads = self._project_gradients_factors_kronecker(caches)
+                self.cached_gradients[epoch].append(projected_grads.cpu())
+            else:
+                projected_grads = self._project_gradients_factors_elementwise(caches)
+                self.cached_gradients[epoch].append(projected_grads.cpu())
+
+            self.learning_rates[epoch].append(learning_rate / len(indices))
+            self.data_indices[epoch].append(indices.cpu())
 
     def _calculate_full_gradients(
         self,
@@ -342,6 +407,8 @@ class DVEmbAttributor:
         self.learning_rates[epoch].append(learning_rate / len(indices))
         self.data_indices[epoch].append(indices.cpu())
 
+
+
     def _calculate_gradient_factors(
         self,
         batch_data: tuple[Tensor, ...],
@@ -357,7 +424,7 @@ class DVEmbAttributor:
         self.model.zero_grad()
         handles, caches = self._register_factorization_hooks()
 
-        batch_data_tensors = [d.to(self.device) for d in batch_data]
+        batch_data_tensors = [d.to(self.device) for d in batch_data] # strict requirements on batch_data
         loss = self.task.original_loss_func(self.model,
                                             batch_data_tensors,
                                             self.device)
@@ -619,7 +686,7 @@ class DVEmbAttributor:
 
         # Calculate data embeddings for each epoch in reverse order
         sorted_epochs = sorted(self.learning_rates.keys(), reverse=True)
-        for epoch in tqdm(sorted_epochs, desc="Computing DVEmb per Epoch"):
+        for epoch in tqdm(sorted_epochs, desc="Computing DVEmb per Epoch"): # going through epochs in reverse order
             epoch_embeddings = torch.zeros(
                 (num_total_samples, grad_dim),
                 device=self.device,
