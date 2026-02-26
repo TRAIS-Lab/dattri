@@ -96,27 +96,24 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         """
         from dattri.func.hessian import ihvp_explicit
 
-        batches = []
-        for batch in self.full_train_dataloader:
-            batches.append(tuple(x.to(self.device) for x in batch))
-        full_data = []
-        for i in range(len(batches[0])):
-            full_data.append(torch.cat([b[i] for b in batches], dim=0))
-        full_data = tuple(full_data)
-        
+        vector_product = 0
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
-        self.ihvp_func = ihvp_explicit(
-            partial(
-                self.task.get_loss_func(
-                    layer_name=self.layer_name,
-                    ckpt_idx=ckpt_idx,
+        for full_data_ in self.full_train_dataloader:
+            # move to device
+            full_data = tuple(data.to(self.device) for data in full_data_)
+            self.ihvp_func = ihvp_explicit(
+                partial(
+                    self.task.get_loss_func(
+                        layer_name=self.layer_name,
+                        ckpt_idx=ckpt_idx,
+                    ),
+                    **{self.task.loss_func_data_key: full_data},
                 ),
-                **{self.task.loss_func_data_key: full_data},
-            ),
-            **self.transformation_kwargs,
-        )
-        vector_product = self.ihvp_func((model_params,), test_rep).detach()
-        return vector_product
+                **self.transformation_kwargs,
+            )
+            vector_product += self.ihvp_func((model_params,), test_rep).detach()
+        N = full_data[0].shape[0]
+        return vector_product / N
 
     def _compute_denom(
         self,
@@ -226,27 +223,24 @@ class IFAttributorCG(BaseInnerProductAttributor):
         """
         from dattri.func.hessian import ihvp_cg
 
-        batches = []
-        for batch in self.full_train_dataloader:
-            batches.append(tuple(x.to(self.device) for x in batch))
-        full_data = []
-        for i in range(len(batches[0])):
-            full_data.append(torch.cat([b[i] for b in batches], dim=0))
-        full_data = tuple(full_data)
-
+        vector_product = 0
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
-        self.ihvp_func = ihvp_cg(
-            partial(
-                self.task.get_loss_func(
-                    layer_name=self.layer_name,
-                    ckpt_idx=ckpt_idx,
+        for full_data_ in self.full_train_dataloader:
+            # move to device
+            full_data = tuple(data.to(self.device) for data in full_data_)
+            self.ihvp_func = ihvp_cg(
+                partial(
+                    self.task.get_loss_func(
+                        layer_name=self.layer_name,
+                        ckpt_idx=ckpt_idx,
+                    ),
+                    **{self.task.loss_func_data_key: full_data},
                 ),
-                **{self.task.loss_func_data_key: full_data},
-            ),
-            **self.transformation_kwargs,
-        )
-        vector_product = self.ihvp_func((model_params,), test_rep).detach()
-        return vector_product
+                **self.transformation_kwargs,
+            )
+            vector_product += self.ihvp_func((model_params,), test_rep).detach()
+        N = full_data[0].shape[0]
+        return vector_product / N
 
     def _compute_denom(
         self,
@@ -528,27 +522,21 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         """
         from dattri.func.hessian import ihvp_lissa
 
-        batches = []
-        for batch in self.full_train_dataloader:
-            batches.append(tuple(x.to(self.device) for x in batch))
-        full_data = []
-        for i in range(len(batches[0])):
-            full_data.append(torch.cat([b[i] for b in batches], dim=0))
-        full_data = tuple(full_data)
-        
+        vector_product = 0
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
-        self.ihvp_func = ihvp_lissa(
-            self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=ckpt_idx),
-            collate_fn=IFAttributorLiSSA.lissa_collate_fn,
-            **self.transformation_kwargs,
-        )
-
-        vector_product = self.ihvp_func(
-            (model_params, *full_data),
-            test_rep,
-            in_dims=(None,) + (0,) * len(full_data),
-        ).detach()
-        
+        for full_data_ in self.full_train_dataloader:
+            # move to device
+            full_data = tuple(data.to(self.device) for data in full_data_)
+            self.ihvp_func = ihvp_lissa(
+                self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=ckpt_idx),
+                collate_fn=IFAttributorLiSSA.lissa_collate_fn,
+                **self.transformation_kwargs,
+            )
+            vector_product += self.ihvp_func(
+                (model_params, *full_data),
+                test_rep,
+                in_dims=(None,) + (0,) * len(full_data),
+            ).detach()
         return vector_product
 
     @staticmethod
