@@ -124,6 +124,7 @@ def calculate_dvemb_score():
             #                            batch_data=(inputs, labels),
             #                            indices=indices,
             #                            learning_rate=optimizer.param_groups[0]['lr'])
+
             # optimizer.step()
             # =======================================================================================
 

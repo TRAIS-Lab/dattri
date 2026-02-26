@@ -299,5 +299,52 @@ class TestDVEmbAttributor:
         assert attributor_kron_proj.cached_gradients
 
 
+    def test_dvemb_context_matches_direct(self):
+        """Test that cache_gradients_context and cache_gradients produce identical scores.
+
+        Both APIs should yield the same data value embeddings and attribution scores
+        for the same batch data under kronecker factorization without projection,
+        since cache_gradients_context scales the backward-hook B tensor by batch size N
+        to match the sum-reduced loss used internally by cache_gradients.
+        """
+        attributor_direct = DVEmbAttributor(
+            task=self.task_eager,
+            factorization_type="kronecker",
+        )
+        attributor_context = DVEmbAttributor(
+            task=self.task_eager,
+            factorization_type="kronecker",
+        )
+
+        num_epochs = 2
+        learning_rate = 0.01
+        device = attributor_context.device
+
+        for epoch in range(num_epochs):
+            for i, (data, target) in enumerate(self.train_loader):
+                start_index = i * self.train_loader.batch_size
+                indices = torch.arange(start_index, start_index + len(data))
+
+                attributor_direct.cache_gradients(
+                    epoch, (data, target), indices, learning_rate,
+                )
+
+                with attributor_context.cache_gradients_context(
+                    epoch, indices, learning_rate,
+                ):
+                    attributor_context.model.zero_grad()
+                    outputs = attributor_context.model(data.to(device))
+                    loss = nn.functional.cross_entropy(outputs, target.to(device))
+                    loss.backward()
+
+        attributor_direct.cache(memory_saving=False)
+        attributor_context.cache(memory_saving=False)
+
+        scores_direct = attributor_direct.attribute(self.test_loader)
+        scores_context = attributor_context.attribute(self.test_loader)
+
+        assert torch.allclose(scores_direct, scores_context, rtol=1e-4, atol=1e-4)
+
+
 if __name__ == "__main__":
     pytest.main([__file__])

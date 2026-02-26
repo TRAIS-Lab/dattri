@@ -67,7 +67,3 @@ dist
 *.ubyte
 *.ubyte.gz
 *indices.txt
-
-
-benchmark_data/
-examples/dvemb/benchmark_data/

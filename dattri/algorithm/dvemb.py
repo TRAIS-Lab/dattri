@@ -154,6 +154,7 @@ class DVEmbAttributor:
         self.learning_rates: Dict[int, List[float]] = {}
         self.data_indices: Dict[int, List[Tensor]] = {}
         self.embeddings: Dict[int, Tensor] = {}
+        self._caching_method: Optional[str] = None
 
     def _setup_projectors(self, batch_size: int) -> None:
         """Sets up random projectors for each Linear layer based on the projection type.
@@ -269,6 +270,15 @@ class DVEmbAttributor:
                      in batch_data.
             learning_rate: The learning rate for this step.
         """
+        if self._caching_method == "context":
+            warnings.warn(
+                "Both cache_gradients() and cache_gradients_context() have been "
+                "called on the same attributor instance. Mixing these two APIs "
+                "will produce incorrect results. Use only one caching method.",
+                stacklevel=2,
+            )
+        self._caching_method = "direct"
+
         # Set up projectors if not already done
         if hasattr(self, "random_projectors") is False\
             and self.use_factorization and self.projection_dim is not None:
@@ -288,13 +298,52 @@ class DVEmbAttributor:
         indices: Tensor,
         learning_rate: float,
     ):
+        """Context manager for caching gradient factors during a training step.
+
+        This is an alternative to `cache_gradients()` for factorization mode only.
+        It hooks into the user's own training loop (forward + backward + optimizer
+        step) to capture gradient factors without an extra forward-backward pass.
+
+        Args:
+            epoch: The current epoch number.
+            indices: A tensor containing the original dataset indices for the
+                     samples in the current batch.
+            learning_rate: The learning rate used by the optimizer for this step.
+
+        Raises:
+            NotImplementedError: If `factorization_type` is "none". Use
+                `cache_gradients()` instead for non-factorization mode.
+
+        Example:
+            ```python
+            with attributor.cache_gradients_context(
+                epoch=epoch,
+                indices=indices,
+                learning_rate=optimizer.param_groups[0]['lr'],
+            ):
+                optimizer.zero_grad()
+                loss = criterion(model(inputs), labels)
+                loss.backward()
+                optimizer.step()
+            ```
+        """
         if not self.use_factorization:
             msg = (
                 "cache_gradients_context only supports factorization mode. "
                 "Please initialize DVEmbAttributor with factorization_type "
-                "set to 'kronecker' or 'elementwise'."
+                "set to 'kronecker' or 'elementwise', or use "
+                "cache_gradients() instead for non-factorization mode."
             )
             raise NotImplementedError(msg)
+
+        if self._caching_method == "direct":
+            warnings.warn(
+                "Both cache_gradients_context() and cache_gradients() have been "
+                "called on the same attributor instance. Mixing these two APIs "
+                "will produce incorrect results. Use only one caching method.",
+                stacklevel=2,
+            )
+        self._caching_method = "context"
 
         # Initialize epoch storage if needed
         if epoch not in self.cached_factors:
