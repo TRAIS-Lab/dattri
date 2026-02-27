@@ -200,7 +200,7 @@ class TestDVEmbAttributor:
         assert len(attributor.cached_factors[0][0]) == 1
 
     def _run_dvemb_context_simulation(self, attributor: DVEmbAttributor):
-        """A simulation runner using cache_gradients_context for factorized DVEmbAttributor.
+        """Run simulation using cache_gradients_context for factorized DVEmbAttributor.
 
         Inside the context block the test performs a standard forward/backward pass
         (mean cross-entropy loss), mirroring real training usage.  The context manager
@@ -268,13 +268,13 @@ class TestDVEmbAttributor:
             factorization_type="none",
         )
         dummy_indices = torch.arange(4)
-        with pytest.raises(NotImplementedError):
-            with attributor_no_fact.cache_gradients_context(
-                epoch=0,
-                indices=dummy_indices,
-                learning_rate=0.01,
-            ):
-                pass
+        ctx = attributor_no_fact.cache_gradients_context(
+            epoch=0,
+            indices=dummy_indices,
+            learning_rate=0.01,
+        )
+        with pytest.raises(NotImplementedError), ctx:
+            pass
 
         # Scenario 2: kronecker factorization without projection
         attributor_kron = DVEmbAttributor(
@@ -298,9 +298,8 @@ class TestDVEmbAttributor:
         assert attributor_kron_proj.random_projectors is not None
         assert attributor_kron_proj.cached_gradients
 
-
     def test_dvemb_context_matches_direct(self):
-        """Test that cache_gradients_context and cache_gradients produce identical scores.
+        """Verify cache_gradients_context and cache_gradients produce identical scores.
 
         Both APIs should yield the same data value embeddings and attribution scores
         for the same batch data under kronecker factorization without projection,

@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
     from typing import Dict, List, Optional, Tuple
 
     from torch import Tensor
@@ -286,7 +286,7 @@ class DVEmbAttributor:
 
         if self.use_factorization:
             self._cache_factored_gradients(
-                epoch, batch_data, indices, learning_rate
+                epoch, batch_data, indices, learning_rate,
             )
         else:
             self._cache_full_gradients(epoch, batch_data, indices, learning_rate)
@@ -297,7 +297,7 @@ class DVEmbAttributor:
         epoch: int,
         indices: Tensor,
         learning_rate: float,
-    ):
+    ) -> Generator[None, None, None]:
         """Context manager for caching gradient factors during a training step.
 
         This is an alternative to `cache_gradients()` for factorization mode only.
@@ -377,7 +377,7 @@ class DVEmbAttributor:
             # We need B_sum = dL_sum/dy = N * B where L_sum = sum(per_sample_losses).
             for cache in caches:
                 if cache["B"] is not None:
-                    cache["B"] = cache["B"] * len(indices)
+                    cache["B"] *= len(indices)
 
             # Cache the gradient factors (with projection if configured)
             if self.projection_dim is None:
@@ -456,8 +456,6 @@ class DVEmbAttributor:
         self.learning_rates[epoch].append(learning_rate / len(indices))
         self.data_indices[epoch].append(indices.cpu())
 
-
-
     def _calculate_gradient_factors(
         self,
         batch_data: tuple[Tensor, ...],
@@ -473,7 +471,8 @@ class DVEmbAttributor:
         self.model.zero_grad()
         handles, caches = self._register_factorization_hooks()
 
-        batch_data_tensors = [d.to(self.device) for d in batch_data] # strict requirements on batch_data
+        # Strict requirements on batch_data
+        batch_data_tensors = [d.to(self.device) for d in batch_data]
         loss = self.task.original_loss_func(self.model,
                                             batch_data_tensors,
                                             self.device)
@@ -735,7 +734,8 @@ class DVEmbAttributor:
 
         # Calculate data embeddings for each epoch in reverse order
         sorted_epochs = sorted(self.learning_rates.keys(), reverse=True)
-        for epoch in tqdm(sorted_epochs, desc="Computing DVEmb per Epoch"): # going through epochs in reverse order
+        # Going through epochs in reverse order
+        for epoch in tqdm(sorted_epochs, desc="Computing DVEmb per Epoch"):
             epoch_embeddings = torch.zeros(
                 (num_total_samples, grad_dim),
                 device=self.device,
