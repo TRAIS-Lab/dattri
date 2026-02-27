@@ -310,6 +310,10 @@ class DVEmbAttributor:
                      samples in the current batch.
             learning_rate: The learning rate used by the optimizer for this step.
 
+        Yields:
+            None. Control is yielded to the caller to execute their training step
+            (forward pass, backward pass, and optimizer step).
+
         Raises:
             NotImplementedError: If `factorization_type` is "none". Use
                 `cache_gradients()` instead for non-factorization mode.
