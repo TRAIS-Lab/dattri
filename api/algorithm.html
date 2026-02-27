@@ -1881,12 +1881,27 @@ The dataloader should not be shuffled.</p>
 <dl class="field-list simple">
 <dt class="field-odd">Parameters<span class="colon">:</span></dt>
 <dd class="field-odd"><ul class="simple">
-<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – The task to be attributed. Please refer to the
-<cite>AttributionTask</cite> for more details.</p></li>
+<li><p><strong>task</strong> (<a class="reference internal" href="task.html#dattri.task.AttributionTask" title="dattri.task.AttributionTask"><em>AttributionTask</em></a>) – <p>The task to be attributed. Please refer to the
+<cite>AttributionTask</cite> for more details. For TRAK, the <cite>loss_func</cite>
+in the classification task should typically be the log-odds ratio.
+A typical example of such a function <cite>f</cite> is as follows:
+<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+def f(params, image_label_pair):</p>
+<blockquote>
+<div><p>image, label = image_label_pair
+image_t = image.unsqueeze(0)
+label_t = label.unsqueeze(0)
+loss = nn.CrossEntropyLoss()
+yhat = torch.func.functional_call(model, params, image_t)
+logp = -loss(yhat, label_t)
+return logp - torch.log(1 - torch.exp(logp))</p>
+</div></blockquote>
+<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+</p></li>
 <li><p><strong>correct_probability_func</strong> (<em>Callable</em>) – <p>The function to calculate the
 probability to correctly predict the label of the input data.
 A typical example is as follows:
-<a href="#id1"><span class="problematic" id="id2">``</span></a><a href="#id3"><span class="problematic" id="id4">`</span></a>python
+<a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
 &#64;flatten_func(model)
 def m(params, image_label_pair):</p>
 <blockquote>
@@ -1898,7 +1913,7 @@ yhat = torch.func.functional_call(model, params, image_t)
 p = torch.exp(-loss(yhat, label_t))
 return p</p>
 </div></blockquote>
-<p><a href="#id5"><span class="problematic" id="id6">``</span></a><a href="#id7"><span class="problematic" id="id8">`</span></a></p>
+<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a></p>
 </p></li>
 <li><p><strong>projector_kwargs</strong> (<em>Optional</em><em>[</em><em>Dict</em><em>[</em><em>str</em><em>, </em><em>Any</em><em>]</em><em>]</em><em>, </em><em>optional</em>) – The kwargs for the
 random projection. Defaults to None.</p></li>
@@ -2097,14 +2112,14 @@ used for distance calculation in KNN. The function
 can be quite flexible in terms of what is calculated,
 but it should take two batches of data as input.
 A typical example is as follows:
-<a href="#id9"><span class="problematic" id="id10">``</span></a><a href="#id11"><span class="problematic" id="id12">`</span></a>python
+<a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
 def f(batch_x, batch_y):</p>
 <blockquote>
 <div><p>coord1 = batch_x[0]
 coord2 = batch_y[0]
 return torch.cdist(coord1, coord2)</p>
 </div></blockquote>
-<p><a href="#id13"><span class="problematic" id="id14">``</span></a><a href="#id15"><span class="problematic" id="id16">`</span></a>.
+<p><a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a>.
 If not provided, a default Euclidean distance function
 will be used.</p>
 </p></li>
@@ -2393,7 +2408,7 @@ The loss function of the task must follow specific formats:</p>
 <li><p>If <cite>factorization_type</cite> is “none”, the loss function should follow
 the signature of the following example:</p>
 <blockquote>
-<div><p><a href="#id17"><span class="problematic" id="id18">``</span></a><a href="#id19"><span class="problematic" id="id20">`</span></a>python
+<div><p><a href="#id25"><span class="problematic" id="id26">``</span></a><a href="#id27"><span class="problematic" id="id28">`</span></a>python
 def f(params, data):</p>
 <blockquote>
 <div><p>image, label = data
@@ -2401,13 +2416,13 @@ loss = nn.CrossEntropyLoss()
 yhat = torch.func.functional_call(model, params, image)
 return loss(yhat, label)</p>
 </div></blockquote>
-<p><a href="#id21"><span class="problematic" id="id22">``</span></a><a href="#id23"><span class="problematic" id="id24">`</span></a>.</p>
+<p><a href="#id29"><span class="problematic" id="id30">``</span></a><a href="#id31"><span class="problematic" id="id32">`</span></a>.</p>
 </div></blockquote>
 </li>
 <li><p>If <cite>factorization_type</cite> is not “none”, the loss function should
 follow the signature of the following example:</p>
 <blockquote>
-<div><p><a href="#id25"><span class="problematic" id="id26">``</span></a><a href="#id27"><span class="problematic" id="id28">`</span></a>python
+<div><p><a href="#id33"><span class="problematic" id="id34">``</span></a><a href="#id35"><span class="problematic" id="id36">`</span></a>python
 def f(model, data, device):</p>
 <blockquote>
 <div><p>image, label = data
@@ -2415,7 +2430,7 @@ loss = nn.CrossEntropyLoss()
 yhat = model(image.to(device))
 return loss(yhat, label.to(device))</p>
 </div></blockquote>
-<p><a href="#id29"><span class="problematic" id="id30">``</span></a><a href="#id31"><span class="problematic" id="id32">`</span></a>.</p>
+<p><a href="#id37"><span class="problematic" id="id38">``</span></a><a href="#id39"><span class="problematic" id="id40">`</span></a>.</p>
 </div></blockquote>
 </li>
 </ul>
