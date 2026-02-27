@@ -273,7 +273,7 @@ def setup_model_compressors(  # noqa: PLR0912, PLR0914, PLR0915 - Complex setup 
             inputs = {k: v.to(device) for k, v in sample_inputs.items()}
             model(**inputs)
         else:
-            inputs = sample_inputs[0].to(device)
+            inputs = sample_inputs.to(device)
             model(inputs)
 
     # First, capture inputs and outputs for each layer
