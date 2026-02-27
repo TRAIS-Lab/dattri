@@ -2530,6 +2530,49 @@ in batch_data.</p></li>
 </dd></dl>
 
 <dl class="py method">
+<dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor.cache_gradients_context">
+<span class="sig-name descname"><span class="pre">cache_gradients_context</span></span><span class="sig-paren">(</span><em class="sig-param"><span class="n"><span class="pre">epoch</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">int</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">indices</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">Tensor</span></span></em>, <em class="sig-param"><span class="n"><span class="pre">learning_rate</span></span><span class="p"><span class="pre">:</span></span><span class="w"> </span><span class="n"><span class="pre">float</span></span></em><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">Generator</span><span class="p"><span class="pre">[</span></span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">,</span></span><span class="w"> </span><span class="pre">None</span><span class="p"><span class="pre">]</span></span></span></span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache_gradients_context" title="Link to this definition">¶</a></dt>
+<dd><p>Context manager for caching gradient factors during a training step.</p>
+<p>This is an alternative to <cite>cache_gradients()</cite> for factorization mode only.
+It hooks into the user’s own training loop (forward + backward + optimizer
+step) to capture gradient factors without an extra forward-backward pass.</p>
+<dl class="field-list simple">
+<dt class="field-odd">Parameters<span class="colon">:</span></dt>
+<dd class="field-odd"><ul class="simple">
+<li><p><strong>epoch</strong> – The current epoch number.</p></li>
+<li><p><strong>indices</strong> – A tensor containing the original dataset indices for the
+samples in the current batch.</p></li>
+<li><p><strong>learning_rate</strong> – The learning rate used by the optimizer for this step.</p></li>
+</ul>
+</dd>
+<dt class="field-even">Yields<span class="colon">:</span></dt>
+<dd class="field-even"><p>None. Control is yielded to the caller to execute their training step
+(forward pass, backward pass, and optimizer step).</p>
+</dd>
+<dt class="field-odd">Raises<span class="colon">:</span></dt>
+<dd class="field-odd"><p><strong>NotImplementedError</strong> – If <cite>factorization_type</cite> is “none”. Use
+    <cite>cache_gradients()</cite> instead for non-factorization mode.</p>
+</dd>
+</dl>
+<p class="rubric">Example</p>
+<p><a href="#id41"><span class="problematic" id="id42">``</span></a><a href="#id43"><span class="problematic" id="id44">`</span></a>python
+with attributor.cache_gradients_context(</p>
+<blockquote>
+<div><p>epoch=epoch,
+indices=indices,
+learning_rate=optimizer.param_groups[0][‘lr’],</p>
+</div></blockquote>
+<dl class="simple">
+<dt>):</dt><dd><p>optimizer.zero_grad()
+loss = criterion(model(inputs), labels)
+loss.backward()
+optimizer.step()</p>
+</dd>
+</dl>
+<p><a href="#id45"><span class="problematic" id="id46">``</span></a><a href="#id47"><span class="problematic" id="id48">`</span></a></p>
+</dd></dl>
+
+<dl class="py method">
 <dt class="sig sig-object py" id="dattri.algorithm.dvemb.DVEmbAttributor.clear_cache">
 <span class="sig-name descname"><span class="pre">clear_cache</span></span><span class="sig-paren">(</span><span class="sig-paren">)</span> <span class="sig-return"><span class="sig-return-icon">&#x2192;</span> <span class="sig-return-typehint"><span class="pre">None</span></span></span><a class="headerlink" href="#dattri.algorithm.dvemb.DVEmbAttributor.clear_cache" title="Link to this definition">¶</a></dt>
 <dd><p>Clears cached gradients and factors to free memory.</p>
@@ -2710,6 +2753,7 @@ in batch_data.</p></li>
 <li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.attribute"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.attribute()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.cache()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache_gradients"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.cache_gradients()</span></code></a></li>
+<li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.cache_gradients_context"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.cache_gradients_context()</span></code></a></li>
 <li><a class="reference internal" href="#dattri.algorithm.dvemb.DVEmbAttributor.clear_cache"><code class="docutils literal notranslate"><span class="pre">DVEmbAttributor.clear_cache()</span></code></a></li>
 </ul>
 </li>
