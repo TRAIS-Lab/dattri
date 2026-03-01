@@ -154,7 +154,7 @@ if __name__ == "__main__":
             device=args.device,
         )
         with torch.no_grad():
-            score = attributor.attribute(train_loader, val_loader)
+            score = attributor.attribute(val_loader, train_loader)
 
     best_result = 0
     best_config = None

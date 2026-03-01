@@ -757,7 +757,7 @@ def main():
             attributor.cache(train_dataloader)
             score = attributor.attribute(eval_dataloader)
         else:
-            score = attributor.attribute(train_dataloader, eval_dataloader)
+            score = attributor.attribute(eval_dataloader, train_dataloader)
 
     torch.save(score, "score_TRAK.pt")
     logger.info("Attribution scores saved to score_TRAK.pt")

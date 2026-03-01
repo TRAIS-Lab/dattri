@@ -73,7 +73,7 @@ class TestTracInAttributor:
             "device": pytest_device,
         }
 
-        # test with projector list
+        # test with projector list, without cache
         attributor = TracInAttributor(
             task=task,
             weight_list=torch.ones(len(checkpoint_list)),
@@ -83,11 +83,23 @@ class TestTracInAttributor:
         )
 
         # Original test
-        score = attributor.attribute(train_loader, test_loader)
+        score = attributor.attribute(test_loader, train_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
             test_loader.dataset,
         )
+
+        # test with projector list, with cache
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            projector_kwargs=projector_kwargs,
+            device=torch.device(pytest_device),
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2)
 
         shutil.rmtree(path)
 
@@ -135,18 +147,31 @@ class TestTracInAttributor:
         )
 
         pytest_device = "cpu"
-        # test with no projector list
+        # test with no projector list, without cache
         attributor = TracInAttributor(
             task=task,
             weight_list=torch.ones(len(checkpoint_list)),
             normalized_grad=True,
             device=torch.device(pytest_device),
         )
-        score = attributor.attribute(train_loader, test_loader)
+        score = attributor.attribute(test_loader, train_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
             test_loader.dataset,
         )
+
+        # test with no projector, with cache
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        score3 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2)
+        assert torch.allclose(score2, score3)
 
         shutil.rmtree(path)
 
@@ -349,7 +374,7 @@ class TestTracInAttributor:
             device=torch.device(pytest_device),
         )
 
-        score = attributor.attribute(train_loader, test_loader)
+        score = attributor.attribute(test_loader, train_loader)
 
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(

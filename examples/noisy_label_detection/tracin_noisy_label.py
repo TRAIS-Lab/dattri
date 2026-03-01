@@ -64,7 +64,7 @@ if __name__ == "__main__":
     )
 
     with torch.no_grad():
-        score = attributor.attribute(train_loader, test_loader).diag()
+        score = attributor.attribute(test_loader, train_loader).diag()
 
     _, indices = torch.sort(-score)
     cr = 0
