@@ -19,7 +19,7 @@ from dattri.task import AttributionTask
 class TestTracInAttributor:
     """Test for TracIn."""
 
-    def test_tracin_proj(self):
+    def test_tracin_proj(self):  # noqa: PLR0914
         """Test for TracIn with projectors."""
         train_dataset = TensorDataset(
             torch.randn(20, 1, 28, 28),
@@ -73,7 +73,7 @@ class TestTracInAttributor:
             "device": pytest_device,
         }
 
-        # test with projector list
+        # test with projector list, without cache
         attributor = TracInAttributor(
             task=task,
             weight_list=torch.ones(len(checkpoint_list)),
@@ -83,15 +83,58 @@ class TestTracInAttributor:
         )
 
         # Original test
-        score = attributor.attribute(train_loader, test_loader)
+        score = attributor.attribute(test_loader, train_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
             test_loader.dataset,
         )
 
-        shutil.rmtree(path)
+        # test with projector list, with cache
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            projector_kwargs=projector_kwargs,
+            device=torch.device(pytest_device),
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2, rtol=1e-03, atol=1e-05)
 
-    def test_tracin(self):
+        # test with projector list, with offload(cpu)
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            projector_kwargs=projector_kwargs,
+            device=torch.device(pytest_device),
+            offload="cpu",
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2, rtol=1e-03, atol=1e-05)
+
+        # test with projector, with offload(disk)
+        cache_path = Path("./cache")
+        if not cache_path.exists():
+            cache_path.mkdir(parents=True)
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            projector_kwargs=projector_kwargs,
+            device=torch.device(pytest_device),
+            offload="disk",
+            cache_dir=str(cache_path),
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2, rtol=1e-03, atol=1e-05)
+
+        shutil.rmtree(path)
+        shutil.rmtree(cache_path)
+
+    def test_tracin(self):  # noqa: PLR0914
         """Test for TracIn without projectors."""
         train_dataset = TensorDataset(
             torch.randn(20, 1, 28, 28),
@@ -135,20 +178,66 @@ class TestTracInAttributor:
         )
 
         pytest_device = "cpu"
-        # test with no projector list
+        # test with no projector list, without cache
         attributor = TracInAttributor(
             task=task,
             weight_list=torch.ones(len(checkpoint_list)),
             normalized_grad=True,
             device=torch.device(pytest_device),
         )
-        score = attributor.attribute(train_loader, test_loader)
+        score = attributor.attribute(test_loader, train_loader)
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
             test_loader.dataset,
         )
 
+        # test with no projector, with cache
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        score3 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2, rtol=1e-03, atol=1e-05)
+        assert torch.allclose(score2, score3)
+
+        # test with no projector, with offload(cpu)
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+            offload="cpu",
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        score3 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2, rtol=1e-03, atol=1e-05)
+        assert torch.allclose(score2, score3)
+
+        # test with no projector, with offload(disk)
+        cache_path = Path("./cache")
+        if not cache_path.exists():
+            cache_path.mkdir(parents=True)
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=True,
+            device=torch.device(pytest_device),
+            offload="disk",
+            cache_dir=str(cache_path),
+        )
+        attributor.cache(train_loader)
+        score2 = attributor.attribute(test_loader)
+        score3 = attributor.attribute(test_loader)
+        assert torch.allclose(score, score2, rtol=1e-03, atol=1e-05)
+        assert torch.allclose(score2, score3)
+
         shutil.rmtree(path)
+        shutil.rmtree(cache_path)
 
     def test_tracin_self_attribute(self):
         """Test for self_attribute in TracIn without projectors."""
@@ -349,7 +438,7 @@ class TestTracInAttributor:
             device=torch.device(pytest_device),
         )
 
-        score = attributor.attribute(train_loader, test_loader)
+        score = attributor.attribute(test_loader, train_loader)
 
         assert score.shape == (len(train_loader.dataset), len(test_loader.dataset))
         assert torch.count_nonzero(score) == len(train_loader.dataset) * len(
