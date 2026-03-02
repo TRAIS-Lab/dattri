@@ -190,14 +190,14 @@ class TracInAttributor(BaseAttributor):
                 test samples to calculate the influence. The dataloader should not
                 be shuffled.
 
+        Returns:
+            Tensor: The influence of the training set on the test set, with
+                the shape of (num_train_samples, num_test_samples).
+
         Raises:
             ValueError: The length of params_list and weight_list don't match.
             ValueError: If the train_dataloader is not None and the full training
                 dataloader is cached or no train_loader is provided in both cases.
-
-        Returns:
-            Tensor: The influence of the training set on the test set, with
-                the shape of (num_train_samples, num_test_samples).
         """
         _check_shuffle(test_dataloader)
         if train_dataloader is not None:
@@ -442,12 +442,12 @@ class TracInAttributor(BaseAttributor):
                 means that only a part of the training set's influence is calculated.
                 The dataloader should not be shuffled.
 
-        Raises:
-            ValueError: The length of params_list and weight_list don't match.
-
         Returns:
             Tensor: The influence of the training set on itself, with
                 the shape of (num_train_samples,).
+
+        Raises:
+            ValueError: The length of params_list and weight_list don't match.
         """
         test_dataloader = train_dataloader
         _check_shuffle(test_dataloader)
