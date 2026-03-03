@@ -9,10 +9,6 @@ from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.params.projection import LoGraProjectionParams
 from dattri.task import AttributionTask
 
-PROJ_DIM = 4096
-PROJ_DIM_CUSTOM = 1024
-PROJ_MAX_BATCH_SIZE = 64
-
 
 class TestLoGraAttributor:
     """Test suite for the LoGra attributor."""
@@ -59,30 +55,35 @@ class TestLoGraAttributor:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_params=LoGraProjectionParams(proj_dim=64),  # 8*8=64
+            proj_params=LoGraProjectionParams(proj_dim_per_layer=64),  # 8*8=64
             offload="cpu",
         )
 
     def test_project_initialization_proj_dim(self):
         """Test for LoGra attributor projection initialization."""
+        default_proj_dim_per_layer = 4096
+        custom_proj_dim_per_layer = 1024
         attributor1 = LoGraAttributor(
             task=self.task,
             hessian="Identity",
         )
-        assert attributor1.proj_params.proj_dim == PROJ_DIM
+        # Default proj_dim_per_layer is 4096
+        assert attributor1.proj_params.proj_dim_per_layer == default_proj_dim_per_layer
         attributor2 = LoGraAttributor(
             task=self.task,
             hessian="Identity",
-            proj_params=LoGraProjectionParams(proj_dim=PROJ_DIM_CUSTOM),
+            proj_params=LoGraProjectionParams(
+                proj_dim_per_layer=custom_proj_dim_per_layer,
+            ),
         )
-        assert attributor2.proj_params.proj_dim == PROJ_DIM_CUSTOM
+        assert attributor2.proj_params.proj_dim_per_layer == custom_proj_dim_per_layer
 
     def test_attribute(self) -> None:
         """Ensure attribution works with non-empty projectors."""
         self.attributor.cache(self.train_loader)
         assert self.attributor.compressors, "Compressors should be initialized"
         assert self.attributor.layer_dims == [
-            64,  # proj_dim = 64 (8*8)
+            64,  # proj_dim_per_layer = 64 (8*8)
         ] * len(
             self.attributor.layer_names,
         )

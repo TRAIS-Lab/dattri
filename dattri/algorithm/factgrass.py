@@ -34,7 +34,7 @@ class FactGraSSAttributor(BlockProjectedIFAttributor):
     using a two-stage compression pipeline.
 
     The first stage is factorized with a blowup factor:
-    - If proj_dim=4096 and blowup_factor=4:
+    - If proj_dim_per_layer=4096 and blowup_factor=4:
       - Intermediate dimension = 4096 * 4 = 16384
       - Per-component dimension = sqrt(16384) = 128
       - After second stage: final dimension = 4096
@@ -65,31 +65,31 @@ class FactGraSSAttributor(BlockProjectedIFAttributor):
             proj_params: Projection config (FactGrassProjectionParams).
             blowup_factor: Multiplier for intermediate dimension after
                 sparsification (default: 4). The intermediate dimension will be
-                proj_dim * blowup_factor, which must be a perfect square for
-                factorized projection. For example, proj_dim=4096 and
-                blowup_factor=4 gives intermediate_dim=16384, per-component
+                proj_dim_per_layer * blowup_factor, which must be a perfect square
+                for factorized projection. For example, proj_dim_per_layer=4096
+                and blowup_factor=4 gives intermediate_dim=16384, per-component
                 dim=128.
             offload: Memory management strategy ("none", "cpu", "disk")
             cache_dir: Directory for caching (required when offload="disk")
             chunk_size: Chunk size for processing in disk offload
 
         Raises:
-            ValueError: If intermediate_dim (proj_dim * blowup_factor) is not
-                a perfect square.
+            ValueError: If intermediate_dim (proj_dim_per_layer * blowup_factor)
+                is not a perfect square.
         """
         # Compute intermediate dimension after first stage
         self.proj_params = proj_params or FactGrassProjectionParams()
-        intermediate_dim = self.proj_params.proj_dim * blowup_factor
+        intermediate_dim = self.proj_params.proj_dim_per_layer * blowup_factor
 
         # Validate that intermediate_dim is a perfect square
         sqrt_intermediate_dim = int(math.sqrt(intermediate_dim))
         if sqrt_intermediate_dim * sqrt_intermediate_dim != intermediate_dim:
             msg = (
-                "intermediate_dim (proj_dim * blowup_factor) must be a "
+                "intermediate_dim (proj_dim_per_layer * blowup_factor) must be a "
                 "perfect square for factorized projection. Got "
-                f"proj_dim={self.proj_params.proj_dim}, blowup_factor={blowup_factor}, "
-                f"intermediate_dim={intermediate_dim}, but "
-                f"sqrt({intermediate_dim}) = {math.sqrt(intermediate_dim)} "
+                f"proj_dim_per_layer={self.proj_params.proj_dim_per_layer}, "
+                f"blowup_factor={blowup_factor}, intermediate_dim={intermediate_dim}, "
+                f"but sqrt({intermediate_dim}) = {math.sqrt(intermediate_dim)} "
                 "is not an integer."
             )
             raise ValueError(msg)
@@ -105,7 +105,7 @@ class FactGraSSAttributor(BlockProjectedIFAttributor):
         )
 
         projector_params = GeneralProjectionParams(
-            proj_dim=self.proj_params.proj_dim,
+            proj_dim=self.proj_params.proj_dim_per_layer,
             proj_max_batch_size=64,
             proj_type="sjlt" if device == "cuda" else "normal",
         )

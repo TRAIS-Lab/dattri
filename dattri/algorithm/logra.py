@@ -35,9 +35,9 @@ class LoGraAttributor(BlockProjectedIFAttributor):
 
     This is equivalent to the original LoGra method from the paper.
 
-    The projection is factorized: if you specify proj_dim=4096, each component
-    will have dimension sqrt(4096)=64, and the Kronecker product will have
-    dimension 4096.
+    The projection is factorized: if you specify proj_dim_per_layer=4096, each
+    component will have dimension sqrt(4096)=64, and the Kronecker product will
+    have dimension 4096.
     """
 
     def __init__(
@@ -62,31 +62,31 @@ class LoGraAttributor(BlockProjectedIFAttributor):
             damping: Damping factor for Hessian inverse (when hessian="eFIM")
             device: Device to run computations on
             proj_params: Projection config (LoGraProjectionParams). Defaults
-                to LoGraProjectionParams() with proj_dim=4096. proj_dim must
-                be a perfect square. The per-component dimension
-                will be √proj_dim. For example, proj_dim=4096 gives
-                per-component dim of 64.
+                to LoGraProjectionParams() with proj_dim_per_layer=4096.
+                proj_dim_per_layer must be a perfect square. The per-component
+                dimension will be √proj_dim_per_layer. For example,
+                proj_dim_per_layer=4096 gives per-component dim of 64.
             offload: Memory management strategy ("none", "cpu", "disk")
             cache_dir: Directory for caching (required when offload="disk")
             chunk_size: Chunk size for processing in disk offload
 
         Raises:
-            ValueError: If proj_dim is not a perfect square.
+            ValueError: If proj_dim_per_layer is not a perfect square.
         """
         self.proj_params = proj_params or LoGraProjectionParams()
-        # Validate that proj_dim is a perfect square
-        sqrt_proj_dim = int(math.sqrt(self.proj_params.proj_dim))
-        if sqrt_proj_dim * sqrt_proj_dim != self.proj_params.proj_dim:
+        # Validate that proj_dim_per_layer is a perfect square
+        dim_per_layer = self.proj_params.proj_dim_per_layer
+        sqrt_dim = int(math.sqrt(dim_per_layer))
+        if sqrt_dim * sqrt_dim != dim_per_layer:
             msg = (
-                "proj_dim must be a perfect square for factorized projection. "
-                f"Got {self.proj_params.proj_dim}, but sqrt"
-                f"({self.proj_params.proj_dim}) = "
-                f"{math.sqrt(self.proj_params.proj_dim)} is not an integer."
+                "proj_dim_per_layer must be a perfect square for factorized "
+                f"projection. Got {dim_per_layer}, but sqrt({dim_per_layer}) = "
+                f"{math.sqrt(dim_per_layer)} is not an integer."
             )
             raise ValueError(msg)
 
         # Compute per-component dimension
-        per_component_dim = sqrt_proj_dim
+        per_component_dim = sqrt_dim
 
         # Set LoGra-specific configuration
         sparsifier_params = GeneralProjectionParams(

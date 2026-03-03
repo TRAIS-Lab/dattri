@@ -66,8 +66,9 @@ class DVEmbAttributor:
                             yhat = model(image.to(device))
                             return loss(yhat, label.to(device))
                         ```.
-            proj_params: Projection config. If None, no projection (proj_dim=None).
-                Use DVEmbProjectionParams(proj_dim=...) for projection.
+            proj_params: Projection config. If None, no projection
+                (proj_dim_per_layer=None). Use DVEmbProjectionParams(
+                proj_dim_per_layer=...) for projection.
             factorization_type: Type of gradient factorization to use. Options are
                                 "none" (default),
                                 "kronecker" (same as in the paper),
@@ -91,10 +92,10 @@ class DVEmbAttributor:
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
         self.proj_params = proj_params or DVEmbProjectionParams(
-            proj_dim=None,
+            proj_dim_per_layer=None,
             proj_max_batch_size=64,
         )
-        self.projection_dim = self.proj_params.proj_dim
+        self.projection_dim = self.proj_params.proj_dim_per_layer
 
         if layer_names is None:
             self.layer_names = None
@@ -131,15 +132,12 @@ class DVEmbAttributor:
                 )
             elif self.factorization_type == "kronecker":
                 self.projection_dim = int(
-                    math.sqrt(self.projection_dim / len(self._linear_layers)),
+                    math.sqrt(self.projection_dim),
                 )
                 self._params_dim = (
                     len(self._linear_layers) * self.projection_dim * self.projection_dim
                 )
             elif self.factorization_type == "elementwise":
-                self.projection_dim = int(
-                    self.projection_dim / len(self._linear_layers),
-                )
                 self._params_dim = len(self._linear_layers) * self.projection_dim
             else:
                 msg = f"Unknown factorization type: {self.factorization_type}"

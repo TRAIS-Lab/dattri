@@ -13,9 +13,6 @@ from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.params.projection import DVEmbProjectionParams
 from dattri.task import AttributionTask
 
-PROJ_DIM = 1024
-PROJ_MAX_BATCH_SIZE = 64
-
 
 class TestDVEmbAttributor:
     """Test suite for the DVEmb attributor."""
@@ -63,19 +60,24 @@ class TestDVEmbAttributor:
 
     def test_project_initialization_proj_dim(self):
         """Test for DVEmb attributor projection initialization."""
+        proj_dim_per_layer = 1024
+        proj_max_batch_size = 64
         attributor = DVEmbAttributor(
             task=self.task,
             factorization_type="none",
         )
-        assert attributor.proj_params.proj_dim is None
-        assert attributor.proj_params.proj_max_batch_size == PROJ_MAX_BATCH_SIZE
+        assert attributor.proj_params.proj_dim_per_layer is None
+        assert attributor.proj_params.proj_max_batch_size == proj_max_batch_size
         attributor = DVEmbAttributor(
             task=self.task,
             factorization_type="none",
-            proj_params=DVEmbProjectionParams(proj_dim=PROJ_DIM),
+            proj_params=DVEmbProjectionParams(
+                proj_dim_per_layer=proj_dim_per_layer,
+                proj_max_batch_size=proj_max_batch_size,
+            ),
         )
-        assert attributor.proj_params.proj_dim == PROJ_DIM
-        assert attributor.proj_params.proj_max_batch_size == PROJ_MAX_BATCH_SIZE
+        assert attributor.proj_params.proj_dim_per_layer == proj_dim_per_layer
+        assert attributor.proj_params.proj_max_batch_size == proj_max_batch_size
 
     def _run_dvemb_simulation(self, attributor: DVEmbAttributor):
         """A generic simulation runner for any configured DVEmbAttributor."""
@@ -157,7 +159,7 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task,
-            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim),
             factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
@@ -175,26 +177,26 @@ class TestDVEmbAttributor:
 
     def test_dvemb_kronecker_with_projection(self):
         """Test DVEmb with Kronecker factorization and projection."""
-        proj_dim = 16
+        proj_dim_per_layer = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
-            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim_per_layer),
             factorization_type="kronecker",
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
         assert attributor.random_projectors is not None
 
-        num_layers = len(attributor._linear_layers)
-        expected_proj_dim = int(math.sqrt(proj_dim / num_layers))
+        # For kronecker, projection_dim is per-factor: sqrt(proj_dim_per_layer)
+        expected_proj_dim = int(math.sqrt(proj_dim_per_layer))
         assert attributor.projection_dim == expected_proj_dim
 
     def test_dvemb_elementwise_with_projection(self):
         """Test DVEmb with elementwise factorization and projection."""
-        proj_dim = 16
+        proj_dim_per_layer = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
-            proj_params=DVEmbProjectionParams(proj_dim=proj_dim),
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim_per_layer),
             factorization_type="elementwise",
         )
         self._run_dvemb_simulation(attributor)

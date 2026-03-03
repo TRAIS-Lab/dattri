@@ -8,12 +8,11 @@ import torch
 from pydantic import BaseModel, ConfigDict, field_validator
 
 
-class GeneralProjectionParams(BaseModel):
-    """General projection params used by LoGra, FactGraSS, TracIn."""
+class BaseProjectionParams(BaseModel):
+    """Base projection params (no proj_dim)."""
 
     model_config = ConfigDict(arbitrary_types_allowed=True)
 
-    proj_dim: int
     proj_max_batch_size: int = 64
     proj_seed: int = 0
     proj_type: Literal[
@@ -26,19 +25,25 @@ class GeneralProjectionParams(BaseModel):
     ] = "normal"
 
 
-class LoGraProjectionParams(GeneralProjectionParams):
+class GeneralProjectionParams(BaseProjectionParams):
+    """General projection params used by TracIn, TRAK, RandomProjectionParams."""
+
+    proj_dim: int
+
+
+class LoGraProjectionParams(BaseProjectionParams):
     """Projection params for LoGra attributor."""
 
-    proj_dim: int = 4096
+    proj_dim_per_layer: int = 4096
 
 
-class FactGrassProjectionParams(GeneralProjectionParams):
+class FactGrassProjectionParams(BaseProjectionParams):
     """Projection params for FactGraSS attributor."""
 
-    proj_dim: int = 4096
+    proj_dim_per_layer: int = 4096
 
 
-class TracInProjectionParams(GeneralProjectionParams):
+class TracInProjectionParams(BaseProjectionParams):
     """Projection params for TracIn attributor."""
 
     proj_dim: int = 512
@@ -52,10 +57,10 @@ class TRAKProjectionParams(GeneralProjectionParams):
     proj_max_batch_size: int = 32
 
 
-class DVEmbProjectionParams(GeneralProjectionParams):
-    """Projection params for DVEmb; proj_dim can be None for no projection."""
+class DVEmbProjectionParams(BaseProjectionParams):
+    """Projection params for DVEmb; proj_dim_per_layer can be None for no projection."""
 
-    proj_dim: Optional[int] = None
+    proj_dim_per_layer: Optional[int] = None
     proj_type: Literal[
         "identity",
         "normal",

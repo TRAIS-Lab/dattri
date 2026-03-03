@@ -93,7 +93,7 @@ class BlockProjectedIFAttributor(BaseAttributor):
         self.hessian = hessian
         self.damping = damping
         self.sparsifier_params = sparsifier_params or GeneralProjectionParams(
-            proj_dim=64,
+            proj_dim=32,
             proj_max_batch_size=64,
             proj_type="normal",
         )

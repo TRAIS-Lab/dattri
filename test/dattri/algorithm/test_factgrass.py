@@ -10,10 +10,6 @@ from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.params.projection import FactGrassProjectionParams
 from dattri.task import AttributionTask
 
-PROJ_DIM = 4096
-PROJ_DIM_CUSTOM = 1024
-PROJ_MAX_BATCH_SIZE = 64
-
 
 class TestFactGraSSAttributor:
     """Test suite for the FactGraSS attributor."""
@@ -56,36 +52,40 @@ class TestFactGraSSAttributor:
             loss_func=f,
             checkpoints=model.state_dict(),
         )
-        # proj_dim=64, blowup_factor=4 -> intermediate_dim=256 (16*16)
+        # proj_dim_per_layer=64, blowup_factor=4 -> intermediate_dim=256 (16*16)
         self.attributor = FactGraSSAttributor(
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_params=FactGrassProjectionParams(proj_dim=64),
+            proj_params=FactGrassProjectionParams(proj_dim_per_layer=64),
             blowup_factor=4,
             offload="cpu",
         )
 
     def test_project_initialization_proj_dim(self):
         """Test for FactGraSS attributor projection initialization."""
+        default_proj_dim_per_layer = 4096
+        custom_proj_dim_per_layer = 1024
         attributor1 = FactGraSSAttributor(
             task=self.task,
             hessian="Identity",
         )
-        assert attributor1.proj_params.proj_dim == PROJ_DIM
+        assert attributor1.proj_params.proj_dim_per_layer == default_proj_dim_per_layer
         attributor2 = FactGraSSAttributor(
             task=self.task,
             hessian="Identity",
-            proj_params=FactGrassProjectionParams(proj_dim=PROJ_DIM_CUSTOM),
+            proj_params=FactGrassProjectionParams(
+                proj_dim_per_layer=custom_proj_dim_per_layer,
+            ),
         )
-        assert attributor2.proj_params.proj_dim == PROJ_DIM_CUSTOM
+        assert attributor2.proj_params.proj_dim_per_layer == custom_proj_dim_per_layer
 
     def test_attribute(self) -> None:
         """Ensure attribution works with two-stage projection."""
         self.attributor.cache(self.train_loader)
         assert self.attributor.compressors, "Compressors should be initialized"
         assert self.attributor.layer_dims == [
-            64,  # final proj_dim after second stage
+            64,  # final proj_dim_per_layer after second stage
         ] * len(
             self.attributor.layer_names,
         )
@@ -110,7 +110,8 @@ class TestFactGraSSAttributor:
 
     def test_invalid_dimensions(self) -> None:
         """Verify ValueError is raised when intermediate_dim is not a perfect square."""
-        # proj_dim=100, blowup_factor=3 -> intermediate_dim=300 (not a perfect square)
+        # proj_dim_per_layer=100, blowup_factor=3 -> 100 * 3 = 300
+        # intermediate_dim=300 (not a perfect square)
         with pytest.raises(
             ValueError,
             match=r"intermediate_dim .* must be a perfect square",
@@ -119,7 +120,7 @@ class TestFactGraSSAttributor:
                 task=self.task,
                 device="cpu",
                 hessian="Identity",
-                proj_params=FactGrassProjectionParams(proj_dim=100),
+                proj_params=FactGrassProjectionParams(proj_dim_per_layer=100),
                 blowup_factor=3,  # 100 * 3 = 300, sqrt(300) ≈ 17.32
                 offload="cpu",
             )
@@ -127,36 +128,36 @@ class TestFactGraSSAttributor:
     def test_valid_dimension_combinations(self) -> None:
         """Test that valid dimension combinations work correctly."""
         # Test case 1
-        # proj_dim=4096, blowup_factor=4 -> intermediate_dim=16384 (128*128)
+        # proj_dim_per_layer=4096, blowup_factor=4 -> intermediate_dim=16384 (128*128)
         attributor = FactGraSSAttributor(
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_params=FactGrassProjectionParams(proj_dim=4096),
+            proj_params=FactGrassProjectionParams(proj_dim_per_layer=4096),
             blowup_factor=4,
             offload="cpu",
         )
         assert attributor is not None
 
         # Test case 2
-        # proj_dim=16, blowup_factor=1 -> intermediate_dim=16 (4*4)
+        # proj_dim_per_layer=16, blowup_factor=1 -> intermediate_dim=16 (4*4)
         attributor = FactGraSSAttributor(
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_params=FactGrassProjectionParams(proj_dim=16),
+            proj_params=FactGrassProjectionParams(proj_dim_per_layer=16),
             blowup_factor=1,
             offload="cpu",
         )
         assert attributor is not None
 
         # Test case 3
-        # proj_dim=36, blowup_factor=9 -> intermediate_dim=324 (18*18)
+        # proj_dim_per_layer=36, blowup_factor=9 -> intermediate_dim=324 (18*18)
         attributor = FactGraSSAttributor(
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_params=FactGrassProjectionParams(proj_dim=36),
+            proj_params=FactGrassProjectionParams(proj_dim_per_layer=36),
             blowup_factor=9,
             offload="cpu",
         )
