@@ -15,7 +15,7 @@ from dattri.task import AttributionTask
 class TestTRAKDict:
     """Test for TRAK with dict-based data."""
 
-    def test_trak_dict(self):
+    def test_trak_dict(self):  # noqa: PLR0914
         """Test for TRAK with dict-based data."""
         images = torch.randn(10, 1, 28, 28)
         labels = torch.randint(0, 10, (10,))
