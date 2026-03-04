@@ -59,4 +59,3 @@ class TestInfluenceFunctionDict:
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
-        
