@@ -15,7 +15,7 @@ from dattri.task import AttributionTask
 class TestTracInAttributorDict:
     """Test for TracIn with dict-based data."""
 
-    def test_tracin_dict(self):
+    def test_tracin_dict(self):  # noqa: PLR0914
         """Test for TracIn without projectors with dict-based data."""
         train_images = torch.randn(20, 1, 28, 28)
         train_labels = torch.randint(0, 10, (20,))
