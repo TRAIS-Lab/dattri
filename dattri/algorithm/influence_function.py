@@ -112,8 +112,8 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        N = full_data[0].shape[0]
-        return vector_product / N
+        n = full_data[0].shape[0]
+        return vector_product / n
 
     def _compute_denom(
         self,
@@ -239,8 +239,8 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        N = full_data[0].shape[0]
-        return vector_product / N
+        n = full_data[0].shape[0]
+        return vector_product / n
 
     def _compute_denom(
         self,
@@ -537,7 +537,8 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 test_rep,
                 in_dims=(None,) + (0,) * len(full_data),
             ).detach()
-        return vector_product
+        n = full_data[0].shape[0]
+        return vector_product / n
 
     @staticmethod
     def lissa_collate_fn(
@@ -607,7 +608,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         task: AttributionTask,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
-        regularization: float = 0.0,
+        regularization: float = 3e-4,
         fim_estimate_data_ratio: float = 1.0,
     ) -> None:
         """Initialize the DataInf inverse Hessian attributor.
