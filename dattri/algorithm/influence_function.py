@@ -112,7 +112,8 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        return vector_product
+        n = full_data[0].shape[0]
+        return vector_product / n
 
     def _compute_denom(
         self,
@@ -238,7 +239,8 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        return vector_product
+        n = full_data[0].shape[0]
+        return vector_product / n
 
     def _compute_denom(
         self,
@@ -535,7 +537,8 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 test_rep,
                 in_dims=(None,) + (0,) * len(full_data),
             ).detach()
-        return vector_product
+        n = full_data[0].shape[0]
+        return vector_product / n
 
     @staticmethod
     def lissa_collate_fn(
