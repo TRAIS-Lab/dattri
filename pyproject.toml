@@ -53,6 +53,7 @@ exclude = [
     "dattri/benchmark/models",
     "examples/",
     "experiments/",
+    "quickstart/",
 ]
 
 [tool.ruff.lint.per-file-ignores]
