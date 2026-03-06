@@ -608,7 +608,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         task: AttributionTask,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
-        regularization: float = 3e-4,
+        regularization: float = 0.0,
         fim_estimate_data_ratio: float = 1.0,
     ) -> None:
         """Initialize the DataInf inverse Hessian attributor.
