@@ -19,6 +19,7 @@ from dattri.algorithm.trak import TRAKAttributor
 from dattri.algorithm.rps import RPSAttributor
 from dattri.metric import lds, loo_corr
 from dattri.benchmark.load import load_benchmark
+from dattri.params.projection import TRAKProjectionParams
 from dattri.task import AttributionTask
 
 

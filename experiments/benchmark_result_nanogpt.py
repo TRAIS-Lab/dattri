@@ -10,6 +10,7 @@ from dattri.algorithm.trak import TRAKAttributor
 from dattri.benchmark.load import load_benchmark
 from dattri.benchmark.models.nanoGPT.model import GPT, GPTConfig
 from dattri.metric import lds
+from dattri.params.projection import TRAKProjectionParams
 from dattri.task import AttributionTask
 
 data_dir = Path(dattri.__file__).parent / Path(
