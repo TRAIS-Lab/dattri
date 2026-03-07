@@ -186,7 +186,7 @@ class TracInAttributor(BaseAttributor):
                         # define the projector for this batch of data
                         self.test_random_project = random_project(
                             grad_t,
-                            test_batch_data[0].shape[0],
+                            grad_t.shape[0],
                             **self.projector_kwargs,
                         )
 

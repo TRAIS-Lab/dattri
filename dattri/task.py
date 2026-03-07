@@ -2,11 +2,11 @@
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Union
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Dict, List, Optional, Tuple, Union
+    from typing import Dict, List, Optional, Tuple
 
 import inspect
 from pathlib import PosixPath
@@ -14,8 +14,14 @@ from pathlib import PosixPath
 import torch
 from torch import nn
 from torch.func import grad, vmap
+from torch.utils.data import DataLoader
 
-from dattri.func.utils import flatten_func, flatten_params, partial_param
+from dattri.func.utils import (
+    _unflatten_params,
+    flatten_func,
+    flatten_params,
+    partial_param,
+)
 
 
 def _default_checkpoint_load_func(
@@ -52,6 +58,7 @@ class AttributionTask:
         ],
         target_func: Optional[Callable] = None,
         checkpoints_load_func: Optional[Callable] = None,
+        group_target_func: bool = False,
     ) -> None:
         """Initialize the AttributionTask.
 
@@ -88,6 +95,11 @@ class AttributionTask:
                 in terms of what is calculated,
                 but it should take the parameters and the data as input. Other than
                 that, the forwarding of model should be in `torch.func` style.
+                When group_target_func=True, target_func is also used for group
+                attribution: it should take (params_dict, batches) where batches
+                is a list of batches from the group DataLoader, and return a scalar
+                (e.g. sum of per-batch losses). The gradient of this scalar w.r.t.
+                params is the test-side gradient for the group.
                 A typical example is as follows:
                 ```python
                 def f(params, data):
@@ -108,8 +120,13 @@ class AttributionTask:
                     model.eval()
                     return model
                 ```.
+            group_target_func (bool): If True, enable group attribution: when a
+                DataLoader is passed (e.g. via DataloaderGroup), target_func is
+                called with (params_dict, list_of_batches) and should return a
+                scalar. Default is False.
         """
         self.model = model
+        self.group_target_func = group_target_func
         if target_func is None:
             target_func = loss_func
 
@@ -256,6 +273,32 @@ class AttributionTask:
                 randomness="different",
             )
             self.grad_target_func_kwargs = grad_target_func_kwargs
+
+        base_grad_target = self.grad_target_func
+
+        if self.group_target_func:
+            model_ref = self.model
+
+            def wrapped(
+                parameters: torch.Tensor,
+                data: Union[DataLoader, object],
+            ) -> torch.Tensor:
+                if isinstance(data, DataLoader):
+                    # Pre-fetch batches outside grad to avoid tracing DataLoader/dataset
+                    # access (e.g. .numpy() in dataset __getitem__) which can raise
+                    # "Tensor that doesn't have storage" when run inside autograd.
+                    batches = list(data)
+
+                    def flat_group_target(flat_params: torch.Tensor) -> torch.Tensor:
+                        params_dict = _unflatten_params(flat_params, model_ref)
+                        return self.original_target_func(params_dict, batches)
+
+                    g = grad(flat_group_target)(parameters)
+                    return g.unsqueeze(0)
+                return base_grad_target(parameters, data)
+
+            return wrapped
+
         return self.grad_target_func
 
     def get_target_func(

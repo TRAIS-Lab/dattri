@@ -3,6 +3,7 @@
 import copy
 import shutil
 from pathlib import Path
+from typing import Iterator
 
 import torch
 from torch import nn
@@ -512,3 +513,133 @@ class TestTracInAttributor:
         assert torch.allclose(ckpt_grad_1[1], ckpt_grad_2[1])
 
         shutil.rmtree(path)
+
+    def test_tracin_dataloader(self):
+        """Verify TracIn Group Attribution correctness."""
+
+        class DataloaderGroup(DataLoader):
+            """Helper class to wrap a DataLoader for group attribution.
+
+            This wrapper presents the dataloader as a single item (length 1).
+            When iterated, it yields the original dataloader itself, allowing the
+            consumer to treat the entire dataset as one attribution target.
+            """
+
+            def __init__(self, original_test_dataloader: DataLoader) -> None:
+                """Initialize the DataloaderGroup.
+
+                Args:
+                    original_test_dataloader (DataLoader):
+                        The PyTorch dataloader for individual test data samples
+                """
+                super().__init__(
+                    torch.utils.data.TensorDataset(torch.zeros(1)),
+                )
+                self.original_test_dataloader = original_test_dataloader
+
+            def __iter__(self) -> Iterator[DataLoader]:
+                """Iterate over the group.
+
+                Yields:
+                    DataLoader: Yields the original dataloader as a single object.
+                """
+                yield self.original_test_dataloader
+
+            def __len__(self) -> int:
+                """Return the length of the group wrapper.
+
+                Returns:
+                    int: Always 1, as the whole dataset is treated as one group.
+                """
+                return 1
+
+        train_loader = DataLoader(
+            TensorDataset(
+                torch.randn(20, 1, 28, 28),
+                torch.randint(0, 10, (20,)),
+            ),
+            batch_size=4,
+            shuffle=False,
+        )
+        test_loader = DataLoader(
+            TensorDataset(
+                torch.randn(10, 1, 28, 28),
+                torch.randint(0, 10, (10,)),
+            ),
+            batch_size=2,
+            shuffle=False,
+        )
+
+        model = train_mnist_lr(train_loader)
+
+        # to simlulate multiple checkpoints
+        model_1 = train_mnist_lr(train_loader, epoch_num=1)
+        model_2 = train_mnist_lr(train_loader, epoch_num=2)
+        path = Path("./ckpts")
+        if not path.exists():
+            path.mkdir(parents=True)
+        torch.save(model_1.state_dict(), path / "model_1.pt")
+        torch.save(model_2.state_dict(), path / "model_2.pt")
+
+        checkpoint_list = ["ckpts/model_1.pt", "ckpts/model_2.pt"]
+
+        def f(params, image_label_pair):
+            image, label = image_label_pair
+            image_t = image.unsqueeze(0)
+            label_t = label.unsqueeze(0)
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image_t)
+            return loss(yhat, label_t)
+
+        def target_func(params, data):
+            if isinstance(data, list):
+                loss_fn = nn.CrossEntropyLoss(reduction="sum")
+                total = None
+                for image, label in data:
+                    yhat = torch.func.functional_call(model, params, (image,))
+                    loss = loss_fn(yhat, label.long())
+                    total = loss if total is None else total + loss
+                return total
+            return f(params, data)
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=checkpoint_list,
+            target_func=target_func,
+            group_target_func=True,
+        )
+
+        attributor = TracInAttributor(
+            task=task,
+            weight_list=torch.ones(len(checkpoint_list)),
+            normalized_grad=False,
+            projector_kwargs=None,
+            device="cpu",
+        )
+
+        score_group = attributor.attribute(
+            train_loader,
+            DataloaderGroup(test_loader),
+        )
+
+        assert score_group.shape == (20, 1), (
+            f"Expected shape (20, 1), got {score_group.shape}"
+        )
+
+        score_full = attributor.attribute(
+            train_loader,
+            test_loader,
+        )
+
+        score_full = score_full.sum(
+            dim=1,
+            keepdim=True,
+        )  # Make the shape (N, 1) for comparison
+
+        assert torch.allclose(score_group, score_full, rtol=1e-03, atol=1e-05), (
+            "Score does not match manual calculation."
+        )
+
+        if path.exists():
+            shutil.rmtree(path)
