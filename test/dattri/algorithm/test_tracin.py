@@ -591,20 +591,23 @@ class TestTracInAttributor:
             yhat = torch.func.functional_call(model, params, image_t)
             return loss(yhat, label_t)
 
-        def group_target_func(params, loader):
-            loss_fn = nn.CrossEntropyLoss(reduction="sum")
-            total = None
-            for image, label in loader:
-                yhat = torch.func.functional_call(model, params, (image,))
-                loss = loss_fn(yhat, label.long())
-                total = loss if total is None else total + loss
-            return total
+        def target_func(params, data):
+            if isinstance(data, list):
+                loss_fn = nn.CrossEntropyLoss(reduction="sum")
+                total = None
+                for image, label in data:
+                    yhat = torch.func.functional_call(model, params, (image,))
+                    loss = loss_fn(yhat, label.long())
+                    total = loss if total is None else total + loss
+                return total
+            return f(params, data)
 
         task = AttributionTask(
             loss_func=f,
             model=model,
             checkpoints=checkpoint_list,
-            group_target_func=group_target_func,
+            target_func=target_func,
+            group_target_func=True,
         )
 
         attributor = TracInAttributor(
