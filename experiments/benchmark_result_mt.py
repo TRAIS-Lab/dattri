@@ -8,6 +8,7 @@ from dattri.algorithm.tracin import TracInAttributor
 from dattri.algorithm.trak import TRAKAttributor
 from dattri.metric import lds
 from dattri.benchmark.load import load_benchmark
+from dattri.params.projection import TRAKProjectionParams, TracInProjectionParams
 from dattri.task import AttributionTask
 from dattri.benchmark.models.MusicTransformer.utilities.constants import TOKEN_PAD
 
@@ -96,16 +97,13 @@ if __name__ == "__main__":
             checkpoints=model_details["models_half"][0:ind]
         )
 
-        projector_kwargs = {
-            "proj_dim": 2048,
-            "device": args.device,
-        }
+        proj_params = TRAKProjectionParams(proj_dim=2048)
 
         attributor = TRAKAttributor(
             task=task,
             correct_probability_func=correctness_p,
             device=args.device,
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
 
         with torch.no_grad():
@@ -121,7 +119,7 @@ if __name__ == "__main__":
         if args.method == "TracIn":
             ensemble = 10
 
-        projector_kwargs = {}
+        proj_params = TracInProjectionParams()
 
         def loss_tracin(params, data_target_pair):
             x, y = data_target_pair
@@ -161,7 +159,7 @@ if __name__ == "__main__":
     print("lds:", metric_score)
     if metric_score > best_result:
         best_result = metric_score
-        best_config = projector_kwargs
+        best_config = proj_params
     print("complete\n")
 
     print(args.method, "RESULT:", best_config, "lds:", best_result)

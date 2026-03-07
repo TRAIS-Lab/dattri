@@ -64,15 +64,10 @@ if __name__ == "__main__":
 
     task = AttributionTask(loss_func=f, model=model, checkpoints=model.state_dict())
 
-    projector_kwargs = {
-        "device": args.device,
-    }
-
     attributor = TRAKAttributor(
         task=task,
         correct_probability_func=m,
         device=args.device,
-        projector_kwargs=projector_kwargs,
     )
 
     attributor.cache(train_loader)

@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.dvemb import DVEmbAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import DVEmbProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -56,6 +57,27 @@ class TestDVEmbAttributor:
             loss_func=eager_loss,
             checkpoints=[self.model.state_dict()],
         )
+
+    def test_project_initialization_proj_dim(self):
+        """Test for DVEmb attributor projection initialization."""
+        proj_dim_per_layer = 1024
+        proj_max_batch_size = 64
+        attributor = DVEmbAttributor(
+            task=self.task,
+            factorization_type="none",
+        )
+        assert attributor.proj_params.proj_dim_per_layer is None
+        assert attributor.proj_params.proj_max_batch_size == proj_max_batch_size
+        attributor = DVEmbAttributor(
+            task=self.task,
+            factorization_type="none",
+            proj_params=DVEmbProjectionParams(
+                proj_dim_per_layer=proj_dim_per_layer,
+                proj_max_batch_size=proj_max_batch_size,
+            ),
+        )
+        assert attributor.proj_params.proj_dim_per_layer == proj_dim_per_layer
+        assert attributor.proj_params.proj_max_batch_size == proj_max_batch_size
 
     def _run_dvemb_simulation(self, attributor: DVEmbAttributor):
         """A generic simulation runner for any configured DVEmbAttributor."""
@@ -137,7 +159,7 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task,
-            proj_dim=proj_dim,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim),
             factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
@@ -155,33 +177,33 @@ class TestDVEmbAttributor:
 
     def test_dvemb_kronecker_with_projection(self):
         """Test DVEmb with Kronecker factorization and projection."""
-        proj_dim = 16
+        proj_dim_per_layer = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim_per_layer),
             factorization_type="kronecker",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
         assert attributor.random_projectors is not None
 
-        num_layers = len(attributor._linear_layers)
-        expected_proj_dim = int(math.sqrt(proj_dim / num_layers))
-        assert attributor.projection_dim == expected_proj_dim
+        # For kronecker, projection_dim is per-factor: sqrt(proj_dim_per_layer)
+        expected_proj_dim_per_layer = int(math.sqrt(proj_dim_per_layer))
+        assert attributor.projection_dim_per_layer == expected_proj_dim_per_layer
 
     def test_dvemb_elementwise_with_projection(self):
         """Test DVEmb with elementwise factorization and projection."""
-        proj_dim = 16
+        proj_dim_per_layer = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim_per_layer),
             factorization_type="elementwise",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
         assert attributor.random_projectors is not None
         grad_dim = attributor.cached_gradients[0][0].shape[1]
-        assert grad_dim == attributor.projection_dim
+        assert grad_dim == attributor.projection_dim_per_layer
 
     def test_dvemb_kronecker_with_layer_names(self):
         """Test DVEmb with Kronecker factorization and specified layer names."""
@@ -290,7 +312,7 @@ class TestDVEmbAttributor:
         attributor_kron_proj = DVEmbAttributor(
             task=self.task_eager,
             factorization_type="kronecker",
-            proj_dim=proj_dim,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim),
         )
         self._run_dvemb_context_simulation(attributor_kron_proj)
         # With projection, random projectors are initialised and projected
@@ -325,11 +347,16 @@ class TestDVEmbAttributor:
                 indices = torch.arange(start_index, start_index + len(data))
 
                 attributor_direct.cache_gradients(
-                    epoch, (data, target), indices, learning_rate,
+                    epoch,
+                    (data, target),
+                    indices,
+                    learning_rate,
                 )
 
                 with attributor_context.cache_gradients_context(
-                    epoch, indices, learning_rate,
+                    epoch,
+                    indices,
+                    learning_rate,
                 ):
                     attributor_context.model.zero_grad()
                     outputs = attributor_context.model(data.to(device))

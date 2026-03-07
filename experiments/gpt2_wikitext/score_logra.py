@@ -39,6 +39,7 @@ from accelerate import Accelerator, DistributedType
 from accelerate.logging import get_logger
 from accelerate.utils import set_seed
 from datasets import load_dataset
+from dattri.params.projection import LoGraProjectionParams
 from huggingface_hub import HfApi
 from torch.utils.data import DataLoader
 from tqdm.auto import tqdm
@@ -740,7 +741,7 @@ def main():
         hessian="eFIM",
         damping=1e0,
         device="cuda",
-        proj_dim=4096,  # 64*64
+        proj_params=LoGraProjectionParams(proj_dim_per_layer=4096),  # 64*64
         offload="cpu",
     )
 

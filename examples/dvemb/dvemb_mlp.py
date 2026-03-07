@@ -5,6 +5,7 @@ import os
 import pathlib
 import random
 
+from dattri.params.projection import DVEmbProjectionParams
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -89,7 +90,7 @@ def calculate_dvemb_score():
     # DVEmb initialization
     attributor = DVEmbAttributor(
         task=task,
-        proj_dim=4096,
+        proj_params=DVEmbProjectionParams(proj_dim_per_layer=4096),
         factorization_type="elementwise",
     )
 
