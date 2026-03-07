@@ -276,31 +276,30 @@ class AttributionTask:
 
         base_grad_target = self.grad_target_func
 
-        if not self.group_target_func:
-            return self.grad_target_func
+        if self.group_target_func:
+            model_ref = self.model
 
-        model_ref = self.model
+            def wrapped(
+                parameters: torch.Tensor,
+                data: Union[DataLoader, object],
+            ) -> torch.Tensor:
+                if isinstance(data, DataLoader):
+                    # Pre-fetch batches outside grad to avoid tracing DataLoader/dataset
+                    # access (e.g. .numpy() in dataset __getitem__) which can raise
+                    # "Tensor that doesn't have storage" when run inside autograd.
+                    batches = list(data)
 
-        def wrapped(
-            parameters: torch.Tensor,
-            data: Union[DataLoader, object],
-        ) -> torch.Tensor:
-            if isinstance(data, DataLoader):
-                # Pre-fetch batches outside grad to avoid tracing DataLoader/dataset
-                # access (e.g. .numpy() in dataset __getitem__) which can raise
-                # "Tensor that doesn't have storage" when run inside autograd.
-                batches = list(data)
+                    def flat_group_target(flat_params: torch.Tensor) -> torch.Tensor:
+                        params_dict = _unflatten_params(flat_params, model_ref)
+                        return self.original_target_func(params_dict, batches)
 
-                def flat_group_target(flat_params: torch.Tensor) -> torch.Tensor:
-                    params_dict = _unflatten_params(flat_params, model_ref)
-                    return self.original_target_func(params_dict, batches)
+                    g = grad(flat_group_target)(parameters)
+                    return g.unsqueeze(0)
+                return base_grad_target(parameters, data)
 
-                g = grad(flat_group_target)(parameters)
-                return g.unsqueeze(0)
+            return wrapped
 
-            return base_grad_target(parameters, data)
-
-        return wrapped
+        return self.grad_target_func
 
     def get_target_func(
         self,
