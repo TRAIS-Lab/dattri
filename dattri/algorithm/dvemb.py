@@ -95,7 +95,7 @@ class DVEmbAttributor:
             proj_dim_per_layer=None,
             proj_max_batch_size=64,
         )
-        self.projection_dim = self.proj_params.proj_dim_per_layer
+        self.projection_dim_per_layer = self.proj_params.proj_dim_per_layer
 
         if layer_names is None:
             self.layer_names = None
@@ -124,21 +124,25 @@ class DVEmbAttributor:
             if not self._linear_layers:
                 msg = "No Linear layers found for gradient factorization."
                 raise ValueError(msg)
-            if self.projection_dim is None:
+            if self.projection_dim_per_layer is None:
                 self._params_dim = sum(
                     p.numel()
                     for layer in self._linear_layers
                     for p in layer.parameters()
                 )
             elif self.factorization_type == "kronecker":
-                self.projection_dim = int(
-                    math.sqrt(self.projection_dim),
+                self.projection_dim_per_layer = int(
+                    math.sqrt(self.projection_dim_per_layer),
                 )
                 self._params_dim = (
-                    len(self._linear_layers) * self.projection_dim * self.projection_dim
+                    len(self._linear_layers)
+                    * self.projection_dim_per_layer
+                    * self.projection_dim_per_layer
                 )
             elif self.factorization_type == "elementwise":
-                self._params_dim = len(self._linear_layers) * self.projection_dim
+                self._params_dim = (
+                    len(self._linear_layers) * self.projection_dim_per_layer
+                )
             else:
                 msg = f"Unknown factorization type: {self.factorization_type}"
                 raise ValueError(msg)
@@ -166,7 +170,7 @@ class DVEmbAttributor:
                 proj_params=RandomProjectionParams(
                     feature_batch_size=batch_size,
                     device=self.device,
-                    proj_dim=self.projection_dim,
+                    proj_dim=self.projection_dim_per_layer,
                     proj_seed=self.proj_params.proj_seed,
                     proj_max_batch_size=self.proj_params.proj_max_batch_size,
                 ),
@@ -176,7 +180,7 @@ class DVEmbAttributor:
                 proj_params=RandomProjectionParams(
                     feature_batch_size=batch_size,
                     device=self.device,
-                    proj_dim=self.projection_dim,
+                    proj_dim=self.projection_dim_per_layer,
                     proj_seed=self.proj_params.proj_seed,
                     proj_max_batch_size=self.proj_params.proj_max_batch_size,
                 ),
@@ -275,7 +279,7 @@ class DVEmbAttributor:
         if (
             hasattr(self, "random_projectors") is False
             and self.use_factorization
-            and self.projection_dim is not None
+            and self.projection_dim_per_layer is not None
         ):
             self._setup_projectors(batch_size=len(indices))
 
@@ -306,7 +310,7 @@ class DVEmbAttributor:
         )
         per_sample_grads = grad_loss_fn(model_params, batch_data_tensors)
 
-        if self.projection_dim is not None:
+        if self.projection_dim_per_layer is not None:
             # Create projector if needed
             if self.projector is None:
                 num_features = per_sample_grads.shape[1]
@@ -316,7 +320,7 @@ class DVEmbAttributor:
                     proj_params=RandomProjectionParams(
                         feature_batch_size=batch_size,
                         device=self.device,
-                        proj_dim=self.projection_dim,
+                        proj_dim=self.projection_dim_per_layer,
                         proj_seed=self.proj_params.proj_seed,
                         proj_max_batch_size=self.proj_params.proj_max_batch_size,
                     ),
@@ -502,12 +506,14 @@ class DVEmbAttributor:
                 a_proj = a_proj_flat.reshape(batch_size, seq_len, k)
                 b_proj = b_proj_flat.reshape(batch_size, seq_len, k)
 
-                grad = (a_proj * b_proj).sum(dim=1) * math.sqrt(self.projection_dim)
+                grad = (a_proj * b_proj).sum(dim=1) * math.sqrt(
+                    self.projection_dim_per_layer,
+                )
             else:
                 # 2D case: (B, D)
                 a_proj = proj_a(a)
                 b_proj = proj_b(b)
-                grad = a_proj.mul(b_proj) * math.sqrt(self.projection_dim)
+                grad = a_proj.mul(b_proj) * math.sqrt(self.projection_dim_per_layer)
 
             projected_grads_parts.append(grad.flatten(start_dim=1))
 
@@ -536,7 +542,7 @@ class DVEmbAttributor:
 
         caches = self._calculate_gradient_factors(batch_data)
 
-        if self.projection_dim is None:
+        if self.projection_dim_per_layer is None:
             self.cached_factors[epoch].append(caches)
         elif self.factorization_type == "kronecker":
             # kronecker with projection returns projected gradients directly
@@ -608,7 +614,7 @@ class DVEmbAttributor:
         # Determine gradient dimension and data type from cached data
         if self.use_factorization:
             grad_dim = self._params_dim
-            if self.projection_dim is None:
+            if self.projection_dim_per_layer is None:
                 # No projection: use cached factors
                 grad_dtype = self.cached_factors[0][0][0]["A"].dtype
             else:
@@ -641,7 +647,7 @@ class DVEmbAttributor:
                 indices_t = self.data_indices[epoch][t]
 
                 if self.use_factorization:
-                    if self.projection_dim is None:
+                    if self.projection_dim_per_layer is None:
                         # No projection: reconstruct from cached factors
                         gradient_factors = self.cached_factors[epoch][t]
                         grads_t = self._reconstruct_gradients(gradient_factors).to(
@@ -707,7 +713,7 @@ class DVEmbAttributor:
         for batch_data in tqdm(test_dataloader, desc="Calculating test gradients"):
             if self.use_factorization:
                 factors = self._calculate_gradient_factors(batch_data)
-                if self.projection_dim is None:
+                if self.projection_dim_per_layer is None:
                     grads = self._reconstruct_gradients(factors)
                 elif self.factorization_type == "kronecker":
                     # kronecker with projection returns projected gradients directly
