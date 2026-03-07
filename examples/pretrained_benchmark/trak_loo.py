@@ -40,9 +40,6 @@ if __name__ == "__main__":
         p = torch.exp(-loss(yhat, label_t))
         return p
 
-    projector_kwargs = {
-        "device": args.device,
-    }
 
     task = AttributionTask(
         model=model,
@@ -54,7 +51,6 @@ if __name__ == "__main__":
         task=task,
         correct_probability_func=m,
         device=args.device,
-        projector_kwargs=projector_kwargs,
     )
 
     with torch.no_grad():

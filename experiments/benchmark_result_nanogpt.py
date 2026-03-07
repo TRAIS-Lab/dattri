@@ -101,16 +101,13 @@ if __name__ == "__main__":
             loss_func=loss_func, model=model, checkpoints=checkpoints_list
         )
 
-        projector_kwargs = {
-            "proj_dim": 2048,
-            "device": args.device,
-        }
+        proj_params = TRAKProjectionParams(proj_dim=2048)
 
         attributor = TRAKAttributor(
             task=task,
             correct_probability_func=correctness_p,
             device=args.device,
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
 
         with torch.no_grad():
@@ -126,7 +123,7 @@ if __name__ == "__main__":
         if args.method == "TracIn":
             ensemble = 10
 
-        projector_kwargs = {}
+        proj_params = TracInProjectionParams()
 
         checkpoints_list = []
         for checkpoint in model_details["models_half"][0:ensemble]:
@@ -166,7 +163,7 @@ if __name__ == "__main__":
     print("lds:", metric_score)
     if metric_score > best_result:
         best_result = metric_score
-        best_config = projector_kwargs
+        best_config = proj_params
     print("complete\n")
 
     print(args.method, "RESULT:", best_config, "lds:", best_result)

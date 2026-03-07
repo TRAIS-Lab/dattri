@@ -296,7 +296,10 @@ class DVEmbAttributor:
 
         if self.use_factorization:
             self._cache_factored_gradients(
-                epoch, batch_data, indices, learning_rate,
+                epoch,
+                batch_data,
+                indices,
+                learning_rate,
             )
         else:
             self._cache_full_gradients(epoch, batch_data, indices, learning_rate)
@@ -369,7 +372,7 @@ class DVEmbAttributor:
         # Set up projectors if not already done
         if (
             not hasattr(self, "random_projectors")
-            and self.projection_dim is not None
+            and self.projection_dim_per_layer is not None
         ):
             self._setup_projectors(batch_size=len(indices))
 
@@ -394,7 +397,7 @@ class DVEmbAttributor:
                     cache["B"] *= len(indices)
 
             # Cache the gradient factors (with projection if configured)
-            if self.projection_dim is None:
+            if self.projection_dim_per_layer is None:
                 self.cached_factors[epoch].append(caches)
             elif self.factorization_type == "kronecker":
                 projected_grads = self._project_gradients_factors_kronecker(caches)

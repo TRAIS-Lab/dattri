@@ -153,7 +153,7 @@ class TestLoGraAttributorResNet:
             task=self.task,
             device="cpu",
             hessian="Identity",
-            proj_dim=64,  # projection dimension (must be perfect square: 8*8=64)
+            proj_params=LoGraProjectionParams(proj_dim_per_layer=64),  # 8*8=64
             offload="cpu",
         )
 

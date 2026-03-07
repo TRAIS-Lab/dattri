@@ -721,15 +721,12 @@ def main():
         )
 
     if method.startswith("TRAK"):
-        projector_kwargs = {
-            "device": "cuda",
-            "proj_dim": 2048,
-        }
+        proj_params = TRAKProjectionParams(proj_dim=2048)
         attributor = TRAKAttributor(
             task=task,
             correct_probability_func=m,
             device="cuda",
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
 
     else:
@@ -739,17 +736,14 @@ def main():
 
         weight_list = torch.ones(num_checkpoints) * 1e-3
 
-        projector_kwargs = {
-            "device": "cuda",
-            "proj_dim": 2048,
-        }
+        proj_params = TracInProjectionParams(proj_dim=2048)
 
         attributor = TracInAttributor(
             task=task,
             weight_list=weight_list,
             normalized_grad=normalized_grad,
             device="cuda",
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
 
     with torch.no_grad():

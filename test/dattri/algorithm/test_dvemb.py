@@ -188,8 +188,8 @@ class TestDVEmbAttributor:
         assert attributor.random_projectors is not None
 
         # For kronecker, projection_dim is per-factor: sqrt(proj_dim_per_layer)
-        expected_proj_dim = int(math.sqrt(proj_dim_per_layer))
-        assert attributor.projection_dim == expected_proj_dim
+        expected_proj_dim_per_layer = int(math.sqrt(proj_dim_per_layer))
+        assert attributor.projection_dim_per_layer == expected_proj_dim_per_layer
 
     def test_dvemb_elementwise_with_projection(self):
         """Test DVEmb with elementwise factorization and projection."""
@@ -203,7 +203,7 @@ class TestDVEmbAttributor:
         assert attributor.use_factorization
         assert attributor.random_projectors is not None
         grad_dim = attributor.cached_gradients[0][0].shape[1]
-        assert grad_dim == attributor.projection_dim
+        assert grad_dim == attributor.projection_dim_per_layer
 
     def test_dvemb_kronecker_with_layer_names(self):
         """Test DVEmb with Kronecker factorization and specified layer names."""
@@ -312,7 +312,7 @@ class TestDVEmbAttributor:
         attributor_kron_proj = DVEmbAttributor(
             task=self.task_eager,
             factorization_type="kronecker",
-            proj_dim=proj_dim,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim),
         )
         self._run_dvemb_context_simulation(attributor_kron_proj)
         # With projection, random projectors are initialised and projected
@@ -347,11 +347,16 @@ class TestDVEmbAttributor:
                 indices = torch.arange(start_index, start_index + len(data))
 
                 attributor_direct.cache_gradients(
-                    epoch, (data, target), indices, learning_rate,
+                    epoch,
+                    (data, target),
+                    indices,
+                    learning_rate,
                 )
 
                 with attributor_context.cache_gradients_context(
-                    epoch, indices, learning_rate,
+                    epoch,
+                    indices,
+                    learning_rate,
                 ):
                     attributor_context.model.zero_grad()
                     outputs = attributor_context.model(data.to(device))
