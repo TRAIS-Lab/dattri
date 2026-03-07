@@ -1,5 +1,5 @@
-"""This example shows how to use TracInAttributor with DataloaderGroup and a
-user-defined group target via AttributionTask (group_target_func).
+"""This example shows how to use TracInAttributor with DataloaderGroup and
+group_target_func=True so target_func is used for group attribution.
 Uses MNIST + MLP.
 """
 
@@ -87,31 +87,33 @@ if __name__ == "__main__":
     model.to(args.device)
     model.eval()
 
-    # loss and target in AttributionTask style; match IF example signature
+    # loss and target in AttributionTask style; match IF example signature.
+    # When group_target_func=True, target_func is also called with (params_dict, list_of_batches).
     def f(params, data_target_pair):
         image, label = data_target_pair
         label = label.view(-1).long()
         yhat = torch.func.functional_call(model, params, (image,))
         return nn.CrossEntropyLoss()(yhat, label)
 
-    # group target: gradient = sum of per-sample gradients (use loss * batch_size)
-    def group_target_func(params, loader):
-        device = next(iter(params.values())).device
-        total = None
-        for batch in loader:
-            image, label = batch
-            image, label = image.to(device), label.to(device)
-            loss = f(params, (image, label))
-            n = image.shape[0]
-            total = loss * n if total is None else total + loss * n
-        return total
+    def target_func(params, data):
+        if isinstance(data, list):
+            # group mode: data is list of (image, label) batches
+            device = next(iter(params.values())).device
+            total = None
+            for image, label in data:
+                image, label = image.to(device), label.to(device)
+                loss = f(params, (image, label))
+                n = image.shape[0]
+                total = loss * n if total is None else total + loss * n
+            return total
+        return f(params, data)
 
     task = AttributionTask(
         loss_func=f,
         model=model,
         checkpoints=model.state_dict(),
-        target_func=f,
-        group_target_func=group_target_func,
+        target_func=target_func,
+        group_target_func=True,
     )
 
     attributor = TracInAttributor(
@@ -120,14 +122,13 @@ if __name__ == "__main__":
         normalized_grad=False,
         device=args.device,
     )
-    attributor.projector_kwargs = None
 
     test_group = DataloaderGroup(test_loader)
     with torch.no_grad():
         scores = attributor.attribute(train_loader, test_group)
         scores_temp = attributor.attribute(train_loader, test_loader)
 
-    print("Test Dataloader Group (AttributionTask + group_target_func) — MNIST + MLP.")
+    print("Test Dataloader Group (AttributionTask + group_target_func=True) — MNIST + MLP.")
     print(f"Score Shape: {scores.shape}")
     print(f"Calculated Scores (first 10):\n{scores.flatten()[:10]}")
     print(f"Calculated Scores Temp sum over test (first 10):\n{scores_temp.sum(dim=1)[:10]}")
