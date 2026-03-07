@@ -3,12 +3,13 @@
 from __future__ import annotations
 
 import warnings
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Union
 
 from dattri.params.projection import DVEmbProjectionParams, RandomProjectionParams
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
     from typing import Dict, List, Optional, Tuple
 
     from torch import Tensor
@@ -151,6 +152,7 @@ class DVEmbAttributor:
         self.learning_rates: Dict[int, List[float]] = {}
         self.data_indices: Dict[int, List[Tensor]] = {}
         self.embeddings: Dict[int, Tensor] = {}
+        self._caching_method: Optional[str] = None
 
     def _setup_projectors(self, batch_size: int) -> None:
         """Sets up random projectors for each Linear layer based on the projection type.
@@ -275,6 +277,15 @@ class DVEmbAttributor:
                      in batch_data.
             learning_rate: The learning rate for this step.
         """
+        if self._caching_method == "context":
+            warnings.warn(
+                "Both cache_gradients() and cache_gradients_context() have been "
+                "called on the same attributor instance. Mixing these two APIs "
+                "will produce incorrect results. Use only one caching method.",
+                stacklevel=2,
+            )
+        self._caching_method = "direct"
+
         # Set up projectors if not already done
         if (
             hasattr(self, "random_projectors") is False
@@ -284,9 +295,116 @@ class DVEmbAttributor:
             self._setup_projectors(batch_size=len(indices))
 
         if self.use_factorization:
-            self._cache_factored_gradients(epoch, batch_data, indices, learning_rate)
+            self._cache_factored_gradients(
+                epoch, batch_data, indices, learning_rate,
+            )
         else:
             self._cache_full_gradients(epoch, batch_data, indices, learning_rate)
+
+    @contextmanager
+    def cache_gradients_context(
+        self,
+        epoch: int,
+        indices: Tensor,
+        learning_rate: float,
+    ) -> Generator[None, None, None]:
+        """Context manager for caching gradient factors during a training step.
+
+        This is an alternative to `cache_gradients()` for factorization mode only.
+        It hooks into the user's own training loop (forward + backward + optimizer
+        step) to capture gradient factors without an extra forward-backward pass.
+
+        Args:
+            epoch: The current epoch number.
+            indices: A tensor containing the original dataset indices for the
+                     samples in the current batch.
+            learning_rate: The learning rate used by the optimizer for this step.
+
+        Yields:
+            None. Control is yielded to the caller to execute their training step
+            (forward pass, backward pass, and optimizer step).
+
+        Raises:
+            NotImplementedError: If `factorization_type` is "none". Use
+                `cache_gradients()` instead for non-factorization mode.
+
+        Example:
+            ```python
+            with attributor.cache_gradients_context(
+                epoch=epoch,
+                indices=indices,
+                learning_rate=optimizer.param_groups[0]['lr'],
+            ):
+                optimizer.zero_grad()
+                loss = criterion(model(inputs), labels)
+                loss.backward()
+                optimizer.step()
+            ```
+        """
+        if not self.use_factorization:
+            msg = (
+                "cache_gradients_context only supports factorization mode. "
+                "Please initialize DVEmbAttributor with factorization_type "
+                "set to 'kronecker' or 'elementwise', or use "
+                "cache_gradients() instead for non-factorization mode."
+            )
+            raise NotImplementedError(msg)
+
+        if self._caching_method == "direct":
+            warnings.warn(
+                "Both cache_gradients_context() and cache_gradients() have been "
+                "called on the same attributor instance. Mixing these two APIs "
+                "will produce incorrect results. Use only one caching method.",
+                stacklevel=2,
+            )
+        self._caching_method = "context"
+
+        # Initialize epoch storage if needed
+        if epoch not in self.cached_factors:
+            self.cached_factors[epoch] = []
+            self.cached_gradients[epoch] = []
+            self.learning_rates[epoch] = []
+            self.data_indices[epoch] = []
+
+        # Set up projectors if not already done
+        if (
+            not hasattr(self, "random_projectors")
+            and self.projection_dim is not None
+        ):
+            self._setup_projectors(batch_size=len(indices))
+
+        # ══════════ __enter__: Register hooks to capture gradient factors ══════════
+        handles, caches = self._register_factorization_hooks()
+
+        try:
+            yield  # User's training loop executes here (forward + backward + step)
+        finally:
+            # ══════════ __exit__: Clean up and cache gradient factors ══════════
+
+            # Remove hooks
+            for h in handles:
+                h.remove()
+
+            # Adjust for mean reduction: users typically use mean loss (default),
+            # but we need sum reduction for correct per-sample gradient factors.
+            # backward hook captures B = dL/dy where L = mean(per_sample_losses).
+            # We need B_sum = dL_sum/dy = N * B where L_sum = sum(per_sample_losses).
+            for cache in caches:
+                if cache["B"] is not None:
+                    cache["B"] *= len(indices)
+
+            # Cache the gradient factors (with projection if configured)
+            if self.projection_dim is None:
+                self.cached_factors[epoch].append(caches)
+            elif self.factorization_type == "kronecker":
+                projected_grads = self._project_gradients_factors_kronecker(caches)
+                self.cached_gradients[epoch].append(projected_grads.cpu())
+            else:
+                projected_grads = self._project_gradients_factors_elementwise(caches)
+                self.cached_gradients[epoch].append(projected_grads.cpu())
+
+            self.learning_rates[epoch].append(learning_rate / len(indices))
+            self.data_indices[epoch].append(indices.cpu())
 
     def _calculate_full_gradients(
         self,
@@ -371,6 +489,7 @@ class DVEmbAttributor:
         self.model.zero_grad()
         handles, caches = self._register_factorization_hooks()
 
+        # Strict requirements on batch_data
         batch_data_tensors = [d.to(self.device) for d in batch_data]
         loss = self.task.original_loss_func(self.model, batch_data_tensors, self.device)
         loss *= batch_data_tensors[0].shape[0]  # Scale loss by batch size
@@ -633,6 +752,7 @@ class DVEmbAttributor:
 
         # Calculate data embeddings for each epoch in reverse order
         sorted_epochs = sorted(self.learning_rates.keys(), reverse=True)
+        # Going through epochs in reverse order
         for epoch in tqdm(sorted_epochs, desc="Computing DVEmb per Epoch"):
             epoch_embeddings = torch.zeros(
                 (num_total_samples, grad_dim),

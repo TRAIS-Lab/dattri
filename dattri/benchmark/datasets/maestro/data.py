@@ -24,7 +24,7 @@ from dattri.benchmark.models.MusicTransformer.dataset.preprocess_midi import (
 
 # Data Processing Hyper-parameters ############
 MAX_SEQUENCE = 256  # Maximum midi sequence to consider
-FULL_VERSION = True  # State if the whole dataset will be transversed.
+FULL_VERSION = True  # State if the whole dataset will be traversed.
 # Data Processing Hyper-parameters ############
 
 
@@ -37,7 +37,7 @@ def create_maestro_datasets(
     Args:
         dataset_path (str): Root directory of the MAESTRO Dataset. The data source
             is https://magenta.tensorflow.org/datasets/maestro#v200. If the processed
-            dataset is not found, this funtion will download the dataset automatically
+            dataset is not found, this function will download the dataset automatically
             to this path, unzip and pre-process it. The processed data will be at
             "dataset_path/maestro-v2.0.0-processed".
         generated_music (bool): If True, the generated music dataset will be used
