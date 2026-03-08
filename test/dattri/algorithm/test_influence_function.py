@@ -464,3 +464,61 @@ class TestInfluenceFunction:
         threshold = 0.98
         corr = average_pairwise_correlation(gt_test_rep, transformed_test_rep)
         assert corr > threshold
+
+    def test_influence_functions_with_random_projection(self):
+        """Test for random projection in Explicit, DataInf and EK-FAC attributors."""
+        train_dataset = TensorDataset(
+            torch.randn(20, 1, 28, 28),
+            torch.randint(0, 10, (20,)),
+        )
+        train_loader = DataLoader(train_dataset, batch_size=4)
+
+        projector_kwargs = {
+            "proj_dim": 512,
+            "proj_max_batch_size": 32,
+            "proj_seed": 0,
+            "device": "cpu",
+        }
+        model = train_mnist_lr(train_loader)
+
+        def f(params, data_target_pair):
+            image, label = data_target_pair
+            loss = nn.CrossEntropyLoss()
+            yhat = torch.func.functional_call(model, params, image)
+            return loss(yhat, label.long())
+
+        task = AttributionTask(
+            loss_func=f,
+            model=model,
+            checkpoints=model.state_dict(),
+        )
+
+        # Explicit with random projection
+        attributor_exp = IFAttributorExplicit(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+            projector_kwargs=projector_kwargs,
+        )
+        attributor_exp.cache(train_loader)
+        attributor_exp.attribute(train_loader, train_loader)
+
+        # DataInf with random projection
+        attributor_datainf = IFAttributorDataInf(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+            projector_kwargs=projector_kwargs,
+        )
+        attributor_datainf.cache(train_loader)
+        attributor_datainf.attribute(train_loader, train_loader)
+
+        # EK-FAC with random projection
+        attributor_ekfac = IFAttributorEKFAC(
+            task=task,
+            device=torch.device("cpu"),
+            damping=0.1,
+            projector_kwargs=projector_kwargs,
+        )
+        attributor_ekfac.cache(train_loader)
+        attributor_ekfac.attribute(train_loader, train_loader)
