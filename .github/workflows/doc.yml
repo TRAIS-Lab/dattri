@@ -15,7 +15,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: ${{ matrix.python-version }}
-          cache: 'pip'  # enable pip cache
+          # cache: 'pip'  # disable pip cache for self-host runner
 
       - name: Install dependencies (binary wheels, no legacy easy_install)
         env:
