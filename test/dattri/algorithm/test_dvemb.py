@@ -10,6 +10,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.dvemb import DVEmbAttributor
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import DVEmbProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -56,6 +57,27 @@ class TestDVEmbAttributor:
             loss_func=eager_loss,
             checkpoints=[self.model.state_dict()],
         )
+
+    def test_project_initialization_proj_dim(self):
+        """Test for DVEmb attributor projection initialization."""
+        proj_dim_per_layer = 1024
+        proj_max_batch_size = 64
+        attributor = DVEmbAttributor(
+            task=self.task,
+            factorization_type="none",
+        )
+        assert attributor.proj_params.proj_dim_per_layer is None
+        assert attributor.proj_params.proj_max_batch_size == proj_max_batch_size
+        attributor = DVEmbAttributor(
+            task=self.task,
+            factorization_type="none",
+            proj_params=DVEmbProjectionParams(
+                proj_dim_per_layer=proj_dim_per_layer,
+                proj_max_batch_size=proj_max_batch_size,
+            ),
+        )
+        assert attributor.proj_params.proj_dim_per_layer == proj_dim_per_layer
+        assert attributor.proj_params.proj_max_batch_size == proj_max_batch_size
 
     def _run_dvemb_simulation(self, attributor: DVEmbAttributor):
         """A generic simulation runner for any configured DVEmbAttributor."""
@@ -137,7 +159,7 @@ class TestDVEmbAttributor:
         proj_dim = 16
         attributor = DVEmbAttributor(
             task=self.task,
-            proj_dim=proj_dim,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim),
             factorization_type="none",
         )
         self._run_dvemb_simulation(attributor)
@@ -155,33 +177,33 @@ class TestDVEmbAttributor:
 
     def test_dvemb_kronecker_with_projection(self):
         """Test DVEmb with Kronecker factorization and projection."""
-        proj_dim = 16
+        proj_dim_per_layer = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim_per_layer),
             factorization_type="kronecker",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
         assert attributor.random_projectors is not None
 
-        num_layers = len(attributor._linear_layers)
-        expected_proj_dim = int(math.sqrt(proj_dim / num_layers))
-        assert attributor.projection_dim == expected_proj_dim
+        # For kronecker, projection_dim is per-factor: sqrt(proj_dim_per_layer)
+        expected_proj_dim_per_layer = int(math.sqrt(proj_dim_per_layer))
+        assert attributor.projection_dim_per_layer == expected_proj_dim_per_layer
 
     def test_dvemb_elementwise_with_projection(self):
         """Test DVEmb with elementwise factorization and projection."""
-        proj_dim = 16
+        proj_dim_per_layer = 16
         attributor = DVEmbAttributor(
             task=self.task_eager,
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim_per_layer),
             factorization_type="elementwise",
-            proj_dim=proj_dim,
         )
         self._run_dvemb_simulation(attributor)
         assert attributor.use_factorization
         assert attributor.random_projectors is not None
         grad_dim = attributor.cached_gradients[0][0].shape[1]
-        assert grad_dim == attributor.projection_dim
+        assert grad_dim == attributor.projection_dim_per_layer
 
     def test_dvemb_kronecker_with_layer_names(self):
         """Test DVEmb with Kronecker factorization and specified layer names."""
@@ -198,6 +220,156 @@ class TestDVEmbAttributor:
         )
         self._run_dvemb_simulation(attributor)
         assert len(attributor.cached_factors[0][0]) == 1
+
+    def _run_dvemb_context_simulation(self, attributor: DVEmbAttributor):
+        """Run simulation using cache_gradients_context for factorized DVEmbAttributor.
+
+        Inside the context block the test performs a standard forward/backward pass
+        (mean cross-entropy loss), mirroring real training usage.  The context manager
+        is responsible for hook registration, B-tensor scaling, and factor caching.
+        """
+        num_epochs = 2
+        learning_rate = 0.01
+        device = attributor.device
+
+        for epoch in range(num_epochs):
+            for i, (data, target) in enumerate(self.train_loader):
+                start_index = i * self.train_loader.batch_size
+                indices = torch.arange(start_index, start_index + len(data))
+                with attributor.cache_gradients_context(epoch, indices, learning_rate):
+                    data_dev = data.to(device)
+                    target_dev = target.to(device)
+                    attributor.model.zero_grad()
+                    outputs = attributor.model(data_dev)
+                    loss = nn.functional.cross_entropy(outputs, target_dev)
+                    loss.backward()
+
+        attributor.cache(memory_saving=False)
+        for epoch_embedding in attributor.embeddings.values():
+            assert not torch.isnan(epoch_embedding).any()
+
+        total_score = attributor.attribute(self.test_loader)
+        assert total_score.shape == (
+            len(self.train_dataset),
+            len(self.test_dataset),
+        )
+        assert not torch.isnan(total_score).any()
+
+        epoch_0_score = attributor.attribute(self.test_loader, epoch=0)
+        epoch_1_score = attributor.attribute(self.test_loader, epoch=1)
+        assert epoch_0_score.shape == (
+            len(self.train_dataset),
+            len(self.test_dataset),
+        )
+        assert torch.allclose(
+            total_score,
+            epoch_0_score + epoch_1_score,
+            rtol=1e-3,
+            atol=1e-2,
+        )
+
+        subset_indices = [1, 2]
+        subset_score = attributor.attribute(
+            self.test_loader,
+            train_data_indices=subset_indices,
+        )
+        assert subset_score.shape == (len(subset_indices), len(self.test_dataset))
+        assert torch.allclose(subset_score, total_score[subset_indices, :])
+
+    def test_dvemb_cache_gradients_context(self):
+        """Test DVEmb cache_gradients_context context manager.
+
+        Covers three scenarios:
+        1. Non-factorization mode raises NotImplementedError.
+        2. Kronecker factorization without projection caches raw factors.
+        3. Kronecker factorization with projection caches projected gradients.
+        """
+        # Scenario 1: non-factorization mode should raise NotImplementedError
+        attributor_no_fact = DVEmbAttributor(
+            task=self.task,
+            factorization_type="none",
+        )
+        dummy_indices = torch.arange(4)
+        ctx = attributor_no_fact.cache_gradients_context(
+            epoch=0,
+            indices=dummy_indices,
+            learning_rate=0.01,
+        )
+        with pytest.raises(NotImplementedError), ctx:
+            pass
+
+        # Scenario 2: kronecker factorization without projection
+        attributor_kron = DVEmbAttributor(
+            task=self.task_eager,
+            factorization_type="kronecker",
+        )
+        self._run_dvemb_context_simulation(attributor_kron)
+        # Without projection, raw factors are stored in cached_factors
+        assert attributor_kron.cached_factors
+
+        # Scenario 3: kronecker factorization with projection
+        proj_dim = 16
+        attributor_kron_proj = DVEmbAttributor(
+            task=self.task_eager,
+            factorization_type="kronecker",
+            proj_params=DVEmbProjectionParams(proj_dim_per_layer=proj_dim),
+        )
+        self._run_dvemb_context_simulation(attributor_kron_proj)
+        # With projection, random projectors are initialised and projected
+        # gradients are stored in cached_gradients
+        assert attributor_kron_proj.random_projectors is not None
+        assert attributor_kron_proj.cached_gradients
+
+    def test_dvemb_context_matches_direct(self):
+        """Verify cache_gradients_context and cache_gradients produce identical scores.
+
+        Both APIs should yield the same data value embeddings and attribution scores
+        for the same batch data under kronecker factorization without projection,
+        since cache_gradients_context scales the backward-hook B tensor by batch size N
+        to match the sum-reduced loss used internally by cache_gradients.
+        """
+        attributor_direct = DVEmbAttributor(
+            task=self.task_eager,
+            factorization_type="kronecker",
+        )
+        attributor_context = DVEmbAttributor(
+            task=self.task_eager,
+            factorization_type="kronecker",
+        )
+
+        num_epochs = 2
+        learning_rate = 0.01
+        device = attributor_context.device
+
+        for epoch in range(num_epochs):
+            for i, (data, target) in enumerate(self.train_loader):
+                start_index = i * self.train_loader.batch_size
+                indices = torch.arange(start_index, start_index + len(data))
+
+                attributor_direct.cache_gradients(
+                    epoch,
+                    (data, target),
+                    indices,
+                    learning_rate,
+                )
+
+                with attributor_context.cache_gradients_context(
+                    epoch,
+                    indices,
+                    learning_rate,
+                ):
+                    attributor_context.model.zero_grad()
+                    outputs = attributor_context.model(data.to(device))
+                    loss = nn.functional.cross_entropy(outputs, target.to(device))
+                    loss.backward()
+
+        attributor_direct.cache(memory_saving=False)
+        attributor_context.cache(memory_saving=False)
+
+        scores_direct = attributor_direct.attribute(self.test_loader)
+        scores_context = attributor_context.attribute(self.test_loader)
+
+        assert torch.allclose(scores_direct, scores_context, rtol=1e-4, atol=1e-4)
 
 
 if __name__ == "__main__":

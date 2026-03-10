@@ -38,7 +38,7 @@ if __name__ == "__main__":
         device=args.device,
         hessian="eFIM",
         damping=5e-3,
-        proj_dim=1024,  # 32*32
+        proj_params=LoGraProjectionParams(proj_dim_per_layer=1024),  # 32*32
         offload="cpu",
     )
     attributor.cache(

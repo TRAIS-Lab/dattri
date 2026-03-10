@@ -19,6 +19,7 @@ from dattri.algorithm.trak import TRAKAttributor
 from dattri.algorithm.rps import RPSAttributor
 from dattri.metric import lds, loo_corr
 from dattri.benchmark.load import load_benchmark
+from dattri.params.projection import TRAKProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -236,16 +237,13 @@ if __name__ == "__main__":
         print(args.method, "RESULT:", best_config, f"{args.metric}:", best_result)
 
     if args.method in ["TRAK-1", "TRAK-10", "TRAK-50"]:
-        projector_kwargs = {
-            "proj_dim": 512,
-            "device": args.device,
-        }
+        proj_params = TRAKProjectionParams(proj_dim=512)
 
         attributor = ATTRIBUTOR_DICT[args.method](
             task=task,
             correct_probability_func=m_trak,
             device=args.device,
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
         attributor.cache(train_loader)
         with torch.no_grad():
@@ -258,7 +256,7 @@ if __name__ == "__main__":
         print(f"{args.metric}:", metric_score)
         if metric_score > best_result:
             best_result = metric_score
-            best_config = projector_kwargs
+            best_config = proj_params
         print("complete\n")
 
         print(args.method, "RESULT:", best_config, f"{args.metric}:", best_result)

@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import warnings
+from contextlib import contextmanager
 from typing import TYPE_CHECKING, Union
 
+from dattri.params.projection import DVEmbProjectionParams, RandomProjectionParams
+
 if TYPE_CHECKING:
-    from collections.abc import Callable
+    from collections.abc import Callable, Generator
     from typing import Dict, List, Optional, Tuple
 
     from torch import Tensor
@@ -24,10 +27,6 @@ from tqdm import tqdm
 from dattri.func.projection import random_project
 from dattri.func.utils import flatten_params
 
-DEFAULT_PROJECTOR_KWARGS = {
-    "proj_max_batch_size": 64,
-}
-
 
 class DVEmbAttributor:
     """Data Value Embedding (DVEmb) attributor.
@@ -40,8 +39,7 @@ class DVEmbAttributor:
     def __init__(  # noqa: PLR0912, PLR0915
         self,
         task: AttributionTask,
-        proj_dim: Optional[int] = None,
-        proj_seed: int = 0,
+        proj_params: Optional[DVEmbProjectionParams] = None,
         factorization_type: Optional[str] = "none",
         layer_names: Optional[Union[str, List[str]]] = None,
     ) -> None:
@@ -69,9 +67,9 @@ class DVEmbAttributor:
                             yhat = model(image.to(device))
                             return loss(yhat, label.to(device))
                         ```.
-            proj_dim: The dimension for projection (if used). Defaults to None,
-                      meaning no projection.
-            proj_seed: Random seed for projection. Defaults to 0.
+            proj_params: Projection config. If None, no projection
+                (proj_dim_per_layer=None). Use DVEmbProjectionParams(
+                proj_dim_per_layer=...) for projection.
             factorization_type: Type of gradient factorization to use. Options are
                                 "none" (default),
                                 "kronecker" (same as in the paper),
@@ -94,11 +92,11 @@ class DVEmbAttributor:
         self.projector = None
         self.use_factorization = factorization_type != "none"
         self.factorization_type = factorization_type
-        self.projection_dim = proj_dim
-        self.proj_seed = proj_seed
-        self.projector_kwargs = DEFAULT_PROJECTOR_KWARGS.copy()
-        self.projector_kwargs["device"] = self.device
-        self.projector_kwargs["proj_seed"] = proj_seed
+        self.proj_params = proj_params or DVEmbProjectionParams(
+            proj_dim_per_layer=None,
+            proj_max_batch_size=64,
+        )
+        self.projection_dim_per_layer = self.proj_params.proj_dim_per_layer
 
         if layer_names is None:
             self.layer_names = None
@@ -127,24 +125,25 @@ class DVEmbAttributor:
             if not self._linear_layers:
                 msg = "No Linear layers found for gradient factorization."
                 raise ValueError(msg)
-            if proj_dim is None:
+            if self.projection_dim_per_layer is None:
                 self._params_dim = sum(
                     p.numel()
                     for layer in self._linear_layers
                     for p in layer.parameters()
                 )
             elif self.factorization_type == "kronecker":
-                self.projection_dim = int(
-                    math.sqrt(proj_dim / len(self._linear_layers)),
+                self.projection_dim_per_layer = int(
+                    math.sqrt(self.projection_dim_per_layer),
                 )
                 self._params_dim = (
                     len(self._linear_layers)
-                    * self.projection_dim
-                    * self.projection_dim
+                    * self.projection_dim_per_layer
+                    * self.projection_dim_per_layer
                 )
             elif self.factorization_type == "elementwise":
-                self.projection_dim = int(proj_dim / len(self._linear_layers))
-                self._params_dim = len(self._linear_layers) * self.projection_dim
+                self._params_dim = (
+                    len(self._linear_layers) * self.projection_dim_per_layer
+                )
             else:
                 msg = f"Unknown factorization type: {self.factorization_type}"
                 raise ValueError(msg)
@@ -153,6 +152,7 @@ class DVEmbAttributor:
         self.learning_rates: Dict[int, List[float]] = {}
         self.data_indices: Dict[int, List[Tensor]] = {}
         self.embeddings: Dict[int, Tensor] = {}
+        self._caching_method: Optional[str] = None
 
     def _setup_projectors(self, batch_size: int) -> None:
         """Sets up random projectors for each Linear layer based on the projection type.
@@ -167,16 +167,25 @@ class DVEmbAttributor:
         for layer in self._linear_layers:
             output_dim = layer.weight.shape[0]
             input_dim = layer.weight.shape[1]
-            self.projector_kwargs["feature_batch_size"] = batch_size
             project_output = random_project(
                 feature=torch.zeros((batch_size, output_dim)),
-                proj_dim=self.projection_dim,
-                **self.projector_kwargs,
+                proj_params=RandomProjectionParams(
+                    feature_batch_size=batch_size,
+                    device=self.device,
+                    proj_dim=self.projection_dim_per_layer,
+                    proj_seed=self.proj_params.proj_seed,
+                    proj_max_batch_size=self.proj_params.proj_max_batch_size,
+                ),
             )
             project_input = random_project(
                 feature=torch.zeros((batch_size, input_dim)),
-                proj_dim=self.projection_dim,
-                **self.projector_kwargs,
+                proj_params=RandomProjectionParams(
+                    feature_batch_size=batch_size,
+                    device=self.device,
+                    proj_dim=self.projection_dim_per_layer,
+                    proj_seed=self.proj_params.proj_seed,
+                    proj_max_batch_size=self.proj_params.proj_max_batch_size,
+                ),
             )
             self.random_projectors.append((project_input, project_output))
 
@@ -268,15 +277,137 @@ class DVEmbAttributor:
                      in batch_data.
             learning_rate: The learning rate for this step.
         """
+        if self._caching_method == "context":
+            warnings.warn(
+                "Both cache_gradients() and cache_gradients_context() have been "
+                "called on the same attributor instance. Mixing these two APIs "
+                "will produce incorrect results. Use only one caching method.",
+                stacklevel=2,
+            )
+        self._caching_method = "direct"
+
         # Set up projectors if not already done
-        if hasattr(self, "random_projectors") is False\
-            and self.use_factorization and self.projection_dim is not None:
+        if (
+            hasattr(self, "random_projectors") is False
+            and self.use_factorization
+            and self.projection_dim_per_layer is not None
+        ):
             self._setup_projectors(batch_size=len(indices))
 
         if self.use_factorization:
-            self._cache_factored_gradients(epoch, batch_data, indices, learning_rate)
+            self._cache_factored_gradients(
+                epoch,
+                batch_data,
+                indices,
+                learning_rate,
+            )
         else:
             self._cache_full_gradients(epoch, batch_data, indices, learning_rate)
+
+    @contextmanager
+    def cache_gradients_context(
+        self,
+        epoch: int,
+        indices: Tensor,
+        learning_rate: float,
+    ) -> Generator[None, None, None]:
+        """Context manager for caching gradient factors during a training step.
+
+        This is an alternative to `cache_gradients()` for factorization mode only.
+        It hooks into the user's own training loop (forward + backward + optimizer
+        step) to capture gradient factors without an extra forward-backward pass.
+
+        Args:
+            epoch: The current epoch number.
+            indices: A tensor containing the original dataset indices for the
+                     samples in the current batch.
+            learning_rate: The learning rate used by the optimizer for this step.
+
+        Yields:
+            None. Control is yielded to the caller to execute their training step
+            (forward pass, backward pass, and optimizer step).
+
+        Raises:
+            NotImplementedError: If `factorization_type` is "none". Use
+                `cache_gradients()` instead for non-factorization mode.
+
+        Example:
+            ```python
+            with attributor.cache_gradients_context(
+                epoch=epoch,
+                indices=indices,
+                learning_rate=optimizer.param_groups[0]['lr'],
+            ):
+                optimizer.zero_grad()
+                loss = criterion(model(inputs), labels)
+                loss.backward()
+                optimizer.step()
+            ```
+        """
+        if not self.use_factorization:
+            msg = (
+                "cache_gradients_context only supports factorization mode. "
+                "Please initialize DVEmbAttributor with factorization_type "
+                "set to 'kronecker' or 'elementwise', or use "
+                "cache_gradients() instead for non-factorization mode."
+            )
+            raise NotImplementedError(msg)
+
+        if self._caching_method == "direct":
+            warnings.warn(
+                "Both cache_gradients_context() and cache_gradients() have been "
+                "called on the same attributor instance. Mixing these two APIs "
+                "will produce incorrect results. Use only one caching method.",
+                stacklevel=2,
+            )
+        self._caching_method = "context"
+
+        # Initialize epoch storage if needed
+        if epoch not in self.cached_factors:
+            self.cached_factors[epoch] = []
+            self.cached_gradients[epoch] = []
+            self.learning_rates[epoch] = []
+            self.data_indices[epoch] = []
+
+        # Set up projectors if not already done
+        if (
+            not hasattr(self, "random_projectors")
+            and self.projection_dim_per_layer is not None
+        ):
+            self._setup_projectors(batch_size=len(indices))
+
+        # ══════════ __enter__: Register hooks to capture gradient factors ══════════
+        handles, caches = self._register_factorization_hooks()
+
+        try:
+            yield  # User's training loop executes here (forward + backward + step)
+        finally:
+            # ══════════ __exit__: Clean up and cache gradient factors ══════════
+
+            # Remove hooks
+            for h in handles:
+                h.remove()
+
+            # Adjust for mean reduction: users typically use mean loss (default),
+            # but we need sum reduction for correct per-sample gradient factors.
+            # backward hook captures B = dL/dy where L = mean(per_sample_losses).
+            # We need B_sum = dL_sum/dy = N * B where L_sum = sum(per_sample_losses).
+            for cache in caches:
+                if cache["B"] is not None:
+                    cache["B"] *= len(indices)
+
+            # Cache the gradient factors (with projection if configured)
+            if self.projection_dim_per_layer is None:
+                self.cached_factors[epoch].append(caches)
+            elif self.factorization_type == "kronecker":
+                projected_grads = self._project_gradients_factors_kronecker(caches)
+                self.cached_gradients[epoch].append(projected_grads.cpu())
+            else:
+                projected_grads = self._project_gradients_factors_elementwise(caches)
+                self.cached_gradients[epoch].append(projected_grads.cpu())
+
+            self.learning_rates[epoch].append(learning_rate / len(indices))
+            self.data_indices[epoch].append(indices.cpu())
 
     def _calculate_full_gradients(
         self,
@@ -300,16 +431,20 @@ class DVEmbAttributor:
         )
         per_sample_grads = grad_loss_fn(model_params, batch_data_tensors)
 
-        if self.projection_dim is not None:
+        if self.projection_dim_per_layer is not None:
             # Create projector if needed
             if self.projector is None:
                 num_features = per_sample_grads.shape[1]
                 batch_size = per_sample_grads.shape[0]
-                self.projector_kwargs["feature_batch_size"] = batch_size
                 self.projector = random_project(
-                    feature=torch.zeros((batch_size, num_features)),
-                    proj_dim=self.projection_dim,
-                    **self.projector_kwargs,
+                    torch.zeros((batch_size, num_features)),
+                    proj_params=RandomProjectionParams(
+                        feature_batch_size=batch_size,
+                        device=self.device,
+                        proj_dim=self.projection_dim_per_layer,
+                        proj_seed=self.proj_params.proj_seed,
+                        proj_max_batch_size=self.proj_params.proj_max_batch_size,
+                    ),
                 )
             # Project gradients
             per_sample_grads = self.projector(per_sample_grads)
@@ -357,10 +492,9 @@ class DVEmbAttributor:
         self.model.zero_grad()
         handles, caches = self._register_factorization_hooks()
 
+        # Strict requirements on batch_data
         batch_data_tensors = [d.to(self.device) for d in batch_data]
-        loss = self.task.original_loss_func(self.model,
-                                            batch_data_tensors,
-                                            self.device)
+        loss = self.task.original_loss_func(self.model, batch_data_tensors, self.device)
         loss *= batch_data_tensors[0].shape[0]  # Scale loss by batch size
         loss.backward()
 
@@ -494,12 +628,14 @@ class DVEmbAttributor:
                 a_proj = a_proj_flat.reshape(batch_size, seq_len, k)
                 b_proj = b_proj_flat.reshape(batch_size, seq_len, k)
 
-                grad = (a_proj * b_proj).sum(dim=1) * math.sqrt(self.projection_dim)
+                grad = (a_proj * b_proj).sum(dim=1) * math.sqrt(
+                    self.projection_dim_per_layer,
+                )
             else:
                 # 2D case: (B, D)
                 a_proj = proj_a(a)
                 b_proj = proj_b(b)
-                grad = a_proj.mul(b_proj) * math.sqrt(self.projection_dim)
+                grad = a_proj.mul(b_proj) * math.sqrt(self.projection_dim_per_layer)
 
             projected_grads_parts.append(grad.flatten(start_dim=1))
 
@@ -528,7 +664,7 @@ class DVEmbAttributor:
 
         caches = self._calculate_gradient_factors(batch_data)
 
-        if self.projection_dim is None:
+        if self.projection_dim_per_layer is None:
             self.cached_factors[epoch].append(caches)
         elif self.factorization_type == "kronecker":
             # kronecker with projection returns projected gradients directly
@@ -600,7 +736,7 @@ class DVEmbAttributor:
         # Determine gradient dimension and data type from cached data
         if self.use_factorization:
             grad_dim = self._params_dim
-            if self.projection_dim is None:
+            if self.projection_dim_per_layer is None:
                 # No projection: use cached factors
                 grad_dtype = self.cached_factors[0][0][0]["A"].dtype
             else:
@@ -619,6 +755,7 @@ class DVEmbAttributor:
 
         # Calculate data embeddings for each epoch in reverse order
         sorted_epochs = sorted(self.learning_rates.keys(), reverse=True)
+        # Going through epochs in reverse order
         for epoch in tqdm(sorted_epochs, desc="Computing DVEmb per Epoch"):
             epoch_embeddings = torch.zeros(
                 (num_total_samples, grad_dim),
@@ -633,7 +770,7 @@ class DVEmbAttributor:
                 indices_t = self.data_indices[epoch][t]
 
                 if self.use_factorization:
-                    if self.projection_dim is None:
+                    if self.projection_dim_per_layer is None:
                         # No projection: reconstruct from cached factors
                         gradient_factors = self.cached_factors[epoch][t]
                         grads_t = self._reconstruct_gradients(gradient_factors).to(
@@ -699,7 +836,7 @@ class DVEmbAttributor:
         for batch_data in tqdm(test_dataloader, desc="Calculating test gradients"):
             if self.use_factorization:
                 factors = self._calculate_gradient_factors(batch_data)
-                if self.projection_dim is None:
+                if self.projection_dim_per_layer is None:
                     grads = self._reconstruct_gradients(factors)
                 elif self.factorization_type == "kronecker":
                     # kronecker with projection returns projected gradients directly

@@ -12,9 +12,9 @@ from dattri.metric import mislabel_detection_auc
 from dattri.task import AttributionTask
 
 
-def get_cifar_indices_and_adjust_labels(dataset, subset_indice):
+def get_cifar_indices_and_adjust_labels(dataset, subset_indices):
     dataset.targets, flip_index = flip_label(
-        torch.tensor(dataset.targets)[subset_indice], p=0.1
+        torch.tensor(dataset.targets)[subset_indices], p=0.1
     )
     return flip_index
 
@@ -64,15 +64,10 @@ if __name__ == "__main__":
 
     task = AttributionTask(loss_func=f, model=model, checkpoints=model.state_dict())
 
-    projector_kwargs = {
-        "device": args.device,
-    }
-
     attributor = TRAKAttributor(
         task=task,
         correct_probability_func=m,
         device=args.device,
-        projector_kwargs=projector_kwargs,
     )
 
     attributor.cache(train_loader)

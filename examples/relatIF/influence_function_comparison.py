@@ -71,11 +71,12 @@ def loss_func(params, data_target_pair):
 
 
 if __name__ == "__main__":
-    device = "cuda" if torch.cuda.is_available() else "cpu"
-
     parser = argparse.ArgumentParser()
     parser.add_argument("--no_output", action="store_true")
+    parser.add_argument("--device", default="cpu", type=str)
     args = parser.parse_args()
+
+    device = args.device
 
     # Generate training data with outlier
     outlier_coord = (0.0, 2.8)

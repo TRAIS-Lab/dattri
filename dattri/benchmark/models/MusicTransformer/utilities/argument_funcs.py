@@ -2,7 +2,7 @@
 # author: Damon Gwinn
 import argparse
 
-from .constants import SEPERATOR
+from .constants import SEPARATOR
 
 # parse_train_args
 def parse_train_args():
@@ -57,7 +57,7 @@ def print_train_args(args):
     # noqa: DAR101
     """
 
-    print(SEPERATOR)
+    print(SEPARATOR)
     print("input_dir:", args.input_dir)
     print("output_dir:", args.output_dir)
     print("weight_modulus:", args.weight_modulus)
@@ -83,7 +83,7 @@ def print_train_args(args):
     print("")
     print("dim_feedforward:", args.dim_feedforward)
     print("dropout:", args.dropout)
-    print(SEPERATOR)
+    print(SEPARATOR)
     print("")
 
 # parse_eval_args
@@ -127,7 +127,7 @@ def print_eval_args(args):
     # noqa: DAR101
     """
 
-    print(SEPERATOR)
+    print(SEPARATOR)
     print("dataset_dir:", args.dataset_dir)
     print("model_weights:", args.model_weights)
     print("n_workers:", args.n_workers)
@@ -142,7 +142,7 @@ def print_eval_args(args):
     print("d_model:", args.d_model)
     print("")
     print("dim_feedforward:", args.dim_feedforward)
-    print(SEPERATOR)
+    print(SEPARATOR)
     print("")
 
 # parse_generate_args
@@ -189,7 +189,7 @@ def print_generate_args(args):
     # noqa: DAR101
     """
 
-    print(SEPERATOR)
+    print(SEPARATOR)
     print("midi_root:", args.midi_root)
     print("output_dir:", args.output_dir)
     print("primer_file:", args.primer_file)
@@ -207,7 +207,7 @@ def print_generate_args(args):
     print("d_model:", args.d_model)
     print("")
     print("dim_feedforward:", args.dim_feedforward)
-    print(SEPERATOR)
+    print(SEPARATOR)
     print("")
 
 # write_model_params

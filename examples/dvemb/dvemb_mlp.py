@@ -5,6 +5,7 @@ import os
 import pathlib
 import random
 
+from dattri.params.projection import DVEmbProjectionParams
 import matplotlib.pyplot as plt
 import numpy as np
 import torch
@@ -89,7 +90,7 @@ def calculate_dvemb_score():
     # DVEmb initialization
     attributor = DVEmbAttributor(
         task=task,
-        proj_dim=4096,
+        proj_params=DVEmbProjectionParams(proj_dim_per_layer=4096),
         factorization_type="elementwise",
     )
 
@@ -100,22 +101,34 @@ def calculate_dvemb_score():
         for inputs, labels, indices in tqdm(train_loader, desc=f"Epoch {epoch + 1}/{num_epochs}"):
             inputs, labels = inputs.to(device), labels.to(device)
 
-            # --- DVEmb Usage: Caching Gradients ---
-            # In each training step (before the optimizer step), call `cache_gradients`.
-            # This computes and stores the per-sample gradients for the current batch,
-            # which are essential for calculating the data value embeddings.
-            # It requires the current epoch, batch data, indices, and learning rate.
-            attributor.cache_gradients(epoch=epoch,
-                                       batch_data=(inputs, labels),
-                                       indices=indices,
-                                       learning_rate=learning_rate)
+            # --- DVEmb Usage: Context Manager for Caching Gradients ---
+            # Use context manager to wrap the training loop. This captures gradient
+            # factors automatically while giving full control over the training process.
+            # Users can add custom logic (loss logging, gradient clipping, etc.)
+            # without any performance overhead or duplicated computation.
+            with attributor.cache_gradients_context(
+                epoch=epoch,
+                indices=indices,
+                learning_rate=optimizer.param_groups[0]['lr'],
+            ):
 
-            # Perform the standard training step
-            optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = criterion(outputs, labels)
-            loss.backward()
-            optimizer.step()
+                optimizer.zero_grad()
+                outputs = model(inputs)
+                loss = criterion(outputs, labels)
+                loss.backward()
+                optimizer.step()
+
+            # =================== Original API =======================
+            # The old API is still supported for backward compatibility.
+            #
+            # attributor.cache_gradients(epoch=epoch,
+            #                            batch_data=(inputs, labels),
+            #                            indices=indices,
+            #                            learning_rate=optimizer.param_groups[0]['lr'])
+
+            # optimizer.step()
+            # =======================================================================================
+
 
     # Compute DVEmb influence
     test_dataset = TensorDataset(test_inputs, test_labels)

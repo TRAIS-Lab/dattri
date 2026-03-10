@@ -689,7 +689,7 @@ def ihvp_at_x_arnoldi(
                 Hessenberg matrix H' approximating the Hessian H.
             proj (Tensor): The second result from arnoldi_iter. This will be the
                 projection vectors onto the Krylov subspace K of the Hessian H.
-            top_k (int): Specfies how many eigenvalues and eigenvectors to distill.
+            top_k (int): Specifies how many eigenvalues and eigenvectors to distill.
             force_hermitian (bool): Whether to force the Hessian to Hermitian.
                 Defaults to True.
 
@@ -752,7 +752,7 @@ def _sample_random_batch(
     """Randomly sample a batch of `batch_size` from the input data, without replacement.
 
     Args:
-        *x: List of arguments to check. Each argument shoule be either:
+        *x: List of arguments to check. Each argument should be either:
             1. A tensor with a batch size dimension. Each data point i
             will take the i-th element along this dimension.
             2. A tensor without a batch size dimension. Each data point will
@@ -784,7 +784,7 @@ def _check_input_size(*x, in_dims: Optional[Tuple] = None) -> int:
     """Check and return the size of input data.
 
     Args:
-        *x: List of arguments to check. Each argument shoule be either:
+        *x: List of arguments to check. Each argument should be either:
             1. A tensor with a batch size dimension. Each data point i
             will take the i-th element along this dimension.
             2. A tensor without a batch size dimension. Each data point will

@@ -46,10 +46,10 @@ jobs:
         python examples/pretrained_benchmark/trak_dropout_lds.py --device cpu
         python examples/brittleness/mnist_lr_brittleness.py --method cg --device cpu
         python examples/data_cleaning/influence_function_data_cleaning.py --device cpu --train_size 1000 --val_size 100 --test_size 100 --remove_number 10
-        python examples/relatIF/influence_function_comparison.py --no_output
+        python examples/relatIF/influence_function_comparison.py --no_output --device cpu
         sed -i -e 's/4656/64/g' -e 's/481/4/g' dattri/benchmark/load.py
         sed -i '/lds_score = lds/d;/print("lds:/d' examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
-        python examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py
+        python examples/pretrained_benchmark/logra_wikitext2_gpt2_lds.py --device cpu
         sed -i 's/range(1000)/range(100)/g' examples/customized_retraining/mnist.py
         python examples/customized_retraining/mnist.py --device cpu --path ./tmp/mnist_ckpt
         python examples/data_cleaning/tracin_dataloader_group.py
