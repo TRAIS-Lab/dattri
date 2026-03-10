@@ -676,7 +676,6 @@ class TestTracInAttributor:
             task=task,
             weight_list=torch.ones(len(checkpoint_list)),
             normalized_grad=False,
-            projector_kwargs=None,
             device="cpu",
         )
 

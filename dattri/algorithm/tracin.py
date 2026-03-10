@@ -178,10 +178,12 @@ class TracInAttributor(BaseAttributor):
                     grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.proj_params.proj_dim is not None:
                         # define the projector for this batch of data
+                        # use grad_t.shape[0] (not test_batch_data[0]) to support
+                        # DataloaderGroup where test_batch_data is a DataLoader
                         self.test_random_project = random_project(
                             grad_t,
                             proj_params=RandomProjectionParams(
-                                feature_batch_size=test_batch_data[0].shape[0],
+                                feature_batch_size=grad_t.shape[0],
                                 device=self.device,
                                 **self.proj_params.model_dump(),
                             ),
