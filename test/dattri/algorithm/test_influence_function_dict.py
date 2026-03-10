@@ -51,6 +51,15 @@ class TestInfluenceFunctionDict:
             checkpoints=model.state_dict(),
         )
 
+        # Explicit
+        attributor = IFAttributorExplicit(
+            task=task,
+            device=torch.device("cpu"),
+            regularization=1e-3,
+        )
+        attributor.cache(train_loader)
+        attributor.attribute(train_loader, test_loader)
+        
         # CG
         attributor = IFAttributorCG(
             task=task,
