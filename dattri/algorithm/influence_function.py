@@ -112,7 +112,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        n = full_data[0].shape[0]
+        n = self.full_train_dataloader.batch_size
         return vector_product / n
 
     def _compute_denom(
@@ -239,7 +239,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        n = full_data[0].shape[0]
+        n = self.full_train_dataloader.batchsize
         return vector_product / n
 
     def _compute_denom(
@@ -294,8 +294,8 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         precompute_data_ratio: float = 1.0,
-        proj_dim: int = 100,
-        max_iter: int = 100,
+        proj_dim: int = 500,
+        max_iter: int = 1000,
         norm_constant: float = 1.0,
         tol: float = 1e-7,
         regularization: float = 0.0,
@@ -537,7 +537,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 test_rep,
                 in_dims=(None,) + (0,) * len(full_data),
             ).detach()
-        n = full_data[0].shape[0]
+        n = self.full_train_dataloader.batchsize
         return vector_product / n
 
     @staticmethod
