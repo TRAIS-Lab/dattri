@@ -305,9 +305,9 @@ class AttributionTask:
         """Return a function that computes the gradient of the loss function.
 
         Note:
-            The reduction type of the loss function determines the scaling of the 
-            computed gradients. Certain attributors, such as "IFAttributorArnoldi", 
-            mathematically require "reduction='sum'" to compute correctly scaled 
+            The reduction type of the loss function determines the scaling of the
+            computed gradients. Certain attributors, such as "IFAttributorArnoldi",
+            mathematically require "reduction='sum'" to compute correctly scaled
             influence values.
 
         Args:
