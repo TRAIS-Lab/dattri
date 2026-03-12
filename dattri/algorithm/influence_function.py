@@ -239,7 +239,7 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        n = self.full_train_dataloader.batchsize
+        n = self.full_train_dataloader.batch_size
         return vector_product / n
 
     def _compute_denom(
@@ -537,7 +537,7 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 test_rep,
                 in_dims=(None,) + (0,) * len(full_data),
             ).detach()
-        n = self.full_train_dataloader.batchsize
+        n = self.full_train_dataloader.batch_size
         return vector_product / n
 
     @staticmethod
