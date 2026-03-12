@@ -924,7 +924,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         """
         if projected:
             # Split evenly by proj_dim
-            proj_dim = self.proj_params.get("proj_dim")
+            proj_dim = self.proj_params.proj_dim
             num_layers = query.shape[1] // proj_dim
             query_layers = []
             for i in range(num_layers):
