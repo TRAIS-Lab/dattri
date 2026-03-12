@@ -5,7 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
-    from typing import Any, Dict, List, Optional, Tuple, Union
+    from typing import Dict, List, Optional, Tuple, Union
 
     from torch import Tensor
     from torch.utils.data import DataLoader
@@ -19,6 +19,7 @@ import torch
 
 from dattri.func.hessian import ihvp_arnoldi, ihvp_cg, ihvp_explicit, ihvp_lissa
 from dattri.func.projection import random_project
+from dattri.params.projection import IFProjectionParams, RandomProjectionParams
 
 from .base import BaseInnerProductAttributor
 
@@ -55,7 +56,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         self,
         task: AttributionTask,
         layer_name: Optional[Union[str, List[str]]] = None,
-        projector_kwargs: Optional[Dict[str, Any]] = None,
+        proj_params: Optional[IFProjectionParams] = None,
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
     ) -> None:
@@ -69,7 +70,7 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 parameters are used. This should be a string or a list of strings
                 if multiple layers are needed. The name of layer should follow the
                 key of model.named_parameters(). Default: None.
-            projector_kwargs (Optional[Dict[str, Any]]): Keyword arguments for
+            proj_params (Optional[IFProjectionParams]): Projection parameters for
                 random projection. Default: None.
             device (str): Device to run the attributor on. Default is "cpu".
             regularization (float): Regularization term added to Hessian matrix.
@@ -79,11 +80,8 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         """
         super().__init__(task, layer_name, device)
 
-        self.projector_kwargs = projector_kwargs
-        self.transformation_kwargs = {
-            "regularization": regularization,
-            "projector_kwargs": self.projector_kwargs,
-        }
+        self.proj_params = proj_params
+        self.regularization = regularization
 
     def transform_train_rep(
         self,
@@ -99,12 +97,15 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed train representations with projected dimension.
         """
-        if self.projector_kwargs is not None:
+        if self.proj_params is not None:
             sample_features = torch.zeros(1, train_rep.shape[1])
             projector = random_project(
                 sample_features,
-                1,
-                **self.projector_kwargs,
+                proj_params=RandomProjectionParams(
+                    feature_batch_size=1,
+                    device=self.device,
+                    **self.proj_params.model_dump(),
+                ),
             )
             return projector(train_rep, ensemble_id=0)
         return train_rep
@@ -132,6 +133,14 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         for full_data_ in self.full_train_dataloader:
             # move to device
             full_data = tuple(data.to(self.device) for data in full_data_)
+            # Create proj_params_obj only if projection is needed
+            rand_proj_params = None
+            if self.proj_params is not None:
+                rand_proj_params = RandomProjectionParams(
+                    feature_batch_size=1,
+                    device=self.device,
+                    **self.proj_params.model_dump(),
+                )
             self.ihvp_func = ihvp_explicit(
                 partial(
                     self.task.get_loss_func(
@@ -140,7 +149,8 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                     ),
                     **{self.task.loss_func_data_key: full_data},
                 ),
-                **self.transformation_kwargs,
+                regularization=self.regularization,
+                proj_params=rand_proj_params,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
         return vector_product
@@ -178,12 +188,19 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
 
         if relatif_method == "l":
             # g_i^T (H^-1 g_i)
-            if self.projector_kwargs is not None:
+            if self.proj_params is not None:
                 sample_features = torch.zeros(1, train_batch_rep.shape[1])
+
+            rand_proj_params = None
+            if self.proj_params is not None:
+                rand_proj_params = RandomProjectionParams(
+                    feature_batch_size=1,
+                    device=self.device,
+                    **self.proj_params.model_dump(),
+                )
                 projector = random_project(
                     sample_features,
-                    1,
-                    **self.projector_kwargs,
+                        proj_params=rand_proj_params,
                 )
                 test_batch_rep = projector(test_batch_rep, ensemble_id=0)
             val = (test_batch_rep * transformed).sum(dim=1).clamp_min(1e-12).sqrt()
@@ -643,7 +660,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         self,
         task: AttributionTask,
         layer_name: Optional[Union[str, List[str]]] = None,
-        projector_kwargs: Optional[Dict[str, Any]] = None,
+        proj_params: Optional[IFProjectionParams] = None,
         device: Optional[str] = "cpu",
         regularization: float = 0.0,
         fim_estimate_data_ratio: float = 1.0,
@@ -658,8 +675,8 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 parameters are used. This should be a string or a list of strings
                 if multiple layers are needed. The name of layer should follow the
                 key of model.named_parameters(). Default: None.
-            projector_kwargs (Optional[Dict[str, Any]]): Keyword arguments for
-                random projection (e.g., proj_dim=512).
+            proj_params (Optional[IFProjectionParams]): Projection parameters for
+                random projection. Default: None.
             device (str): Device to run the attributor on. Default is "cpu".
             regularization (float): Regularization term for Hessian vector product.
                 Adding `regularization * I` to the Hessian matrix, where `I` is the
@@ -673,7 +690,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         self.fim_estimate_data_ratio = fim_estimate_data_ratio
 
         # per-layer projections
-        self.projector_kwargs = projector_kwargs
+        self.proj_params = proj_params
         self.layer_projectors = {}
 
     def cache(
@@ -695,7 +712,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             layer_split=True,
         )
 
-        if self.projector_kwargs is not None:
+        if self.proj_params is not None:
             layer_sizes = [0] * (param_layer_map[-1] + 1)
             for idx, layer_index in enumerate(param_layer_map):
                 layer_sizes[layer_index] += model_params[idx].numel()
@@ -705,8 +722,11 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                 sample_features = torch.zeros(1, layer_sizes[layer_idx])
                 self.layer_projectors[layer_idx] = random_project(
                     sample_features,
-                    feature_batch_size=1,
-                    **self.projector_kwargs,
+                        proj_params=RandomProjectionParams(
+                            feature_batch_size=1,
+                            device=self.device,
+                            **self.proj_params.model_dump(),
+                        ),
                 )
 
         for checkpoint_idx in range(len(self.task.get_checkpoints())):
@@ -729,7 +749,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     data=sampled_data,
                 )
 
-                if self.projector_kwargs is not None:
+                if self.proj_params is not None:
                     sampled_data_rep_layers = self._get_layer_wise_reps(
                         checkpoint_idx,
                         sampled_data_rep,
@@ -768,7 +788,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             torch.Tensor: Projected training representation.
         """
         # split and project
-        if self.projector_kwargs is not None:
+        if self.proj_params is not None:
             train_rep_layers = self._get_layer_wise_reps(ckpt_idx, train_rep)
             projected_layers = []
 
@@ -829,7 +849,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
             return (v - coef @ grad.T) / regularization
 
         regularization = self.regularization
-        if self.projector_kwargs is not None:
+        if self.proj_params is not None:
             # project test
             test_rep_layers_raw = self._get_layer_wise_reps(ckpt_idx, test_rep)
             test_rep_layers = []
@@ -904,7 +924,7 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
         """
         if projected:
             # Split evenly by proj_dim
-            proj_dim = self.projector_kwargs.get("proj_dim")
+            proj_dim = self.proj_params.get("proj_dim")
             num_layers = query.shape[1] // proj_dim
             query_layers = []
             for i in range(num_layers):
@@ -935,7 +955,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         self,
         task: AttributionTask,
         module_name: Optional[Union[str, List[str]]] = None,
-        projector_kwargs: Optional[Dict[str, Any]] = None,
+        proj_params: Optional[IFProjectionParams] = None,
         device: Optional[str] = "cpu",
         damping: float = 0.0,
     ) -> None:
@@ -959,8 +979,8 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                 modules are used. This should be a string or a list of strings if
                 multiple modules are needed. The name of module should follow the
                 key of model.named_modules(). Default: None.
-            projector_kwargs (Optional[Dict[str, Any]]): Keyword arguments for
-                random projection.
+            proj_params (Optional[IFProjectionParams]): Projection parameters for
+                random projection. Default: None.
             device (str): Device to run the attributor on. Default is "cpu".
             damping (float): Damping factor used for non-convexity in EK-FAC IFVP
                 calculation. Default is 0.0.
@@ -987,7 +1007,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             module_name = [module_name]
 
         self.module_name = module_name
-        self.projector_kwargs = projector_kwargs
+        self.proj_params = proj_params
 
         self.damping = damping
         self.name_to_module = {
@@ -1034,7 +1054,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
 
         if max_iter is None:
             max_iter = len(full_train_dataloader)
-        if self.projector_kwargs is not None:
+        if self.proj_params is not None:
             for name in self.module_name:
                 mod = self.name_to_module[name]
                 input_dim = mod.in_features
@@ -1046,16 +1066,22 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                     blksz_in = torch.zeros(1, input_dim)
                     self.input_projectors[name] = random_project(
                         blksz_in,
-                        feature_batch_size=1,
-                        **self.projector_kwargs,
+                        proj_params=RandomProjectionParams(
+                            feature_batch_size=1,
+                            device=self.device,
+                            **self.proj_params.model_dump(),
+                        ),
                     )
 
                 if name not in self.output_projectors:
                     blksz_out = torch.zeros(1, output_dim)
                     self.output_projectors[name] = random_project(
                         blksz_out,
-                        feature_batch_size=1,
-                        **self.projector_kwargs,
+                        proj_params=RandomProjectionParams(
+                            feature_batch_size=1,
+                            device=self.device,
+                            **self.proj_params.model_dump(),
+                        ),
                     )
 
         def _ekfac_hook(
@@ -1176,13 +1202,13 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
                 _v = _v.reshape(-1, dim_out, dim_in)
             else:
                 _v = layer_rep[name + ".weight"]
-            if self.projector_kwargs and name in self.input_projectors:
+            if self.proj_params and name in self.input_projectors:
                 original_shape = _v.shape
                 _v_reshaped = _v.reshape(-1, original_shape[-1])
                 _v_projected = self.input_projectors[name](_v_reshaped, ensemble_id=0)
                 _v = _v_projected.reshape(original_shape[0], original_shape[1], -1)
 
-            if self.projector_kwargs and name in self.output_projectors:
+            if self.proj_params and name in self.output_projectors:
                 original_shape = _v.shape
                 _v_transposed = _v.transpose(1, 2)
                 _v_reshaped = _v_transposed.reshape(-1, original_shape[1])
@@ -1213,7 +1239,7 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
             torch.Tensor: Projected training representation.
         """
         # project
-        if self.projector_kwargs:
+        if self.proj_params:
             layer_rep_proj = self._project_rep(train_rep)
             # flatten
             projected_layers = [

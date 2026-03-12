@@ -21,7 +21,9 @@ from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
     from collections.abc import Callable
-    from typing import Any, Optional, Tuple, Union
+    from typing import Optional, Tuple, Union
+
+    from dattri.params.projection import RandomProjectionParams
 
 import torch
 from torch import Tensor
@@ -225,7 +227,7 @@ def ihvp_explicit(
     func: Callable,
     argnums: int = 0,
     regularization: float = 0.0,
-    projector_kwargs: Optional[dict[str, Any]] = None,
+    proj_params: Optional[RandomProjectionParams] = None,
 ) -> Callable:
     """IHVP via explicit Hessian calculation.
 
@@ -245,7 +247,7 @@ def ihvp_explicit(
             matrix is singular or ill-conditioned. The regularization term is
             `regularization * I`, where `I` is the identity matrix directly added
             to the Hessian matrix.
-        projector_kwargs (Optional[Dict[str, Any]]): Keyword arguments for
+        proj_params (Optional[Dict[str, Any]]): Keyword arguments for
             random projection. Default: None.
 
     Returns:
@@ -268,12 +270,11 @@ def ihvp_explicit(
             The IHVP value.
         """
         hessian_tensor = hessian_func(*x)
-        if projector_kwargs is not None:
+        if proj_params is not None:
             sample_features = torch.zeros(1, hessian_tensor.shape[0])
             projector = random_project(
                 sample_features,
-                1,
-                **projector_kwargs,
+                proj_params,
             )
             # project H
             proj_h_pt_t = projector(hessian_tensor, ensemble_id=0)

@@ -26,9 +26,16 @@ class BaseProjectionParams(BaseModel):
 
 
 class GeneralProjectionParams(BaseProjectionParams):
-    """General projection params used by TracIn, TRAK, RandomProjectionParams."""
+    """General projection params used by IF, TracIn, TRAK, RandomProjectionParams."""
 
     proj_dim: int
+
+
+class IFProjectionParams(GeneralProjectionParams):
+    """Projection params for IF-based attributors."""
+
+    proj_dim: int = 512
+    proj_max_batch_size: int = 32
 
 
 class LoGraProjectionParams(BaseProjectionParams):

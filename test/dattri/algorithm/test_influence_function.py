@@ -14,6 +14,7 @@ from dattri.algorithm.influence_function import (
     IFAttributorLiSSA,
 )
 from dattri.benchmark.datasets.mnist import train_mnist_lr
+from dattri.params.projection import IFProjectionParams
 from dattri.task import AttributionTask
 
 
@@ -473,12 +474,15 @@ class TestInfluenceFunction:
         )
         train_loader = DataLoader(train_dataset, batch_size=4)
 
-        projector_kwargs = {
+        proj_params = {
             "proj_dim": 512,
             "proj_max_batch_size": 32,
             "proj_seed": 0,
             "device": "cpu",
         }
+
+        proj_params = IFProjectionParams()
+
         model = train_mnist_lr(train_loader)
 
         def f(params, data_target_pair):
@@ -498,7 +502,7 @@ class TestInfluenceFunction:
             task=task,
             device=torch.device("cpu"),
             regularization=1e-3,
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
         attributor_exp.cache(train_loader)
         attributor_exp.attribute(train_loader, train_loader)
@@ -508,7 +512,7 @@ class TestInfluenceFunction:
             task=task,
             device=torch.device("cpu"),
             regularization=1e-3,
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
         attributor_datainf.cache(train_loader)
         attributor_datainf.attribute(train_loader, train_loader)
@@ -518,7 +522,7 @@ class TestInfluenceFunction:
             task=task,
             device=torch.device("cpu"),
             damping=0.1,
-            projector_kwargs=projector_kwargs,
+            proj_params=proj_params,
         )
         attributor_ekfac.cache(train_loader)
         attributor_ekfac.attribute(train_loader, train_loader)
