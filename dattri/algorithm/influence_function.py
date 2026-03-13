@@ -1027,4 +1027,3 @@ class IFAttributorEKFAC(BaseInnerProductAttributor):
         transformed_test_rep_layers = [ifvp[name] for name in self.module_name]
 
         return torch.cat(transformed_test_rep_layers, dim=1)
-    
