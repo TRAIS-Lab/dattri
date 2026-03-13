@@ -44,6 +44,16 @@ See also our [paper](https://arxiv.org/pdf/2410.04555), published in the NeurIPS
 
    api/benchmark.rst
 
+.. toctree::
+   :maxdepth: 1
+   :caption: Projection Params:
+
+   api/params.rst
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Benchmark:
+
 Indices and tables
 ==================
 
