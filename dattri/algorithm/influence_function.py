@@ -462,11 +462,11 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         task: AttributionTask,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
-        batch_size: int = 1,
+        batch_size: int = 100,
         num_repeat: int = 1,
-        recursion_depth: int = 5000,
-        damping: float = 0.0,
-        scaling: float = 50.0,
+        recursion_depth: int = 100,
+        damping: float = 5e-4,
+        scaling: float = 5.0,
         mode: str = "rev-rev",
     ) -> None:
         """Initialize the LiSSA inverse Hessian attributor.
