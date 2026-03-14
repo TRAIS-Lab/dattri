@@ -35,7 +35,7 @@ class BaseProjectionParams(BaseModel):
 
 
 class GeneralProjectionParams(BaseProjectionParams):
-    """General projection params used by TracIn, TRAK, RandomProjectionParams.
+    """General projection params used by IF, TracIn, TRAK, RandomProjectionParams.
 
     Args:
         proj_dim (int): Dimension of the projected feature.
@@ -48,6 +48,23 @@ class GeneralProjectionParams(BaseProjectionParams):
     """
 
     proj_dim: int
+
+
+class IFProjectionParams(GeneralProjectionParams):
+    """Projection params for IF-based attributors.
+
+    Args:
+        proj_dim (int): Dimension of the projected feature.
+        proj_max_batch_size (int): The maximum batch size if the CudaProjector is
+            used. Must be a multiple of 8. The maximum batch size is 32 for A100
+            GPUs, 16 for V100 GPUs, 40 for H100 GPUs.
+        proj_seed (int): Random seed used by the projector. Defaults to 0.
+        proj_type (Literal["identity", "normal", "rademacher", "sjlt",
+        "random_mask", "grass"]): The random projection type used for the projection.
+    """
+
+    proj_dim: int = 512
+    proj_max_batch_size: int = 32
 
 
 class LoGraProjectionParams(BaseProjectionParams):
