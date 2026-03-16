@@ -6,6 +6,7 @@ from torch.utils.data import DataLoader, TensorDataset
 
 from dattri.algorithm.influence_function import (
     IFAttributorCG,
+    IFAttributorExplicit
 )
 from dattri.benchmark.datasets.mnist import train_mnist_lr
 from dattri.task import AttributionTask
@@ -59,7 +60,7 @@ class TestInfluenceFunctionDict:
         )
         attributor.cache(train_loader)
         attributor.attribute(train_loader, test_loader)
-        
+
         # CG
         attributor = IFAttributorCG(
             task=task,

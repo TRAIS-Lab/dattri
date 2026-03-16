@@ -5,6 +5,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from dattri.params.projection import RandomProjectionParams, TracInProjectionParams
+from typing import TYPE_CHECKING
+
+from dattri.params.projection import RandomProjectionParams, TracInProjectionParams
 
 if TYPE_CHECKING:
     from typing import List, Optional, Union
@@ -31,6 +34,7 @@ class TracInAttributor(BaseAttributor):
         weight_list: Tensor,
         normalized_grad: bool,
         proj_params: Optional[TracInProjectionParams] = None,
+        proj_params: Optional[TracInProjectionParams] = None,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: str = "cpu",
     ) -> None:
@@ -45,6 +49,8 @@ class TracInAttributor(BaseAttributor):
             normalized_grad (bool): Whether to apply normalization to gradients.
             proj_params (Optional[TracInProjectionParams]): Parameters for the
                 random projection.
+            proj_params (Optional[TracInProjectionParams]): Parameters for the
+                random projection.
             layer_name (Optional[Union[str, List[str]]]): The name of the layer to be
                 used to calculate the train/test representations. If None, full
                 parameters are used. This should be a string or a list of strings
@@ -54,6 +60,7 @@ class TracInAttributor(BaseAttributor):
         """
         self.task = task
         self.weight_list = weight_list
+        self.proj_params = proj_params or TracInProjectionParams()
         self.proj_params = proj_params or TracInProjectionParams()
         self.normalized_grad = normalized_grad
         self.layer_name = layer_name
@@ -153,11 +160,17 @@ class TracInAttributor(BaseAttributor):
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.proj_params.proj_dim is not None:
+                    if isinstance(train_batch_data, (tuple, list)):
+                        feature_batch_size = train_batch_data[0].shape[0]
+                    elif isinstance(train_batch_data, dict):
+                        feature_batch_size = \
+                            train_batch_data[list(train_batch_data.keys())[0]].shape[0]  # noqa: RUF015
+
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
                         grad_t,
                         proj_params=RandomProjectionParams(
-                            feature_batch_size=train_batch_data[0].shape[0],
+                            feature_batch_size=feature_batch_size,
                             device=self.device,
                             **self.proj_params.model_dump(),
                         ),
@@ -196,11 +209,17 @@ class TracInAttributor(BaseAttributor):
                     # get gradient of test
                     grad_t = self.grad_target_func(parameters, test_batch_data)
                     if self.proj_params.proj_dim is not None:
+                        if isinstance(test_batch_data, (tuple, list)):
+                            feature_batch_size = test_batch_data[0].shape[0]
+                        elif isinstance(test_batch_data, dict):
+                            feature_batch_size = \
+                                train_batch_data[list(test_batch_data.keys())[0]].shape[0]  # noqa: RUF015
+
                         # define the projector for this batch of data
                         self.test_random_project = random_project(
                             grad_t,
                             proj_params=RandomProjectionParams(
-                                feature_batch_size=test_batch_data[0].shape[0],
+                                feature_batch_size=feature_batch_size,
                                 device=self.device,
                                 **self.proj_params.model_dump(),
                             ),
@@ -315,11 +334,17 @@ class TracInAttributor(BaseAttributor):
                 # get gradient of train
                 grad_t = self.grad_loss_func(parameters, train_batch_data)
                 if self.proj_params.proj_dim is not None:
+                    if isinstance(train_batch_data, (tuple, list)):
+                        feature_batch_size = train_batch_data[0].shape[0]
+                    elif isinstance(train_batch_data, dict):
+                        feature_batch_size = \
+                            train_batch_data[list(train_batch_data.keys())[0]].shape[0]  # noqa: RUF015
+
                     # define the projector for this batch of data
                     self.train_random_project = random_project(
                         grad_t,
                         proj_params=RandomProjectionParams(
-                            feature_batch_size=train_batch_data[0].shape[0],
+                            feature_batch_size=feature_batch_size,
                             device=self.device,
                             **self.proj_params.model_dump(),
                         ),
@@ -351,3 +376,4 @@ class TracInAttributor(BaseAttributor):
                     )
 
         return tda_output
+
