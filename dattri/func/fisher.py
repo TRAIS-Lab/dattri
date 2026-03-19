@@ -270,6 +270,7 @@ def _update_covariance(
         # Uniformly reshape the tensors into (batch_size, t, ...)
         # The t here is the sequence length or time steps for sequential input
         # t = 1 if the given input is not sequential
+        a_prev = a_prev_raw
         if a_prev_raw.ndim == 2:  # noqa: PLR2004
             a_prev = a_prev_raw.unsqueeze(1)
 
