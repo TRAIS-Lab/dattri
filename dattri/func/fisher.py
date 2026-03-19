@@ -362,6 +362,7 @@ def _update_lambda(  # noqa: PLR0914
         # The t here is the sequence length or time steps for sequential input
         # t = 1 if the given input is not sequential
         ds_curr = s_curr_raw.grad
+        a_prev = a_prev_raw
         if a_prev_raw.ndim == 2:  # noqa: PLR2004
             a_prev = a_prev_raw.unsqueeze(1)
             ds_curr = ds_curr.unsqueeze(1)
