@@ -257,7 +257,7 @@ class TracInAttributor(BaseAttributor):
 
         return tda_output
 
-    def self_attribute(
+    def self_attribute(  # noqa: PLR0912
         self,
         train_dataloader: torch.utils.data.DataLoader,
     ) -> Tensor:

@@ -1,5 +1,7 @@
 """Test for influence function with dict-based data."""
 
+# ruff: noqa: F401, PLR0914, W292
+
 import pytest
 import torch
 from torch import nn

@@ -1,5 +1,7 @@
 """Test for TracIn with dict-based data."""
 
+# ruff: noqa: F401, PLR0914, W292
+
 import copy
 import shutil
 from pathlib import Path
