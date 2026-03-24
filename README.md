@@ -106,6 +106,8 @@ One can apply different data attribution methods to PyTorch Models. One only nee
 
 The following is an example of using `IFAttributorCG` and `AttributionTask` to apply data attribution to a PyTorch model.
 
+Please reference [here](./docs/guide/data_compatibility.md) for the guide on how to properly define train/test data for Attributor and loss/target function.
+
 **More examples can be found [here](./examples/).**
 
 ```python
