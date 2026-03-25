@@ -150,6 +150,15 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 )
                 raise TypeError(msg)
 
+            # Create proj_params_obj only if projection is needed
+            rand_proj_params = None
+            if self.proj_params is not None:
+                rand_proj_params = RandomProjectionParams(
+                    feature_batch_size=1,
+                    device=self.device,
+                    **self.proj_params.model_dump(),
+                )
+
             self.ihvp_func = ihvp_explicit(
                 partial(
                     self.task.get_loss_func(
