@@ -125,6 +125,9 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         from dattri.func.hessian import ihvp_explicit
 
@@ -132,15 +135,21 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
-            # Create proj_params_obj only if projection is needed
-            rand_proj_params = None
-            if self.proj_params is not None:
-                rand_proj_params = RandomProjectionParams(
-                    feature_batch_size=1,
-                    device=self.device,
-                    **self.proj_params.model_dump(),
+            if isinstance(full_data_, (tuple, list)):
+                full_data = tuple(
+                    data.to(self.device) for data in full_data_
                 )
+            elif isinstance(full_data_, dict):
+                full_data = {
+                    k: v.to(self.device) for k, v in full_data_.items()
+                }
+            else:
+                msg = (
+                    "We currently only support the train/test data to be "
+                    "tuple, list, or dict."
+                )
+                raise TypeError(msg)
+
             self.ihvp_func = ihvp_explicit(
                 partial(
                     self.task.get_loss_func(
@@ -275,6 +284,9 @@ class IFAttributorCG(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         from dattri.func.hessian import ihvp_cg
 
@@ -282,7 +294,21 @@ class IFAttributorCG(BaseInnerProductAttributor):
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
+            if isinstance(full_data_, (tuple, list)):
+                full_data = tuple(
+                    data.to(self.device) for data in full_data_
+                )
+            elif isinstance(full_data_, dict):
+                full_data = {
+                    k: v.to(self.device) for k, v in full_data_.items()
+                }
+            else:
+                msg = (
+                    "We currently only support the train/test data to be "
+                    "tuple, list, or dict."
+                )
+                raise TypeError(msg)
+
             self.ihvp_func = ihvp_cg(
                 partial(
                     self.task.get_loss_func(
@@ -573,6 +599,9 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         Returns:
             torch.Tensor: Transformed test representations. Typically a 2-d
                 tensor with shape (batch_size, transformed_dimension).
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         from dattri.func.hessian import ihvp_lissa
 
@@ -580,7 +609,21 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         model_params, _ = self.task.get_param(ckpt_idx, layer_name=self.layer_name)
         for full_data_ in self.full_train_dataloader:
             # move to device
-            full_data = tuple(data.to(self.device) for data in full_data_)
+            if isinstance(full_data_, (tuple, list)):
+                full_data = tuple(
+                    data.to(self.device) for data in full_data_
+                )
+            elif isinstance(full_data_, dict):
+                full_data = {
+                    k: v.to(self.device) for k, v in full_data_.items()
+                }
+            else:
+                msg = (
+                    "We currently only support the train/test data to be "
+                    "tuple, list, or dict."
+                )
+                raise TypeError(msg)
+
             self.ihvp_func = ihvp_lissa(
                 self.task.get_loss_func(layer_name=self.layer_name, ckpt_idx=ckpt_idx),
                 collate_fn=IFAttributorLiSSA.lissa_collate_fn,
@@ -701,6 +744,9 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
 
         Args:
             full_train_dataloader (DataLoader): Dataloader with full training data.
+
+        Raises:
+            TypeError: If train/test data is not tuple, list, or dict.
         """
         self.full_train_dataloader = full_train_dataloader
         self._cached_train_reps = {}
@@ -741,9 +787,22 @@ class IFAttributorDataInf(BaseInnerProductAttributor):
                     break
                 sampled_data_list.append(batch)
             for sampled_data_ in sampled_data_list:
-                sampled_data = tuple(
-                    data.to(self.device).unsqueeze(0) for data in sampled_data_
-                )
+                if isinstance(sampled_data_, (tuple, list)):
+                    sampled_data = tuple(
+                        data.to(self.device).unsqueeze(0) for data in sampled_data_
+                    )
+                elif isinstance(sampled_data_, dict):
+                    sampled_data = {
+                        k: v.to(self.device).unsqueeze(0)
+                        for k, v in sampled_data_.items()
+                    }
+                else:
+                    msg = (
+                        "We currently only support the train/test data to be "
+                        "tuple, list, or dict."
+                    )
+                    raise TypeError(msg)
+
                 sampled_data_rep = self.generate_train_rep(
                     ckpt_idx=checkpoint_idx,
                     data=sampled_data,
