@@ -304,6 +304,12 @@ class AttributionTask:
     ) -> Callable:
         """Return a function that computes the gradient of the loss function.
 
+        Note:
+            The reduction type of the loss function determines the scaling of the
+            computed gradients. Certain attributors, such as "IFAttributorArnoldi",
+            mathematically require "reduction='sum'" to compute correctly scaled
+            influence values.
+
         Args:
             in_dims (Tuple[Union[None, int], ...]): The input dimensions of the loss
                 function. This should be a tuple of integers and None. The length of the

@@ -129,7 +129,8 @@ class IFAttributorExplicit(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        return vector_product
+        n = self.full_train_dataloader.batch_size
+        return vector_product / n
 
     def _compute_denom(
         self,
@@ -272,7 +273,8 @@ class IFAttributorCG(BaseInnerProductAttributor):
                 **self.transformation_kwargs,
             )
             vector_product += self.ihvp_func((model_params,), test_rep).detach()
-        return vector_product
+        n = self.full_train_dataloader.batch_size
+        return vector_product / n
 
     def _compute_denom(
         self,
@@ -326,8 +328,8 @@ class IFAttributorArnoldi(BaseInnerProductAttributor):
         layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
         precompute_data_ratio: float = 1.0,
-        proj_dim: int = 100,
-        max_iter: int = 100,
+        proj_dim: int = 500,
+        max_iter: int = 1000,
         norm_constant: float = 1.0,
         tol: float = 1e-7,
         regularization: float = 0.0,
@@ -494,11 +496,11 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
         task: AttributionTask,
         layer_name: Optional[Union[str, List[str]]] = None,
         device: Optional[str] = "cpu",
-        batch_size: int = 1,
+        batch_size: int = 100,
         num_repeat: int = 1,
-        recursion_depth: int = 5000,
-        damping: float = 0.0,
-        scaling: float = 50.0,
+        recursion_depth: int = 100,
+        damping: float = 5e-4,
+        scaling: float = 5.0,
         mode: str = "rev-rev",
     ) -> None:
         """Initialize the LiSSA inverse Hessian attributor.
@@ -586,7 +588,8 @@ class IFAttributorLiSSA(BaseInnerProductAttributor):
                 test_rep,
                 in_dims=(None,) + (0,) * len(full_data),
             ).detach()
-        return vector_product
+        n = self.full_train_dataloader.batch_size
+        return vector_product / n
 
     @staticmethod
     def lissa_collate_fn(
