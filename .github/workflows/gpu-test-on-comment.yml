@@ -10,11 +10,42 @@ permissions:
   issues: write
 
 jobs:
-  trigger-gpu-test:
-
+  # Gate: only TRAIS-Lab org members/owners or users with write access to the
+  # repo may trigger GPU tests. Runs on a GitHub-hosted runner so unauthorized
+  # comments never reach the self-hosted GPU machine.
+  check-permission:
     if: |
       github.event.issue.pull_request &&
       contains(github.event.comment.body, 'run gpu test')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      allowed: ${{ steps.check.outputs.allowed }}
+    steps:
+    - name: Check commenter permission
+      id: check
+      uses: actions/github-script@v7
+      with:
+        script: |
+          const user = context.payload.comment.user.login;
+          const association = context.payload.comment.author_association;
+          // author_association may show CONTRIBUTOR for members whose org
+          // membership is private, so also check the repo permission level.
+          const { data } = await github.rest.repos.getCollaboratorPermissionLevel({
+            owner: context.repo.owner,
+            repo: context.repo.repo,
+            username: user,
+          });
+          const allowed =
+            ['OWNER', 'MEMBER'].includes(association) ||
+            ['admin', 'maintain', 'write'].includes(data.permission);
+          core.info(`user=${user} association=${association} permission=${data.permission} allowed=${allowed}`);
+          core.setOutput('allowed', allowed ? 'true' : 'false');
+
+  trigger-gpu-test:
+    needs: check-permission
+    if: needs.check-permission.outputs.allowed == 'true'
     runs-on: self-hosted
     strategy:
       matrix:
